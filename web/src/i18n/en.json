@@ -97,5 +97,6 @@
   "opt.apply": "Open in Profitability",
   "opt.assumption": "One-way haul, empty return at own speed, train filled to station length, no inflation.",
   "opt.allowElectric": "Electrified line (include OHLE engines)",
-  "opt.gradeSpeed": "On grade (2-tile hill)"
+  "opt.gradeSpeed": "On grade (2-tile hill)",
+  "settings.currency": "Currency (in-game exchange rates)"
 }

@@ -100,11 +100,13 @@ export default function ConsistPage() {
         id: 'cost',
         header: t('table.cost'),
         cell: (info) => money(info.getValue()),
+        meta: { className: 'cell-money' },
       }),
       columnHelper.accessor((row) => trainRunningCost(row), {
         id: 'running',
         header: t('table.running'),
         cell: (info) => money(info.getValue()),
+        meta: { className: 'cell-money' },
       }),
       columnHelper.display({
         id: 'add',
@@ -184,7 +186,7 @@ export default function ConsistPage() {
                     <th
                       key={header.id}
                       onClick={header.column.getToggleSortingHandler()}
-                      className={header.column.getCanSort() ? 'sortable' : ''}
+                      className={[header.column.getCanSort() ? 'sortable' : '', (header.column.columnDef.meta as { className?: string } | undefined)?.className ?? ''].join(' ')}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       {{ asc: ' ▲', desc: ' ▼' }[header.column.getIsSorted() as string] ?? ''}
@@ -197,7 +199,7 @@ export default function ConsistPage() {
               {table.getRowModel().rows.slice(0, 400).map((row) => (
                 <tr key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                    <td key={cell.id} className={(cell.column.columnDef.meta as { className?: string } | undefined)?.className}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
                   ))}
                 </tr>
               ))}

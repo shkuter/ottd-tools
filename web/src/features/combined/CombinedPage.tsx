@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { cargoByLabel, economyById, trainsMeta } from '../../dataset';
 import { t } from '../../i18n';
-import { money, num } from '../../components/format';
+import { num } from '../../components/format';
+import { Money } from '../../components/Money';
 import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
 import { consistStats } from '../../engine/consist';
@@ -64,13 +65,13 @@ export default function CombinedPage() {
         <dt>{t('combined.tripsPerYear')}</dt>
         <dd>{num(tripsPerYear, 1)}</dd>
         <dt>{t('combined.incomePerTrip')}</dt>
-        <dd>{money(incomePerTrip)}</dd>
+        <dd><Money value={incomePerTrip} /></dd>
         <dt>{t('combined.runningCost')}</dt>
-        <dd>{money(stats.runningCostTotal)}</dd>
+        <dd><Money value={stats.runningCostTotal} /></dd>
         <dt>{t('combined.profitPerYear')}</dt>
-        <dd className={profitPerYear >= 0 ? 'big profit' : 'big loss'}>{money(profitPerYear)}</dd>
+        <dd className={profitPerYear >= 0 ? 'big profit' : 'big loss'}><Money value={profitPerYear} /></dd>
         <dt>{t('combined.profitPerTile')}</dt>
-        <dd>{money(profitPerTile)}</dd>
+        <dd><Money value={profitPerTile} /></dd>
         <dt>{t('combined.payback')}</dt>
         <dd>
           {payback ? `${num(payback, 1)} ${t('combined.years')}` : '—'}

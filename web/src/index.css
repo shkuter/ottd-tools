@@ -50,6 +50,8 @@ body {
   font-size: 12px;
 }
 
+.currency-select { margin-left: 12px; align-self: center; }
+
 nav {
   display: flex;
   gap: 4px;
@@ -319,6 +321,15 @@ td:has(> .train-sprite) {
 
 .profit {
   color: var(--profit);
+}
+
+.cell-money {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.money-neg {
+  color: var(--loss);
 }
 
 .loss {

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface RouteState {
   economyId: string;
@@ -14,7 +15,9 @@ interface RouteState {
   setManualDays: (days: number | null) => void;
 }
 
-export const useRouteStore = create<RouteState>((set) => ({
+export const useRouteStore = create<RouteState>()(
+  persist(
+    (set) => ({
   economyId: 'STEELTOWN',
   cargoLabel: 'COAL',
   distanceTiles: 100,
@@ -24,5 +27,8 @@ export const useRouteStore = create<RouteState>((set) => ({
   setCargoLabel: (cargoLabel) => set({ cargoLabel }),
   setDistanceTiles: (distanceTiles) => set({ distanceTiles }),
   setAmount: (amount) => set({ amount }),
-  setManualDays: (manualDays) => set({ manualDays }),
-}));
+      setManualDays: (manualDays) => set({ manualDays }),
+    }),
+    { name: 'ottd-tools-route' },
+  ),
+);

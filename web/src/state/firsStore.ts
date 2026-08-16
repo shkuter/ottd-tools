@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface FirsState {
   economyId: string;
@@ -8,9 +9,14 @@ interface FirsState {
   setSelectedNode: (node: string | null) => void;
 }
 
-export const useFirsStore = create<FirsState>((set) => ({
+export const useFirsStore = create<FirsState>()(
+  persist(
+    (set) => ({
   economyId: 'STEELTOWN',
   selectedNode: null,
   setEconomyId: (economyId) => set({ economyId, selectedNode: null }),
-  setSelectedNode: (selectedNode) => set({ selectedNode }),
-}));
+      setSelectedNode: (selectedNode) => set({ selectedNode }),
+    }),
+    { name: 'ottd-tools-firs', partialize: (s) => ({ economyId: s.economyId }) },
+  ),
+);

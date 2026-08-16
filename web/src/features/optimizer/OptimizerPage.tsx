@@ -1,19 +1,20 @@
 import { useMemo, useState } from 'react';
+import { useOptimizerStore } from '../../state/optimizerStore';
 import { useNavigate } from 'react-router';
 import { cargoByLabel, cargos, economies, trains, trainsMeta } from '../../dataset';
 import { t } from '../../i18n';
-import { money, num } from '../../components/format';
+import { num } from '../../components/format';
+import { Money } from '../../components/Money';
 import { optimizeConsists } from '../../engine/optimize';
 import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
 import { TrainImage } from '../consist/ConsistPage';
 
 export default function OptimizerPage() {
-  const [year, setYear] = useState(1938);
-  const [distance, setDistance] = useState(300);
-  const [cargoLabel, setCargoLabel] = useState('FEAL');
-  const [stationTiles, setStationTiles] = useState(5);
-  const [allowElectric, setAllowElectric] = useState(false);
+  const {
+    year, cargoLabel, distanceTiles: distance, stationTiles, allowElectric,
+    setYear, setCargoLabel, setDistanceTiles: setDistance, setStationTiles, setAllowElectric,
+  } = useOptimizerStore();
   const [engineFilter, setEngineFilter] = useState('');
   const capacityIndex = 2;
   const navigate = useNavigate();
@@ -121,10 +122,10 @@ export default function OptimizerPage() {
               <th>{t('opt.gradeSpeed')}</th>
               <th>{t('combined.roundTrip')}</th>
               <th>{t('opt.trips')}</th>
-              <th>{t('opt.incomeTrip')}</th>
-              <th>{t('table.running')}</th>
-              <th>{t('table.cost')}</th>
-              <th>{t('opt.profitYear')}</th>
+              <th className="cell-money">{t('opt.incomeTrip')}</th>
+              <th className="cell-money">{t('table.running')}</th>
+              <th className="cell-money">{t('table.cost')}</th>
+              <th className="cell-money">{t('opt.profitYear')}</th>
               <th>{t('opt.payback')}</th>
               <th></th>
             </tr>
@@ -145,10 +146,10 @@ export default function OptimizerPage() {
                 <td>{r.gradeSpeedMph} mph</td>
                 <td>{num(r.roundTripDays, 1)} {t('combined.days')}</td>
                 <td>{num(r.tripsPerYear, 1)}</td>
-                <td>{money(r.incomePerTrip)}</td>
-                <td>{money(r.runningCostPerYear)}</td>
-                <td>{money(r.buyCostTotal)}</td>
-                <td className="profit"><strong>{money(r.profitPerYear)}</strong></td>
+                <td className="cell-money"><Money value={r.incomePerTrip} /></td>
+                <td className="cell-money"><Money value={r.runningCostPerYear} /></td>
+                <td className="cell-money"><Money value={r.buyCostTotal} /></td>
+                <td className={"cell-money " + (r.profitPerYear >= 0 ? "profit" : "money-neg")}><strong><Money value={r.profitPerYear} /></strong></td>
                 <td>{r.paybackYears ? `${num(r.paybackYears, 1)} ${t('combined.years')}` : '—'}</td>
                 <td>
                   <button className="btn-add" onClick={() => applyToConsist(i)} title={t('opt.apply')}>

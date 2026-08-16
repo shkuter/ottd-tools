@@ -6,6 +6,7 @@ import FirsPage from './features/firs/FirsPage';
 import CombinedPage from './features/combined/CombinedPage';
 import { datasetMeta } from './dataset';
 import { t } from './i18n';
+import { CURRENCIES, useSettingsStore, type CurrencyCode } from './state/settingsStore';
 
 const tabs = [
   { path: '/optimizer', label: 'nav.optimizer' },
@@ -16,6 +17,7 @@ const tabs = [
 ];
 
 export default function App() {
+  const { currency, setCurrency } = useSettingsStore();
   return (
     <div className="app">
       <header className="app-header">
@@ -33,6 +35,18 @@ export default function App() {
               {t(tab.label)}
             </NavLink>
           ))}
+          <select
+            className="currency-select"
+            title={t('settings.currency')}
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+          >
+            {Object.entries(CURRENCIES).map(([code, c]) => (
+              <option key={code} value={code}>
+                {code} ({c.symbol.trim() || code})
+              </option>
+            ))}
+          </select>
         </nav>
       </header>
       <main>
