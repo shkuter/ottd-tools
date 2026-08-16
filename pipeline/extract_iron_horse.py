@@ -1,0 +1,118 @@
+"""Экспорт ТТХ подвижного состава Iron Horse (ростер Pony) в web/src/data/trains.json.
+
+Импортирует модель данных Iron Horse напрямую (без компиляции NewGRF):
+рецепт — как в vendor/iron-horse/src/id_report.py.
+"""
+import os
+import sys
+
+from common import VENDOR, vendor_meta, write_json
+
+IH_ROOT = os.path.join(VENDOR, "iron-horse")
+os.chdir(IH_ROOT)
+sys.argv = ["export", "--grf-name=iron-horse"]
+sys.path.insert(0, os.path.join(IH_ROOT, "src"))
+
+import iron_horse  # noqa: E402
+import global_constants  # noqa: E402
+from doc_helper import DocHelper  # noqa: E402
+from polar_fox import constants as polar_fox_constants  # noqa: E402
+
+
+def unit_payload(unit):
+    return {
+        "capacities": unit.capacities,
+        "length": unit.vehicle_length,
+        "weight_t": unit.weight or 0,
+    }
+
+
+def catalogue_payload(catalogue, dh):
+    mv = catalogue.example_model_variant
+    is_engine = catalogue.engine_quacker.quack
+    units = list(mv.units)
+    capacities = [sum(u.capacities[i] for u in units) for i in range(5)]
+    item = {
+        "id": catalogue.model_id,
+        "name": dh.unpack_name_string(catalogue),
+        "kind": "engine" if is_engine else "wagon",
+        "gen": mv.gen,
+        "role": mv.role,
+        "subrole": mv.subrole,
+        "joker": bool(mv.joker),
+        "base_track_type": catalogue.base_track_type,
+        "track_types": sorted({t.label for t in mv.track_types}),
+        "lgv_capable": bool(mv.lgv_capable),
+        "intro_year": catalogue.intro_year,
+        "vehicle_life": mv.vehicle_life,
+        "model_life": mv.model_life if mv.model_life != "VEHICLE_NEVER_EXPIRES" else None,
+        "power_hp": mv.power or 0,
+        "power_by_source": mv.power_by_power_source or None,
+        "te_coefficient": mv.tractive_effort_coefficient,
+        "speed_mph": mv.speed,
+        "speed_lgv_mph": mv.speed_on_lgv if mv.lgv_capable else None,
+        "weight_t": mv.weight or 0,
+        "length": mv.length,
+        "dual_headed": bool(mv.dual_headed),
+        "units": [unit_payload(u) for u in units],
+        "cost_factor": mv.buy_cost,
+        "running_cost_factor": mv.running_cost,
+        "running_cost_base": units[0].running_cost_base,
+        "capacities": capacities,
+        "capacity_label": dh.capacity_formatted_for_docs(catalogue),
+        "loading_speed": units[0].loading_speed,
+        "default_cargos": list(mv.default_cargos or []),
+        "refit": {
+            "classes": list(mv.class_refit_groups or []),
+            "labels_allowed": list(mv.label_refits_allowed or []),
+            "labels_disallowed": list(mv.label_refits_disallowed or []),
+        },
+    }
+    return item
+
+
+def main():
+    iron_horse.main()
+    roster = iron_horse.roster_manager.active_roster
+    dh = DocHelper(roster.get_lang_data("english", context="docs"))
+
+    items = [
+        catalogue_payload(c, dh)
+        for c in roster.catalogues
+        if not c.clone_quacker.quack
+    ]
+    items.sort(key=lambda i: (i["kind"], i["intro_year"], i["id"]))
+
+    # Группы refit-классов polar_fox: группа -> allowed/disallowed CC_* —
+    # SPA пересекает их с cargo_classes грузов FIRS
+    refit_groups = {
+        group: {"allowed": rules["allowed"], "disallowed": rules["disallowed"]}
+        for group, rules in polar_fox_constants.base_refits_by_class.items()
+    }
+
+    payload = {
+        "meta": {
+            **vendor_meta("iron-horse"),
+            "roster": roster.id,
+            # basecost-шифты GRF (см. vendor/iron-horse/src/templates/header.pynml);
+            # цена = base << shift * factor / 256
+            "basecost_shifts": {
+                "build_engine": global_constants.PR_BUILD_VEHICLE_TRAIN,
+                "build_wagon": global_constants.PR_BUILD_VEHICLE_WAGON,
+                "running_steam": global_constants.PR_RUNNING_TRAIN_STEAM,
+                "running_diesel": global_constants.PR_RUNNING_TRAIN_DIESEL,
+            },
+            "capacity_param_multipliers": global_constants.capacity_multipliers,
+            "refit_groups": refit_groups,
+            "counts": {
+                "engines": sum(1 for i in items if i["kind"] == "engine"),
+                "wagons": sum(1 for i in items if i["kind"] == "wagon"),
+            },
+        },
+        "items": items,
+    }
+    write_json("trains.json", payload)
+
+
+if __name__ == "__main__":
+    main()

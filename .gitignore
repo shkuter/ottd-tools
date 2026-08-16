@@ -1,0 +1,7 @@
+vendor/
+pipeline/.venv/
+pipeline/__pycache__/
+pipeline/**/__pycache__/
+web/node_modules/
+web/dist/
+.DS_Store
