@@ -139,3 +139,11 @@ https://grf.farm/iron-horse/4.29.0/ — при обновлении версий
 Текущие версии данных: Iron Horse 4.29.0, FIRS **5.2.0** (релизный тег, не master —
 в master уже есть расхождения, например `liquids_terminal` переименован в `oil_terminal`).
 Ванильные эталоны: Kirby Paul Tank cost_factor 7, уголь initial_payment 5916.
+
+Имена и картинки машин должны совпадать со списком покупки в игре — пользователь ищет
+машину в игре по тому, что видит в калькуляторе. Поэтому имя собирается через
+`game_name()` (`get_name_parts(context="default_name")`), а НЕ через
+`DocHelper.unpack_name_string()`: докозвой хелпер Iron Horse дописывает рандомизированным
+вагонам суффикс «- Random», которого в игре нет (тест `test_names_match_the_game`).
+Картинки — buy-menu спрайты того же ростера, у рандомизированных вагонов это композит
+«вагон + кубик + вагон» (`requires_custom_buy_menu_sprite`), в игре ровно такой же.

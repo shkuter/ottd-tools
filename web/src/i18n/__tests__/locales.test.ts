@@ -116,6 +116,21 @@ describe('cargo names', () => {
     useLocaleStore.getState().setLocale('ru');
     expect(sortCargos(list, 'ru').map((c) => cargoName(c))).toEqual(['Алкоголь', 'Кислота', 'Уголь']);
   });
+
+  it('keeps passengers and mail at the top, as the game does', () => {
+    const list = [
+      { label: 'COAL', name: 'Coal' },
+      { label: 'MAIL', name: 'Mail' },
+      { label: 'ACID', name: 'Acid' },
+      { label: 'PASS', name: 'Passengers' },
+    ];
+    for (const locale of ['en', 'ru'] as const) {
+      useLocaleStore.getState().setLocale(locale);
+      const order = sortCargos(list, locale).map((c) => c.label);
+      // pinned first in a fixed order, everything else alphabetical
+      expect(order).toEqual(['PASS', 'MAIL', 'ACID', 'COAL']);
+    }
+  });
 });
 
 describe('industry names', () => {

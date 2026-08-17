@@ -39,6 +39,12 @@ export function industryName(
 }
 
 /**
+ * Passengers and mail head every cargo list in the game itself, so they stay
+ * pinned to the top instead of falling wherever the alphabet puts them.
+ */
+const PINNED_CARGOS = ['PASS', 'MAIL'];
+
+/**
  * Cargo pickers read as a list, so order them by what the user actually sees.
  * Takes the locale as an argument rather than reading the store: callers memoise
  * the sorted list, and this way the locale is a real dependency of that memo.
@@ -49,8 +55,14 @@ export function sortCargos<T extends { label: string; name: string }>(
 ): T[] {
   const names = CARGO_NAMES[locale] ?? {};
   const collator = new Intl.Collator(LOCALES[locale].numbers);
-  return [...cargos].sort((a, b) =>
-    collator.compare(names[a.label] ?? a.name, names[b.label] ?? b.name),
+  const rank = (label: string) => {
+    const pinned = PINNED_CARGOS.indexOf(label);
+    return pinned === -1 ? PINNED_CARGOS.length : pinned;
+  };
+  return [...cargos].sort(
+    (a, b) =>
+      rank(a.label) - rank(b.label) ||
+      collator.compare(names[a.label] ?? a.name, names[b.label] ?? b.name),
   );
 }
 
