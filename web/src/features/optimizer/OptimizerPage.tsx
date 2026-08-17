@@ -17,6 +17,7 @@ export default function OptimizerPage() {
     setYear, setCargoLabel, setDistanceTiles: setDistance, setStationTiles, setAllowElectric,
   } = useOptimizerStore();
   const [engineFilter, setEngineFilter] = useState('');
+  const [subsidised, setSubsidised] = useState(false);
   const { game, calc } = useSettingsStore();
   const navigate = useNavigate();
   const consistStore = useConsistStore();
@@ -39,13 +40,14 @@ export default function OptimizerPage() {
         economyId,
         maxLengthTiles: stationTiles,
         allowElectric,
+        subsidised,
         game,
         calc,
       },
       trainsMeta,
       50,
     );
-  }, [cargo, economyId, year, distance, stationTiles, allowElectric, game, calc]);
+  }, [cargo, economyId, year, distance, stationTiles, allowElectric, subsidised, game, calc]);
 
   const shown = engineFilter
     ? results.filter((r) => r.engine.name.toLowerCase().includes(engineFilter.toLowerCase()))
@@ -97,6 +99,14 @@ export default function OptimizerPage() {
           />
           {t('opt.allowElectric')}
         </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={subsidised}
+            onChange={(e) => setSubsidised(e.target.checked)}
+          />
+          {t('opt.subsidised')}
+        </label>
         <input
           type="search"
           placeholder={t('opt.engineFilter')}
@@ -121,6 +131,7 @@ export default function OptimizerPage() {
               <th>{t('table.capacity')}</th>
               <th>{t('opt.speedLoadedEmpty')}</th>
               <th>{t('opt.gradeSpeed')}</th>
+              <th>{t('opt.dwell')}</th>
               <th>{t('combined.roundTrip')}</th>
               <th>{t('opt.trips')}</th>
               <th className="cell-money">{t('opt.incomeTrip')}</th>
@@ -145,6 +156,7 @@ export default function OptimizerPage() {
                 <td>{num(r.capacity)} {cargo?.units}</td>
                 <td>{r.loadedSpeedMph} / {r.emptySpeedMph} mph</td>
                 <td>{r.gradeSpeedMph} mph</td>
+                <td>{num(r.loadingDays, 1)} {t('combined.days')}</td>
                 <td>{num(r.roundTripDays, 1)} {t('combined.days')}</td>
                 <td>{num(r.tripsPerYear, 1)}</td>
                 <td className="cell-money"><Money value={r.incomePerTrip} /></td>

@@ -63,11 +63,14 @@ export function transportedGoodsIncome(
   transitPeriods: number,
   spec: CargoPaymentSpec,
   cargoAgingRate = 100,
+  /** JGRPP: traditional обрезает время в пути до 255 периодов. */
+  paymentAlgorithm: 'modern' | 'traditional' = 'modern',
 ): number {
-  const periods = Math.min(
+  let periods = Math.min(
     0xffff,
     Math.floor((transitPeriods * cargoAgingRate) / 100),
   );
+  if (paymentAlgorithm === 'traditional') periods = Math.min(periods, 0xff);
   const [p1, p2] = spec.transitPeriods;
   const { factor, shift } = timeFactor(periods, p1, p2);
   return Math.floor(

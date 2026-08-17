@@ -61,15 +61,47 @@ export default function SettingsPage() {
         </h3>
         <p className="hint">{t('settings.jgrppHint')}</p>
         {game.jgrpp && (
-          <Row label={t('settings.dayLength')} hint={t('settings.dayLengthHint')}>
-            <input
-              type="number"
-              min={1}
-              max={125}
-              value={game.dayLengthFactor}
-              onChange={(e) => setGame('dayLengthFactor', Math.max(1, Number(e.target.value)))}
-            />
-          </Row>
+          <>
+            <Row label={t('settings.dayLength')} hint={t('settings.dayLengthHint')}>
+              <input
+                type="number"
+                min={1}
+                max={125}
+                value={game.dayLengthFactor}
+                onChange={(e) => setGame('dayLengthFactor', Math.max(1, Number(e.target.value)))}
+              />
+            </Row>
+            <Row label={t('settings.costsWhenStopped')} hint={t('settings.costsWhenStoppedHint')}>
+              <input
+                type="number"
+                min={1}
+                max={8}
+                value={game.costsWhenStopped}
+                onChange={(e) => setGame('costsWhenStopped', Math.max(1, Number(e.target.value)))}
+              />
+            </Row>
+            <Row label={t('settings.inflationFixedDates')} hint={t('settings.inflationFixedDatesHint')}>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={game.inflationFixedDates}
+                  onChange={(e) => setGame('inflationFixedDates', e.target.checked)}
+                />
+                {game.inflationFixedDates ? t('settings.on') : t('settings.off')}
+              </label>
+            </Row>
+            <Row label={t('settings.paymentAlgorithm')} hint={t('settings.paymentAlgorithmHint')}>
+              <select
+                value={game.paymentAlgorithm}
+                onChange={(e) =>
+                  setGame('paymentAlgorithm', e.target.value as typeof game.paymentAlgorithm)
+                }
+              >
+                <option value="modern">{t('settings.paymentModern')}</option>
+                <option value="traditional">{t('settings.paymentTraditional')}</option>
+              </select>
+            </Row>
+          </>
         )}
       </section>
 
@@ -87,24 +119,39 @@ export default function SettingsPage() {
       </section>
 
       <section className="settings-group">
-        <h3>{t('settings.game')}</h3>
-        <Row label={t('settings.freightTrains')} hint={t('settings.freightTrainsHint')}>
-          <input
-            type="number"
-            min={1}
-            max={255}
-            value={game.freightTrains}
-            onChange={(e) => setGame('freightTrains', Math.max(1, Number(e.target.value)))}
-          />
+        <h3>{t('settings.finance')}</h3>
+        <Row label={t('settings.vehicleCosts')} hint={t('settings.vehicleCostsHint')}>
+          <select
+            value={game.vehicleCosts}
+            onChange={(e) => setGame('vehicleCosts', Number(e.target.value) as 0 | 1 | 2)}
+          >
+            <option value={0}>{t('settings.low')} (×0.75)</option>
+            <option value={1}>{t('settings.medium')} (×1)</option>
+            <option value={2}>{t('settings.high')} (×1.125)</option>
+          </select>
         </Row>
-        <Row label={t('settings.slopeSteepness')} hint={t('settings.slopeSteepnessHint')}>
-          <input
-            type="number"
-            min={0}
-            max={10}
-            value={game.slopeSteepness}
-            onChange={(e) => setGame('slopeSteepness', Number(e.target.value))}
-          />
+        <Row label={t('settings.constructionCost')} hint={t('settings.constructionCostHint')}>
+          <select
+            value={game.constructionCost}
+            onChange={(e) => setGame('constructionCost', Number(e.target.value) as 0 | 1 | 2)}
+          >
+            <option value={0}>{t('settings.low')} (×0.75)</option>
+            <option value={1}>{t('settings.medium')} (×1)</option>
+            <option value={2}>{t('settings.high')} (×1.125)</option>
+          </select>
+        </Row>
+        <Row label={t('settings.subsidyMultiplier')} hint={t('settings.subsidyMultiplierHint')}>
+          <select
+            value={game.subsidyMultiplier}
+            onChange={(e) =>
+              setGame('subsidyMultiplier', Number(e.target.value) as 0 | 1 | 2 | 3)
+            }
+          >
+            <option value={0}>×1.5</option>
+            <option value={1}>×2</option>
+            <option value={2}>×3</option>
+            <option value={3}>×4</option>
+          </select>
         </Row>
         <Row label={t('settings.cargoAgingRate')} hint={t('settings.cargoAgingRateHint')}>
           <input
@@ -123,6 +170,60 @@ export default function SettingsPage() {
               onChange={(e) => setGame('inflation', e.target.checked)}
             />
             {game.inflation ? t('settings.on') : t('settings.off')}
+          </label>
+        </Row>
+        {game.inflation && (
+          <Row label={t('settings.interest')} hint={t('settings.interestHint')}>
+            <input
+              type="number"
+              min={2}
+              max={4}
+              value={game.inflationInterest}
+              onChange={(e) => setGame('inflationInterest', Number(e.target.value))}
+            />
+          </Row>
+        )}
+      </section>
+
+      <section className="settings-group">
+        <h3>{t('settings.vehicles')}</h3>
+        <Row label={t('settings.accelModel')} hint={t('settings.accelModelHint')}>
+          <select
+            value={game.accelerationModel}
+            onChange={(e) =>
+              setGame('accelerationModel', e.target.value as typeof game.accelerationModel)
+            }
+          >
+            <option value="realistic">{t('settings.accelRealistic')}</option>
+            <option value="original">{t('settings.accelOriginal')}</option>
+          </select>
+        </Row>
+        <Row label={t('settings.freightTrains')} hint={t('settings.freightTrainsHint')}>
+          <input
+            type="number"
+            min={1}
+            max={255}
+            value={game.freightTrains}
+            onChange={(e) => setGame('freightTrains', Math.max(1, Number(e.target.value)))}
+          />
+        </Row>
+        <Row label={t('settings.slopeSteepness')} hint={t('settings.slopeSteepnessHint')}>
+          <input
+            type="number"
+            min={0}
+            max={10}
+            value={game.slopeSteepness}
+            onChange={(e) => setGame('slopeSteepness', Number(e.target.value))}
+          />
+        </Row>
+        <Row label={t('settings.gradualLoading')} hint={t('settings.gradualLoadingHint')}>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={game.gradualLoading}
+              onChange={(e) => setGame('gradualLoading', e.target.checked)}
+            />
+            {game.gradualLoading ? t('settings.on') : t('settings.off')}
           </label>
         </Row>
       </section>

@@ -68,7 +68,16 @@ export function forceN(c: ConsistPhysics, v: number): number {
  * Установившаяся скорость (внутр. ед.), где тяга сравнивается с сопротивлением.
  * Ограничена maxSpeedInternal. massOnSlopeT > 0 — весь состав на подъёме.
  */
-export function balancingSpeed(c: ConsistPhysics, massOnSlopeT = 0): number {
+export function balancingSpeed(
+  c: ConsistPhysics,
+  massOnSlopeT = 0,
+  /** 'original' — упрощённая модель TTD: сопротивление скорость не ограничивает. */
+  model: 'realistic' | 'original' = 'realistic',
+): number {
+  if (model === 'original') {
+    // train_cmd.cpp:447 — ускорение из мощности и веса, предел только max speed
+    return c.powerHp > 0 ? c.maxSpeedInternal : 0;
+  }
   let lo = 1;
   let hi = c.maxSpeedInternal;
   if (forceN(c, hi) >= resistanceN(c, hi, massOnSlopeT)) return hi;

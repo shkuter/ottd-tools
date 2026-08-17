@@ -16,6 +16,10 @@ import {
   type CalcSettings,
   type GameSettings,
   effectiveDayLength,
+  difficultyPriceFactor,
+  loadingTicks,
+  subsidyFactor,
+  stoppedCostDivisor,
 } from './settings';
 
 export interface OptimizeParams {
@@ -27,6 +31,8 @@ export interface OptimizeParams {
   maxLengthTiles: number;
   /** Линия электрифицирована: включать чисто электрические (OHLE) локомотивы. */
   allowElectric: boolean;
+  /** Груз идёт под субсидией — доход умножается (difficulty.subsidy_multiplier). */
+  subsidised?: boolean;
   game?: GameSettings;
   calc?: CalcSettings;
 }
@@ -46,8 +52,10 @@ export interface OptimizeResult {
   lengthTiles: number;
   loadedSpeedMph: number;
   emptySpeedMph: number;
-  /** Гружёным на подъёме (типовой холм в 2 тайла: на уклоне часть состава). */
+  /** Гружёным на подъёме (холм заданной длины: на уклоне часть состава). */
   gradeSpeedMph: number;
+  /** Дни стоянки под погрузку и разгрузку за рейс. */
+  loadingDays: number;
   roundTripDays: number;
   tripsPerYear: number;
   incomePerTrip: number;
@@ -79,7 +87,17 @@ function moneyFor(
     const runShift = train.running_cost_base.includes('STEAM')
       ? meta.basecost_shifts.running_steam
       : meta.basecost_shifts.running_diesel;
-    buy += count * buyCost(train.kind, train.cost_factor, buyShift, calc.priceYear, game.inflation);
+    buy +=
+      count *
+      buyCost(
+        train.kind,
+        train.cost_factor,
+        buyShift,
+        calc.priceYear,
+        game.inflation,
+        difficultyPriceFactor(game.constructionCost),
+        game.inflationInterest,
+      );
     running +=
       count *
       runningCostPerYear(
@@ -88,6 +106,8 @@ function moneyFor(
         runShift,
         calc.priceYear,
         game.inflation,
+        difficultyPriceFactor(game.vehicleCosts),
+        game.inflationInterest,
       ) *
       effectiveDayLength(game);
   }
@@ -143,17 +163,21 @@ export function optimizeConsists(
         if (loaded.stats.capacityForCargo <= 0) continue;
         const empty = consistPhysics(entries, null, capacityIndex, game);
 
-        const loadedSpeed = balancingSpeed(loaded.physics);
-        const emptySpeed = balancingSpeed(empty.physics);
+        const loadedSpeed = balancingSpeed(loaded.physics, 0, game.accelerationModel);
+        const emptySpeed = balancingSpeed(empty.physics, 0, game.accelerationModel);
         const lengthTiles = (engineLength + wagonCount * wagon.length) / 16;
         const massOnSlope =
           loaded.physics.massT * Math.min(calc.hillTiles / lengthTiles, 1);
-        const gradeSpeed = balancingSpeed(loaded.physics, massOnSlope);
+        const gradeSpeed = balancingSpeed(loaded.physics, massOnSlope, game.accelerationModel);
         if (loadedSpeed <= 2) continue;
 
         const daysLoaded = daysForDistance(distanceTiles, loadedSpeed);
         const daysEmpty = daysForDistance(distanceTiles, emptySpeed);
-        const roundTripDays = daysLoaded + daysEmpty;
+        // стоянки: погрузка на одном конце + разгрузка на другом (вагоны грузятся параллельно)
+        const perWagonCapacity = wagon.capacities[capacityIndex] ?? wagon.capacities[2];
+        const loadingDays =
+          (2 * loadingTicks(perWagonCapacity, wagon.loading_speed ?? 0, game)) / 74;
+        const roundTripDays = daysLoaded + daysEmpty + loadingDays;
         // JGRPP: длинный день не меняет рейс в тиках, но календарный год длиннее
         const tripsPerYear = (365 * effectiveDayLength(game)) / roundTripDays;
 
@@ -163,9 +187,14 @@ export function optimizeConsists(
           transitPeriodsFromDays(daysLoaded),
           { currentPayment: payment, transitPeriods: cargo.transit_periods },
           game.cargoAgingRate,
-        );
+          game.jgrpp ? game.paymentAlgorithm : 'modern',
+        ) * (params.subsidised ? subsidyFactor(game.subsidyMultiplier) : 1);
         const { buy, running } = moneyFor(entries, meta, game, calc);
-        const profitPerYear = incomePerTrip * tripsPerYear - running;
+        // на стоянке JGRPP может брать меньше: делим долю времени под погрузкой
+        const stoppedShare = roundTripDays > 0 ? loadingDays / roundTripDays : 0;
+        const runningEffective =
+          running * (1 - stoppedShare + stoppedShare / stoppedCostDivisor(game));
+        const profitPerYear = incomePerTrip * tripsPerYear - runningEffective;
 
         results.push({
           engine,
@@ -177,10 +206,11 @@ export function optimizeConsists(
           loadedSpeedMph: Math.floor((loadedSpeed * 10) / 16),
           emptySpeedMph: Math.floor((emptySpeed * 10) / 16),
           gradeSpeedMph: Math.floor((gradeSpeed * 10) / 16),
+          loadingDays,
           roundTripDays,
           tripsPerYear,
           incomePerTrip,
-          runningCostPerYear: running,
+          runningCostPerYear: runningEffective,
           buyCostTotal: buy,
           profitPerYear,
           paybackYears: profitPerYear > 0 ? buy / profitPerYear : null,

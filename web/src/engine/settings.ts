@@ -18,6 +18,28 @@ export interface GameSettings {
   inflation: boolean;
   /** difficulty.initial_interest: скорость инфляции (2..4, def 2). */
   inflationInterest: number;
+  /** difficulty.vehicle_costs: содержание техники 0=low, 1=medium, 2=high. */
+  vehicleCosts: 0 | 1 | 2;
+  /** difficulty.construction_cost: стоимость постройки/покупки 0=low, 1=medium, 2=high. */
+  constructionCost: 0 | 1 | 2;
+  /** difficulty.subsidy_multiplier: 0=×1.5, 1=×2, 2=×3, 3=×4. */
+  subsidyMultiplier: 0 | 1 | 2 | 3;
+  /** vehicle.train_acceleration_model: realistic учитывает сопротивление, original — нет. */
+  accelerationModel: 'realistic' | 'original';
+  /** order.gradual_loading: постепенная погрузка (влияет на длительность стоянки). */
+  gradualLoading: boolean;
+  /**
+   * JGRPP economy.payment_algorithm: traditional обрезает время в пути до 255
+   * периодов (очень долгие рейсы не штрафуются сильнее), modern — без обрезки.
+   */
+  paymentAlgorithm: 'modern' | 'traditional';
+  /**
+   * JGRPP difficulty.vehicle_costs_when_stopped (1..8): расходы стоящего поезда
+   * делятся на это значение (train_cmd.cpp GetRunningCost).
+   */
+  costsWhenStopped: number;
+  /** JGRPP economy.inflation_fixed_dates: инфляция только с 1920 по 2090. */
+  inflationFixedDates: boolean;
 }
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
@@ -28,7 +50,44 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   dayLengthFactor: 1,
   inflation: false,
   inflationInterest: 2,
+  vehicleCosts: 1,
+  constructionCost: 1,
+  subsidyMultiplier: 1,
+  accelerationModel: 'realistic',
+  gradualLoading: true,
+  paymentAlgorithm: 'modern',
+  costsWhenStopped: 1,
+  inflationFixedDates: true,
 };
+
+/**
+ * Множитель базовых цен от настройки сложности (economy.cpp RecomputePrices):
+ * 0 → ×6/8, 1 → ×8/8 (норма), 2 → ×9/8.
+ */
+export function difficultyPriceFactor(mod: 0 | 1 | 2): number {
+  return (mod === 0 ? 6 : mod === 1 ? 8 : 9) / 8;
+}
+
+/** Множитель дохода при действующей субсидии (economy.cpp DeliverGoods). */
+export function subsidyFactor(mod: 0 | 1 | 2 | 3): number {
+  return mod === 0 ? 1.5 : mod === 1 ? 2 : mod === 2 ? 3 : 4;
+}
+
+/**
+ * Тики стоянки под погрузку: вагоны грузятся параллельно, порция loading_speed
+ * единиц каждые 40 тиков (economy.cpp gradual_loading_wait_time[Train]).
+ */
+export function loadingTicks(
+  capacityPerWagon: number,
+  loadingSpeed: number,
+  settings: GameSettings,
+): number {
+  if (!settings.gradualLoading || loadingSpeed <= 0 || capacityPerWagon <= 0) return 0;
+  return Math.ceil(capacityPerWagon / loadingSpeed) * 40;
+}
+
+
+
 
 /** Настройки калькулятора: не игровые параметры, а допущения расчёта. */
 export interface CalcSettings {
@@ -48,6 +107,11 @@ export const DEFAULT_CALC_SETTINGS: CalcSettings = {
   trackType: 'RAIL',
   priceYear: 1950,
 };
+
+/** Делитель расходов на стоянке (только JGRPP). */
+export function stoppedCostDivisor(settings: GameSettings): number {
+  return settings.jgrpp ? Math.max(1, settings.costsWhenStopped) : 1;
+}
 
 /** Длина дня учитывается только на JGRPP (в ванили такой настройки нет). */
 export function effectiveDayLength(settings: GameSettings): number {

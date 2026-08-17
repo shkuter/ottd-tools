@@ -48,6 +48,7 @@ export default function CombinedPage() {
           transitPeriodsFromDays(oneWayDays),
           { currentPayment: payment, transitPeriods: cargo.transit_periods },
           game.cargoAgingRate,
+          game.jgrpp ? game.paymentAlgorithm : 'modern',
         )
       : 0;
 

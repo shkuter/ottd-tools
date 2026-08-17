@@ -14,6 +14,7 @@ import {
   type CalcSettings,
   type GameSettings,
   effectiveDayLength,
+  difficultyPriceFactor,
 } from './settings';
 
 export interface ConsistEntry {
@@ -116,7 +117,17 @@ export function consistStats(
     const runShift = train.running_cost_base.includes('STEAM')
       ? meta.basecost_shifts.running_steam
       : meta.basecost_shifts.running_diesel;
-    buy += count * buyCost(train.kind, train.cost_factor, buyShift, calc.priceYear, game.inflation);
+    buy +=
+      count *
+      buyCost(
+        train.kind,
+        train.cost_factor,
+        buyShift,
+        calc.priceYear,
+        game.inflation,
+        difficultyPriceFactor(game.constructionCost),
+        game.inflationInterest,
+      );
     running +=
       count *
       runningCostPerYear(
@@ -125,15 +136,19 @@ export function consistStats(
         runShift,
         calc.priceYear,
         game.inflation,
+        difficultyPriceFactor(game.vehicleCosts),
+        game.inflationInterest,
       ) *
       // JGRPP: running cost начисляется по тикам, календарный год длиннее в N раз
       effectiveDayLength(game);
   }
-  const flat = entries.length ? balancingSpeed(physics) : 0;
+  const flat = entries.length ? balancingSpeed(physics, 0, game.accelerationModel) : 0;
   // на уклоне не больше hillTiles тайлов состава
   const massOnSlope =
     physics.massT * Math.min(calc.hillTiles / Math.max(stats.lengthTiles, 0.1), 1);
-  const grade = entries.length ? balancingSpeed(physics, massOnSlope) : 0;
+  const grade = entries.length
+    ? balancingSpeed(physics, massOnSlope, game.accelerationModel)
+    : 0;
   return {
     ...stats,
     buyCostTotal: buy,

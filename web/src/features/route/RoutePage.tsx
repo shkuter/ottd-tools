@@ -41,6 +41,7 @@ export default function RoutePage() {
         transitPeriodsFromDays(days),
         spec,
         game.cargoAgingRate,
+        game.jgrpp ? game.paymentAlgorithm : 'modern',
       )
     : 0;
 
@@ -59,6 +60,7 @@ export default function RoutePage() {
           transitPeriodsFromDays(d),
           spec,
           game.cargoAgingRate,
+          game.jgrpp ? game.paymentAlgorithm : 'modern',
         ),
       });
     }
