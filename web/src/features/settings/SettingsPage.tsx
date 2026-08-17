@@ -1,4 +1,5 @@
 import { trainsMeta } from '../../dataset';
+import { Warning } from '../../components/Warning';
 import { t } from '../../i18n';
 import { CURRENCIES, useSettingsStore, type CurrencyCode } from '../../state/settingsStore';
 import { useConsistStore } from '../../state/consistStore';
@@ -172,6 +173,13 @@ export default function SettingsPage() {
             {game.inflation ? t('settings.on') : t('settings.off')}
           </label>
         </Row>
+        {game.inflation && (
+          <Warning>
+            <strong>{t('settings.inflationWarnTitle')}</strong>
+            <p className="grf-error">{t('settings.inflationGrfError')}</p>
+            <p>{t('settings.inflationWarnBody')}</p>
+          </Warning>
+        )}
         {game.inflation && (
           <Row label={t('settings.interest')} hint={t('settings.interestHint')}>
             <input

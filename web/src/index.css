@@ -521,3 +521,35 @@ td:has(> .train-sprite) {
   font-size: 13px;
   font-weight: normal;
 }
+
+.warning {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--loss);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--loss) 12%, var(--bg-panel));
+  font-size: 13px;
+}
+
+.warning p {
+  margin: 4px 0 0;
+}
+
+.warning a {
+  color: var(--accent);
+}
+
+.warning-icon {
+  color: var(--loss);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.grf-error {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--loss);
+}

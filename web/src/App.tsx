@@ -7,6 +7,8 @@ import FirsPage from './features/firs/FirsPage';
 import CombinedPage from './features/combined/CombinedPage';
 import { datasetMeta } from './dataset';
 import { t } from './i18n';
+import { useSettingsStore } from './state/settingsStore';
+import { Warning } from './components/Warning';
 
 const tabs = [
   { path: '/optimizer', label: 'nav.optimizer' },
@@ -18,6 +20,7 @@ const tabs = [
 ];
 
 export default function App() {
+  const inflation = useSettingsStore((s) => s.game.inflation);
   return (
     <div className="app">
       <header className="app-header">
@@ -38,6 +41,12 @@ export default function App() {
         </nav>
       </header>
       <main>
+        {inflation && (
+          <Warning>
+            {t('settings.inflationBanner')}{' '}
+            <NavLink to="/settings">{t('settings.inflationBannerLink')}</NavLink>
+          </Warning>
+        )}
         <Routes>
           <Route path="/" element={<Navigate to="/optimizer" replace />} />
           <Route path="/optimizer" element={<OptimizerPage />} />

@@ -116,7 +116,7 @@
   "settings.dayLength": "Day length factor",
   "settings.dayLengthHint": "economy.day_length_factor — a longer day means more trips (and more running cost) per calendar year",
   "settings.inflation": "Inflation",
-  "settings.inflationHint": "Iron Horse refuses to load with inflation enabled — keep off unless calculating vanilla",
+  "settings.inflationHint": "Iron Horse throws a fatal GRF error with inflation enabled — keep off unless calculating vanilla",
   "settings.on": "on",
   "settings.off": "off",
   "settings.capacityHint": "Iron Horse GRF parameter for wagon capacity",
@@ -158,5 +158,10 @@
   "settings.costsWhenStopped": "Running costs of Stationary Vehicles",
   "settings.costsWhenStoppedHint": "difficulty.vehicle_costs_when_stopped — running costs are divided by this while the train is stopped (1 / N), so long station dwell gets cheaper",
   "settings.inflationFixedDates": "Apply inflation from 1920 to 2090",
-  "settings.inflationFixedDatesHint": "economy.inflation_fixed_dates — only matters when inflation is on"
+  "settings.inflationFixedDatesHint": "economy.inflation_fixed_dates — only matters when inflation is on",
+  "settings.inflationWarnTitle": "Iron Horse will not load with inflation on",
+  "settings.inflationGrfError": "«Iron Horse is not compatible with OpenTTD Inflation. Please turn Inflation off in OpenTTD settings.»",
+  "settings.inflationWarnBody": "The GRF throws this fatal error at load time, so this combination cannot occur in a real game. Keep inflation off unless you are calculating vanilla trains.",
+  "settings.inflationBanner": "Inflation is on — Iron Horse refuses to load in that configuration, so these numbers do not match a real game.",
+  "settings.inflationBannerLink": "Turn it off"
 }
