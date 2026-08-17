@@ -9,7 +9,7 @@ import { Money } from '../../components/Money';
 import { optimizeConsists } from '../../engine/optimize';
 import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
-import { TrainImage } from '../consist/ConsistPage';
+import { CargoIcon, TrainImage } from '../consist/ConsistPage';
 
 export default function OptimizerPage() {
   const {
@@ -71,7 +71,7 @@ export default function OptimizerPage() {
     routeStore.setCargoLabel(cargoLabel);
     if (economyId) routeStore.setEconomyId(economyId);
     routeStore.setDistanceTiles(distance);
-    navigate('/combined');
+    navigate('/income');
   }
 
   return (
@@ -84,11 +84,14 @@ export default function OptimizerPage() {
         </label>
         <label>
           {t('route.cargo')}
-          <select value={cargo?.label ?? ''} onChange={(e) => setCargoLabel(e.target.value)}>
-            {cargoList.map((c) => (
-              <option key={c.label} value={c.label}>{c.name}</option>
-            ))}
-          </select>
+          <span className="field-with-icon">
+            <CargoIcon icon={cargo?.icon ?? ''} />
+            <select value={cargo?.label ?? ''} onChange={(e) => setCargoLabel(e.target.value)}>
+              {cargoList.map((c) => (
+                <option key={c.label} value={c.label}>{c.name}</option>
+              ))}
+            </select>
+          </span>
         </label>
         <label>
           {t('opt.distance')}
@@ -101,6 +104,7 @@ export default function OptimizerPage() {
         <label className="checkbox">
           <input
             type="checkbox"
+            switch=""
             checked={allowElectric}
             onChange={(e) => setAllowElectric(e.target.checked)}
           />
@@ -109,6 +113,7 @@ export default function OptimizerPage() {
         <label className="checkbox">
           <input
             type="checkbox"
+            switch=""
             checked={subsidised}
             onChange={(e) => setSubsidised(e.target.checked)}
           />

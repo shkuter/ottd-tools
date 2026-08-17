@@ -7,6 +7,8 @@ import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useFirsStore } from '../../state/firsStore';
+import { useSkinStore, type Skin } from '../../state/skinStore';
+import { paletteSource } from '../../skin';
 
 function Row({
   label,
@@ -30,6 +32,7 @@ function Row({
 
 export default function SettingsPage() {
   const { currency, game, calc, setCurrency, setGame, setCalc, reset } = useSettingsStore();
+  const { skin, setSkin } = useSkinStore();
 
   function resetAll() {
     reset();
@@ -50,11 +53,24 @@ export default function SettingsPage() {
       <p className="hint">{t('settings.intro')}</p>
 
       <section className="settings-group">
+        <h3>{t('settings.skin')}</h3>
+        <p className="hint">{t('settings.skinHint')}</p>
+        <Row label={t('settings.skinChoice')} hint={paletteSource}>
+          <select value={skin} onChange={(e) => setSkin(e.target.value as Skin)}>
+            <option value="pixel">{t('settings.skinPixel')}</option>
+            <option value="soft">{t('settings.skinSoft')}</option>
+            <option value="web">{t('settings.skinWeb')}</option>
+          </select>
+        </Row>
+      </section>
+
+      <section className="settings-group">
         <h3>
           {t('settings.jgrpp')}
           <label className="checkbox group-toggle">
             <input
               type="checkbox"
+              switch=""
               checked={game.jgrpp}
               onChange={(e) => setGame('jgrpp', e.target.checked)}
             />
@@ -86,6 +102,7 @@ export default function SettingsPage() {
               <label className="checkbox">
                 <input
                   type="checkbox"
+                  switch=""
                   checked={game.inflationFixedDates}
                   onChange={(e) => setGame('inflationFixedDates', e.target.checked)}
                 />
@@ -114,6 +131,7 @@ export default function SettingsPage() {
           <label className="checkbox">
             <input
               type="checkbox"
+              switch=""
               checked={game.ironHorse}
               onChange={(e) => setGame('ironHorse', e.target.checked)}
             />
@@ -124,6 +142,7 @@ export default function SettingsPage() {
           <label className="checkbox">
             <input
               type="checkbox"
+              switch=""
               checked={game.firs}
               onChange={(e) => setGame('firs', e.target.checked)}
             />
@@ -138,6 +157,7 @@ export default function SettingsPage() {
           <label className="checkbox group-toggle">
             <input
               type="checkbox"
+              switch=""
               checked={game.basecostGrf}
               onChange={(e) => setGame('basecostGrf', e.target.checked)}
             />
@@ -248,6 +268,7 @@ export default function SettingsPage() {
           <label className="checkbox">
             <input
               type="checkbox"
+              switch=""
               checked={game.inflation}
               onChange={(e) => setGame('inflation', e.target.checked)}
             />
@@ -333,6 +354,7 @@ export default function SettingsPage() {
           <label className="checkbox">
             <input
               type="checkbox"
+              switch=""
               checked={game.gradualLoading}
               onChange={(e) => setGame('gradualLoading', e.target.checked)}
             />

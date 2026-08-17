@@ -18,16 +18,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   UI-фичи в `web/src/features/`, zustand-сторы (persist в localStorage) в `web/src/state/`.
   i18n: все UI-строки через `t()` из `web/src/i18n/`.
 
-Вкладки: Best train (оптимизатор), Consist builder, Route income, FIRS chains,
-Profitability, Settings.
+Вкладки: Best train (оптимизатор), Consist builder, Route income (доход рейса + прибыльность
+собранного состава), FIRS chains, Settings.
 
 ## Команды
 
-- `make fetch` — shallow-клоны исходников в `vendor/` (iron-horse пинуется `IRON_HORSE_REF`):
+- `make fetch` — shallow-клоны исходников в `vendor/` (версии пинуются `IRON_HORSE_REF`,
+  `FIRS_REF`):
   iron-horse, firs, openttd, openttd-patches (JGRPP — справочник по патчпаку)
 - `make venv` — venv пайплайна (`pipeline/.venv`, Python ≥3.12, Pillow + Chameleon + markdown)
 - `make data` — перегенерация JSON (iron-horse, firs, vanilla) + `validate.py`
 - `make data-images` — рендер спрайтшитов Iron Horse и нарезка спрайтов машин (небыстро)
+- `make data-opengfx2` — графика ванильного режима из OpenGFX2 Classic (спрайты машин,
+  иконки грузов, палитра интерфейса); `make fetch-opengfx2` — только если набора нет локально
 - `make test` — регрессионные тесты пайплайна (`unittest`) + тесты формул (`vitest`)
 - Один тест: `pipeline/.venv/bin/python -m unittest pipeline.tests.test_known_values -k coal`;
   `cd web && npx vitest run -t "timeFactor"`
@@ -83,9 +86,32 @@ JGRPP-специфика (флаг `jgrpp` раскрывает эти наст�
 возят только свой `default_cargo`. При выключенном FIRS оплата берётся из ключа `VANILLA`,
 вкладка FIRS chains скрывается.
 
+## Графика OpenGFX2 Classic
+
+`pipeline/grf_sprites.py` читает базовый набор игры (GRF container v2) — декодер написан по
+`vendor/openttd/src/spritecache.cpp` и `src/spriteloader/grf.cpp`. Держится на том, что игра
+грузит базовый набор как `LoadGrfFile(файл, 0, …)`, поэтому **SpriteID = порядковый номер
+записи info-секции**: номера из таблиц игры адресуют файл напрямую.
+
+- Спрайт машины: `((dir + _engine_sprite_add[i]) & _engine_sprite_and[i]) + _engine_sprite_base[i]`
+  при `dir = Direction::W = 6`; у сдвоенных задняя половина — `image_index + 1`. Считается в
+  `extract_vanilla.py` (поля `image_index`, `sprite_id`, `sprite_id_rear`).
+- Иконка груза: `SPR_CARGO_<PLURAL>` (4297+), брать вариант `zoom = In2x` — он 20×20, как у FIRS.
+- Палитру брать из `src/table/palettes.h`, а НЕ из `docs/palettes/openttd.gpl`: в .gpl индексы
+  1-9 затёрты служебными маркерами, спрайты с ними становятся малиновыми.
+- Версия набора пинится md5 файла `ogfx21_base_8.grf` (`BASE_SET_MD5`): другой релиз сдвинет
+  все номера спрайтов.
+- Скин интерфейса (`web/src/skin.css`) — чистый CSS: рамки окон OpenTTD не спрайты, движок
+  рисует их цветами палитры (`DrawFrameRect`, widget.cpp). Цвета берутся из recolour-спрайтов
+  775…790 набора → `data/opengfx2_palette.json` → CSS-переменные (`skin.ts`).
+- Выбор скина живёт в отдельном `state/skinStore.ts`, а НЕ в `GameSettings`/`CalcSettings` —
+  иначе нарушится правило «каждая настройка меняет расчёт».
+
 ## Правки данных
 
 Данные о машинах/грузах/индустриях НЕ править руками в JSON — только через экстракторы
 и `make data`. Эталонные значения в `pipeline/tests/test_known_values.py` сверены с
 https://grf.farm/iron-horse/4.29.0/ — при обновлении версий обновлять осознанно.
+Текущие версии данных: Iron Horse 4.29.0, FIRS **5.2.0** (релизный тег, не master —
+в master уже есть расхождения, например `liquids_terminal` переименован в `oil_terminal`).
 Ванильные эталоны: Kirby Paul Tank cost_factor 7, уголь initial_payment 5916.

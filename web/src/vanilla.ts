@@ -38,6 +38,8 @@ interface VanillaCargoRaw {
   weight_16ths: number;
   capacity_multiplier: number;
   is_freight: boolean;
+  /** icon from the OpenGFX2 base set, see pipeline/extract_opengfx2.py */
+  icon: string;
 }
 
 const RAILTYPE_TRACK: Record<string, Train['base_track_type']> = {
@@ -100,7 +102,7 @@ function toCargo(raw: VanillaCargoRaw): Cargo {
     initial_payment_by_economy: { VANILLA: raw.initial_payment },
     transit_periods: raw.transit_periods,
     units: raw.is_freight ? 'tonnes' : 'items',
-    icon: '',
+    icon: raw.icon,
   };
 }
 

@@ -85,6 +85,19 @@ def main():
     labels_v = [c["label"] for c in vanilla_cargos]
     check(len(labels_v) == len(set(labels_v)), "vanilla: дубли меток грузов")
 
+    # vanilla-mode graphics (make data-opengfx2): a missing set is not a data
+    # error, but once the catalogue is built it has to be complete
+    public = os.path.join(DATA_DIR, "..", "..", "public")
+    if os.path.isdir(os.path.join(public, "icons", "vanilla_trains")):
+        for t in vanilla_trains:
+            check(os.path.exists(os.path.join(public, "icons", "vanilla_trains", f"{t['id']}.png")),
+                  f"vanilla/{t['id']}: no OpenGFX2 sprite")
+        for c in vanilla_cargos:
+            check(os.path.exists(os.path.join(public, c["icon"])),
+                  f"vanilla/{c['id']}: no icon {c['icon']}")
+    else:
+        warnings.append("vanilla: OpenGFX2 graphics not built, see make data-opengfx2")
+
     # --- economies ---
     check(len(economies["items"]) == 5, f"economies: {len(economies['items'])} != 5")
     industry_ids = {i["id"] for i in industries["items"]}

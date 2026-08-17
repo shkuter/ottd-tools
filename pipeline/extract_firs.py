@@ -231,15 +231,22 @@ def extract_economies(dh, economies, industries_payload, cargos_payload):
 
 
 def extract_icons():
-    """Нарезка cargoicons.png: иконка 20x20 в сетке 40px со сдвигом 20."""
+    """Slice cargoicons.png: a 10x10 icon at offset 10 inside a 20px grid.
+
+    The sheet draws each icon on the blue transparent index and puts a white
+    caption strip under it, so both the grid step and the transparency matter:
+    cropping wider drags the caption in, and without transparency=0 the icon
+    ships as a white tile. Scaled x2 to match the 20x20 the UI reserves.
+    """
     os.makedirs(ICONS_DIR, exist_ok=True)
     sheet = Image.open(os.path.join(FIRS_ROOT, "src", "graphics", "cargoicons.png"))
     count = 0
     for cargo in firs.cargo_manager:
         ix, iy = cargo.icon_indices
-        x, y = 20 + 40 * ix, 20 + 40 * iy
-        icon = sheet.crop((x, y, x + 20, y + 20))
-        icon.save(os.path.join(ICONS_DIR, f"{cargo.id}.png"))
+        x, y = 10 + 20 * ix, 10 + 20 * iy
+        icon = sheet.crop((x, y, x + 10, y + 10))
+        icon = icon.resize((20, 20), Image.Resampling.NEAREST)
+        icon.save(os.path.join(ICONS_DIR, f"{cargo.id}.png"), transparency=0)
         count += 1
     print(f"icons: {count} -> {ICONS_DIR}")
 

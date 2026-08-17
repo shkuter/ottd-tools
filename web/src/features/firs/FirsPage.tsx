@@ -7,6 +7,7 @@ import {
 } from '../../dataset';
 import { t } from '../../i18n';
 import { num } from '../../components/format';
+import { CargoIcon } from '../consist/ConsistPage';
 import { useFirsStore } from '../../state/firsStore';
 import type { Economy } from '../../types';
 
@@ -79,7 +80,7 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
     return (
       <div className="node-card">
         <h3>
-          <img src={cargo.icon} alt="" width={20} height={20} /> {cargo.name}
+          <CargoIcon icon={cargo.icon} /> {cargo.name}
         </h3>
         <p className="hint">
           {cargo.classes.join(', ')} · {cargo.units}

@@ -8,6 +8,7 @@
   vendor/openttd/src/table/cargo_const.h  — базовые грузы
   vendor/openttd/src/lang/english.txt     — имена машин и грузов
 """
+import functools
 import os
 import re
 import sys
@@ -18,6 +19,11 @@ OTTD = os.path.join(VENDOR, "openttd")
 ENGINES_H = os.path.join(OTTD, "src", "table", "engines.h")
 CARGO_H = os.path.join(OTTD, "src", "table", "cargo_const.h")
 LANG = os.path.join(OTTD, "src", "lang", "english.txt")
+TRAIN_SPRITES_H = os.path.join(OTTD, "src", "table", "train_sprites.h")
+SPRITES_H = os.path.join(OTTD, "src", "table", "sprites.h")
+
+# Direction::W — the buy-menu view (direction_type.h, GetRailIcon in train_cmd.cpp)
+DIR_W = 6
 
 # в игре ландшафты: T=temperate, A=arctic, S=tropic(sub-tropical), Y=toyland
 CLIMATE_NAMES = {"T": "temperate", "A": "arctic", "S": "tropic", "Y": "toyland"}
@@ -74,6 +80,32 @@ def parse_engine_info():
     return entries
 
 
+@functools.lru_cache(maxsize=None)
+def parse_sprite_table(name):
+    """An array from train_sprites.h (_engine_sprite_base / _and / _add)."""
+    text = read(TRAIN_SPRITES_H)
+    start = text.index(f"{name}[] = {{")
+    block = text[text.index("{", start) + 1 : text.index("\n};", start)]
+    block = re.sub(r"/\*.*?\*/|//[^\n]*", "", block, flags=re.S)
+    return [int(v, 0) for v in re.findall(r"0x[0-9A-Fa-f]+|\d+", block)]
+
+
+def train_sprite(image_index, direction=DIR_W):
+    """SpriteID of a vehicle sprite (GetDefaultTrainSprite, train_cmd.cpp:503-507)."""
+    add = parse_sprite_table("_engine_sprite_add")
+    mask = parse_sprite_table("_engine_sprite_and")
+    base = parse_sprite_table("_engine_sprite_base")
+    return ((direction + add[image_index]) & mask[image_index]) + base[image_index]
+
+
+def parse_cargo_sprites():
+    """SPR_CARGO_<PLURAL> = 4297… — cargo icons in the base set."""
+    return {
+        m.group(1): int(m.group(2))
+        for m in re.finditer(r"SPR_CARGO_(\w+)\s*=\s*(\d+)", read(SPRITES_H))
+    }
+
+
 def parse_rail_vehicle_info():
     """RVI(image, type, cost, speed, power, weight, running_cost, class, capacity, railtype, running_cost_class)."""
     text = read(ENGINES_H)
@@ -86,6 +118,7 @@ def parse_rail_vehicle_info():
             continue
         p = [x.strip() for x in m.group(1).split(",")]
         entries.append({
+            "image_index": int(p[0]),
             "type": {"G": "engine", "M": "multihead", "W": "wagon"}[p[1]],
             "cost_factor": int(p[2]),
             "max_speed": int(p[3]),
@@ -140,6 +173,16 @@ def build_trains():
             # ваниль: TE-коэффициент 76/256, длина 8 единиц (полтайла)
             "te_coefficient": 76 / 256,
             "length": 8,
+            # base-set graphics: the sprite number is what the game computes;
+            # for dual-headed vehicles the rear half is the next image_index
+            # (train_cmd.cpp:555)
+            "image_index": rvi["image_index"],
+            "sprite_id": train_sprite(rvi["image_index"]),
+            "sprite_id_rear": (
+                train_sprite(rvi["image_index"] + 1)
+                if rvi["type"] == "multihead"
+                else None
+            ),
         })
     return items
 
@@ -150,6 +193,7 @@ def build_cargos():
     start = text.index("_default_cargo[]")
     block = text[start : text.index("\n};", start)]
     names = parse_lang_names("STR_CARGO_PLURAL_")
+    cargo_sprites = parse_cargo_sprites()
     items = []
     for m in re.finditer(r"\bMK\(\s*(.*?)\)\s*,\s*$", block, re.M | re.S):
         args = [a.strip() for a in re.split(r",(?![^(]*\))", m.group(1))]
@@ -171,6 +215,9 @@ def build_cargos():
             "capacity_multiplier": int(args[4], 16),
             "is_freight": args[8] == "true",
             "classes_raw": args[13] if len(args) > 13 else "",
+            # MK_SPRITE(str_plural) → SPR_CARGO_<PLURAL> (cargo_const.h:54)
+            "sprite_id": cargo_sprites.get(str_plural),
+            "icon": f"icons/vanilla_cargo/{label.lower()}.png",
         })
     return items
 

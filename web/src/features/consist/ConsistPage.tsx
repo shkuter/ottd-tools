@@ -26,13 +26,35 @@ import {
 
 const columnHelper = createColumnHelper<Train>();
 
-/** Спрайт из доков Iron Horse; прячется, если картинки для модели нет. */
+/**
+ * Vehicle sprite: from the Iron Horse docs, or from the OpenGFX2 Classic base
+ * set for vanilla vehicles. Hidden when there is no image for the model.
+ */
 export function TrainImage({ trainId }: { trainId: string }) {
+  const dir = trainId.startsWith('vanilla_') ? 'vanilla_trains' : 'trains';
   return (
     <img
       className="train-sprite"
-      src={`${import.meta.env.BASE_URL}icons/trains/${trainId}.png`}
+      src={`${import.meta.env.BASE_URL}icons/${dir}/${trainId}.png`}
       alt=""
+      loading="lazy"
+      onError={(e) => {
+        (e.target as HTMLImageElement).style.display = 'none';
+      }}
+    />
+  );
+}
+
+/** Cargo icon: FIRS or the OpenGFX2 base set — the path comes from the data. */
+export function CargoIcon({ icon }: { icon: string }) {
+  if (!icon) return null;
+  return (
+    <img
+      className="cargo-icon"
+      src={`${import.meta.env.BASE_URL}${icon}`}
+      alt=""
+      width={20}
+      height={20}
       loading="lazy"
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = 'none';
@@ -193,14 +215,17 @@ export default function ConsistPage() {
               onChange={(e) => setYear(Number(e.target.value))}
             />
           </label>
-          <select value={cargoFilter} onChange={(e) => setCargoFilter(e.target.value)}>
-            <option value="">{t('consist.filter.cargo')}: {t('consist.filter.any')}</option>
-            {cargoList.map((c) => (
-              <option key={c.label} value={c.label}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <span className="field-with-icon">
+            <CargoIcon icon={cargoList.find((c) => c.label === cargoFilter)?.icon ?? ''} />
+            <select value={cargoFilter} onChange={(e) => setCargoFilter(e.target.value)}>
+              <option value="">{t('consist.filter.cargo')}: {t('consist.filter.any')}</option>
+              {cargoList.map((c) => (
+                <option key={c.label} value={c.label}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </span>
           <input
             type="search"
             placeholder={t('consist.filter.search')}
@@ -268,17 +293,20 @@ export default function ConsistPage() {
 
         <label className="field">
           {t('consist.cargoForCapacity')}
-          <select
-            value={store.cargoLabel ?? ''}
-            onChange={(e) => store.setCargoLabel(e.target.value || null)}
-          >
-            <option value="">{t('consist.none')}</option>
-            {cargoList.map((c) => (
-              <option key={c.label} value={c.label}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <span className="field-with-icon">
+            <CargoIcon icon={cargoList.find((c) => c.label === store.cargoLabel)?.icon ?? ''} />
+            <select
+              value={store.cargoLabel ?? ''}
+              onChange={(e) => store.setCargoLabel(e.target.value || null)}
+            >
+              <option value="">{t('consist.none')}</option>
+              {cargoList.map((c) => (
+                <option key={c.label} value={c.label}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </span>
         </label>
 
         {store.entries.length > 0 && (

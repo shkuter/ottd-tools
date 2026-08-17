@@ -6,10 +6,10 @@ Calculator for OpenTTD with the Iron Horse (Pony roster) and FIRS 5 NewGRF sets:
   effort, weight, capacity, purchase price, running costs, top speed on flat/grade
   (realistic acceleration physics reproduced from OpenTTD sources).
 - **Route income** — exact `GetTransportedGoodsIncome` reproduction with FIRS payment rates
-  and time-penalty curve chart.
+  and time-penalty curve chart, plus profitability of the built consist on that route
+  (profit per year / per train tile, payback).
 - **FIRS chains** — interactive cargo-flow graph per economy (graphviz WASM), industry and
   cargo cards with input/output ratios.
-- **Profitability** — consist + route + cargo combined into profit per year / per train tile.
 
 ## Layout
 
@@ -42,7 +42,7 @@ make verify  # data + test + build
 
 ## Data update
 
-Bump `IRON_HORSE_REF` in the Makefile (and/or `git -C vendor/firs pull`), then
+Bump `IRON_HORSE_REF` / `FIRS_REF` in the Makefile, re-checkout the tag in `vendor/`, then
 `make data && make test`. Regression tests in `pipeline/tests/` pin known values
 (checked against https://grf.farm/iron-horse/ docs) and will flag unexpected changes.
 

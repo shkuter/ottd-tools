@@ -84,6 +84,15 @@ class FirsKnownValues(unittest.TestCase):
         af = self.industries["appliance_factory"]["economies"]["STEELTOWN"]
         self.assertEqual(af["accept_mode"], "any_3")
 
+    def test_version(self):
+        # данные должны собираться с релизного тега, а не с master:
+        # в master liquids_terminal уже переименован обратно в oil_terminal
+        import json as _json, os as _os
+        meta = _json.load(open(_os.path.join(DATA, "meta.json")))
+        self.assertEqual(meta["firs"], "5.2.0")
+        self.assertIn("liquids_terminal", self.industries)
+        self.assertNotIn("oil_terminal", self.industries)
+
     def test_economies(self):
         self.assertEqual(
             set(self.economies),
@@ -96,6 +105,44 @@ class FirsKnownValues(unittest.TestCase):
         self.assertIn({"from": "coal_mine", "to": "COAL", "kind": "produces"}, edges)
         consumers = [e["to"] for e in edges if e["kind"] == "accepts" and e["from"] == "COAL"]
         self.assertIn("coke_oven", consumers)
+
+
+class VanillaSpriteIds(unittest.TestCase):
+    """Base-set sprite numbers: they address OpenGFX2 graphics directly.
+
+    Computed from the game tables (train_sprites.h, sprites.h) and verified by
+    decoding ogfx21_base_8.grf from OpenGFX2 Classic 0.8.1.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.trains = {t["id"]: t for t in load("vanilla_trains.json")["items"]}
+        cls.cargos = {c["id"]: c for c in load("vanilla_cargos.json")["items"]}
+
+    def test_kirby_paul_tank(self):
+        t = self.trains["vanilla_0"]
+        self.assertEqual(t["image_index"], 2)
+        self.assertEqual(t["sprite_id"], 0x0B6F)  # 28x12 in the set
+        self.assertIsNone(t["sprite_id_rear"])
+
+    def test_dual_headed_has_second_half(self):
+        # SH '125': the rear half is the next image_index (train_cmd.cpp:555).
+        # The pair shares _engine_sprite_base but differs in _engine_sprite_add,
+        # so the W view gives base+6 for the front and base+2 for the rear.
+        t = self.trains["vanilla_22"]
+        self.assertTrue(t["dual_headed"])
+        self.assertEqual(t["image_index"], 6)
+        self.assertEqual(t["sprite_id"], 0x0B83)
+        self.assertEqual(t["sprite_id_rear"], 0x0B7F)
+
+    def test_image_index_within_tables(self):
+        # _engine_sprite_base holds 74 entries; going past it breaks the lookup
+        self.assertLessEqual(max(t["image_index"] for t in self.trains.values()), 73)
+
+    def test_cargo_icons(self):
+        self.assertEqual(self.cargos["passengers"]["sprite_id"], 4297)  # SPR_CARGO_PASSENGERS
+        self.assertEqual(self.cargos["coal"]["sprite_id"], 4298)
+        self.assertTrue(all(c["sprite_id"] for c in self.cargos.values()))
 
 
 if __name__ == "__main__":
