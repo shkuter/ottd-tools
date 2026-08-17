@@ -9,7 +9,7 @@ import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
 import { transportedGoodsIncome } from '../../engine/income';
 import { daysForDistance, mphToInternal, transitPeriodsFromDays } from '../../engine/units';
-import { effectiveDayLength } from '../../engine/settings';
+import { daysPerEconomyYear, effectiveDayLength } from '../../engine/settings';
 
 export default function CombinedPage() {
   const consist = useConsistStore();
@@ -37,7 +37,7 @@ export default function CombinedPage() {
   const oneWayDays = daysForDistance(route.distanceTiles, speedInternal);
   const roundTripDays = oneWayDays * 2;
   // JGRPP: календарный год длиннее в dayLengthFactor раз
-  const tripsPerYear = roundTripDays > 0 ? (365 * effectiveDayLength(game)) / roundTripDays : 0;
+  const tripsPerYear = roundTripDays > 0 ? (daysPerEconomyYear(game) * effectiveDayLength(game)) / roundTripDays : 0;
 
   const payment = cargo
     ? (cargo.initial_payment_by_economy[game.firs ? (economy?.id ?? '') : 'VANILLA'] ?? 0)

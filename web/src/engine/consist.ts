@@ -125,7 +125,8 @@ export function consistStats(
         buyShift,
         calc.priceYear,
         game.inflation,
-        difficultyPriceFactor(game.constructionCost),
+        difficultyPriceFactor(game.constructionCost) *
+          (train.kind === 'engine' ? game.basecostLocomotive : game.basecostWagon),
         game.inflationInterest,
       );
     running +=

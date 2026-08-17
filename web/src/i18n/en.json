@@ -113,8 +113,8 @@
   "settings.slopeSteepnessHint": "vehicle.train_slope_steepness — resistance added per tile on a hill (default 3)",
   "settings.cargoAgingRate": "Scale cargo payment aging rate, %",
   "settings.cargoAgingRateHint": "economy.cargo_aging_rate — higher means payment drops off sooner (default 100)",
-  "settings.dayLength": "Day length factor",
-  "settings.dayLengthHint": "economy.day_length_factor — a longer day means more trips (and more running cost) per calendar year",
+  "settings.dayLength": "Economy speed reduction factor",
+  "settings.dayLengthHint": "economy.day_length_factor (formerly «day length factor») — stretches economic periods, so a calendar year holds proportionally more trips and running cost",
   "settings.inflation": "Inflation",
   "settings.inflationHint": "Iron Horse throws a fatal GRF error with inflation enabled — keep off unless calculating vanilla",
   "settings.on": "on",
@@ -170,5 +170,15 @@
   "settings.ironHorseHint": "Off — vanilla OpenTTD trains and wagons are used",
   "settings.firs": "FIRS 5",
   "settings.firsHint": "Off — vanilla cargos and payment rates are used; the FIRS chains tab is hidden",
-  "settings.vanilla": "Vanilla"
+  "settings.vanilla": "Vanilla",
+  "settings.time": "Time",
+  "settings.timekeeping": "Timekeeping",
+  "settings.timekeepingHint": "economy.timekeeping_units — wallclock counts economic periods in real minutes instead of calendar years",
+  "settings.calendar": "Calendar",
+  "settings.wallclock": "Wallclock",
+  "settings.minutesPerYear": "Minutes per year",
+  "settings.minutesPerYearHint": "economy.minutes_per_calendar_year — one minute is about a 30-day month (default 12)",
+  "settings.basecostLoco": "Locomotive purchase cost",
+  "settings.basecostWagon": "Waggon purchase cost",
+  "settings.basecostHint": "Base Costs NewGRF multiplier — set it to whatever your basecost GRF uses"
 }

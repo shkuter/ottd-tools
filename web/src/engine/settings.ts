@@ -16,8 +16,21 @@ export interface GameSettings {
   slopeSteepness: number;
   /** economy.cargo_aging_rate: скорость старения груза в % (def 100). */
   cargoAgingRate: number;
-  /** JGRPP economy.day_length_factor: день = 74 × N тиков (1..125, def 1). */
+  /**
+   * JGRPP economy.day_length_factor, в свежих версиях называется
+   * «Economy speed reduction factor»: экономический период длиннее в N раз.
+   */
   dayLengthFactor: number;
+  /** economy.timekeeping_units: календарь или wallclock (минуты реального времени). */
+  timekeeping: 'calendar' | 'wallclock';
+  /** economy.minutes_per_calendar_year (только wallclock, def 12). */
+  minutesPerYear: number;
+  /**
+   * Множители базовых цен из NewGRF Base Costs: покупка локомотивов и вагонов.
+   * 1 = unchanged, 2 = double, 0.5 = half и т.д.; 0 = free (no costs).
+   */
+  basecostLocomotive: number;
+  basecostWagon: number;
   /** Инфляция включена (Iron Horse с ней несовместим — по умолчанию off). */
   inflation: boolean;
   /** difficulty.initial_interest: скорость инфляции (2..4, def 2). */
@@ -62,6 +75,10 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   accelerationModel: 'realistic',
   gradualLoading: true,
   paymentAlgorithm: 'modern',
+  timekeeping: 'calendar',
+  minutesPerYear: 12,
+  basecostLocomotive: 1,
+  basecostWagon: 1,
   costsWhenStopped: 1,
   inflationFixedDates: true,
 };
@@ -73,6 +90,32 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
 export function difficultyPriceFactor(mod: 0 | 1 | 2): number {
   return (mod === 0 ? 6 : mod === 1 ? 8 : 9) / 8;
 }
+
+/** Варианты множителей Base Costs GRF: от «free» до 8192×. */
+export const BASECOST_MULTIPLIERS: { value: number; label: string }[] = [
+  { value: 0, label: 'free (no costs)' },
+  { value: 1 / 64, label: '1/64' },
+  { value: 1 / 32, label: '1/32' },
+  { value: 1 / 16, label: '1/16' },
+  { value: 1 / 8, label: '1/8' },
+  { value: 1 / 4, label: 'quarter' },
+  { value: 1 / 2, label: 'half' },
+  { value: 1, label: 'unchanged' },
+  { value: 2, label: 'double' },
+  { value: 4, label: '4x' },
+  { value: 8, label: '8x' },
+  { value: 16, label: '16x' },
+  { value: 32, label: '32x' },
+  { value: 64, label: '64x' },
+  { value: 128, label: '128x' },
+  { value: 256, label: '256x' },
+  { value: 512, label: '512x' },
+  { value: 1024, label: '1024x' },
+  { value: 2048, label: '2048x' },
+  { value: 4096, label: '4096x' },
+  { value: 8192, label: '8192x' },
+];
+
 
 /** Множитель дохода при действующей субсидии (economy.cpp DeliverGoods). */
 export function subsidyFactor(mod: 0 | 1 | 2 | 3): number {
@@ -119,9 +162,18 @@ export function stoppedCostDivisor(settings: GameSettings): number {
   return settings.jgrpp ? Math.max(1, settings.costsWhenStopped) : 1;
 }
 
-/** Длина дня учитывается только на JGRPP (в ванили такой настройки нет). */
+/** Замедление экономики учитывается только на JGRPP (в ванили настройки нет). */
 export function effectiveDayLength(settings: GameSettings): number {
   return settings.jgrpp ? settings.dayLengthFactor : 1;
+}
+
+/**
+ * Длительность «года» в игровых днях. В wallclock-режиме экономический период —
+ * это minutesPerYear минут реального времени, минута ≈ 30 дней календаря.
+ */
+export function daysPerEconomyYear(settings: GameSettings): number {
+  if (settings.timekeeping === 'wallclock') return settings.minutesPerYear * 30;
+  return 365;
 }
 
 /** Тиков в календарном году с учётом длины дня. */

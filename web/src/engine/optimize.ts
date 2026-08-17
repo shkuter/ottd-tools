@@ -16,6 +16,7 @@ import {
   type CalcSettings,
   type GameSettings,
   effectiveDayLength,
+  daysPerEconomyYear,
   difficultyPriceFactor,
   loadingTicks,
   subsidyFactor,
@@ -95,7 +96,8 @@ function moneyFor(
         buyShift,
         calc.priceYear,
         game.inflation,
-        difficultyPriceFactor(game.constructionCost),
+        difficultyPriceFactor(game.constructionCost) *
+          (train.kind === 'engine' ? game.basecostLocomotive : game.basecostWagon),
         game.inflationInterest,
       );
     running +=
@@ -179,7 +181,7 @@ export function optimizeConsists(
           (2 * loadingTicks(perWagonCapacity, wagon.loading_speed ?? 0, game)) / 74;
         const roundTripDays = daysLoaded + daysEmpty + loadingDays;
         // JGRPP: длинный день не меняет рейс в тиках, но календарный год длиннее
-        const tripsPerYear = (365 * effectiveDayLength(game)) / roundTripDays;
+        const tripsPerYear = (daysPerEconomyYear(game) * effectiveDayLength(game)) / roundTripDays;
 
         const incomePerTrip = transportedGoodsIncome(
           loaded.stats.capacityForCargo,

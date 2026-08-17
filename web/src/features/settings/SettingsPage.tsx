@@ -2,6 +2,7 @@ import { trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
 import { t } from '../../i18n';
 import { CURRENCIES, useSettingsStore, type CurrencyCode } from '../../state/settingsStore';
+import { BASECOST_MULTIPLIERS } from '../../engine/settings';
 import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
 import { useOptimizerStore } from '../../state/optimizerStore';
@@ -129,6 +130,30 @@ export default function SettingsPage() {
             {game.firs ? t('settings.on') : t('settings.off')}
           </label>
         </Row>
+        <Row label={t('settings.basecostLoco')} hint={t('settings.basecostHint')}>
+          <select
+            value={game.basecostLocomotive}
+            onChange={(e) => setGame('basecostLocomotive', Number(e.target.value))}
+          >
+            {BASECOST_MULTIPLIERS.map((m) => (
+              <option key={m.label} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </Row>
+        <Row label={t('settings.basecostWagon')} hint={t('settings.basecostHint')}>
+          <select
+            value={game.basecostWagon}
+            onChange={(e) => setGame('basecostWagon', Number(e.target.value))}
+          >
+            {BASECOST_MULTIPLIERS.map((m) => (
+              <option key={m.label} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </Row>
       </section>
 
       <section className="settings-group">
@@ -213,6 +238,30 @@ export default function SettingsPage() {
               max={4}
               value={game.inflationInterest}
               onChange={(e) => setGame('inflationInterest', Number(e.target.value))}
+            />
+          </Row>
+        )}
+      </section>
+
+      <section className="settings-group">
+        <h3>{t('settings.time')}</h3>
+        <Row label={t('settings.timekeeping')} hint={t('settings.timekeepingHint')}>
+          <select
+            value={game.timekeeping}
+            onChange={(e) => setGame('timekeeping', e.target.value as typeof game.timekeeping)}
+          >
+            <option value="calendar">{t('settings.calendar')}</option>
+            <option value="wallclock">{t('settings.wallclock')}</option>
+          </select>
+        </Row>
+        {game.timekeeping === 'wallclock' && (
+          <Row label={t('settings.minutesPerYear')} hint={t('settings.minutesPerYearHint')}>
+            <input
+              type="number"
+              min={1}
+              max={1440}
+              value={game.minutesPerYear}
+              onChange={(e) => setGame('minutesPerYear', Math.max(1, Number(e.target.value)))}
             />
           </Row>
         )}
