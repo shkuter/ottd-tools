@@ -9,6 +9,7 @@ import { applyPalette } from './skin';
 
 // base-set colours become CSS custom properties before the first paint
 applyPalette();
+document.documentElement.dataset.skin = 'pixel';
 
 // <input type="checkbox" switch> is native in Safari 17.4+; elsewhere polyfill it
 if (!('switch' in HTMLInputElement.prototype)) {

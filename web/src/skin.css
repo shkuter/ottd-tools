@@ -16,9 +16,8 @@
  * light-blue, green, dark-green, blue, cream, mauve, purple, orange, brown,
  * grey and white.
  *
- * Two variants share the tokens:
- *   pixel — as close to the game as a browser gets: game font, 2px bevels
- *   soft  — same palette and bevels, but system font and 1px bevels
+ * The skin is always on (data-skin="pixel", set in main.tsx): game font, 2px
+ * bevels, no rounding.
  */
 
 @font-face {
@@ -39,20 +38,19 @@
 
 /* ==========================================================================
    TOKENS — the only place to change colours
-   Defaults follow the game's Game Options window: Mauve window, Yellow
-   buttons, LightBlue labels, Orange values, Green/Yellow switches.
+   Mid-grey backgrounds with black text, Yellow buttons, Orange headings and
+   Green/Yellow switches, as in the game's own windows.
    ========================================================================== */
 
-:root[data-skin='pixel'],
-:root[data-skin='soft'] {
-  /* window: desktop behind the windows, panel interior, sunken interior.
-     The light greys live in the White group — Grey tops out at #b8b8b8. */
-  --skin-desktop: var(--ottd-white-lighter);
-  --skin-window: var(--ottd-white-light);
-  --skin-window-hover: var(--ottd-white-lighter);
-  --skin-window-sunken: var(--ottd-white-light);
-  --skin-edge-hi: var(--ottd-white-lighterest);
-  --skin-edge-lo: var(--ottd-white-dark);
+:root[data-skin='pixel'] {
+  /* every background is the same mid grey; depth comes from the bevels.
+     Hover is one shade up, otherwise row highlighting would be invisible. */
+  --skin-desktop: #858583;
+  --skin-window: #858583;
+  --skin-window-hover: var(--ottd-grey-lighter);
+  --skin-window-sunken: #858583;
+  --skin-edge-hi: var(--ottd-grey-lightest);
+  --skin-edge-lo: var(--ottd-grey-darkest);
 
   /* caption: the game fills it with the company colour */
   --skin-caption: var(--ottd-dark-blue-normal);
@@ -68,7 +66,7 @@
   --skin-button-edge-hi: var(--ottd-yellow-lightest);
   --skin-button-edge-lo: var(--ottd-yellow-dark);
 
-  /* text: black everywhere, as the game draws it on light grey windows */
+  /* text: black, the way the game draws it on grey windows */
   --skin-text: #000;
   --skin-label: #000;
   --skin-value: #000;
@@ -78,14 +76,14 @@
   --skin-link: var(--ottd-dark-blue-dark);
 
   /* lists and tables */
-  --skin-list-bg: var(--ottd-white-light);
+  --skin-list-bg: #858583;
   --skin-list-text: #000;
-  --skin-list-hover: var(--ottd-white-lighter);
-  --skin-list-head-bg: var(--ottd-white-lighter);
+  --skin-list-hover: var(--ottd-grey-lighter);
+  --skin-list-head-bg: #858583;
   --skin-list-head-text: #000;
 
   /* input fields */
-  --skin-field-bg: var(--ottd-white-lighterest);
+  --skin-field-bg: #858583;
   --skin-field-text: #000;
 
   /* switches: narrow yellow thumb on a sunken track, green fill when on */
@@ -95,11 +93,12 @@
   --skin-switch-thumb-width: 0.5em;
 
   /* money and warnings */
-  --skin-profit: var(--ottd-green-dark);
+  --skin-profit: var(--ottd-green-darker);
   --skin-loss: var(--ottd-red-dark);
 
-  /* metrics: bevel thickness comes from the variant below */
+  /* metrics */
   --skin-radius: 0;
+  --bevel: 2px;
 
   /* bridge to the base theme tokens so existing rules keep working */
   --bg: var(--skin-desktop);
@@ -112,14 +111,6 @@
   --profit: var(--skin-profit);
   --loss: var(--skin-loss);
   color-scheme: dark;
-}
-
-:root[data-skin='pixel'] {
-  --bevel: 2px;
-}
-
-:root[data-skin='soft'] {
-  --bevel: 1px;
 }
 
 /* ==========================================================================

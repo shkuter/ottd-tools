@@ -26,7 +26,7 @@ body {
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100dvh;
 }
 
 .app-header {
@@ -77,8 +77,18 @@ nav {
   border-bottom-color: var(--accent);
 }
 
+/*
+ * The shell is exactly one viewport tall, so pages taller than that scroll
+ * inside main while the header and footer stay put. Pages that fill the
+ * viewport (the optimizer) become flex columns and hand the leftover height
+ * to their scroll area instead of guessing it with a calc().
+ */
 main {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
   padding: 16px 20px;
 }
 
@@ -232,7 +242,23 @@ td:has(> .train-sprite) {
 
 .dim { color: var(--muted); font-size: 12px; }
 
-.page-optimizer .table-wrap { max-height: calc(100vh - 280px); }
+.page-optimizer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* only the table gives up height when the window is short */
+.page-optimizer > :not(.table-wrap) {
+  flex: none;
+}
+
+.page-optimizer .table-wrap {
+  flex: 1;
+  min-height: 160px;
+  max-height: none;
+}
 
 .btn-add {
   padding: 1px 9px;
@@ -558,6 +584,7 @@ td:has(> .train-sprite) {
 
 .warning {
   display: flex;
+  flex-shrink: 0;
   gap: 10px;
   align-items: flex-start;
   margin: 10px 0 14px;

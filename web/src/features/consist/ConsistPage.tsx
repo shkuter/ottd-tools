@@ -117,7 +117,10 @@ export default function ConsistPage() {
       if (kindFilter !== 'all' && train.kind !== kindFilter) return false;
       if (track !== 'all' && train.base_track_type !== track) return false;
       if (train.intro_year > year) return false;
-      if (train.intro_year + train.vehicle_life < year) return false;
+      // a model is on sale until intro + model_life; vehicle_life is how long a
+      // single unit lasts before wearing out, which does not gate the catalogue
+      // (same rule as the optimizer applies, see engine/optimize.ts)
+      if (train.model_life != null && year >= train.intro_year + train.model_life) return false;
       if (search && !train.name.toLowerCase().includes(search.toLowerCase())) return false;
       if (cargo && !canCarryIn(game, train, cargo)) return false;
       return true;

@@ -56,6 +56,10 @@ def catalogue_payload(catalogue, dh):
         "role": mv.role,
         "subrole": mv.subrole,
         "joker": bool(mv.joker),
+        # рандомизированный вагон: ТТХ как у обычного, но вид выбирается случайно.
+        # В списке покупки игры он спрятан внутри группы вариантов, поэтому при
+        # равных ТТХ показывать и считать надо обычный (см. engine/optimize.ts)
+        "randomised": bool(catalogue.wagon_quacker.is_randomised_wagon_type),
         "base_track_type": catalogue.base_track_type,
         "track_types": sorted({t.label for t in mv.track_types}),
         "lgv_capable": bool(mv.lgv_capable),

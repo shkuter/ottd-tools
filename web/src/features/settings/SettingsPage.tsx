@@ -7,9 +7,7 @@ import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useFirsStore } from '../../state/firsStore';
-import { useSkinStore, type Skin } from '../../state/skinStore';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
-import { paletteSource } from '../../skin';
 
 function Row({
   label,
@@ -33,7 +31,6 @@ function Row({
 
 export default function SettingsPage() {
   const { currency, game, calc, setCurrency, setGame, setCalc, reset } = useSettingsStore();
-  const { skin, setSkin } = useSkinStore();
   const { locale, setLocale } = useLocaleStore();
 
   function resetAll() {
@@ -53,18 +50,6 @@ export default function SettingsPage() {
     <div className="page-settings">
       <h2>{t('settings.title')}</h2>
       <p className="hint">{t('settings.intro')}</p>
-
-      <section className="settings-group">
-        <h3>{t('settings.skin')}</h3>
-        <p className="hint">{t('settings.skinHint')}</p>
-        <Row label={t('settings.skinChoice')} hint={paletteSource}>
-          <select value={skin} onChange={(e) => setSkin(e.target.value as Skin)}>
-            <option value="pixel">{t('settings.skinPixel')}</option>
-            <option value="soft">{t('settings.skinSoft')}</option>
-            <option value="web">{t('settings.skinWeb')}</option>
-          </select>
-        </Row>
-      </section>
 
       <section className="settings-group">
         <h3>

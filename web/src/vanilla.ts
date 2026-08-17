@@ -59,6 +59,7 @@ function toTrain(raw: VanillaTrainRaw): Train {
     role: null,
     subrole: null,
     joker: false,
+    randomised: false,
     base_track_type: RAILTYPE_TRACK[raw.railtype] ?? 'RAIL',
     track_types: [raw.railtype.replace(/^RailTypes\{RAILTYPE_|\}$/g, '')],
     lgv_capable: false,

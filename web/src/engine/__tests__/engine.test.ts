@@ -10,6 +10,9 @@ import {
   tilesPerDay,
   transitPeriodsFromDays,
 } from '../units';
+import { optimizeConsists } from '../optimize';
+import { trains, trainsMeta, cargoByLabel } from '../../dataset';
+import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../settings';
 
 describe('costs', () => {
   it('ванильный Kirby Paul Tank: 400000 * 7 / 256 = £10937', () => {
@@ -140,6 +143,30 @@ describe('units', () => {
 
   it('дни на дистанцию', () => {
     expect(daysForDistance(100, 144)).toBeCloseTo(100 / tilesPerDay(144), 6);
+  });
+});
+
+describe('optimizer', () => {
+  // у рандомизированного вагона ТТХ те же, что у обычного, а в списке покупки игры
+  // он спрятан внутри группы вариантов — в выдаче должен быть обычный
+  it('из близнецов берёт вагон, который в игре виден в списке покупки', () => {
+    const results = optimizeConsists(
+      trains,
+      {
+        year: 1938,
+        distanceTiles: 380,
+        cargo: cargoByLabel.get('COAL')!,
+        economyId: 'STEELTOWN',
+        maxLengthTiles: 3,
+        allowElectric: false,
+        game: DEFAULT_GAME_SETTINGS,
+        calc: DEFAULT_CALC_SETTINGS,
+      },
+      trainsMeta,
+      10,
+    );
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.filter((r) => r.wagon.randomised)).toHaveLength(0);
   });
 });
 

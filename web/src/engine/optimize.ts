@@ -226,10 +226,13 @@ export function optimizeConsists(
 
   // одна строка на «локомотив × число секций»: лучший вагон для него
   // (вагоны одной вместимости различаются только ценой — при равной прибыли берём дешевле)
-  const better = (a: OptimizeResult, b: OptimizeResult) =>
-    Math.abs(a.profitPerYear - b.profitPerYear) > 1
-      ? a.profitPerYear > b.profitPerYear
-      : a.buyCostTotal < b.buyCostTotal;
+  const better = (a: OptimizeResult, b: OptimizeResult) => {
+    if (Math.abs(a.profitPerYear - b.profitPerYear) > 1) return a.profitPerYear > b.profitPerYear;
+    if (Math.abs(a.buyCostTotal - b.buyCostTotal) > 1) return a.buyCostTotal < b.buyCostTotal;
+    // близнецы с одинаковыми ТТХ: берём тот вариант, который в игре стоит
+    // заголовком группы вариантов, — рандомизированный там спрятан внутри
+    return !a.wagon.randomised && b.wagon.randomised;
+  };
   const best = new Map<string, OptimizeResult>();
   for (const r of results) {
     const key = `${r.engine.id}|${r.engineCount}`;

@@ -59,6 +59,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Один тест: `pipeline/.venv/bin/python -m unittest pipeline.tests.test_known_values -k coal`;
   `cd web && npx vitest run -t "timeFactor"`
 - `make dev` / `make build` / `make verify`
+- `make release VERSION=x.y.z` — релиз по semver (см. ниже)
+
+## Версионирование (semver)
+
+Версия одна на весь репозиторий, единственный источник правды — `version` в
+`web/package.json`. `vite.config.ts` читает его и инлайнит в бандл как `__APP_VERSION__`
+(объявление типа — `web/src/globals.d.ts`), футер `App.tsx` показывает его рядом с версиями
+данных. Руками версию нигде больше не дублировать. Первый тег — **0.1.0** (17.08.2026).
+
+Публичного API у калькулятора нет, поэтому разряды считаются по тому, что видит пользователь:
+
+- **major** — тот же ввод осознанно даёт другие числа (правка формулы или игровой механики)
+  либо сбрасывается сохранённое состояние в localStorage;
+- **minor** — новая вкладка, настройка, набор данных или язык; обновление версии NewGRF,
+  меняющее данные;
+- **patch** — исправления, полировка UI, переводы, рефакторинг с теми же числами.
+
+`CHANGELOG.md` — формат Keep a Changelog, **на английском**, как README и комментарии в коде.
+Заметные правки дописываются в `## [Unreleased]` тем же коммитом, что и сама правка.
+
+Релиз только через `make release VERSION=x.y.z` (`scripts/release.sh`, совместим с системным
+bash 3.2): проверяет формат версии, чистое дерево, отсутствие тега, что версия строго больше
+текущей и что `Unreleased` не пустой; затем закрывает `Unreleased` секцией версии с датой,
+бампает `package.json` + `package-lock.json` (`npm version`), делает коммит «Релиз X.Y.Z» и
+аннотированный тег `vX.Y.Z`. Руками теги не ставить и версию в `package.json` не править.
+
+Версии данных (`IRON_HORSE_REF`, `FIRS_REF`, `OPENGFX2_REF` в Makefile → `data/meta.json`) —
+отдельная ось: они живут своей нумерацией, а их обновление в приложении — обычный minor.
 
 ## Критичные инварианты (легко сломать)
 

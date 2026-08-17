@@ -4,7 +4,7 @@ OPENGFX2_REF ?= 0.8.1
 VENV = pipeline/.venv
 PY = $(VENV)/bin/python
 
-.PHONY: fetch fetch-opengfx2 venv data data-images data-opengfx2 dev build test verify
+.PHONY: fetch fetch-opengfx2 venv data data-images data-opengfx2 dev build test verify release
 
 # Shallow-клоны исходников в vendor/ (iron-horse и firs пинуются релизными тегами)
 fetch:
@@ -52,3 +52,8 @@ test:
 	cd web && npx vitest run
 
 verify: data test build
+
+# Релиз по semver: закрывает Unreleased в CHANGELOG.md, бампает web/package.json,
+# коммитит и ставит тег vX.Y.Z. Пример: make release VERSION=0.2.0
+release:
+	@scripts/release.sh $(VERSION)

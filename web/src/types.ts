@@ -13,6 +13,8 @@ export interface Train {
   role: string | null;
   subrole: string | null;
   joker: boolean;
+  /** Wagon whose look is picked at random; the game hides it inside a variant group. */
+  randomised: boolean;
   base_track_type: 'RAIL' | 'NG' | 'METRO';
   track_types: string[];
   lgv_capable: boolean;
