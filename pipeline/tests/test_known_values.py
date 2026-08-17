@@ -57,6 +57,17 @@ class IronHorseKnownValues(unittest.TestCase):
             self.meta["capacity_param_multipliers"], [0.33, 0.67, 1, 1.33, 1.77]
         )
 
+    def test_names_match_the_game(self):
+        # имена должны совпадать со списком покупки в игре: докозвой хелпер
+        # Iron Horse дописывает рандомизированным вагонам "- Random", в игре
+        # они называются как обычные (STR_WAGON_NAME_*)
+        randomised = self.by_id["coal_hopper_car_randomised_pony_gen_3B"]
+        self.assertEqual(randomised["name"], "Coal Hopper")
+        self.assertEqual(
+            randomised["name"], self.by_id["coal_hopper_car_type_1_pony_gen_3B"]["name"]
+        )
+        self.assertFalse([t for t in self.by_id.values() if "Random" in t["name"]])
+
 
 class FirsKnownValues(unittest.TestCase):
     @classmethod

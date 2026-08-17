@@ -27,6 +27,22 @@ def unit_payload(unit):
     }
 
 
+def game_name(catalogue, dh):
+    """Имя как в списке покупки игры.
+
+    Не `dh.unpack_name_string()`: докозвой хелпер Iron Horse дописывает
+    рандомизированным вагонам суффикс "- Random" (doc_helper.py), которого в игре
+    нет — GRF собирает имя из тех же частей, но контекстом default_name
+    (train/schemas.py, name_as_nml_prop).
+    """
+    mv = catalogue.example_model_variant
+    if mv.name is not None:
+        # у машин имя задано строкой в питоне, а не через lang-строку
+        return mv.name
+    parts = mv.get_name_parts(context="default_name")
+    return " ".join(dh.lang_strings[part] for part in parts if part is not None)
+
+
 def catalogue_payload(catalogue, dh):
     mv = catalogue.example_model_variant
     is_engine = catalogue.engine_quacker.quack
@@ -34,7 +50,7 @@ def catalogue_payload(catalogue, dh):
     capacities = [sum(u.capacities[i] for u in units) for i in range(5)]
     item = {
         "id": catalogue.model_id,
-        "name": dh.unpack_name_string(catalogue),
+        "name": game_name(catalogue, dh),
         "kind": "engine" if is_engine else "wagon",
         "gen": mv.gen,
         "role": mv.role,
@@ -62,10 +78,11 @@ def catalogue_payload(catalogue, dh):
         "capacity_label": dh.capacity_formatted_for_docs(catalogue),
         "loading_speed": units[0].loading_speed,
         "default_cargos": list(mv.default_cargos or []),
+        # sorted: Iron Horse отдаёт refit-метки множеством, порядок гуляет между запусками
         "refit": {
-            "classes": list(mv.class_refit_groups or []),
-            "labels_allowed": list(mv.label_refits_allowed or []),
-            "labels_disallowed": list(mv.label_refits_disallowed or []),
+            "classes": sorted(mv.class_refit_groups or []),
+            "labels_allowed": sorted(mv.label_refits_allowed or []),
+            "labels_disallowed": sorted(mv.label_refits_disallowed or []),
         },
     }
     return item
