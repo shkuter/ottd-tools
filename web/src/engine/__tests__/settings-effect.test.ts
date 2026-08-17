@@ -68,8 +68,10 @@ const CASES: { name: string; game?: Partial<GameSettings>; calc?: Partial<CalcSe
   { name: 'constructionCost', game: { constructionCost: 0 } },
   { name: 'accelerationModel', game: { accelerationModel: 'original' } },
   { name: 'gradualLoading', game: { gradualLoading: false } },
-  { name: 'basecostLocomotive', game: { basecostLocomotive: 8 } },
-  { name: 'basecostWagon', game: { basecostWagon: 8 } },
+  { name: 'basecostGrf', game: { basecostGrf: true, basecostLocomotive: 8 } },
+  { name: 'basecostLocomotive', game: { basecostGrf: true, basecostLocomotive: 8 } },
+  { name: 'basecostWagon', game: { basecostGrf: true, basecostWagon: 8 } },
+  { name: 'basecostTrainRunning', game: { basecostGrf: true, basecostTrainRunning: 4 } },
   { name: 'inflation', game: { inflation: true }, calc: { priceYear: 2000 } },
   {
     name: 'inflationInterest',
@@ -124,6 +126,13 @@ describe('каждая настройка влияет на расчёт', () =>
       expect(changed).not.toBe(reference);
     });
   }
+});
+
+describe('выключенный Base Costs GRF', () => {
+  it('множители не применяются, пока GRF не включён', () => {
+    const off = snapshot({ basecostGrf: false, basecostLocomotive: 8, basecostWagon: 8 });
+    expect(off).toBe(BASELINE);
+  });
 });
 
 describe('paymentAlgorithm (JGRPP)', () => {

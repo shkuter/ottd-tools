@@ -18,6 +18,8 @@ import {
   effectiveDayLength,
   daysPerEconomyYear,
   difficultyPriceFactor,
+  basecostBuyFactor,
+  basecostRunningFactor,
   loadingTicks,
   subsidyFactor,
   stoppedCostDivisor,
@@ -96,8 +98,7 @@ function moneyFor(
         buyShift,
         calc.priceYear,
         game.inflation,
-        difficultyPriceFactor(game.constructionCost) *
-          (train.kind === 'engine' ? game.basecostLocomotive : game.basecostWagon),
+        difficultyPriceFactor(game.constructionCost) * basecostBuyFactor(game, train.kind),
         game.inflationInterest,
         game.inflationFixedDates,
       );
@@ -109,7 +110,7 @@ function moneyFor(
         runShift,
         calc.priceYear,
         game.inflation,
-        difficultyPriceFactor(game.vehicleCosts),
+        difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game),
         game.inflationInterest,
         game.inflationFixedDates,
       ) *

@@ -180,5 +180,9 @@
   "settings.minutesPerYearHint": "economy.minutes_per_calendar_year — one minute is about a 30-day month (default 12)",
   "settings.basecostLoco": "Locomotive purchase cost",
   "settings.basecostWagon": "Waggon purchase cost",
-  "settings.basecostHint": "Base Costs NewGRF multiplier — set it to whatever your basecost GRF uses"
+  "settings.basecostHint": "Purchase price multiplier (powers of two, as in the GRF's parameter list)",
+  "settings.basecostGrf": "Base Costs NewGRF",
+  "settings.basecostGrfHint": "Enable if a base cost mod GRF is loaded. Such a GRF does not define vehicles, so OpenTTD applies its multipliers globally on top of the difficulty settings.",
+  "settings.basecostRunning": "Train running cost",
+  "settings.basecostRunningHint": "Multiplier for train running costs"
 }

@@ -130,30 +130,61 @@ export default function SettingsPage() {
             {game.firs ? t('settings.on') : t('settings.off')}
           </label>
         </Row>
-        <Row label={t('settings.basecostLoco')} hint={t('settings.basecostHint')}>
-          <select
-            value={game.basecostLocomotive}
-            onChange={(e) => setGame('basecostLocomotive', Number(e.target.value))}
-          >
-            {BASECOST_MULTIPLIERS.map((m) => (
-              <option key={m.label} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </Row>
-        <Row label={t('settings.basecostWagon')} hint={t('settings.basecostHint')}>
-          <select
-            value={game.basecostWagon}
-            onChange={(e) => setGame('basecostWagon', Number(e.target.value))}
-          >
-            {BASECOST_MULTIPLIERS.map((m) => (
-              <option key={m.label} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </Row>
+      </section>
+
+      <section className="settings-group">
+        <h3>
+          {t('settings.basecostGrf')}
+          <label className="checkbox group-toggle">
+            <input
+              type="checkbox"
+              checked={game.basecostGrf}
+              onChange={(e) => setGame('basecostGrf', e.target.checked)}
+            />
+            {game.basecostGrf ? t('settings.on') : t('settings.off')}
+          </label>
+        </h3>
+        <p className="hint">{t('settings.basecostGrfHint')}</p>
+        {game.basecostGrf && (
+          <>
+            <Row label={t('settings.basecostLoco')} hint={t('settings.basecostHint')}>
+              <select
+                value={game.basecostLocomotive}
+                onChange={(e) => setGame('basecostLocomotive', Number(e.target.value))}
+              >
+                {BASECOST_MULTIPLIERS.map((m) => (
+                  <option key={m.label} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <Row label={t('settings.basecostWagon')} hint={t('settings.basecostHint')}>
+              <select
+                value={game.basecostWagon}
+                onChange={(e) => setGame('basecostWagon', Number(e.target.value))}
+              >
+                {BASECOST_MULTIPLIERS.map((m) => (
+                  <option key={m.label} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <Row label={t('settings.basecostRunning')} hint={t('settings.basecostRunningHint')}>
+              <select
+                value={game.basecostTrainRunning}
+                onChange={(e) => setGame('basecostTrainRunning', Number(e.target.value))}
+              >
+                {BASECOST_MULTIPLIERS.map((m) => (
+                  <option key={m.label} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </Row>
+          </>
+        )}
       </section>
 
       <section className="settings-group">

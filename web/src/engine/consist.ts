@@ -15,6 +15,8 @@ import {
   type GameSettings,
   effectiveDayLength,
   difficultyPriceFactor,
+  basecostBuyFactor,
+  basecostRunningFactor,
 } from './settings';
 
 export interface ConsistEntry {
@@ -125,8 +127,7 @@ export function consistStats(
         buyShift,
         calc.priceYear,
         game.inflation,
-        difficultyPriceFactor(game.constructionCost) *
-          (train.kind === 'engine' ? game.basecostLocomotive : game.basecostWagon),
+        difficultyPriceFactor(game.constructionCost) * basecostBuyFactor(game, train.kind),
         game.inflationInterest,
         game.inflationFixedDates,
       );
@@ -138,7 +139,7 @@ export function consistStats(
         runShift,
         calc.priceYear,
         game.inflation,
-        difficultyPriceFactor(game.vehicleCosts),
+        difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game),
         game.inflationInterest,
         game.inflationFixedDates,
       ) *

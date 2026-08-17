@@ -16,6 +16,8 @@ import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
 import { buyCost, runningBaseKey, runningCostPerYear } from '../../engine/costs';
 import {
+  basecostBuyFactor,
+  basecostRunningFactor,
   difficultyPriceFactor,
   effectiveDayLength,
   type CalcSettings,
@@ -50,8 +52,7 @@ function trainBuyCost(train: Train, game: GameSettings, calc: CalcSettings): num
     shift,
     calc.priceYear,
     game.inflation,
-    difficultyPriceFactor(game.constructionCost) *
-      (train.kind === 'engine' ? game.basecostLocomotive : game.basecostWagon),
+    difficultyPriceFactor(game.constructionCost) * basecostBuyFactor(game, train.kind),
     game.inflationInterest,
     game.inflationFixedDates,
   );
@@ -68,7 +69,7 @@ function trainRunningCost(train: Train, game: GameSettings, calc: CalcSettings):
       shift,
       calc.priceYear,
       game.inflation,
-      difficultyPriceFactor(game.vehicleCosts),
+      difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game),
       game.inflationInterest,
       game.inflationFixedDates,
     ) * effectiveDayLength(game)

@@ -25,12 +25,15 @@ export interface GameSettings {
   timekeeping: 'calendar' | 'wallclock';
   /** economy.minutes_per_calendar_year (только wallclock, def 12). */
   minutesPerYear: number;
+  /** Подключён NewGRF Base Costs (глобальные множители базовых цен). */
+  basecostGrf: boolean;
   /**
-   * Множители базовых цен из NewGRF Base Costs: покупка локомотивов и вагонов.
-   * 1 = unchanged, 2 = double, 0.5 = half и т.д.; 0 = free (no costs).
+   * Множители Base Costs GRF: степени двойки, 1 = unchanged, 2 = double,
+   * 0.5 = half; 0 = free (no costs).
    */
   basecostLocomotive: number;
   basecostWagon: number;
+  basecostTrainRunning: number;
   /** Инфляция включена (Iron Horse с ней несовместим — по умолчанию off). */
   inflation: boolean;
   /** difficulty.initial_interest: скорость инфляции (2..4, def 2). */
@@ -77,8 +80,10 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   paymentAlgorithm: 'modern',
   timekeeping: 'calendar',
   minutesPerYear: 12,
+  basecostGrf: false,
   basecostLocomotive: 1,
   basecostWagon: 1,
+  basecostTrainRunning: 1,
   costsWhenStopped: 1,
   inflationFixedDates: true,
 };
@@ -116,6 +121,21 @@ export const BASECOST_MULTIPLIERS: { value: number; label: string }[] = [
   { value: 8192, label: '8192x' },
 ];
 
+
+/**
+ * Множитель Base Costs GRF для покупки машины. Выключенный GRF — нейтральная 1.
+ * В игре это глобальный сдвиг базовой цены (newgrf.cpp: multiplier применяется
+ * глобально, если GRF не определяет объектов этой фичи).
+ */
+export function basecostBuyFactor(settings: GameSettings, kind: 'engine' | 'wagon'): number {
+  if (!settings.basecostGrf) return 1;
+  return kind === 'engine' ? settings.basecostLocomotive : settings.basecostWagon;
+}
+
+/** Множитель Base Costs GRF для расходов на содержание поездов. */
+export function basecostRunningFactor(settings: GameSettings): number {
+  return settings.basecostGrf ? settings.basecostTrainRunning : 1;
+}
 
 /** Множитель дохода при действующей субсидии (economy.cpp DeliverGoods). */
 export function subsidyFactor(mod: 0 | 1 | 2 | 3): number {
