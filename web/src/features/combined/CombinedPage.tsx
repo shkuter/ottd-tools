@@ -5,20 +5,23 @@ import { num } from '../../components/format';
 import { Money } from '../../components/Money';
 import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
+import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
 import { transportedGoodsIncome } from '../../engine/income';
 import { daysForDistance, mphToInternal, transitPeriodsFromDays } from '../../engine/units';
+import { effectiveDayLength } from '../../engine/settings';
 
 export default function CombinedPage() {
   const consist = useConsistStore();
+  const { game, calc } = useSettingsStore();
   const route = useRouteStore();
 
   const economy = economyById.get(route.economyId);
   const cargo = cargoByLabel.get(route.cargoLabel) ?? null;
 
   const stats = useMemo(
-    () => consistStats(consist.entries, cargo, consist.capacityIndex, trainsMeta),
-    [consist.entries, cargo, consist.capacityIndex],
+    () => consistStats(consist.entries, cargo, calc.capacityIndex, trainsMeta, game, calc),
+    [consist.entries, cargo, calc, game],
   );
 
   if (consist.entries.length === 0) {
@@ -33,7 +36,8 @@ export default function CombinedPage() {
   const speedInternal = mphToInternal(stats.balancingSpeedMph);
   const oneWayDays = daysForDistance(route.distanceTiles, speedInternal);
   const roundTripDays = oneWayDays * 2;
-  const tripsPerYear = roundTripDays > 0 ? 365 / roundTripDays : 0;
+  // JGRPP: календарный год длиннее в dayLengthFactor раз
+  const tripsPerYear = roundTripDays > 0 ? (365 * effectiveDayLength(game)) / roundTripDays : 0;
 
   const payment = cargo && economy ? (cargo.initial_payment_by_economy[economy.id] ?? 0) : 0;
   const incomePerTrip =
@@ -43,6 +47,7 @@ export default function CombinedPage() {
           route.distanceTiles,
           transitPeriodsFromDays(oneWayDays),
           { currentPayment: payment, transitPeriods: cargo.transit_periods },
+          game.cargoAgingRate,
         )
       : 0;
 

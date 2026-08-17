@@ -8,6 +8,13 @@ import type { ConsistPhysics } from './physics';
 import { balancingSpeed } from './physics';
 import { mphToInternal } from './units';
 import { canCarry } from '../dataset';
+import {
+  DEFAULT_CALC_SETTINGS,
+  DEFAULT_GAME_SETTINGS,
+  type CalcSettings,
+  type GameSettings,
+  effectiveDayLength,
+} from './settings';
 
 export interface ConsistEntry {
   train: Train;
@@ -34,6 +41,7 @@ export function consistPhysics(
   entries: ConsistEntry[],
   cargo: Cargo | null,
   capacityIndex: number,
+  game: GameSettings = DEFAULT_GAME_SETTINGS,
 ): { physics: ConsistPhysics; stats: Omit<ConsistStats, 'balancingSpeedMph' | 'balancingSpeedOnGradeMph'> } {
   let powerHp = 0;
   let teWeightProduct = 0;
@@ -59,8 +67,8 @@ export function consistPhysics(
       const capacity = count * (train.capacities[capacityIndex] ?? train.capacities[2]);
       capacityForCargo += capacity;
       if (cargo.is_freight) {
-        // вес груза: units * weight/16 т (freight_trains множитель = 1)
-        cargoWeightT += (capacity * cargo.weight_16ths) / 16;
+        // вес груза: units × freight_trains × weight/16 т (cargotype.cpp:256)
+        cargoWeightT += (capacity * game.freightTrains * cargo.weight_16ths) / 16;
       }
     }
   }
@@ -72,6 +80,7 @@ export function consistPhysics(
       teWeightProduct,
       maxSpeedInternal: mphToInternal(speedLimit ?? 200),
       numParts: numUnits,
+      slopeSteepness: game.slopeSteepness,
     },
     stats: {
       powerHp,
@@ -93,8 +102,10 @@ export function consistStats(
   cargo: Cargo | null,
   capacityIndex: number,
   meta: TrainsMeta,
+  game: GameSettings = DEFAULT_GAME_SETTINGS,
+  calc: CalcSettings = DEFAULT_CALC_SETTINGS,
 ): ConsistStats {
-  const { physics, stats } = consistPhysics(entries, cargo, capacityIndex);
+  const { physics, stats } = consistPhysics(entries, cargo, capacityIndex, game);
   let buy = 0;
   let running = 0;
   for (const { train, count } of entries) {
@@ -105,18 +116,23 @@ export function consistStats(
     const runShift = train.running_cost_base.includes('STEAM')
       ? meta.basecost_shifts.running_steam
       : meta.basecost_shifts.running_diesel;
-    buy += count * buyCost(train.kind, train.cost_factor, buyShift);
+    buy += count * buyCost(train.kind, train.cost_factor, buyShift, calc.priceYear, game.inflation);
     running +=
       count *
       runningCostPerYear(
         runningBaseKey(train.running_cost_base),
         train.running_cost_factor,
         runShift,
-      );
+        calc.priceYear,
+        game.inflation,
+      ) *
+      // JGRPP: running cost начисляется по тикам, календарный год длиннее в N раз
+      effectiveDayLength(game);
   }
   const flat = entries.length ? balancingSpeed(physics) : 0;
-  // подъём: типовой холм в 2 тайла — на уклоне не больше 2 тайлов состава
-  const massOnSlope = physics.massT * Math.min(2 / Math.max(stats.lengthTiles, 0.1), 1);
+  // на уклоне не больше hillTiles тайлов состава
+  const massOnSlope =
+    physics.massT * Math.min(calc.hillTiles / Math.max(stats.lengthTiles, 0.1), 1);
   const grade = entries.length ? balancingSpeed(physics, massOnSlope) : 0;
   return {
     ...stats,

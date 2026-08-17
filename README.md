@@ -18,12 +18,17 @@ Calculator for OpenTTD with the Iron Horse (Pony roster) and FIRS 5 NewGRF sets:
   `web/public/icons/`. Generated JSON is committed, so the web app builds without Python.
 - `web/` — React 19 + Vite SPA. Game formulas live in `web/src/engine/` as pure TS with
   vitest tests.
-- `vendor/` — shallow clones of source repos (not committed, `make fetch`).
+- `vendor/` — shallow clones of source repos (not committed, `make fetch`):
+  [iron-horse](https://github.com/andythenorth/iron-horse) — vehicle data;
+  [firs](https://github.com/andythenorth/firs) — industry/cargo data;
+  [OpenTTD](https://github.com/OpenTTD/OpenTTD) — economy & physics formulas;
+  [OpenTTD-patches](https://github.com/JGRennison/OpenTTD-patches) — JGR's Patchpack,
+  reference for patchpack-specific behaviour.
 
 ## Commands
 
 ```sh
-make fetch   # clone iron-horse (pinned tag), firs, openttd into vendor/
+make fetch   # clone iron-horse (pinned tag), firs, openttd, openttd-patches into vendor/
 make venv    # python venv + Pillow + Chameleon
 make data    # regenerate JSON from vendor sources + validate
 make data-images  # render Iron Horse spritesheets + cut per-vehicle sprites (slow-ish)

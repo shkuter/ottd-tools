@@ -3,6 +3,7 @@ import { cargoByLabel, cargosOfEconomy, economies, economyById, trainsMeta } fro
 import { t } from '../../i18n';
 import { money, num } from '../../components/format';
 import { useRouteStore } from '../../state/routeStore';
+import { useSettingsStore } from '../../state/settingsStore';
 import { useConsistStore } from '../../state/consistStore';
 import { transportedGoodsIncome } from '../../engine/income';
 import { daysForDistance, mphToInternal, transitPeriodsFromDays } from '../../engine/units';
@@ -11,14 +12,15 @@ import { consistStats } from '../../engine/consist';
 export default function RoutePage() {
   const route = useRouteStore();
   const consist = useConsistStore();
+  const { game, calc } = useSettingsStore();
 
   const economy = economyById.get(route.economyId) ?? economies[0];
   const economyCargos = useMemo(() => cargosOfEconomy(economy), [economy]);
   const cargo = cargoByLabel.get(route.cargoLabel) ?? economyCargos[0];
 
   const stats = useMemo(
-    () => consistStats(consist.entries, cargo ?? null, consist.capacityIndex, trainsMeta),
-    [consist.entries, cargo, consist.capacityIndex],
+    () => consistStats(consist.entries, cargo ?? null, calc.capacityIndex, trainsMeta, game, calc),
+    [consist.entries, cargo, calc, game],
   );
 
   const consistDays =
@@ -33,7 +35,13 @@ export default function RoutePage() {
     : null;
 
   const income = spec
-    ? transportedGoodsIncome(route.amount, route.distanceTiles, transitPeriodsFromDays(days), spec)
+    ? transportedGoodsIncome(
+        route.amount,
+        route.distanceTiles,
+        transitPeriodsFromDays(days),
+        spec,
+        game.cargoAgingRate,
+      )
     : 0;
 
   const chart = useMemo(() => {
@@ -50,11 +58,12 @@ export default function RoutePage() {
           route.distanceTiles,
           transitPeriodsFromDays(d),
           spec,
+          game.cargoAgingRate,
         ),
       });
     }
     return points;
-  }, [spec, route.amount, route.distanceTiles, days]);
+  }, [spec, route.amount, route.distanceTiles, days, game.cargoAgingRate]);
 
   const chartMax = Math.max(...chart.map((p) => p.income), 1);
   const chartW = 640;

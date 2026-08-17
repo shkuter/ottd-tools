@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useOptimizerStore } from '../../state/optimizerStore';
+import { useSettingsStore } from '../../state/settingsStore';
 import { useNavigate } from 'react-router';
 import { cargoByLabel, cargos, economies, trains, trainsMeta } from '../../dataset';
 import { t } from '../../i18n';
@@ -16,7 +17,7 @@ export default function OptimizerPage() {
     setYear, setCargoLabel, setDistanceTiles: setDistance, setStationTiles, setAllowElectric,
   } = useOptimizerStore();
   const [engineFilter, setEngineFilter] = useState('');
-  const capacityIndex = 2;
+  const { game, calc } = useSettingsStore();
   const navigate = useNavigate();
   const consistStore = useConsistStore();
   const routeStore = useRouteStore();
@@ -37,14 +38,14 @@ export default function OptimizerPage() {
         cargo,
         economyId,
         maxLengthTiles: stationTiles,
-        capacityIndex,
-        trackType: 'RAIL',
         allowElectric,
+        game,
+        calc,
       },
       trainsMeta,
       50,
     );
-  }, [cargo, economyId, year, distance, stationTiles, allowElectric]);
+  }, [cargo, economyId, year, distance, stationTiles, allowElectric, game, calc]);
 
   const shown = engineFilter
     ? results.filter((r) => r.engine.name.toLowerCase().includes(engineFilter.toLowerCase()))

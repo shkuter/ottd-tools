@@ -10,6 +10,7 @@ fetch:
 	[ -d vendor/iron-horse ] || git clone --depth 1 --branch $(IRON_HORSE_REF) https://github.com/andythenorth/iron-horse.git vendor/iron-horse
 	[ -d vendor/firs ] || git clone --depth 1 https://github.com/andythenorth/firs.git vendor/firs
 	[ -d vendor/openttd ] || git clone --depth 1 https://github.com/OpenTTD/OpenTTD.git vendor/openttd
+	[ -d vendor/openttd-patches ] || git clone --depth 1 https://github.com/JGRennison/OpenTTD-patches.git vendor/openttd-patches
 
 venv:
 	python3 -m venv $(VENV)

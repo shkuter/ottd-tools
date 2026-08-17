@@ -12,6 +12,7 @@ import type { Train } from '../../types';
 import { t } from '../../i18n';
 import { money, num } from '../../components/format';
 import { useConsistStore } from '../../state/consistStore';
+import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
 import { buyCost, runningBaseKey, runningCostPerYear } from '../../engine/costs';
 
@@ -49,6 +50,7 @@ function trainRunningCost(train: Train): number {
 
 export default function ConsistPage() {
   const store = useConsistStore();
+  const { game, calc } = useSettingsStore();
   const [kindFilter, setKindFilter] = useState<'all' | 'engine' | 'wagon'>('all');
   const [search, setSearch] = useState('');
   const [year, setYear] = useState(1950);
@@ -91,7 +93,7 @@ export default function ConsistPage() {
         header: t('table.weight'),
         cell: (info) => `${num(info.getValue())} t`,
       }),
-      columnHelper.accessor((row) => row.capacities[store.capacityIndex] ?? 0, {
+      columnHelper.accessor((row) => row.capacities[calc.capacityIndex] ?? 0, {
         id: 'capacity',
         header: t('table.capacity'),
         cell: (info) => (info.getValue() ? num(info.getValue()) : '—'),
@@ -118,7 +120,7 @@ export default function ConsistPage() {
         ),
       }),
     ],
-    [store.capacityIndex, store.add],
+    [calc.capacityIndex, store.add],
   );
 
   const table = useReactTable({
@@ -132,8 +134,8 @@ export default function ConsistPage() {
 
   const cargo = store.cargoLabel ? (cargoByLabel.get(store.cargoLabel) ?? null) : null;
   const stats = useMemo(
-    () => consistStats(store.entries, cargo, store.capacityIndex, trainsMeta),
-    [store.entries, cargo, store.capacityIndex],
+    () => consistStats(store.entries, cargo, calc.capacityIndex, trainsMeta, game, calc),
+    [store.entries, cargo, calc, game],
   );
 
   return (
@@ -245,20 +247,6 @@ export default function ConsistPage() {
             {cargos.map((c) => (
               <option key={c.label} value={c.label}>
                 {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          {t('consist.capacityParam')}
-          <select
-            value={store.capacityIndex}
-            onChange={(e) => store.setCapacityIndex(Number(e.target.value))}
-          >
-            {trainsMeta.capacity_param_multipliers.map((m, i) => (
-              <option key={i} value={i}>
-                ×{m}
-                {i === 2 ? ' (default)' : ''}
               </option>
             ))}
           </select>

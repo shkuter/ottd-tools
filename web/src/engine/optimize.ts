@@ -10,6 +10,13 @@ import { balancingSpeed } from './physics';
 import { buyCost, runningBaseKey, runningCostPerYear } from './costs';
 import { transportedGoodsIncome } from './income';
 import { daysForDistance, transitPeriodsFromDays } from './units';
+import {
+  DEFAULT_CALC_SETTINGS,
+  DEFAULT_GAME_SETTINGS,
+  type CalcSettings,
+  type GameSettings,
+  effectiveDayLength,
+} from './settings';
 
 export interface OptimizeParams {
   year: number;
@@ -18,10 +25,10 @@ export interface OptimizeParams {
   economyId: string;
   /** Длина станции в тайлах — лимит длины состава. */
   maxLengthTiles: number;
-  capacityIndex: number;
-  trackType: 'RAIL' | 'NG' | 'METRO';
   /** Линия электрифицирована: включать чисто электрические (OHLE) локомотивы. */
   allowElectric: boolean;
+  game?: GameSettings;
+  calc?: CalcSettings;
 }
 
 /** Локомотив требует контактную сеть (единственный источник тяги — OHLE). */
@@ -56,7 +63,12 @@ function isAvailable(train: Train, year: number): boolean {
   return true;
 }
 
-function moneyFor(entries: ConsistEntry[], meta: TrainsMeta) {
+function moneyFor(
+  entries: ConsistEntry[],
+  meta: TrainsMeta,
+  game: GameSettings,
+  calc: CalcSettings,
+) {
   let buy = 0;
   let running = 0;
   for (const { train, count } of entries) {
@@ -67,14 +79,17 @@ function moneyFor(entries: ConsistEntry[], meta: TrainsMeta) {
     const runShift = train.running_cost_base.includes('STEAM')
       ? meta.basecost_shifts.running_steam
       : meta.basecost_shifts.running_diesel;
-    buy += count * buyCost(train.kind, train.cost_factor, buyShift);
+    buy += count * buyCost(train.kind, train.cost_factor, buyShift, calc.priceYear, game.inflation);
     running +=
       count *
       runningCostPerYear(
         runningBaseKey(train.running_cost_base),
         train.running_cost_factor,
         runShift,
-      );
+        calc.priceYear,
+        game.inflation,
+      ) *
+      effectiveDayLength(game);
   }
   return { buy, running };
 }
@@ -85,7 +100,10 @@ export function optimizeConsists(
   meta: TrainsMeta,
   topN = 30,
 ): OptimizeResult[] {
-  const { year, distanceTiles, cargo, maxLengthTiles, capacityIndex, trackType } = params;
+  const { year, distanceTiles, cargo, maxLengthTiles } = params;
+  const game = params.game ?? DEFAULT_GAME_SETTINGS;
+  const calc = params.calc ?? DEFAULT_CALC_SETTINGS;
+  const { capacityIndex, trackType } = calc;
   const payment = cargo.initial_payment_by_economy[params.economyId];
   if (!payment) return [];
 
@@ -121,29 +139,32 @@ export function optimizeConsists(
           { train: wagon, count: wagonCount },
         ];
 
-        const loaded = consistPhysics(entries, cargo, capacityIndex);
+        const loaded = consistPhysics(entries, cargo, capacityIndex, game);
         if (loaded.stats.capacityForCargo <= 0) continue;
-        const empty = consistPhysics(entries, null, capacityIndex);
+        const empty = consistPhysics(entries, null, capacityIndex, game);
 
         const loadedSpeed = balancingSpeed(loaded.physics);
         const emptySpeed = balancingSpeed(empty.physics);
         const lengthTiles = (engineLength + wagonCount * wagon.length) / 16;
-        const massOnSlope = loaded.physics.massT * Math.min(2 / lengthTiles, 1);
+        const massOnSlope =
+          loaded.physics.massT * Math.min(calc.hillTiles / lengthTiles, 1);
         const gradeSpeed = balancingSpeed(loaded.physics, massOnSlope);
         if (loadedSpeed <= 2) continue;
 
         const daysLoaded = daysForDistance(distanceTiles, loadedSpeed);
         const daysEmpty = daysForDistance(distanceTiles, emptySpeed);
         const roundTripDays = daysLoaded + daysEmpty;
-        const tripsPerYear = 365 / roundTripDays;
+        // JGRPP: длинный день не меняет рейс в тиках, но календарный год длиннее
+        const tripsPerYear = (365 * effectiveDayLength(game)) / roundTripDays;
 
         const incomePerTrip = transportedGoodsIncome(
           loaded.stats.capacityForCargo,
           distanceTiles,
           transitPeriodsFromDays(daysLoaded),
           { currentPayment: payment, transitPeriods: cargo.transit_periods },
+          game.cargoAgingRate,
         );
-        const { buy, running } = moneyFor(entries, meta);
+        const { buy, running } = moneyFor(entries, meta, game, calc);
         const profitPerYear = incomePerTrip * tripsPerYear - running;
 
         results.push({
