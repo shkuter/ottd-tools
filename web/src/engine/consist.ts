@@ -69,10 +69,10 @@ export function consistPhysics(
     if (cargo && canCarryIn(game, train, cargo)) {
       const capacity = count * (train.capacities[capacityIndex] ?? train.capacities[2]);
       capacityForCargo += capacity;
-      if (cargo.is_freight) {
-        // вес груза: units × freight_trains × weight/16 т (cargotype.cpp:256)
-        cargoWeightT += (capacity * game.freightTrains * cargo.weight_16ths) / 16;
-      }
+      // вес груза: units × weight/16 т; множитель freight_trains — только для
+      // грузовых (cargotype.cpp:254 WeightOfNUnitsInTrain)
+      const freightMultiplier = cargo.is_freight ? game.freightTrains : 1;
+      cargoWeightT += (capacity * freightMultiplier * cargo.weight_16ths) / 16;
     }
   }
 
