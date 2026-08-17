@@ -168,6 +168,45 @@ describe('optimizer', () => {
     expect(results.length).toBeGreaterThan(0);
     expect(results.filter((r) => r.wagon.randomised)).toHaveLength(0);
   });
+
+  // производство ограничивает загрузку: лишние вагоны только дорожают
+  it('слабое предприятие укорачивает состав, сильное — набирает станцию', () => {
+    const params = {
+      year: 1938,
+      distanceTiles: 82,
+      cargo: cargoByLabel.get('COAL')!,
+      economyId: 'STEELTOWN',
+      maxLengthTiles: 6,
+      allowElectric: false,
+      game: DEFAULT_GAME_SETTINGS,
+      calc: DEFAULT_CALC_SETTINGS,
+    };
+    const unlimited = optimizeConsists(trains, params, trainsMeta, 1)[0];
+    const limited = optimizeConsists(
+      trains,
+      { ...params, productionPerMonth: 40 },
+      trainsMeta,
+      1,
+    )[0];
+
+    expect(unlimited.cargoPerTrip).toBe(unlimited.capacity);
+    expect(unlimited.trainsNeeded).toBe(1);
+    expect(limited.lengthTiles).toBeLessThan(unlimited.lengthTiles);
+    // везёт ровно то, что успело произвестись за рейс, и не больше вместимости
+    expect(limited.cargoPerTrip).toBeLessThanOrEqual(limited.capacity);
+    expect(limited.cargoPerTrip * limited.tripsPerYear).toBeCloseTo(40 * 12, 6);
+    expect(limited.buyCostTotal).toBeLessThan(unlimited.buyCostTotal);
+
+    // поток, который один поезд не увозит, требует нескольких
+    const heavy = optimizeConsists(
+      trains,
+      { ...params, productionPerMonth: 5000 },
+      trainsMeta,
+      1,
+    )[0];
+    expect(heavy.cargoPerTrip).toBe(heavy.capacity);
+    expect(heavy.trainsNeeded).toBeGreaterThan(1);
+  });
 });
 
 describe('physics', () => {

@@ -18,6 +18,12 @@ of what users see):
 
 ## [Unreleased]
 
+### Fixed
+
+- **Best train** no longer scrolls the whole page: the shell is one viewport tall, the header
+  and footer stay put and the results table takes the leftover height instead of the
+  hand-tuned `calc(100vh - 280px)` it used before.
+
 ## [0.1.0] - 2026-08-17
 
 First tagged release. Data: Iron Horse 4.29.0, FIRS 5.2.0, OpenGFX2 Classic 0.8.1.

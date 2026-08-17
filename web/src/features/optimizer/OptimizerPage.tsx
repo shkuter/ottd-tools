@@ -14,8 +14,9 @@ import { CargoIcon, TrainImage } from '../consist/ConsistPage';
 
 export default function OptimizerPage() {
   const {
-    year, cargoLabel, distanceTiles: distance, stationTiles, allowElectric,
-    setYear, setCargoLabel, setDistanceTiles: setDistance, setStationTiles, setAllowElectric,
+    year, cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, allowElectric,
+    setYear, setCargoLabel, setDistanceTiles: setDistance, setStationTiles,
+    setProductionPerMonth, setAllowElectric,
   } = useOptimizerStore();
   const [engineFilter, setEngineFilter] = useState('');
   const [subsidised, setSubsidised] = useState(false);
@@ -51,6 +52,7 @@ export default function OptimizerPage() {
         cargo,
         economyId,
         maxLengthTiles: stationTiles,
+        productionPerMonth,
         allowElectric,
         subsidised,
         game,
@@ -59,7 +61,7 @@ export default function OptimizerPage() {
       trainsMeta,
       50,
     );
-  }, [cargo, economyId, year, distance, stationTiles, allowElectric, subsidised, game, calc]);
+  }, [cargo, economyId, year, distance, stationTiles, productionPerMonth, allowElectric, subsidised, game, calc]);
 
   const shown = engineFilter
     ? results.filter((r) => r.engine.name.toLowerCase().includes(engineFilter.toLowerCase()))
@@ -106,6 +108,16 @@ export default function OptimizerPage() {
           {t('opt.stationTiles')}
           <input type="number" min={1} max={16} value={stationTiles} onChange={(e) => setStationTiles(Number(e.target.value))} />
         </label>
+        <label title={t('opt.productionHint')}>
+          {t('opt.production')}
+          <input
+            type="number"
+            min={0}
+            step={10}
+            value={productionPerMonth}
+            onChange={(e) => setProductionPerMonth(Math.max(0, Number(e.target.value)))}
+          />
+        </label>
         <label className="checkbox">
           <input
             type="checkbox"
@@ -135,7 +147,7 @@ export default function OptimizerPage() {
         <p className="hint">
           {cargoName(cargo)} · {economies.find((e) => e.id === economyId)?.name ?? t('settings.vanilla')} ·{' '}
           {t('route.payment')}: {num(cargo.initial_payment_by_economy[economyId])} ·{' '}
-          {t('opt.assumption')}
+          {productionPerMonth > 0 ? t('opt.assumptionProduction') : t('opt.assumption')}
         </p>
       )}
       <div className="table-wrap">
@@ -151,6 +163,7 @@ export default function OptimizerPage() {
               <th>{t('opt.dwell')}</th>
               <th>{t('combined.roundTrip')}</th>
               <th>{t('opt.trips')}</th>
+              <th>{t('opt.trains')}</th>
               <th className="cell-money">{t('opt.incomeTrip')}</th>
               <th className="cell-money">{t('table.running')}</th>
               <th className="cell-money">{t('table.cost')}</th>
@@ -170,12 +183,18 @@ export default function OptimizerPage() {
                 </td>
                 <td><TrainImage trainId={r.wagon.id} /></td>
                 <td>{r.wagonCount}× {r.wagon.name}</td>
-                <td>{num(r.capacity)} {cargoUnits(cargo?.units)}</td>
+                <td>
+                  {num(r.cargoPerTrip)} {cargoUnits(cargo?.units)}
+                  {r.cargoPerTrip < r.capacity - 0.5 && (
+                    <span className="dim"> / {num(r.capacity)}</span>
+                  )}
+                </td>
                 <td>{r.loadedSpeedMph} / {r.emptySpeedMph} {t('units.mph')}</td>
                 <td>{r.gradeSpeedMph} {t('units.mph')}</td>
                 <td>{num(r.loadingDays, 1)} {t('combined.days')}</td>
                 <td>{num(r.roundTripDays, 1)} {t('combined.days')}</td>
                 <td>{num(r.tripsPerYear, 1)}</td>
+                <td>{r.trainsNeeded}</td>
                 <td className="cell-money"><Money value={r.incomePerTrip} /></td>
                 <td className="cell-money"><Money value={r.runningCostPerYear} /></td>
                 <td className="cell-money"><Money value={r.buyCostTotal} /></td>

@@ -36,6 +36,12 @@ export interface OptimizeParams {
   allowElectric: boolean;
   /** Груз идёт под субсидией — доход умножается (difficulty.subsidy_multiplier). */
   subsidised?: boolean;
+  /**
+   * Cargo produced per economy month at the source industry (0 = unlimited).
+   * Caps what a train can actually haul, so extra capacity stops paying for itself
+   * and the optimizer picks the wagon count that matches the flow.
+   */
+  productionPerMonth?: number;
   game?: GameSettings;
   calc?: CalcSettings;
 }
@@ -52,6 +58,10 @@ export interface OptimizeResult {
   wagon: Train;
   wagonCount: number;
   capacity: number;
+  /** Cargo actually hauled per trip: the capacity, or the production flow share when smaller. */
+  cargoPerTrip: number;
+  /** Trains of this consist needed to clear the production flow (1 when unconstrained). */
+  trainsNeeded: number;
   lengthTiles: number;
   loadedSpeedMph: number;
   emptySpeedMph: number;
@@ -150,76 +160,109 @@ export function optimizeConsists(
   );
 
   const maxLengthUnits = maxLengthTiles * 16; // тайл = 16 единиц длины (стандартная машина 8 = полтайла)
+  // Industry output is stated per economy month, trips are counted per economy year.
+  const flowPerYear = Math.max(0, params.productionPerMonth ?? 0) * 12;
   const results: OptimizeResult[] = [];
+
+  const evaluate = (
+    engine: Train,
+    engineCount: number,
+    engineLength: number,
+    wagon: Train,
+    wagonCount: number,
+  ): OptimizeResult | null => {
+    const entries: ConsistEntry[] = [
+      { train: engine, count: engineCount },
+      { train: wagon, count: wagonCount },
+    ];
+
+    const loaded = consistPhysics(entries, cargo, capacityIndex, game);
+    const capacity = loaded.stats.capacityForCargo;
+    if (capacity <= 0) return null;
+    const empty = consistPhysics(entries, null, capacityIndex, game);
+
+    const loadedSpeed = balancingSpeed(loaded.physics, 0, game.accelerationModel);
+    const emptySpeed = balancingSpeed(empty.physics, 0, game.accelerationModel);
+    const lengthTiles = (engineLength + wagonCount * wagon.length) / 16;
+    const massOnSlope = loaded.physics.massT * Math.min(calc.hillTiles / lengthTiles, 1);
+    const gradeSpeed = balancingSpeed(loaded.physics, massOnSlope, game.accelerationModel);
+    if (loadedSpeed <= 2) return null;
+
+    const daysLoaded = daysForDistance(distanceTiles, loadedSpeed);
+    const daysEmpty = daysForDistance(distanceTiles, emptySpeed);
+    // стоянки: погрузка на одном конце + разгрузка на другом (вагоны грузятся параллельно)
+    const perWagonCapacity = wagon.capacities[capacityIndex] ?? wagon.capacities[2];
+    const loadingDays =
+      (2 * loadingTicks(perWagonCapacity, wagon.loading_speed ?? 0, game)) / 74;
+    const roundTripDays = daysLoaded + daysEmpty + loadingDays;
+    // JGRPP: длинный день не меняет рейс в тиках, но календарный год длиннее
+    const tripsPerYear = (daysPerEconomyYear(game) * effectiveDayLength(game)) / roundTripDays;
+
+    // A train that outruns its industry hauls only what was produced meanwhile; physics
+    // stay at full load, since such a train waits for a full load instead of running light.
+    const hauledPerYear = capacity * tripsPerYear;
+    const cargoPerTrip =
+      flowPerYear > 0 ? Math.min(capacity, flowPerYear / tripsPerYear) : capacity;
+    const trainsNeeded =
+      flowPerYear > 0 && hauledPerYear > 0 ? Math.max(1, Math.ceil(flowPerYear / hauledPerYear)) : 1;
+
+    const incomePerTrip = transportedGoodsIncome(
+      cargoPerTrip,
+      distanceTiles,
+      transitPeriodsFromDays(daysLoaded),
+      { currentPayment: payment, transitPeriods: cargo.transit_periods },
+      game.cargoAgingRate,
+      game.jgrpp ? game.paymentAlgorithm : 'modern',
+    ) * (params.subsidised ? subsidyFactor(game.subsidyMultiplier) : 1);
+    const { buy, running } = moneyFor(entries, meta, game, calc);
+    // на стоянке JGRPP может брать меньше: делим долю времени под погрузкой
+    const stoppedShare = roundTripDays > 0 ? loadingDays / roundTripDays : 0;
+    const runningEffective =
+      running * (1 - stoppedShare + stoppedShare / stoppedCostDivisor(game));
+    const profitPerYear = incomePerTrip * tripsPerYear - runningEffective;
+
+    return {
+      engine,
+      engineCount,
+      wagon,
+      wagonCount,
+      capacity,
+      cargoPerTrip,
+      trainsNeeded,
+      lengthTiles,
+      loadedSpeedMph: Math.floor((loadedSpeed * 10) / 16),
+      emptySpeedMph: Math.floor((emptySpeed * 10) / 16),
+      gradeSpeedMph: Math.floor((gradeSpeed * 10) / 16),
+      loadingDays,
+      roundTripDays,
+      tripsPerYear,
+      incomePerTrip,
+      runningCostPerYear: runningEffective,
+      buyCostTotal: buy,
+      profitPerYear,
+      paybackYears: profitPerYear > 0 ? buy / profitPerYear : null,
+    };
+  };
 
   for (const engine of engines) {
     for (const engineCount of [1, 2]) {
       const engineLength = engineCount * engine.length;
       if (engineLength >= maxLengthUnits) continue;
       for (const wagon of wagons) {
-        const wagonCount = Math.floor((maxLengthUnits - engineLength) / wagon.length);
-        if (wagonCount <= 0) continue;
-        const entries: ConsistEntry[] = [
-          { train: engine, count: engineCount },
-          { train: wagon, count: wagonCount },
-        ];
-
-        const loaded = consistPhysics(entries, cargo, capacityIndex, game);
-        if (loaded.stats.capacityForCargo <= 0) continue;
-        const empty = consistPhysics(entries, null, capacityIndex, game);
-
-        const loadedSpeed = balancingSpeed(loaded.physics, 0, game.accelerationModel);
-        const emptySpeed = balancingSpeed(empty.physics, 0, game.accelerationModel);
-        const lengthTiles = (engineLength + wagonCount * wagon.length) / 16;
-        const massOnSlope =
-          loaded.physics.massT * Math.min(calc.hillTiles / lengthTiles, 1);
-        const gradeSpeed = balancingSpeed(loaded.physics, massOnSlope, game.accelerationModel);
-        if (loadedSpeed <= 2) continue;
-
-        const daysLoaded = daysForDistance(distanceTiles, loadedSpeed);
-        const daysEmpty = daysForDistance(distanceTiles, emptySpeed);
-        // стоянки: погрузка на одном конце + разгрузка на другом (вагоны грузятся параллельно)
-        const perWagonCapacity = wagon.capacities[capacityIndex] ?? wagon.capacities[2];
-        const loadingDays =
-          (2 * loadingTicks(perWagonCapacity, wagon.loading_speed ?? 0, game)) / 74;
-        const roundTripDays = daysLoaded + daysEmpty + loadingDays;
-        // JGRPP: длинный день не меняет рейс в тиках, но календарный год длиннее
-        const tripsPerYear = (daysPerEconomyYear(game) * effectiveDayLength(game)) / roundTripDays;
-
-        const incomePerTrip = transportedGoodsIncome(
-          loaded.stats.capacityForCargo,
-          distanceTiles,
-          transitPeriodsFromDays(daysLoaded),
-          { currentPayment: payment, transitPeriods: cargo.transit_periods },
-          game.cargoAgingRate,
-          game.jgrpp ? game.paymentAlgorithm : 'modern',
-        ) * (params.subsidised ? subsidyFactor(game.subsidyMultiplier) : 1);
-        const { buy, running } = moneyFor(entries, meta, game, calc);
-        // на стоянке JGRPP может брать меньше: делим долю времени под погрузкой
-        const stoppedShare = roundTripDays > 0 ? loadingDays / roundTripDays : 0;
-        const runningEffective =
-          running * (1 - stoppedShare + stoppedShare / stoppedCostDivisor(game));
-        const profitPerYear = incomePerTrip * tripsPerYear - runningEffective;
-
-        results.push({
-          engine,
-          engineCount,
-          wagon,
-          wagonCount,
-          capacity: loaded.stats.capacityForCargo,
-          lengthTiles,
-          loadedSpeedMph: Math.floor((loadedSpeed * 10) / 16),
-          emptySpeedMph: Math.floor((emptySpeed * 10) / 16),
-          gradeSpeedMph: Math.floor((gradeSpeed * 10) / 16),
-          loadingDays,
-          roundTripDays,
-          tripsPerYear,
-          incomePerTrip,
-          runningCostPerYear: runningEffective,
-          buyCostTotal: buy,
-          profitPerYear,
-          paybackYears: profitPerYear > 0 ? buy / profitPerYear : null,
-        });
+        const maxWagons = Math.floor((maxLengthUnits - engineLength) / wagon.length);
+        if (maxWagons <= 0) continue;
+        const full = evaluate(engine, engineCount, engineLength, wagon, maxWagons);
+        if (!full) continue;
+        results.push(full);
+        // Filling the station is optimal unless the industry cannot keep up: extra wagons
+        // then add cost and weight without adding cargo, so try shorter consists too.
+        if (flowPerYear <= 0 || full.capacity * full.tripsPerYear < flowPerYear) continue;
+        for (let wagonCount = 1; wagonCount < maxWagons; wagonCount++) {
+          const r = evaluate(engine, engineCount, engineLength, wagon, wagonCount);
+          if (!r) continue;
+          results.push(r);
+          if (r.capacity * r.tripsPerYear >= flowPerYear) break;
+        }
       }
     }
   }
