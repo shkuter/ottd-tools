@@ -7,7 +7,7 @@ import { buyCost, runningBaseKey, runningCostPerYear } from './costs';
 import type { ConsistPhysics } from './physics';
 import { balancingSpeed } from './physics';
 import { mphToInternal } from './units';
-import { canCarry } from '../dataset';
+import { canCarryIn } from '../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
@@ -64,7 +64,7 @@ export function consistPhysics(
     if (train.speed_mph != null) {
       speedLimit = speedLimit == null ? train.speed_mph : Math.min(speedLimit, train.speed_mph);
     }
-    if (cargo && canCarry(train, cargo)) {
+    if (cargo && canCarryIn(game, train, cargo)) {
       const capacity = count * (train.capacities[capacityIndex] ?? train.capacities[2]);
       capacityForCargo += capacity;
       if (cargo.is_freight) {

@@ -1,5 +1,12 @@
 import { useMemo } from 'react';
-import { cargoByLabel, cargosOfEconomy, economies, economyById, trainsMeta } from '../../dataset';
+import {
+  activeCargoByLabel,
+  activeCargos,
+  cargosOfEconomy,
+  economies,
+  economyById,
+  trainsMeta,
+} from '../../dataset';
 import { t } from '../../i18n';
 import { money, num } from '../../components/format';
 import { useRouteStore } from '../../state/routeStore';
@@ -15,8 +22,11 @@ export default function RoutePage() {
   const { game, calc } = useSettingsStore();
 
   const economy = economyById.get(route.economyId) ?? economies[0];
-  const economyCargos = useMemo(() => cargosOfEconomy(economy), [economy]);
-  const cargo = cargoByLabel.get(route.cargoLabel) ?? economyCargos[0];
+  const economyCargos = useMemo(
+    () => (game.firs ? cargosOfEconomy(economy) : activeCargos(game)),
+    [economy, game],
+  );
+  const cargo = activeCargoByLabel(game).get(route.cargoLabel) ?? economyCargos[0];
 
   const stats = useMemo(
     () => consistStats(consist.entries, cargo ?? null, calc.capacityIndex, trainsMeta, game, calc),
@@ -29,7 +39,8 @@ export default function RoutePage() {
       : null;
   const days = route.manualDays ?? consistDays ?? 0;
 
-  const payment = cargo?.initial_payment_by_economy[economy.id] ?? 0;
+  const payment =
+    cargo?.initial_payment_by_economy[game.firs ? economy.id : 'VANILLA'] ?? 0;
   const spec = cargo
     ? { currentPayment: payment, transitPeriods: cargo.transit_periods }
     : null;

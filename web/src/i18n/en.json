@@ -163,5 +163,12 @@
   "settings.inflationGrfError": "«Iron Horse is not compatible with OpenTTD Inflation. Please turn Inflation off in OpenTTD settings.»",
   "settings.inflationWarnBody": "The GRF throws this fatal error at load time, so this combination cannot occur in a real game. Keep inflation off unless you are calculating vanilla trains.",
   "settings.inflationBanner": "Inflation is on — Iron Horse refuses to load in that configuration, so these numbers do not match a real game.",
-  "settings.inflationBannerLink": "Turn it off"
+  "settings.inflationBannerLink": "Turn it off",
+  "settings.newgrf": "NewGRF sets",
+  "settings.newgrfHint": "Turn a set off to calculate with the game's default vehicles or cargos instead.",
+  "settings.ironHorse": "Iron Horse",
+  "settings.ironHorseHint": "Off — vanilla OpenTTD trains and wagons are used",
+  "settings.firs": "FIRS 5",
+  "settings.firsHint": "Off — vanilla cargos and payment rates are used; the FIRS chains tab is hidden",
+  "settings.vanilla": "Vanilla"
 }

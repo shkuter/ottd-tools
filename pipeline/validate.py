@@ -72,6 +72,19 @@ def main():
                     check(isinstance(e["ratio"], int) and e["ratio"] > 0,
                           f"industries/{ind['id']}/{eco_id}: некорректный input ratio {e}")
 
+    # --- vanilla (используются при отключённых NewGRF) ---
+    vanilla_trains = load("vanilla_trains.json")["items"]
+    vanilla_cargos = load("vanilla_cargos.json")["items"]
+    check(len(vanilla_trains) > 100, f"vanilla: мало машин: {len(vanilla_trains)}")
+    check(len(vanilla_cargos) >= 25, f"vanilla: мало грузов: {len(vanilla_cargos)}")
+    kirby = next((t for t in vanilla_trains if t["name"] == "Kirby Paul Tank"), None)
+    check(kirby is not None and kirby["cost_factor"] == 7,
+          "vanilla: Kirby Paul Tank не найден или цена не 7")
+    coal_v = next((c for c in vanilla_cargos if c["label"] == "CT_COAL"), None)
+    check(coal_v is not None and coal_v["initial_payment"] == 5916, "vanilla: уголь не 5916")
+    labels_v = [c["label"] for c in vanilla_cargos]
+    check(len(labels_v) == len(set(labels_v)), "vanilla: дубли меток грузов")
+
     # --- economies ---
     check(len(economies["items"]) == 5, f"economies: {len(economies['items'])} != 5")
     industry_ids = {i["id"] for i in industries["items"]}

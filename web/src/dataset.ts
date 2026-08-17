@@ -4,6 +4,8 @@ import industriesJson from './data/industries.json';
 import economiesJson from './data/economies.json';
 import metaJson from './data/meta.json';
 import type { Cargo, Economy, Industry, Train, TrainsMeta } from './types';
+import { vanillaCanCarry, vanillaCargos, vanillaTrains } from './vanilla';
+import type { GameSettings } from './engine/settings';
 
 export const trains = (trainsJson as { items: unknown }).items as Train[];
 export const trainsMeta = (trainsJson as { meta: unknown }).meta as TrainsMeta;
@@ -21,6 +23,35 @@ export const cargoByLabel = new Map(cargos.map((c) => [c.label, c]));
 export const cargoById = new Map(cargos.map((c) => [c.id, c]));
 export const industryById = new Map(industries.map((i) => [i.id, i]));
 export const economyById = new Map(economies.map((e) => [e.id, e]));
+
+/** Активный набор машин: Iron Horse или ванильные поезда. */
+export function activeTrains(game: GameSettings): Train[] {
+  return game.ironHorse ? trains : vanillaTrains;
+}
+
+/** Активный набор грузов: FIRS или ванильные грузы. */
+export function activeCargos(game: GameSettings): Cargo[] {
+  return game.firs ? cargos : vanillaCargos;
+}
+
+/** Индекс активных грузов по метке. */
+export function activeCargoByLabel(game: GameSettings): Map<string, Cargo> {
+  return new Map(activeCargos(game).map((c) => [c.label, c]));
+}
+
+/** Проверка перевозки с учётом того, какие наборы включены. */
+export function canCarryIn(game: GameSettings, train: Train, cargo: Cargo): boolean {
+  // ванильные машины рефита не имеют; у Iron Horse — полная NewGRF-логика,
+  // но ванильные грузы не несут cargo classes, поэтому сверяем по метке
+  if (!game.ironHorse) return vanillaCanCarry(train, cargo);
+  if (!game.firs) {
+    return (
+      train.default_cargos.includes(cargo.label) ||
+      train.refit.labels_allowed.includes(cargo.label)
+    );
+  }
+  return canCarry(train, cargo);
+}
 
 /** Может ли вагон/машина возить данный груз (полная NewGRF-логика refit). */
 export function canCarry(train: Train, cargo: Cargo): boolean {

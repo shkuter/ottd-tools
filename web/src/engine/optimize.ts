@@ -4,7 +4,7 @@
  * Гружёное плечо и порожний обратный ход считаются с разной скоростью.
  */
 import type { Cargo, Train, TrainsMeta } from '../types';
-import { canCarry } from '../dataset';
+import { canCarryIn } from '../dataset';
 import { consistPhysics, type ConsistEntry } from './consist';
 import { balancingSpeed } from './physics';
 import { buyCost, runningBaseKey, runningCostPerYear } from './costs';
@@ -140,7 +140,7 @@ export function optimizeConsists(
       t.kind === 'wagon' &&
       t.base_track_type === trackType &&
       isAvailable(t, year) &&
-      canCarry(t, cargo) &&
+      canCarryIn(game, t, cargo) &&
       (t.capacities[capacityIndex] ?? 0) > 0,
   );
 

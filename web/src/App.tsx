@@ -21,6 +21,7 @@ const tabs = [
 
 export default function App() {
   const inflation = useSettingsStore((s) => s.game.inflation);
+  const firs = useSettingsStore((s) => s.game.firs);
   return (
     <div className="app">
       <header className="app-header">
@@ -29,7 +30,9 @@ export default function App() {
           <p className="subtitle">{t('app.subtitle')}</p>
         </div>
         <nav>
-          {tabs.map((tab) => (
+          {tabs
+            .filter((tab) => firs || tab.path !== '/firs')
+            .map((tab) => (
             <NavLink
               key={tab.path}
               to={tab.path}

@@ -7,7 +7,7 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
-import { canCarry, cargoByLabel, cargos, trains, trainsMeta } from '../../dataset';
+import { activeCargoByLabel, activeCargos, activeTrains, canCarryIn, trainsMeta } from '../../dataset';
 import type { Train } from '../../types';
 import { t } from '../../i18n';
 import { money, num } from '../../components/format';
@@ -58,18 +58,19 @@ export default function ConsistPage() {
   const [cargoFilter, setCargoFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'intro_year', desc: false }]);
 
+  const cargoList = useMemo(() => activeCargos(game), [game]);
   const filtered = useMemo(() => {
-    const cargo = cargoFilter ? cargoByLabel.get(cargoFilter) : null;
-    return trains.filter((train) => {
+    const cargo = cargoFilter ? activeCargoByLabel(game).get(cargoFilter) : null;
+    return activeTrains(game).filter((train) => {
       if (kindFilter !== 'all' && train.kind !== kindFilter) return false;
       if (track !== 'all' && train.base_track_type !== track) return false;
       if (train.intro_year > year) return false;
       if (train.intro_year + train.vehicle_life < year) return false;
       if (search && !train.name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (cargo && !canCarry(train, cargo)) return false;
+      if (cargo && !canCarryIn(game, train, cargo)) return false;
       return true;
     });
-  }, [kindFilter, search, year, track, cargoFilter]);
+  }, [kindFilter, search, year, track, cargoFilter, game]);
 
   const columns = useMemo(
     () => [
@@ -132,7 +133,7 @@ export default function ConsistPage() {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const cargo = store.cargoLabel ? (cargoByLabel.get(store.cargoLabel) ?? null) : null;
+  const cargo = store.cargoLabel ? (activeCargoByLabel(game).get(store.cargoLabel) ?? null) : null;
   const stats = useMemo(
     () => consistStats(store.entries, cargo, calc.capacityIndex, trainsMeta, game, calc),
     [store.entries, cargo, calc, game],
@@ -166,7 +167,7 @@ export default function ConsistPage() {
           </label>
           <select value={cargoFilter} onChange={(e) => setCargoFilter(e.target.value)}>
             <option value="">{t('consist.filter.cargo')}: {t('consist.filter.any')}</option>
-            {cargos.map((c) => (
+            {cargoList.map((c) => (
               <option key={c.label} value={c.label}>
                 {c.name}
               </option>
@@ -244,7 +245,7 @@ export default function ConsistPage() {
             onChange={(e) => store.setCargoLabel(e.target.value || null)}
           >
             <option value="">{t('consist.none')}</option>
-            {cargos.map((c) => (
+            {cargoList.map((c) => (
               <option key={c.label} value={c.label}>
                 {c.name}
               </option>

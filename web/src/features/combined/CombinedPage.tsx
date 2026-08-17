@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { cargoByLabel, economyById, trainsMeta } from '../../dataset';
+import { activeCargoByLabel, economyById, trainsMeta } from '../../dataset';
 import { t } from '../../i18n';
 import { num } from '../../components/format';
 import { Money } from '../../components/Money';
@@ -17,7 +17,7 @@ export default function CombinedPage() {
   const route = useRouteStore();
 
   const economy = economyById.get(route.economyId);
-  const cargo = cargoByLabel.get(route.cargoLabel) ?? null;
+  const cargo = activeCargoByLabel(game).get(route.cargoLabel) ?? null;
 
   const stats = useMemo(
     () => consistStats(consist.entries, cargo, calc.capacityIndex, trainsMeta, game, calc),
@@ -39,7 +39,9 @@ export default function CombinedPage() {
   // JGRPP: календарный год длиннее в dayLengthFactor раз
   const tripsPerYear = roundTripDays > 0 ? (365 * effectiveDayLength(game)) / roundTripDays : 0;
 
-  const payment = cargo && economy ? (cargo.initial_payment_by_economy[economy.id] ?? 0) : 0;
+  const payment = cargo
+    ? (cargo.initial_payment_by_economy[game.firs ? (economy?.id ?? '') : 'VANILLA'] ?? 0)
+    : 0;
   const incomePerTrip =
     cargo && payment
       ? transportedGoodsIncome(

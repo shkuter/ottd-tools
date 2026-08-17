@@ -6,6 +6,10 @@
 export interface GameSettings {
   /** Играем на JGR's Patchpack: доступны специфичные для патчпака настройки. */
   jgrpp: boolean;
+  /** Подключён NewGRF Iron Horse (иначе — ванильные поезда OpenTTD). */
+  ironHorse: boolean;
+  /** Подключён NewGRF FIRS 5 (иначе — ванильные грузы и индустрии). */
+  firs: boolean;
   /** vehicle.freight_trains: множитель веса грузов (1..255, def 1). */
   freightTrains: number;
   /** vehicle.train_slope_steepness: крутизна уклона в % (0..10, def 3). */
@@ -44,6 +48,8 @@ export interface GameSettings {
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
   jgrpp: false,
+  ironHorse: true,
+  firs: true,
   freightTrains: 1,
   slopeSteepness: 3,
   cargoAgingRate: 100,

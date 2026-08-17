@@ -19,6 +19,7 @@ venv:
 data:
 	$(PY) pipeline/extract_iron_horse.py
 	$(PY) pipeline/extract_firs.py
+	$(PY) pipeline/extract_vanilla.py
 	$(PY) pipeline/validate.py
 
 # картинки машин: рендер спрайтшитов (небыстро) + нарезка buy-menu спрайтов

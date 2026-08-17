@@ -15,7 +15,9 @@ Calculator for OpenTTD with the Iron Horse (Pony roster) and FIRS 5 NewGRF sets:
 
 - `pipeline/` — Python extractors: import Iron Horse and FIRS sources directly (no NewGRF
   compilation) and emit static JSON into `web/src/data/` + cargo icons into
-  `web/public/icons/`. Generated JSON is committed, so the web app builds without Python.
+  `web/public/icons/`. `extract_vanilla.py` also parses OpenTTD's own tables, so the
+  calculator keeps working with either NewGRF set switched off. Generated JSON is committed,
+  so the web app builds without Python.
 - `web/` — React 19 + Vite SPA. Game formulas live in `web/src/engine/` as pure TS with
   vitest tests.
 - `vendor/` — shallow clones of source repos (not committed, `make fetch`):

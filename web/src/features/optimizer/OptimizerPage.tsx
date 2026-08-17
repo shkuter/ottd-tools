@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useNavigate } from 'react-router';
-import { cargoByLabel, cargos, economies, trains, trainsMeta } from '../../dataset';
+import { activeCargos, activeTrains, economies, trainsMeta } from '../../dataset';
 import { t } from '../../i18n';
 import { num } from '../../components/format';
 import { Money } from '../../components/Money';
@@ -23,16 +23,23 @@ export default function OptimizerPage() {
   const consistStore = useConsistStore();
   const routeStore = useRouteStore();
 
-  const cargo = cargoByLabel.get(cargoLabel) ?? null;
+  // в селекте только грузы; если сохранённый груз не из активного набора — берём первый
+  const cargoList = useMemo(() => activeCargos(game).filter((c) => c.is_freight), [game]);
+  const cargo = useMemo(
+    () => cargoList.find((c) => c.label === cargoLabel) ?? cargoList[0] ?? null,
+    [cargoLabel, cargoList],
+  );
   // экономика, где груз существует (первая подходящая)
   const economyId = cargo
-    ? (economies.find((e) => cargo.initial_payment_by_economy[e.id] != null)?.id ?? null)
+    ? game.firs
+      ? (economies.find((e) => cargo.initial_payment_by_economy[e.id] != null)?.id ?? null)
+      : 'VANILLA'
     : null;
 
   const results = useMemo(() => {
     if (!cargo || !economyId) return [];
     return optimizeConsists(
-      trains,
+      activeTrains(game),
       {
         year,
         distanceTiles: distance,
@@ -77,8 +84,8 @@ export default function OptimizerPage() {
         </label>
         <label>
           {t('route.cargo')}
-          <select value={cargoLabel} onChange={(e) => setCargoLabel(e.target.value)}>
-            {cargos.filter((c) => c.is_freight).map((c) => (
+          <select value={cargo?.label ?? ''} onChange={(e) => setCargoLabel(e.target.value)}>
+            {cargoList.map((c) => (
               <option key={c.label} value={c.label}>{c.name}</option>
             ))}
           </select>
@@ -116,7 +123,7 @@ export default function OptimizerPage() {
       </div>
       {cargo && economyId && (
         <p className="hint">
-          {cargo.name} · {economies.find((e) => e.id === economyId)?.name} ·{' '}
+          {cargo.name} · {economies.find((e) => e.id === economyId)?.name ?? t('settings.vanilla')} ·{' '}
           {t('route.payment')}: {num(cargo.initial_payment_by_economy[economyId])} ·{' '}
           {t('opt.assumption')}
         </p>

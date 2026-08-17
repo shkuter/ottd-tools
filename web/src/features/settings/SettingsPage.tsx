@@ -107,6 +107,31 @@ export default function SettingsPage() {
       </section>
 
       <section className="settings-group">
+        <h3>{t('settings.newgrf')}</h3>
+        <p className="hint">{t('settings.newgrfHint')}</p>
+        <Row label={t('settings.ironHorse')} hint={t('settings.ironHorseHint')}>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={game.ironHorse}
+              onChange={(e) => setGame('ironHorse', e.target.checked)}
+            />
+            {game.ironHorse ? t('settings.on') : t('settings.off')}
+          </label>
+        </Row>
+        <Row label={t('settings.firs')} hint={t('settings.firsHint')}>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={game.firs}
+              onChange={(e) => setGame('firs', e.target.checked)}
+            />
+            {game.firs ? t('settings.on') : t('settings.off')}
+          </label>
+        </Row>
+      </section>
+
+      <section className="settings-group">
         <h3>{t('settings.display')}</h3>
         <Row label={t('settings.currency')} hint={t('settings.currencyHint')}>
           <select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)}>
