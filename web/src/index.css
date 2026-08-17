@@ -212,7 +212,7 @@ td:has(> .train-sprite) {
 
 .cargo-icon {
   image-rendering: pixelated;
-  vertical-align: -3px;
+  vertical-align: -1px;
   flex-shrink: 0;
 }
 

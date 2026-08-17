@@ -6,7 +6,7 @@ import SettingsPage from './features/settings/SettingsPage';
 import RoutePage from './features/route/RoutePage';
 import FirsPage from './features/firs/FirsPage';
 import { datasetMeta } from './dataset';
-import { t } from './i18n';
+import { t, useLocale } from './i18n';
 import { useSettingsStore } from './state/settingsStore';
 import { useSkinStore } from './state/skinStore';
 import { Warning } from './components/Warning';
@@ -23,6 +23,8 @@ export default function App() {
   const inflation = useSettingsStore((s) => s.game.inflation);
   const firs = useSettingsStore((s) => s.game.firs);
   const skin = useSkinStore((s) => s.skin);
+  // t() reads the locale outside React, so the whole tree re-renders from here
+  const locale = useLocale();
 
   // skin.css hangs off data-skin; the original dark theme is the bare :root
   useEffect(() => {
@@ -33,6 +35,10 @@ export default function App() {
       root.dataset.skin = skin;
     }
   }, [skin]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   return (
     <div className="app">

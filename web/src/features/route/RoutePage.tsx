@@ -7,7 +7,8 @@ import {
   economyById,
   trainsMeta,
 } from '../../dataset';
-import { t } from '../../i18n';
+import { t, useLocale } from '../../i18n';
+import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { money, num } from '../../components/format';
 import { Money } from '../../components/Money';
 import { CargoIcon } from '../consist/ConsistPage';
@@ -28,11 +29,12 @@ export default function RoutePage() {
   const route = useRouteStore();
   const consist = useConsistStore();
   const { game, calc } = useSettingsStore();
+  const locale = useLocale();
 
   const economy = economyById.get(route.economyId) ?? economies[0];
   const economyCargos = useMemo(
-    () => (game.firs ? cargosOfEconomy(economy) : activeCargos(game)),
-    [economy, game],
+    () => sortCargos(game.firs ? cargosOfEconomy(economy) : activeCargos(game), locale),
+    [economy, game, locale],
   );
   const cargo = activeCargoByLabel(game).get(route.cargoLabel) ?? economyCargos[0];
 
@@ -169,7 +171,7 @@ export default function RoutePage() {
             <select value={cargo?.label ?? ''} onChange={(e) => route.setCargoLabel(e.target.value)}>
               {economyCargos.map((c) => (
                 <option key={c.label} value={c.label}>
-                  {c.name}
+                  {cargoName(c)}
                 </option>
               ))}
             </select>
@@ -206,7 +208,7 @@ export default function RoutePage() {
         {consistDays != null && (
           <button className="btn-link" onClick={() => route.setManualDays(null)}>
             {t('route.daysFromConsist')}: {num(consistDays, 1)} {t('combined.days')} (
-            {stats.balancingSpeedMph} mph)
+            {stats.balancingSpeedMph} {t('units.mph')})
           </button>
         )}
 
@@ -255,8 +257,9 @@ export default function RoutePage() {
         ) : (
           <>
             <p className="hint">
-              {cargo?.name} · {num(route.distanceTiles)} {t('consist.stats.tiles')} ·{' '}
-              {stats.balancingSpeedMph} mph · {num(stats.capacityForCargo)} {cargo?.units}
+              {cargoName(cargo)} · {num(route.distanceTiles)} {t('consist.stats.tiles')} ·{' '}
+              {stats.balancingSpeedMph} {t('units.mph')} · {num(stats.capacityForCargo)}{' '}
+              {cargoUnits(cargo?.units)}
             </p>
             <dl className="stats stats-wide">
               <dt>{t('combined.roundTrip')}</dt>

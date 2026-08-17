@@ -3,7 +3,8 @@ import { useOptimizerStore } from '../../state/optimizerStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useNavigate } from 'react-router';
 import { activeCargos, activeTrains, economies, trainsMeta } from '../../dataset';
-import { t } from '../../i18n';
+import { t, useLocale } from '../../i18n';
+import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { num } from '../../components/format';
 import { Money } from '../../components/Money';
 import { optimizeConsists } from '../../engine/optimize';
@@ -19,12 +20,16 @@ export default function OptimizerPage() {
   const [engineFilter, setEngineFilter] = useState('');
   const [subsidised, setSubsidised] = useState(false);
   const { game, calc } = useSettingsStore();
+  const locale = useLocale();
   const navigate = useNavigate();
   const consistStore = useConsistStore();
   const routeStore = useRouteStore();
 
   // в селекте только грузы; если сохранённый груз не из активного набора — берём первый
-  const cargoList = useMemo(() => activeCargos(game).filter((c) => c.is_freight), [game]);
+  const cargoList = useMemo(
+    () => sortCargos(activeCargos(game), locale),
+    [game, locale],
+  );
   const cargo = useMemo(
     () => cargoList.find((c) => c.label === cargoLabel) ?? cargoList[0] ?? null,
     [cargoLabel, cargoList],
@@ -88,7 +93,7 @@ export default function OptimizerPage() {
             <CargoIcon icon={cargo?.icon ?? ''} />
             <select value={cargo?.label ?? ''} onChange={(e) => setCargoLabel(e.target.value)}>
               {cargoList.map((c) => (
-                <option key={c.label} value={c.label}>{c.name}</option>
+                <option key={c.label} value={c.label}>{cargoName(c)}</option>
               ))}
             </select>
           </span>
@@ -128,7 +133,7 @@ export default function OptimizerPage() {
       </div>
       {cargo && economyId && (
         <p className="hint">
-          {cargo.name} · {economies.find((e) => e.id === economyId)?.name ?? t('settings.vanilla')} ·{' '}
+          {cargoName(cargo)} · {economies.find((e) => e.id === economyId)?.name ?? t('settings.vanilla')} ·{' '}
           {t('route.payment')}: {num(cargo.initial_payment_by_economy[economyId])} ·{' '}
           {t('opt.assumption')}
         </p>
@@ -161,13 +166,13 @@ export default function OptimizerPage() {
                 <td><TrainImage trainId={r.engine.id} /></td>
                 <td>
                   {r.engineCount > 1 ? `${r.engineCount}× ` : ''}{r.engine.name}
-                  <span className="dim"> ({r.engine.power_hp * r.engineCount} hp)</span>
+                  <span className="dim"> ({r.engine.power_hp * r.engineCount} {t('units.hp')})</span>
                 </td>
                 <td><TrainImage trainId={r.wagon.id} /></td>
                 <td>{r.wagonCount}× {r.wagon.name}</td>
-                <td>{num(r.capacity)} {cargo?.units}</td>
-                <td>{r.loadedSpeedMph} / {r.emptySpeedMph} mph</td>
-                <td>{r.gradeSpeedMph} mph</td>
+                <td>{num(r.capacity)} {cargoUnits(cargo?.units)}</td>
+                <td>{r.loadedSpeedMph} / {r.emptySpeedMph} {t('units.mph')}</td>
+                <td>{r.gradeSpeedMph} {t('units.mph')}</td>
                 <td>{num(r.loadingDays, 1)} {t('combined.days')}</td>
                 <td>{num(r.roundTripDays, 1)} {t('combined.days')}</td>
                 <td>{num(r.tripsPerYear, 1)}</td>

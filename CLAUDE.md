@@ -18,6 +18,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   UI-фичи в `web/src/features/`, zustand-сторы (persist в localStorage) в `web/src/state/`.
   i18n: все UI-строки через `t()` из `web/src/i18n/`.
 
+## Локализация
+
+- Языки: `web/src/i18n/en.json` + `ru.json`, выбранный язык — в `state/localeStore.ts`
+  (отдельно от `GameSettings`/`CalcSettings`, как и скин: язык не меняет расчёт).
+  `t()` читает стор вне React, поэтому `App` подписан через `useLocale()` — от него
+  перерисовывается дерево. Строки, попадающие в `useMemo`, переводить **в момент рендера**
+  (заголовки таблицы каталога — `header: () => t('table.name')`), иначе застрянут на старом языке.
+- Названия настроек взяты из русской локали самой игры (`vendor/openttd/src/lang/russian.txt`,
+  JGRPP — `vendor/openttd-patches/src/lang/extra/russian.txt`), чтобы пользователь находил их
+  один в один в своей игре. Новую настройку переводить так же, а не «по смыслу».
+- Названия грузов и предприятий — данные NewGRF, а FIRS поставляется только с `english.lng`,
+  поэтому русские названия лежат в `web/src/i18n/cargos.ru.json` и `industries.ru.json`
+  (совпадающие с ванилью — из `STR_CARGO_PLURAL_*` / `STR_INDUSTRY_NAME_*` игры), а
+  подставляются хелперами `i18n/names.ts`: `cargoName()`, `cargoUnits()`, `industryName()`,
+  `sortCargos()` и `localiseDot()`. В dot-графе FIRS id узла — это label груза (`ACID`) или id
+  предприятия (`coal_mine`), поэтому подмена идёт по id и трогает только `label=`; рёбра
+  ссылаются на id и не страдают. Формат чисел и сортировка следуют языку (`intlLocale()`).
+- Списки грузов в фильтрах сортируются по отображаемому названию, поэтому `sortCargos()`
+  принимает локаль **аргументом**: вызовы мемоизированы, и так локаль становится честной
+  зависимостью `useMemo` (иначе список застрянет в старом языке, а линтер будет ругаться).
+- `i18n/__tests__/locales.test.ts` падает, если в `ru.json` нет ключа из `en.json`, строка не
+  переведена или в данных появился груз, единица или предприятие без записи в словаре — то есть
+  после обновления FIRS тест сам покажет, что переводить.
+
 Вкладки: Best train (оптимизатор), Consist builder, Route income (доход рейса + прибыльность
 собранного состава), FIRS chains, Settings.
 

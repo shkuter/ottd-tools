@@ -5,7 +5,8 @@ import {
   economyById,
   industryById,
 } from '../../dataset';
-import { t } from '../../i18n';
+import { t, useLocale } from '../../i18n';
+import { cargoName, cargoUnits, industryName, localiseDot } from '../../i18n/names';
 import { num } from '../../components/format';
 import { CargoIcon } from '../consist/ConsistPage';
 import { useFirsStore } from '../../state/firsStore';
@@ -41,7 +42,7 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
   if (industry) {
     const eco = industry.economies[economyId];
     if (!eco) return null;
-    const name = industry.name_by_economy?.[economyId] ?? industry.name;
+    const name = industryName(industry, economyId);
     return (
       <div className="node-card">
         <h3>{name}</h3>
@@ -80,10 +81,10 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
     return (
       <div className="node-card">
         <h3>
-          <CargoIcon icon={cargo.icon} /> {cargo.name}
+          <CargoIcon icon={cargo.icon} /> {cargoName(cargo)}
         </h3>
         <p className="hint">
-          {cargo.classes.join(', ')} · {cargo.units}
+          {cargo.classes.join(', ')} · {cargoUnits(cargo.units)}
         </p>
         <p>
           {t('firs.cargo.payment')}: {num(cargo.initial_payment_by_economy[economyId] ?? 0)} ·{' '}
@@ -92,13 +93,13 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
         <h4>{t('firs.cargo.producedBy')}</h4>
         <ul>
           {producers.map((id) => (
-            <li key={id}>{industryById.get(id)?.name ?? id}</li>
+            <li key={id}>{industryName(industryById.get(id)) || id}</li>
           ))}
         </ul>
         <h4>{t('firs.cargo.acceptedBy')}</h4>
         <ul>
           {consumers.map((id) => (
-            <li key={id}>{industryById.get(id)?.name ?? id}</li>
+            <li key={id}>{industryName(industryById.get(id)) || id}</li>
           ))}
         </ul>
       </div>
@@ -109,12 +110,14 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
 
 function CargoName({ label }: { label: string }) {
   const cargo = cargoByLabel.get(label);
-  return <span>{cargo?.name ?? label}</span>;
+  return <span>{cargo ? cargoName(cargo) : label}</span>;
 }
 
 export default function FirsPage() {
   const { economyId, selectedNode, setEconomyId, setSelectedNode } = useFirsStore();
   const economy = economyById.get(economyId) ?? economies[0];
+  // node labels are baked into the rendered SVG, so it has to be redrawn on switch
+  const locale = useLocale();
   const [svg, setSvg] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -123,12 +126,12 @@ export default function FirsPage() {
     // graphviz-wasm (~1 МБ) грузим лениво только на этой вкладке
     import('@hpcc-js/wasm-graphviz').then(async ({ Graphviz }) => {
       const graphviz = await Graphviz.load();
-      if (!cancelled) setSvg(graphviz.dot(economy.graph.dot));
+      if (!cancelled) setSvg(graphviz.dot(localiseDot(economy.graph.dot)));
     });
     return () => {
       cancelled = true;
     };
-  }, [economy]);
+  }, [economy, locale]);
 
   const highlight = useMemo(
     () => (selectedNode ? chainNodes(economy, selectedNode) : null),

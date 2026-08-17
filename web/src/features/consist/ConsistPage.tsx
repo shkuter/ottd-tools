@@ -9,7 +9,8 @@ import {
 } from '@tanstack/react-table';
 import { activeCargoByLabel, activeCargos, activeTrains, canCarryIn, trainsMeta } from '../../dataset';
 import type { Train } from '../../types';
-import { t } from '../../i18n';
+import { t, useLocale } from '../../i18n';
+import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { money, num } from '../../components/format';
 import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
@@ -53,8 +54,8 @@ export function CargoIcon({ icon }: { icon: string }) {
       className="cargo-icon"
       src={`${import.meta.env.BASE_URL}${icon}`}
       alt=""
-      width={20}
-      height={20}
+      width={10}
+      height={10}
       loading="lazy"
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = 'none';
@@ -108,7 +109,8 @@ export default function ConsistPage() {
   const [cargoFilter, setCargoFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'intro_year', desc: false }]);
 
-  const cargoList = useMemo(() => activeCargos(game), [game]);
+  const locale = useLocale();
+  const cargoList = useMemo(() => sortCargos(activeCargos(game), locale), [game, locale]);
   const filtered = useMemo(() => {
     const cargo = cargoFilter ? activeCargoByLabel(game).get(cargoFilter) : null;
     return activeTrains(game).filter((train) => {
@@ -129,35 +131,35 @@ export default function ConsistPage() {
         header: '',
         cell: (info) => <TrainImage trainId={info.row.original.id} />,
       }),
-      columnHelper.accessor('name', { header: t('table.name') }),
-      columnHelper.accessor('intro_year', { id: 'intro_year', header: t('table.year') }),
+      columnHelper.accessor('name', { header: () => t('table.name') }),
+      columnHelper.accessor('intro_year', { id: 'intro_year', header: () => t('table.year') }),
       columnHelper.accessor('power_hp', {
-        header: t('table.power'),
-        cell: (info) => (info.getValue() ? `${num(info.getValue())} hp` : '—'),
+        header: () => t('table.power'),
+        cell: (info) => (info.getValue() ? `${num(info.getValue())} ${t('units.hp')}` : '—'),
       }),
       columnHelper.accessor((row) => row.speed_mph ?? 0, {
         id: 'speed',
-        header: t('table.speed'),
-        cell: (info) => (info.getValue() ? `${info.getValue()} mph` : '—'),
+        header: () => t('table.speed'),
+        cell: (info) => (info.getValue() ? `${info.getValue()} ${t('units.mph')}` : '—'),
       }),
       columnHelper.accessor('weight_t', {
-        header: t('table.weight'),
-        cell: (info) => `${num(info.getValue())} t`,
+        header: () => t('table.weight'),
+        cell: (info) => `${num(info.getValue())} ${t('units.t')}`,
       }),
       columnHelper.accessor((row) => row.capacities[calc.capacityIndex] ?? 0, {
         id: 'capacity',
-        header: t('table.capacity'),
+        header: () => t('table.capacity'),
         cell: (info) => (info.getValue() ? num(info.getValue()) : '—'),
       }),
       columnHelper.accessor((row) => trainBuyCost(row, game, calc), {
         id: 'cost',
-        header: t('table.cost'),
+        header: () => t('table.cost'),
         cell: (info) => money(info.getValue()),
         meta: { className: 'cell-money' },
       }),
       columnHelper.accessor((row) => trainRunningCost(row, game, calc), {
         id: 'running',
-        header: t('table.running'),
+        header: () => t('table.running'),
         cell: (info) => money(info.getValue()),
         meta: { className: 'cell-money' },
       }),
@@ -221,7 +223,7 @@ export default function ConsistPage() {
               <option value="">{t('consist.filter.cargo')}: {t('consist.filter.any')}</option>
               {cargoList.map((c) => (
                 <option key={c.label} value={c.label}>
-                  {c.name}
+                  {cargoName(c)}
                 </option>
               ))}
             </select>
@@ -302,7 +304,7 @@ export default function ConsistPage() {
               <option value="">{t('consist.none')}</option>
               {cargoList.map((c) => (
                 <option key={c.label} value={c.label}>
-                  {c.name}
+                  {cargoName(c)}
                 </option>
               ))}
             </select>
@@ -312,26 +314,34 @@ export default function ConsistPage() {
         {store.entries.length > 0 && (
           <dl className="stats">
             <dt>{t('consist.stats.power')}</dt>
-            <dd>{num(stats.powerHp)} hp</dd>
+            <dd>
+              {num(stats.powerHp)} {t('units.hp')}
+            </dd>
             <dt>{t('consist.stats.maxTe')}</dt>
-            <dd>{num(stats.maxTeN / 1000, 1)} kN</dd>
+            <dd>
+              {num(stats.maxTeN / 1000, 1)} {t('units.kN')}
+            </dd>
             <dt>{t('consist.stats.weight')}</dt>
             <dd>
-              {num(stats.emptyWeightT)} / {num(stats.loadedWeightT)} t
+              {num(stats.emptyWeightT)} / {num(stats.loadedWeightT)} {t('units.t')}
             </dd>
             <dt>{t('consist.stats.length')}</dt>
             <dd>
               {num(stats.lengthTiles, 2)} {t('consist.stats.tiles')}
             </dd>
             <dt>{t('consist.stats.speedLimit')}</dt>
-            <dd>{stats.speedLimitMph ? `${stats.speedLimitMph} mph` : '—'}</dd>
+            <dd>{stats.speedLimitMph ? `${stats.speedLimitMph} ${t('units.mph')}` : '—'}</dd>
             <dt>{t('consist.stats.balancing')}</dt>
-            <dd>{stats.balancingSpeedMph} mph</dd>
+            <dd>
+              {stats.balancingSpeedMph} {t('units.mph')}
+            </dd>
             <dt>{t('consist.stats.balancingGrade')}</dt>
-            <dd>{stats.balancingSpeedOnGradeMph} mph</dd>
+            <dd>
+              {stats.balancingSpeedOnGradeMph} {t('units.mph')}
+            </dd>
             <dt>{t('consist.stats.capacity')}</dt>
             <dd>
-              {num(stats.capacityForCargo)} {cargo?.units ?? ''}
+              {num(stats.capacityForCargo)} {cargoUnits(cargo?.units)}
             </dd>
             <dt>{t('consist.stats.buyCost')}</dt>
             <dd>{money(stats.buyCostTotal)}</dd>

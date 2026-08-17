@@ -8,6 +8,7 @@ import { useRouteStore } from '../../state/routeStore';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useFirsStore } from '../../state/firsStore';
 import { useSkinStore, type Skin } from '../../state/skinStore';
+import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 import { paletteSource } from '../../skin';
 
 function Row({
@@ -33,6 +34,7 @@ function Row({
 export default function SettingsPage() {
   const { currency, game, calc, setCurrency, setGame, setCalc, reset } = useSettingsStore();
   const { skin, setSkin } = useSkinStore();
+  const { locale, setLocale } = useLocaleStore();
 
   function resetAll() {
     reset();
@@ -209,6 +211,15 @@ export default function SettingsPage() {
 
       <section className="settings-group">
         <h3>{t('settings.display')}</h3>
+        <Row label={t('settings.language')} hint={t('settings.languageHint')}>
+          <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
+            {Object.entries(LOCALES).map(([code, l]) => (
+              <option key={code} value={code}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </Row>
         <Row label={t('settings.currency')} hint={t('settings.currencyHint')}>
           <select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)}>
             {Object.entries(CURRENCIES).map(([code, c]) => (
@@ -373,7 +384,7 @@ export default function SettingsPage() {
             {trainsMeta.capacity_param_multipliers.map((m, i) => (
               <option key={i} value={i}>
                 ×{m}
-                {i === 2 ? ' (default)' : ''}
+                {i === 2 ? ` (${t('settings.default')})` : ''}
               </option>
             ))}
           </select>
