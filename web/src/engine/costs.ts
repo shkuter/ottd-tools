@@ -25,11 +25,12 @@ export function price(
   /** Множитель сложности: difficulty.construction_cost / vehicle_costs. */
   difficultyFactor = 1,
   inflationInterest = 2,
+  inflationFixedDates = true,
 ): number {
   const base = Math.floor(
     BASE_PRICES[baseKey] *
       difficultyFactor *
-      inflationFactors(year, inflationOn, inflationInterest).price,
+      inflationFactors(year, inflationOn, inflationInterest, inflationFixedDates).price,
   );
   // GetPrice: (base * factor) со сдвигом (grfShift - 8) одной операцией
   const totalShift = grfShift - 8;
@@ -47,9 +48,10 @@ export function buyCost(
   inflationOn = false,
   difficultyFactor = 1,
   inflationInterest = 2,
+  inflationFixedDates = true,
 ): number {
   const key = kind === 'engine' ? 'build_engine' : 'build_wagon';
-  return price(key, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest);
+  return price(key, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest, inflationFixedDates);
 }
 
 export function runningCostPerYear(
@@ -60,8 +62,9 @@ export function runningCostPerYear(
   inflationOn = false,
   difficultyFactor = 1,
   inflationInterest = 2,
+  inflationFixedDates = true,
 ): number {
-  return price(baseKey, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest);
+  return price(baseKey, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest, inflationFixedDates);
 }
 
 /** Iron Horse: running_cost_base из trains.json -> ключ базовой цены. */

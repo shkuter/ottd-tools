@@ -15,6 +15,12 @@ import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
 import { buyCost, runningBaseKey, runningCostPerYear } from '../../engine/costs';
+import {
+  difficultyPriceFactor,
+  effectiveDayLength,
+  type CalcSettings,
+  type GameSettings,
+} from '../../engine/settings';
 
 const columnHelper = createColumnHelper<Train>();
 
@@ -33,19 +39,40 @@ export function TrainImage({ trainId }: { trainId: string }) {
   );
 }
 
-function trainBuyCost(train: Train): number {
+function trainBuyCost(train: Train, game: GameSettings, calc: CalcSettings): number {
   const shift =
     train.kind === 'engine'
       ? trainsMeta.basecost_shifts.build_engine
       : trainsMeta.basecost_shifts.build_wagon;
-  return buyCost(train.kind, train.cost_factor, shift);
+  return buyCost(
+    train.kind,
+    train.cost_factor,
+    shift,
+    calc.priceYear,
+    game.inflation,
+    difficultyPriceFactor(game.constructionCost) *
+      (train.kind === 'engine' ? game.basecostLocomotive : game.basecostWagon),
+    game.inflationInterest,
+    game.inflationFixedDates,
+  );
 }
 
-function trainRunningCost(train: Train): number {
+function trainRunningCost(train: Train, game: GameSettings, calc: CalcSettings): number {
   const shift = train.running_cost_base.includes('STEAM')
     ? trainsMeta.basecost_shifts.running_steam
     : trainsMeta.basecost_shifts.running_diesel;
-  return runningCostPerYear(runningBaseKey(train.running_cost_base), train.running_cost_factor, shift);
+  return (
+    runningCostPerYear(
+      runningBaseKey(train.running_cost_base),
+      train.running_cost_factor,
+      shift,
+      calc.priceYear,
+      game.inflation,
+      difficultyPriceFactor(game.vehicleCosts),
+      game.inflationInterest,
+      game.inflationFixedDates,
+    ) * effectiveDayLength(game)
+  );
 }
 
 export default function ConsistPage() {
@@ -99,13 +126,13 @@ export default function ConsistPage() {
         header: t('table.capacity'),
         cell: (info) => (info.getValue() ? num(info.getValue()) : '—'),
       }),
-      columnHelper.accessor((row) => trainBuyCost(row), {
+      columnHelper.accessor((row) => trainBuyCost(row, game, calc), {
         id: 'cost',
         header: t('table.cost'),
         cell: (info) => money(info.getValue()),
         meta: { className: 'cell-money' },
       }),
-      columnHelper.accessor((row) => trainRunningCost(row), {
+      columnHelper.accessor((row) => trainRunningCost(row, game, calc), {
         id: 'running',
         header: t('table.running'),
         cell: (info) => money(info.getValue()),
@@ -121,7 +148,7 @@ export default function ConsistPage() {
         ),
       }),
     ],
-    [calc.capacityIndex, store.add],
+    [calc, game, store.add],
   );
 
   const table = useReactTable({

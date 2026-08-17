@@ -9,7 +9,12 @@ import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
 import { transportedGoodsIncome } from '../../engine/income';
 import { daysForDistance, mphToInternal, transitPeriodsFromDays } from '../../engine/units';
-import { daysPerEconomyYear, effectiveDayLength } from '../../engine/settings';
+import {
+  daysPerEconomyYear,
+  effectiveDayLength,
+  loadingTicks,
+  stoppedCostDivisor,
+} from '../../engine/settings';
 
 export default function CombinedPage() {
   const consist = useConsistStore();
@@ -35,7 +40,23 @@ export default function CombinedPage() {
 
   const speedInternal = mphToInternal(stats.balancingSpeedMph);
   const oneWayDays = daysForDistance(route.distanceTiles, speedInternal);
-  const roundTripDays = oneWayDays * 2;
+  // стоянки: погрузка и разгрузка по самому медленному вагону состава
+  const loadingDays =
+    (2 *
+      Math.max(
+        0,
+        ...consist.entries
+          .filter((e) => e.train.kind === 'wagon')
+          .map((e) =>
+            loadingTicks(
+              e.train.capacities[calc.capacityIndex] ?? 0,
+              e.train.loading_speed ?? 0,
+              game,
+            ),
+          ),
+      )) /
+    74;
+  const roundTripDays = oneWayDays * 2 + loadingDays;
   // JGRPP: календарный год длиннее в dayLengthFactor раз
   const tripsPerYear = roundTripDays > 0 ? (daysPerEconomyYear(game) * effectiveDayLength(game)) / roundTripDays : 0;
 
@@ -54,7 +75,10 @@ export default function CombinedPage() {
         )
       : 0;
 
-  const profitPerYear = incomePerTrip * tripsPerYear - stats.runningCostTotal;
+  const stoppedShare = roundTripDays > 0 ? loadingDays / roundTripDays : 0;
+  const runningPerYear =
+    stats.runningCostTotal * (1 - stoppedShare + stoppedShare / stoppedCostDivisor(game));
+  const profitPerYear = incomePerTrip * tripsPerYear - runningPerYear;
   const profitPerTile = stats.lengthTiles > 0 ? profitPerYear / stats.lengthTiles : 0;
   const payback = profitPerYear > 0 ? stats.buyCostTotal / profitPerYear : null;
 
@@ -75,7 +99,7 @@ export default function CombinedPage() {
         <dt>{t('combined.incomePerTrip')}</dt>
         <dd><Money value={incomePerTrip} /></dd>
         <dt>{t('combined.runningCost')}</dt>
-        <dd><Money value={stats.runningCostTotal} /></dd>
+        <dd><Money value={runningPerYear} /></dd>
         <dt>{t('combined.profitPerYear')}</dt>
         <dd className={profitPerYear >= 0 ? 'big profit' : 'big loss'}><Money value={profitPerYear} /></dd>
         <dt>{t('combined.profitPerTile')}</dt>

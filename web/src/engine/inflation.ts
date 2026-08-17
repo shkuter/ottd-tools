@@ -38,11 +38,15 @@ function buildTables(interest: number): { price: number[]; payment: number[] } {
   return { price, payment };
 }
 
-/** Множители инфляции на начало года (initial_interest: 2..4, def 2). */
+/**
+ * Множители инфляции на начало года (initial_interest: 2..4, def 2).
+ * fixedDates=false (JGRPP) — инфляция не замирает после 2090.
+ */
 export function inflationFactors(
   year: number,
   inflationOn: boolean,
   interest = 2,
+  fixedDates = true,
 ): InflationFactors {
   if (!inflationOn) return { price: 1, payment: 1 };
   let table = tables.get(interest);
@@ -50,7 +54,8 @@ export function inflationFactors(
     table = buildTables(interest);
     tables.set(interest, table);
   }
-  const idx = Math.min(Math.max(year, BASE_YEAR), MAX_YEAR) - BASE_YEAR;
+  const capped = fixedDates ? Math.min(year, MAX_YEAR) : year;
+  const idx = Math.min(Math.max(capped, BASE_YEAR), MAX_YEAR) - BASE_YEAR;
   return {
     price: table.price[idx] / FIXED_ONE,
     payment: table.payment[idx] / FIXED_ONE,

@@ -128,6 +128,7 @@ export function consistStats(
         difficultyPriceFactor(game.constructionCost) *
           (train.kind === 'engine' ? game.basecostLocomotive : game.basecostWagon),
         game.inflationInterest,
+        game.inflationFixedDates,
       );
     running +=
       count *
@@ -139,6 +140,7 @@ export function consistStats(
         game.inflation,
         difficultyPriceFactor(game.vehicleCosts),
         game.inflationInterest,
+        game.inflationFixedDates,
       ) *
       // JGRPP: running cost начисляется по тикам, календарный год длиннее в N раз
       effectiveDayLength(game);

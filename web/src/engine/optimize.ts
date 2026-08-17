@@ -99,6 +99,7 @@ function moneyFor(
         difficultyPriceFactor(game.constructionCost) *
           (train.kind === 'engine' ? game.basecostLocomotive : game.basecostWagon),
         game.inflationInterest,
+        game.inflationFixedDates,
       );
     running +=
       count *
@@ -110,6 +111,7 @@ function moneyFor(
         game.inflation,
         difficultyPriceFactor(game.vehicleCosts),
         game.inflationInterest,
+        game.inflationFixedDates,
       ) *
       effectiveDayLength(game);
   }
