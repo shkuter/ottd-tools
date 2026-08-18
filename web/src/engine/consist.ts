@@ -6,7 +6,7 @@ import type { Cargo, ConsistEntry, TrainsMeta } from '../types';
 import { consistMoney } from './costs';
 import type { ConsistPhysics } from './physics';
 import { balancingSpeed } from './physics';
-import { mphToInternal } from './units';
+import { internalToMph, mphToInternal } from './units';
 import { canCarryIn } from '../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
@@ -112,7 +112,7 @@ export function consistStats(
     ...stats,
     buyCostTotal: buy,
     runningCostTotal: running,
-    balancingSpeedMph: Math.floor((flat * 10) / 16),
-    balancingSpeedOnGradeMph: Math.floor((grade * 10) / 16),
+    balancingSpeedMph: internalToMph(flat),
+    balancingSpeedOnGradeMph: internalToMph(grade),
   };
 }

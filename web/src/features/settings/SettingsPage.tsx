@@ -3,10 +3,7 @@ import { Warning } from '../../components/Warning';
 import { t } from '../../i18n';
 import { CURRENCIES, useSettingsStore, type CurrencyCode } from '../../state/settingsStore';
 import { BASECOST_MULTIPLIERS } from '../../engine/settings';
-import { useConsistStore } from '../../state/consistStore';
-import { useRouteStore } from '../../state/routeStore';
-import { useOptimizerStore } from '../../state/optimizerStore';
-import { useFirsStore } from '../../state/firsStore';
+import { resetPersistedState } from '../../state';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 
 function Row({
@@ -30,19 +27,11 @@ function Row({
 }
 
 export default function SettingsPage() {
-  const { currency, game, calc, setCurrency, setGame, setCalc, reset } = useSettingsStore();
+  const { currency, game, calc, setCurrency, setGame, setCalc } = useSettingsStore();
   const { locale, setLocale } = useLocaleStore();
 
   function resetAll() {
-    reset();
-    useConsistStore.getState().clear();
-    // сбрасываем и остальные сохранённые состояния
-    ['ottd-tools-route', 'ottd-tools-optimizer', 'ottd-tools-firs', 'ottd-tools-consist'].forEach(
-      (key) => localStorage.removeItem(key),
-    );
-    useRouteStore.persist?.clearStorage?.();
-    useOptimizerStore.persist?.clearStorage?.();
-    useFirsStore.persist?.clearStorage?.();
+    resetPersistedState();
     location.reload();
   }
 

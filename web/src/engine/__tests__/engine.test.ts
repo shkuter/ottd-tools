@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { timeFactor, transportedGoodsIncome } from '../income';
+import { incomeCurve, timeFactor, transportedGoodsIncome } from '../income';
 import { inflationFactors } from '../inflation';
 import {
   buyCost,
@@ -18,7 +18,7 @@ import {
   transitPeriodsFromDays,
 } from '../units';
 import { optimizeConsists } from '../optimize';
-import { trains, trainsMeta, cargoByLabel } from '../../dataset';
+import { trains, trainsMeta, cargoByLabel, economyIdForCargo, VANILLA_ECONOMY_ID } from '../../dataset';
 import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../settings';
 
 describe('costs', () => {
@@ -99,6 +99,36 @@ describe('деньги машины и состава', () => {
 
   it('пустой состав стоит ноль', () => {
     expect(consistMoney([], meta)).toEqual({ buy: 0, running: 0 });
+  });
+});
+
+describe('incomeCurve', () => {
+  const spec = { currentPayment: 5000, transitPeriods: [7, 255] as [number, number] };
+
+  it('121 точка от нуля, доход не возрастает по времени', () => {
+    const c = incomeCurve(100, 50, 20, spec);
+    expect(c.length).toBe(121);
+    expect(c[0].days).toBe(0);
+    for (let i = 1; i < c.length; i++) expect(c[i].income).toBeLessThanOrEqual(c[i - 1].income);
+  });
+
+  it('диапазон не короче 2.5× текущего времени и 50 дней', () => {
+    expect(incomeCurve(1, 1, 400, spec).at(-1)!.days).toBeCloseTo(1000, 6);
+    expect(incomeCurve(1, 1, 0, { currentPayment: 1, transitPeriods: [1, 1] }).at(-1)!.days).toBeCloseTo(50, 6);
+  });
+});
+
+describe('economyIdForCargo', () => {
+  const coal = cargoByLabel.get('COAL')!;
+  it('без FIRS — VANILLA', () => {
+    expect(economyIdForCargo({ ...DEFAULT_GAME_SETTINGS, firs: false }, coal)).toBe(VANILLA_ECONOMY_ID);
+  });
+  it('с FIRS — первая экономика с грузом, предпочтение уважается', () => {
+    const first = economyIdForCargo(DEFAULT_GAME_SETTINGS, coal);
+    expect(first).not.toBeNull();
+    expect(coal.initial_payment_by_economy[first!]).toBeDefined();
+    expect(economyIdForCargo(DEFAULT_GAME_SETTINGS, coal, 'STEELTOWN')).toBe('STEELTOWN');
+    expect(economyIdForCargo(DEFAULT_GAME_SETTINGS, coal, 'NOPE')).toBe(first);
   });
 });
 

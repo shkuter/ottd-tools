@@ -23,6 +23,7 @@ const columnHelper = createColumnHelper<Train>();
 
 export default function ConsistPage() {
   const store = useConsistStore();
+  const addToConsist = useConsistStore((s) => s.add);
   const { game, calc } = useSettingsStore();
   const [kindFilter, setKindFilter] = useState<'all' | 'engine' | 'wagon'>('all');
   const [search, setSearch] = useState('');
@@ -92,13 +93,13 @@ export default function ConsistPage() {
         id: 'add',
         header: '',
         cell: (info) => (
-          <button className="btn-add" onClick={() => store.add(info.row.original.id)}>
+          <button className="btn-add" onClick={() => addToConsist(info.row.original.id)}>
             +
           </button>
         ),
       }),
     ],
-    [calc, game, store.add],
+    [calc, game, addToConsist],
   );
 
   const table = useReactTable({

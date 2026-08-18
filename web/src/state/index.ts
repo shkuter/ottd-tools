@@ -1,0 +1,24 @@
+/**
+ * Registry of persisted stores. The settings page resets everything through this list,
+ * so a new store only needs to be added here to be covered by "reset all".
+ */
+import { useConsistStore } from './consistStore';
+import { useFirsStore } from './firsStore';
+import { useOptimizerStore } from './optimizerStore';
+import { useRouteStore } from './routeStore';
+import { useSettingsStore } from './settingsStore';
+
+const PERSISTED_STORES = [
+  useSettingsStore,
+  useConsistStore,
+  useRouteStore,
+  useOptimizerStore,
+  useFirsStore,
+] as const;
+
+/** Wipe every persisted store from localStorage; the caller reloads the page. */
+export function resetPersistedState(): void {
+  useSettingsStore.getState().reset();
+  useConsistStore.getState().clear();
+  for (const store of PERSISTED_STORES) store.persist.clearStorage();
+}

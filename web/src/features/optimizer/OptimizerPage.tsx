@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useNavigate } from 'react-router';
-import { activeCargos, activeTrains, economies, trainsMeta } from '../../dataset';
+import { activeCargos, activeTrains, economies, economyIdForCargo, trainsMeta } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { num } from '../../components/format';
@@ -83,12 +83,7 @@ export default function OptimizerPage() {
     () => cargoList.find((c) => c.label === cargoLabel) ?? cargoList[0] ?? null,
     [cargoLabel, cargoList],
   );
-  // экономика, где груз существует (первая подходящая)
-  const economyId = cargo
-    ? game.firs
-      ? (economies.find((e) => cargo.initial_payment_by_economy[e.id] != null)?.id ?? null)
-      : 'VANILLA'
-    : null;
+  const economyId = cargo ? economyIdForCargo(game, cargo) : null;
 
   const results = useMemo(() => {
     if (!cargo || !economyId) return [];
@@ -113,11 +108,10 @@ export default function OptimizerPage() {
   }, [trains, cargo, economyId, year, distance, stationTiles, productionPerMonth, allowElectric, subsidised, excludedIds, game, calc]);
 
   // машины, которые в выбранном году могут ещё не появиться, — их можно выключить
+  const collator = useMemo(() => new Intl.Collator(intlLocale(locale)), [locale]);
   const doubtful = useMemo(
-    () =>
-      doubtfulGroups(results, trains, excludedIds, year, game, calc.capacityIndex,
-        new Intl.Collator(intlLocale())),
-    [results, trains, excludedIds, year, game, calc.capacityIndex, locale],
+    () => doubtfulGroups(results, trains, excludedIds, year, game, calc.capacityIndex, collator),
+    [results, trains, excludedIds, year, game, calc.capacityIndex, collator],
   );
 
   const shown = engineFilter

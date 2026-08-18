@@ -6,6 +6,8 @@
  * не ниже 31; дальше асимптотический хвост ~31/(x/32+1) (fixed point 4 бита), минимум 1.
  */
 
+import { DAYS_PER_TRANSIT_PERIOD, transitPeriodsFromDays } from './units';
+
 const MIN_TIME_FACTOR = 31;
 const MAX_TIME_FACTOR = 255;
 const TIME_FACTOR_FRAC_BITS = 4;
@@ -76,4 +78,44 @@ export function transportedGoodsIncome(
   return Math.floor(
     (dist * factor * numPieces * spec.currentPayment) / 2 ** shift,
   );
+}
+
+export interface IncomeCurvePoint {
+  days: number;
+  income: number;
+}
+
+/**
+ * Income as a function of transit time, tabulated for a chart. The range covers the
+ * start of the payment decay (p1 plus half of p2, capped) and stretches to keep the
+ * current trip inside the frame with room to spare.
+ */
+export function incomeCurve(
+  numPieces: number,
+  dist: number,
+  currentDays: number,
+  spec: CargoPaymentSpec,
+  cargoAgingRate = 100,
+  paymentAlgorithm: 'modern' | 'traditional' = 'modern',
+  points = 120,
+): IncomeCurvePoint[] {
+  const [p1, p2] = spec.transitPeriods;
+  const decayDays = (p1 + Math.min(p2, 120) / 2) * DAYS_PER_TRANSIT_PERIOD;
+  const maxDays = Math.max(currentDays * 2.5, decayDays * 1.4, 50);
+  const curve: IncomeCurvePoint[] = [];
+  for (let i = 0; i <= points; i++) {
+    const d = (maxDays * i) / points;
+    curve.push({
+      days: d,
+      income: transportedGoodsIncome(
+        numPieces,
+        dist,
+        transitPeriodsFromDays(d),
+        spec,
+        cargoAgingRate,
+        paymentAlgorithm,
+      ),
+    });
+  }
+  return curve;
 }

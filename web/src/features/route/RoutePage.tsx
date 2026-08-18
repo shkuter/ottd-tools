@@ -5,6 +5,7 @@ import {
   cargosOfEconomy,
   economies,
   economyById,
+  economyIdForCargo,
   trainsMeta,
 } from '../../dataset';
 import { t, useLocale } from '../../i18n';
@@ -15,7 +16,7 @@ import { CargoIcon } from '../../components/CargoIcon';
 import { useRouteStore } from '../../state/routeStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useConsistStore } from '../../state/consistStore';
-import { transportedGoodsIncome } from '../../engine/income';
+import { incomeCurve, transportedGoodsIncome } from '../../engine/income';
 import { transitPeriodsFromDays } from '../../engine/units';
 import { consistStats } from '../../engine/consist';
 import { tripEconomics } from '../../engine/trip';
@@ -38,11 +39,13 @@ export default function RoutePage() {
     [consist.entries, cargo, calc, game],
   );
 
+  const paymentEconomyId = cargo ? economyIdForCargo(game, cargo, economy.id) : null;
   const payment =
-    cargo?.initial_payment_by_economy[game.firs ? economy.id : 'VANILLA'] ?? 0;
-  const spec = cargo
-    ? { currentPayment: payment, transitPeriods: cargo.transit_periods }
-    : null;
+    cargo && paymentEconomyId ? (cargo.initial_payment_by_economy[paymentEconomyId] ?? 0) : 0;
+  const spec = useMemo(
+    () => (cargo ? { currentPayment: payment, transitPeriods: cargo.transit_periods } : null),
+    [cargo, payment],
+  );
 
   // Round-trip economics of the consist built on the Consist tab — the same model the
   // optimizer uses, so a consist carried over with "→" shows the same figures here.
@@ -76,27 +79,20 @@ export default function RoutePage() {
       )
     : 0;
 
-  const chart = useMemo(() => {
-    if (!spec) return [];
-    // диапазон охватывает начало и часть спада оплаты (p1 + p2/2 периодов по 2.5 дня)
-    const decayDays = (spec.transitPeriods[0] + Math.min(spec.transitPeriods[1], 120) / 2) * 2.5;
-    const maxDays = Math.max(days * 2.5, decayDays * 1.4, 50);
-    const points: { days: number; income: number }[] = [];
-    for (let d = 0; d <= maxDays; d += maxDays / 120) {
-      points.push({
-        days: d,
-        income: transportedGoodsIncome(
-          route.amount,
-          route.distanceTiles,
-          transitPeriodsFromDays(d),
-          spec,
-          game.cargoAgingRate,
-          game.jgrpp ? game.paymentAlgorithm : 'modern',
-        ),
-      });
-    }
-    return points;
-  }, [spec, route.amount, route.distanceTiles, days, game.cargoAgingRate]);
+  const chart = useMemo(
+    () =>
+      spec
+        ? incomeCurve(
+            route.amount,
+            route.distanceTiles,
+            days,
+            spec,
+            game.cargoAgingRate,
+            game.jgrpp ? game.paymentAlgorithm : 'modern',
+          )
+        : [],
+    [spec, route.amount, route.distanceTiles, days, game.cargoAgingRate, game.jgrpp, game.paymentAlgorithm],
+  );
 
   const chartMax = Math.max(...chart.map((p) => p.income), 1);
   const chartW = 640;

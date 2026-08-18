@@ -61,6 +61,12 @@ of what users see):
   over from the optimizer with "→" now shows identical figures on both tabs. A hand-entered
   trip time still sets the loaded leg; the empty leg scales by the speed ratio.
 
+- Page components no longer compute anything themselves: the payment-decay chart is tabulated
+  by `engine/income.ts` (`incomeCurve`), the FIRS chain walk lives in `features/firs/chains.ts`,
+  the "which economy pays for this cargo" rule is `dataset.economyIdForCargo`, and "Reset
+  everything" clears the stores through a single registry (`state/index.ts`) instead of a
+  hard-coded list of localStorage keys. Same numbers, same chart, zero lint warnings.
+
 ### Fixed
 
 - Vanilla introduction years are computed from the real calendar date

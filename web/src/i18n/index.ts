@@ -28,6 +28,7 @@ export function useLocale(): Locale {
 }
 
 /** BCP 47 tag for Intl: number formatting and collation follow the UI language. */
-export function intlLocale(): string {
-  return LOCALES[useLocaleStore.getState().locale].numbers;
+/** BCP 47 tag for Intl formatting; pass the locale explicitly inside memoised code. */
+export function intlLocale(locale: Locale = useLocaleStore.getState().locale): string {
+  return LOCALES[locale].numbers;
 }

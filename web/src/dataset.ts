@@ -77,3 +77,21 @@ export function cargosOfEconomy(economy: Economy): Cargo[] {
     .map((label) => cargoByLabel.get(label))
     .filter((c): c is Cargo => Boolean(c));
 }
+
+/** Payment-rate key for vanilla cargos: they carry a single rate instead of one per economy. */
+export const VANILLA_ECONOMY_ID = 'VANILLA';
+
+/**
+ * Economy whose payment rate applies to a cargo: the first FIRS economy that lists it, or
+ * the vanilla key when FIRS is off. `preferred` wins when the cargo exists there (the route
+ * tab lets the user pick an economy explicitly).
+ */
+export function economyIdForCargo(
+  game: GameSettings,
+  cargo: Cargo,
+  preferred?: string | null,
+): string | null {
+  if (!game.firs) return VANILLA_ECONOMY_ID;
+  if (preferred && cargo.initial_payment_by_economy[preferred] != null) return preferred;
+  return economies.find((e) => cargo.initial_payment_by_economy[e.id] != null)?.id ?? null;
+}
