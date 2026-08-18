@@ -120,3 +120,9 @@ export interface Economy {
     dot: string;
   };
 }
+
+/** A vehicle picked for a consist, with how many of it are coupled. */
+export interface ConsistEntry {
+  train: Train;
+  count: number;
+}

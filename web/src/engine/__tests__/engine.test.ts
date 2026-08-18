@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { timeFactor, transportedGoodsIncome } from '../income';
 import { inflationFactors } from '../inflation';
-import { buyCost, price, runningCostPerYear } from '../costs';
+import {
+  buyCost,
+  consistMoney,
+  price,
+  runningCostPerYear,
+  trainBuyCost,
+  trainRunningCostPerYear,
+} from '../costs';
 import { balancingSpeed, forceN, maxTractiveEffortN, resistanceN } from '../physics';
 import {
   daysForDistance,
@@ -36,6 +43,62 @@ describe('costs', () => {
 
   it('ванильный running cost: Kirby 5600 * 50 / 256 = £1093', () => {
     expect(price('running_steam', 50)).toBe(1093);
+  });
+});
+
+describe('деньги машины и состава', () => {
+  const meta = trainsMeta;
+  const engine = trains.find((t) => t.kind === 'engine')!;
+  const wagon = trains.find((t) => t.kind === 'wagon')!;
+
+  it('покупка берёт шифт по типу машины', () => {
+    expect(trainBuyCost(engine, meta)).toBe(
+      buyCost('engine', engine.cost_factor, meta.basecost_shifts.build_engine),
+    );
+    expect(trainBuyCost(wagon, meta)).toBe(
+      buyCost('wagon', wagon.cost_factor, meta.basecost_shifts.build_wagon),
+    );
+  });
+
+  it('содержание берёт паровой шифт только для паровых машин', () => {
+    const steam = trains.find((t) => t.running_cost_base.includes('STEAM'))!;
+    const other = trains.find((t) => !t.running_cost_base.includes('STEAM'))!;
+    expect(trainRunningCostPerYear(steam, meta)).toBe(
+      runningCostPerYear('running_steam', steam.running_cost_factor, meta.basecost_shifts.running_steam),
+    );
+    expect(trainRunningCostPerYear(other, meta)).toBe(
+      runningCostPerYear(
+        other.running_cost_base.includes('ELECTRIC') ? 'running_electric' : 'running_diesel',
+        other.running_cost_factor,
+        meta.basecost_shifts.running_diesel,
+      ),
+    );
+  });
+
+  it('длина дня растягивает содержание и не трогает покупку', () => {
+    const long = { ...DEFAULT_GAME_SETTINGS, jgrpp: true, dayLengthFactor: 8 };
+    expect(trainRunningCostPerYear(engine, meta, long)).toBeCloseTo(
+      trainRunningCostPerYear(engine, meta) * 8,
+      6,
+    );
+    expect(trainBuyCost(engine, meta, long)).toBe(trainBuyCost(engine, meta));
+  });
+
+  it('деньги состава = сумма по машинам с учётом количества', () => {
+    const entries = [
+      { train: engine, count: 2 },
+      { train: wagon, count: 7 },
+    ];
+    const { buy, running } = consistMoney(entries, meta);
+    expect(buy).toBe(2 * trainBuyCost(engine, meta) + 7 * trainBuyCost(wagon, meta));
+    expect(running).toBeCloseTo(
+      2 * trainRunningCostPerYear(engine, meta) + 7 * trainRunningCostPerYear(wagon, meta),
+      6,
+    );
+  });
+
+  it('пустой состав стоит ноль', () => {
+    expect(consistMoney([], meta)).toEqual({ buy: 0, running: 0 });
   });
 });
 

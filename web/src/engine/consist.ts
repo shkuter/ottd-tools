@@ -2,8 +2,8 @@
  * Сборка статистики состава из выбранных машин Iron Horse.
  * Все игровые формулы — в physics.ts/costs.ts, здесь только агрегация.
  */
-import type { Cargo, Train, TrainsMeta } from '../types';
-import { buyCost, runningBaseKey, runningCostPerYear } from './costs';
+import type { Cargo, ConsistEntry, TrainsMeta } from '../types';
+import { consistMoney } from './costs';
 import type { ConsistPhysics } from './physics';
 import { balancingSpeed } from './physics';
 import { mphToInternal } from './units';
@@ -13,16 +13,7 @@ import {
   DEFAULT_GAME_SETTINGS,
   type CalcSettings,
   type GameSettings,
-  effectiveDayLength,
-  difficultyPriceFactor,
-  basecostBuyFactor,
-  basecostRunningFactor,
 } from './settings';
-
-export interface ConsistEntry {
-  train: Train;
-  count: number;
-}
 
 export interface ConsistStats {
   powerHp: number;
@@ -109,43 +100,7 @@ export function consistStats(
   calc: CalcSettings = DEFAULT_CALC_SETTINGS,
 ): ConsistStats {
   const { physics, stats } = consistPhysics(entries, cargo, capacityIndex, game);
-  let buy = 0;
-  let running = 0;
-  for (const { train, count } of entries) {
-    const buyShift =
-      train.kind === 'engine'
-        ? meta.basecost_shifts.build_engine
-        : meta.basecost_shifts.build_wagon;
-    const runShift = train.running_cost_base.includes('STEAM')
-      ? meta.basecost_shifts.running_steam
-      : meta.basecost_shifts.running_diesel;
-    buy +=
-      count *
-      buyCost(
-        train.kind,
-        train.cost_factor,
-        buyShift,
-        calc.priceYear,
-        game.inflation,
-        difficultyPriceFactor(game.constructionCost) * basecostBuyFactor(game, train.kind),
-        game.inflationInterest,
-        game.inflationFixedDates,
-      );
-    running +=
-      count *
-      runningCostPerYear(
-        runningBaseKey(train.running_cost_base),
-        train.running_cost_factor,
-        runShift,
-        calc.priceYear,
-        game.inflation,
-        difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game),
-        game.inflationInterest,
-        game.inflationFixedDates,
-      ) *
-      // JGRPP: running cost начисляется по тикам, календарный год длиннее в N раз
-      effectiveDayLength(game);
-  }
+  const { buy, running } = consistMoney(entries, meta, game, calc);
   const flat = entries.length ? balancingSpeed(physics, 0, game.accelerationModel) : 0;
   // на уклоне не больше hillTiles тайлов состава
   const massOnSlope =

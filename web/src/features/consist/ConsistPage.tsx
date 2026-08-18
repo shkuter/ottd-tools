@@ -15,15 +15,7 @@ import { money, num } from '../../components/format';
 import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
-import { buyCost, runningBaseKey, runningCostPerYear } from '../../engine/costs';
-import {
-  basecostBuyFactor,
-  basecostRunningFactor,
-  difficultyPriceFactor,
-  effectiveDayLength,
-  type CalcSettings,
-  type GameSettings,
-} from '../../engine/settings';
+import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 
 const columnHelper = createColumnHelper<Train>();
 
@@ -61,41 +53,6 @@ export function CargoIcon({ icon }: { icon: string }) {
         (e.target as HTMLImageElement).style.display = 'none';
       }}
     />
-  );
-}
-
-function trainBuyCost(train: Train, game: GameSettings, calc: CalcSettings): number {
-  const shift =
-    train.kind === 'engine'
-      ? trainsMeta.basecost_shifts.build_engine
-      : trainsMeta.basecost_shifts.build_wagon;
-  return buyCost(
-    train.kind,
-    train.cost_factor,
-    shift,
-    calc.priceYear,
-    game.inflation,
-    difficultyPriceFactor(game.constructionCost) * basecostBuyFactor(game, train.kind),
-    game.inflationInterest,
-    game.inflationFixedDates,
-  );
-}
-
-function trainRunningCost(train: Train, game: GameSettings, calc: CalcSettings): number {
-  const shift = train.running_cost_base.includes('STEAM')
-    ? trainsMeta.basecost_shifts.running_steam
-    : trainsMeta.basecost_shifts.running_diesel;
-  return (
-    runningCostPerYear(
-      runningBaseKey(train.running_cost_base),
-      train.running_cost_factor,
-      shift,
-      calc.priceYear,
-      game.inflation,
-      difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game),
-      game.inflationInterest,
-      game.inflationFixedDates,
-    ) * effectiveDayLength(game)
   );
 }
 
@@ -154,13 +111,13 @@ export default function ConsistPage() {
         header: () => t('table.capacity'),
         cell: (info) => (info.getValue() ? num(info.getValue()) : '—'),
       }),
-      columnHelper.accessor((row) => trainBuyCost(row, game, calc), {
+      columnHelper.accessor((row) => trainBuyCost(row, trainsMeta, game, calc), {
         id: 'cost',
         header: () => t('table.cost'),
         cell: (info) => money(info.getValue()),
         meta: { className: 'cell-money' },
       }),
-      columnHelper.accessor((row) => trainRunningCost(row, game, calc), {
+      columnHelper.accessor((row) => trainRunningCostPerYear(row, trainsMeta, game, calc), {
         id: 'running',
         header: () => t('table.running'),
         cell: (info) => money(info.getValue()),

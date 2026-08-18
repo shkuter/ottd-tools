@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ConsistEntry } from '../engine/consist';
+import type { ConsistEntry } from '../types';
 import { trainById } from '../dataset';
 
 interface ConsistState {

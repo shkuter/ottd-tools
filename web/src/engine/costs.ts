@@ -4,7 +4,18 @@
  * Iron Horse задаёт basecost-шифты в GRF (см. meta.basecost_shifts в trains.json).
  */
 
+import type { ConsistEntry, Train, TrainsMeta } from '../types';
 import { inflationFactors } from './inflation';
+import {
+  DEFAULT_CALC_SETTINGS,
+  DEFAULT_GAME_SETTINGS,
+  type CalcSettings,
+  type GameSettings,
+  basecostBuyFactor,
+  basecostRunningFactor,
+  difficultyPriceFactor,
+  effectiveDayLength,
+} from './settings';
 
 export const BASE_PRICES = {
   build_engine: 400000, // PR_BUILD_VEHICLE_TRAIN
@@ -72,4 +83,75 @@ export function runningBaseKey(runningCostBase: string): BasePriceKey {
   if (runningCostBase.includes('STEAM')) return 'running_steam';
   if (runningCostBase.includes('ELECTRIC')) return 'running_electric';
   return 'running_diesel';
+}
+
+/**
+ * Buy price of one vehicle: picks the NewGRF basecost shift by vehicle kind and
+ * folds in the difficulty and Base Costs GRF multipliers of the current settings.
+ */
+export function trainBuyCost(
+  train: Train,
+  meta: TrainsMeta,
+  game: GameSettings = DEFAULT_GAME_SETTINGS,
+  calc: CalcSettings = DEFAULT_CALC_SETTINGS,
+): number {
+  const shift =
+    train.kind === 'engine'
+      ? meta.basecost_shifts.build_engine
+      : meta.basecost_shifts.build_wagon;
+  return buyCost(
+    train.kind,
+    train.cost_factor,
+    shift,
+    calc.priceYear,
+    game.inflation,
+    difficultyPriceFactor(game.constructionCost) * basecostBuyFactor(game, train.kind),
+    game.inflationInterest,
+    game.inflationFixedDates,
+  );
+}
+
+/**
+ * Yearly running cost of one vehicle. The base price follows the vehicle's running class
+ * (steam/diesel/electric), while the NewGRF shift only distinguishes steam from the rest —
+ * Iron Horse ships no separate electric shift. Running cost is charged per tick, so a longer
+ * day (JGRPP) stretches a calendar year over proportionally more ticks.
+ */
+export function trainRunningCostPerYear(
+  train: Train,
+  meta: TrainsMeta,
+  game: GameSettings = DEFAULT_GAME_SETTINGS,
+  calc: CalcSettings = DEFAULT_CALC_SETTINGS,
+): number {
+  const shift = train.running_cost_base.includes('STEAM')
+    ? meta.basecost_shifts.running_steam
+    : meta.basecost_shifts.running_diesel;
+  return (
+    runningCostPerYear(
+      runningBaseKey(train.running_cost_base),
+      train.running_cost_factor,
+      shift,
+      calc.priceYear,
+      game.inflation,
+      difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game),
+      game.inflationInterest,
+      game.inflationFixedDates,
+    ) * effectiveDayLength(game)
+  );
+}
+
+/** Buy price and yearly running cost of a whole consist. */
+export function consistMoney(
+  entries: readonly ConsistEntry[],
+  meta: TrainsMeta,
+  game: GameSettings = DEFAULT_GAME_SETTINGS,
+  calc: CalcSettings = DEFAULT_CALC_SETTINGS,
+): { buy: number; running: number } {
+  let buy = 0;
+  let running = 0;
+  for (const { train, count } of entries) {
+    buy += count * trainBuyCost(train, meta, game, calc);
+    running += count * trainRunningCostPerYear(train, meta, game, calc);
+  }
+  return { buy, running };
 }

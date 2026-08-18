@@ -42,6 +42,14 @@ of what users see):
   off, and the `?` markers follow the setting.
 - Train data now carries `intro_month`, extracted for both Iron Horse and vanilla engines.
 
+### Changed
+
+- Buy price and yearly running cost now have a single implementation
+  (`engine/costs.ts`: `trainBuyCost`, `trainRunningCostPerYear`, `consistMoney`). The formula
+  used to be copied three times — consist stats, the optimizer and the catalogue table — so any
+  correction had to land in three places to keep the tabs showing the same money. Numbers are
+  unchanged.
+
 ### Fixed
 
 - Vanilla introduction years are computed from the real calendar date

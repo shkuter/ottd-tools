@@ -3,11 +3,11 @@
  * год, дистанция, груз, длина станции -> рейтинг по прибыли в год.
  * Гружёное плечо и порожний обратный ход считаются с разной скоростью.
  */
-import type { Cargo, Train, TrainsMeta } from '../types';
+import type { Cargo, ConsistEntry, Train, TrainsMeta } from '../types';
 import { canCarryIn } from '../dataset';
-import { consistPhysics, type ConsistEntry } from './consist';
+import { consistPhysics } from './consist';
 import { balancingSpeed } from './physics';
-import { buyCost, runningBaseKey, runningCostPerYear } from './costs';
+import { consistMoney } from './costs';
 import { transportedGoodsIncome } from './income';
 import { estimateStationRating, type StationRating } from './rating';
 import { introAvailability, type IntroAvailability } from './availability';
@@ -19,9 +19,6 @@ import {
   type GameSettings,
   effectiveDayLength,
   daysPerEconomyYear,
-  difficultyPriceFactor,
-  basecostBuyFactor,
-  basecostRunningFactor,
   loadingTicks,
   subsidyFactor,
   stoppedCostDivisor,
@@ -94,51 +91,6 @@ function isAvailable(train: Train, year: number): boolean {
   if (train.intro_year > year) return false;
   if (train.model_life != null && year >= train.intro_year + train.model_life) return false;
   return true;
-}
-
-function moneyFor(
-  entries: ConsistEntry[],
-  meta: TrainsMeta,
-  game: GameSettings,
-  calc: CalcSettings,
-) {
-  let buy = 0;
-  let running = 0;
-  for (const { train, count } of entries) {
-    const buyShift =
-      train.kind === 'engine'
-        ? meta.basecost_shifts.build_engine
-        : meta.basecost_shifts.build_wagon;
-    const runShift = train.running_cost_base.includes('STEAM')
-      ? meta.basecost_shifts.running_steam
-      : meta.basecost_shifts.running_diesel;
-    buy +=
-      count *
-      buyCost(
-        train.kind,
-        train.cost_factor,
-        buyShift,
-        calc.priceYear,
-        game.inflation,
-        difficultyPriceFactor(game.constructionCost) * basecostBuyFactor(game, train.kind),
-        game.inflationInterest,
-        game.inflationFixedDates,
-      );
-    running +=
-      count *
-      runningCostPerYear(
-        runningBaseKey(train.running_cost_base),
-        train.running_cost_factor,
-        runShift,
-        calc.priceYear,
-        game.inflation,
-        difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game),
-        game.inflationInterest,
-        game.inflationFixedDates,
-      ) *
-      effectiveDayLength(game);
-  }
-  return { buy, running };
 }
 
 export function optimizeConsists(
@@ -242,7 +194,7 @@ export function optimizeConsists(
       game.cargoAgingRate,
       game.jgrpp ? game.paymentAlgorithm : 'modern',
     ) * (params.subsidised ? subsidyFactor(game.subsidyMultiplier) : 1);
-    const { buy, running } = moneyFor(entries, meta, game, calc);
+    const { buy, running } = consistMoney(entries, meta, game, calc);
     // на стоянке JGRPP может брать меньше: делим долю времени под погрузкой
     const stoppedShare = roundTripDays > 0 ? loadingDays / roundTripDays : 0;
     const runningEffective =
