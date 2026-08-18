@@ -78,7 +78,7 @@
   "combined.profitPerTile": "Profit / year / tile of train",
   "combined.payback": "Payback of purchase",
   "combined.years": "years",
-  "combined.assumptions": "Loaded and empty legs at the same speed, dwell time for loading and unloading included, no inflation (Iron Horse is incompatible with inflation).",
+  "combined.assumptions": "Loaded and empty legs at their own steady speeds (the empty train runs lighter and faster), dwell time for loading and unloading included, no inflation (Iron Horse is incompatible with inflation).",
   "footer.version": "Version",
   "footer.data": "Data",
   "footer.generated": "generated",

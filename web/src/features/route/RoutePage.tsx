@@ -16,14 +16,9 @@ import { useRouteStore } from '../../state/routeStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useConsistStore } from '../../state/consistStore';
 import { transportedGoodsIncome } from '../../engine/income';
-import { daysForDistance, mphToInternal, transitPeriodsFromDays } from '../../engine/units';
+import { transitPeriodsFromDays } from '../../engine/units';
 import { consistStats } from '../../engine/consist';
-import {
-  daysPerEconomyYear,
-  effectiveDayLength,
-  loadingTicks,
-  stoppedCostDivisor,
-} from '../../engine/settings';
+import { tripEconomics } from '../../engine/trip';
 
 export default function RoutePage() {
   const route = useRouteStore();
@@ -43,17 +38,32 @@ export default function RoutePage() {
     [consist.entries, cargo, calc, game],
   );
 
-  const consistDays =
-    stats.balancingSpeedMph > 0
-      ? daysForDistance(route.distanceTiles, mphToInternal(stats.balancingSpeedMph))
-      : null;
-  const days = route.manualDays ?? consistDays ?? 0;
-
   const payment =
     cargo?.initial_payment_by_economy[game.firs ? economy.id : 'VANILLA'] ?? 0;
   const spec = cargo
     ? { currentPayment: payment, transitPeriods: cargo.transit_periods }
     : null;
+
+  // Round-trip economics of the consist built on the Consist tab — the same model the
+  // optimizer uses, so a consist carried over with "→" shows the same figures here.
+  const trip = useMemo(
+    () =>
+      consist.entries.length > 0 && cargo
+        ? tripEconomics({
+            entries: consist.entries,
+            cargo,
+            payment,
+            distanceTiles: route.distanceTiles,
+            meta: trainsMeta,
+            game,
+            calc,
+            loadedDaysOverride: route.manualDays,
+          })
+        : null,
+    [consist.entries, cargo, payment, route.distanceTiles, route.manualDays, game, calc],
+  );
+  const consistDays = trip && trip.loadedSpeedInternal > 0 ? trip.daysLoaded : null;
+  const days = route.manualDays ?? consistDays ?? 0;
 
   const income = spec
     ? transportedGoodsIncome(
@@ -101,54 +111,12 @@ export default function RoutePage() {
     ? (days / Math.max(chart.at(-1)?.days ?? 1, 1)) * chartW
     : 0;
 
-  // прибыльность полного рейса того состава, что собран на вкладке Consist
-  const profit = useMemo(() => {
-    if (consist.entries.length === 0 || !spec) return null;
-    // стоянки: погрузка и разгрузка по самому медленному вагону состава
-    const loadingDays =
-      (2 *
-        Math.max(
-          0,
-          ...consist.entries
-            .filter((e) => e.train.kind === 'wagon')
-            .map((e) =>
-              loadingTicks(
-                e.train.capacities[calc.capacityIndex] ?? 0,
-                e.train.loading_speed ?? 0,
-                game,
-              ),
-            ),
-        )) /
-      74;
-    const roundTripDays = days * 2 + loadingDays;
-    // JGRPP: календарный год длиннее в dayLengthFactor раз
-    const tripsPerYear =
-      roundTripDays > 0
-        ? (daysPerEconomyYear(game) * effectiveDayLength(game)) / roundTripDays
-        : 0;
-    const incomePerTrip = transportedGoodsIncome(
-      stats.capacityForCargo,
-      route.distanceTiles,
-      transitPeriodsFromDays(days),
-      spec,
-      game.cargoAgingRate,
-      game.jgrpp ? game.paymentAlgorithm : 'modern',
-    );
-    // на стоянке JGRPP может брать меньше: делим долю времени под погрузкой
-    const stoppedShare = roundTripDays > 0 ? loadingDays / roundTripDays : 0;
-    const runningPerYear =
-      stats.runningCostTotal * (1 - stoppedShare + stoppedShare / stoppedCostDivisor(game));
-    const profitPerYear = incomePerTrip * tripsPerYear - runningPerYear;
-    return {
-      roundTripDays,
-      tripsPerYear,
-      incomePerTrip,
-      runningPerYear,
-      profitPerYear,
-      profitPerTile: stats.lengthTiles > 0 ? profitPerYear / stats.lengthTiles : 0,
-      payback: profitPerYear > 0 ? stats.buyCostTotal / profitPerYear : null,
-    };
-  }, [consist.entries, spec, stats, days, route.distanceTiles, game, calc.capacityIndex]);
+  const profit = trip
+    ? {
+        ...trip,
+        profitPerTile: stats.lengthTiles > 0 ? trip.profitPerYear / stats.lengthTiles : 0,
+      }
+    : null;
 
   return (
     <div className="page-route">
@@ -274,7 +242,7 @@ export default function RoutePage() {
               </dd>
               <dt>{t('combined.runningCost')}</dt>
               <dd>
-                <Money value={profit.runningPerYear} />
+                <Money value={profit.runningCostPerYear} />
               </dd>
               <dt>{t('combined.profitPerYear')}</dt>
               <dd className={profit.profitPerYear >= 0 ? 'big profit' : 'big loss'}>
@@ -285,7 +253,7 @@ export default function RoutePage() {
                 <Money value={profit.profitPerTile} />
               </dd>
               <dt>{t('combined.payback')}</dt>
-              <dd>{profit.payback ? `${num(profit.payback, 1)} ${t('combined.years')}` : '—'}</dd>
+              <dd>{profit.paybackYears ? `${num(profit.paybackYears, 1)} ${t('combined.years')}` : '—'}</dd>
             </dl>
             <p className="hint">{t('combined.assumptions')}</p>
           </>

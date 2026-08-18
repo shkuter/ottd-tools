@@ -54,6 +54,13 @@ of what users see):
   imports from another tab's page file any more. Dead engine exports that nothing called
   (`accelSimulation`, `internalToKmh`, `yearTicks`, …) are gone — git history keeps them.
 
+- **Route income** — the profitability block now runs on the same round-trip model as
+  the optimizer (`engine/trip.ts`): the empty return leg is timed at the empty consist's own
+  steady speed instead of doubling the loaded leg. Round trip gets shorter, trips per year and
+  profit go up for any consist that runs below its speed limit when loaded; a consist carried
+  over from the optimizer with "→" now shows identical figures on both tabs. A hand-entered
+  trip time still sets the loaded leg; the empty leg scales by the speed ratio.
+
 ### Fixed
 
 - Vanilla introduction years are computed from the real calendar date
