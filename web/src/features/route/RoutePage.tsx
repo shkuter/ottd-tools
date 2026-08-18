@@ -11,7 +11,7 @@ import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { money, num } from '../../components/format';
 import { Money } from '../../components/Money';
-import { CargoIcon } from '../consist/ConsistPage';
+import { CargoIcon } from '../../components/CargoIcon';
 import { useRouteStore } from '../../state/routeStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useConsistStore } from '../../state/consistStore';

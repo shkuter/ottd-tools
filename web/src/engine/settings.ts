@@ -204,7 +204,3 @@ export function daysPerEconomyYear(settings: GameSettings): number {
   return 365;
 }
 
-/** Тиков в календарном году с учётом длины дня. */
-export function yearTicks(settings: GameSettings): number {
-  return 365 * 74 * effectiveDayLength(settings);
-}

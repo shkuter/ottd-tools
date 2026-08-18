@@ -6,7 +6,6 @@ import paletteJson from './data/opengfx2_palette.json';
  */
 export const gradients = (paletteJson as { gradients: Record<string, string[]> }).gradients;
 
-export const paletteSource = (paletteJson as { source: string }).source;
 
 /**
  * Shade names as the game knows them (palette_func.h:73). DrawFrameRect uses

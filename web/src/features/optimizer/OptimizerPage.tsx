@@ -13,7 +13,8 @@ import { introRandomisationActive, type IntroAvailability } from '../../engine/a
 import { doubtfulGroups } from './doubtful';
 import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
-import { CargoIcon, TrainImage } from '../consist/ConsistPage';
+import { CargoIcon } from '../../components/CargoIcon';
+import { TrainImage } from '../../components/TrainImage';
 
 /** Tooltip listing what the estimated station rating is made of. */
 function ratingBreakdown(r: StationRating): string {

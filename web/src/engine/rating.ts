@@ -13,9 +13,6 @@
 /** Rating counter period: STATION_RATING_TICKS (185) / DAY_TICKS (74). */
 export const RATING_PERIOD_DAYS = 185 / 74;
 
-/** Pickup intervals (in days) at which the wait-time bonus steps up. */
-export const WAIT_TIME_THRESHOLD_DAYS = [21, 12, 6, 3].map((p) => p * RATING_PERIOD_DAYS);
-
 /**
  * Bonus for the speed of the last train. The game stores `cached_max_speed` (the
  * consist's top speed in internal units, capped at 255), not the speed it actually ran.

@@ -1,32 +1,97 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# Project context — shown to AI when creating artifacts.
+context: |
+  Проект: веб-калькулятор для OpenTTD + Iron Horse (ростер Pony) + FIRS 5.
+  Вкладки: Best train (оптимизатор), Consist builder, Route income, FIRS chains, Settings.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Стек и структура:
+  - pipeline/ — Python-экстракторы (venv в pipeline/.venv, Python >= 3.12). Импортируют
+    исходники из vendor/ напрямую как модули и пишут статические JSON в web/src/data/
+    плюс иконки/спрайты в web/public/icons/. JSON закоммичены — SPA собирается без Python.
+  - web/ — React 19 + Vite + TypeScript. Игровые формулы — чистые модули web/src/engine/
+    (income/physics/costs/inflation/units/optimize/consist/settings/rating/availability),
+    UI — web/src/features/, zustand-сторы с persist — web/src/state/.
+  - Команды: make data (перегенерация JSON + validate), make data-images, make test
+    (unittest пайплайна + vitest), make dev / build / verify, make release VERSION=x.y.z.
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+  Язык:
+  - Артефакты OpenSpec (proposal / design / specs / tasks) и общение — на русском.
+  - Код, комментарии, README и CHANGELOG.md — на английском.
+
+  Критичные инварианты (легко сломать, проверять в каждом изменении):
+  - Basecost-шифты Iron Horse: цена = ванильная база x factor/256 x 2^shift; шифты лежат в
+    meta.basecost_shifts (trains.json) и обязаны применяться во ВСЕХ денежных расчётах
+    (engine/costs.ts).
+  - FIRS price_factor не равен payment rate: конверсия price_factor x 2^21 / 51000 живёт
+    только в extract_firs.py.
+  - transit_periods грузов — периоды старения по 2.5 игровых дня (185 тиков), не дни.
+  - Длина: поле length — единицы длины OpenTTD, стандартная машина 8 единиц = ПОЛТАЙЛА,
+    тайл = 16 единиц.
+  - Скорости: внутренняя единица OpenTTD, display mph = internal x 10/16 (engine/units.ts).
+  - Инфляция по умолчанию выключена (Iron Horse даёт фатальную ошибку GRF при включённой).
+  - Экстракторы подменяют sys.argv / os.chdir перед импортом iron_horse / firs — порядок
+    строк в начале файлов значим.
+  - Данные о машинах, грузах и предприятиях НЕ править руками в JSON — только через
+    экстракторы и make data. Эталоны — pipeline/tests/test_known_values.py.
+
+  Настройки и расчёт:
+  - GameSettings названы как в Advanced Settings игры, CalcSettings — допущения калькулятора;
+    оба живут в state/settingsStore.ts и передаются в формулы явными аргументами (движок
+    не импортирует сторы).
+  - Правило: каждая настройка обязана менять расчёт. Новая настройка = новый кейс в
+    engine/__tests__/settings-effect.test.ts, иначе тест падает.
+  - Настройки, не влияющие на расчёт (язык, скин), живут в отдельных сторах
+    (localeStore, skinStore), а не в GameSettings / CalcSettings.
+
+  Локализация:
+  - Все UI-строки через t() из web/src/i18n/ (en.json + ru.json). Строки внутри useMemo
+    переводить в момент рендера, иначе застрянут на старом языке.
+  - Названия настроек берутся из русской локали самой игры (vendor/openttd/src/lang/russian.txt,
+    JGRPP — vendor/openttd-patches/src/lang/extra/russian.txt), а не переводятся по смыслу.
+  - Названия грузов и предприятий — в i18n/cargos.ru.json и industries.ru.json, подставляются
+    хелперами i18n/names.ts. i18n/__tests__/locales.test.ts падает на непереведённом ключе.
+
+  Версионирование (semver, единственный источник правды — version в web/package.json):
+  - major — тот же ввод осознанно даёт другие числа или сбрасывается localStorage;
+  - minor — новая вкладка, настройка, набор данных или язык; обновление версии NewGRF,
+    меняющее данные;
+  - patch — исправления, полировка UI, переводы, рефакторинг с теми же числами.
+  Заметные правки дописываются в CHANGELOG.md в секцию [Unreleased] тем же изменением.
+  Теги руками не ставить, версию в package.json руками не править — только make release.
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Всегда включать секцию "Non-goals".
+    - Указывать ожидаемый разряд semver (major / minor / patch) и обоснование — по правилам
+      из context (меняются ли числа при том же вводе, сбрасывается ли localStorage).
+    - Если изменение трогает игровые формулы или данные, назвать источник истины
+      (файл OpenTTD / Iron Horse / FIRS в vendor/ или страницу grf.farm), против которого
+      сверялись значения.
+  design:
+    - Явно называть, какие модули engine/ затрагиваются и какие настройки (GameSettings /
+      CalcSettings) участвуют в расчёте.
+    - Для изменений в данных описывать правку экстрактора в pipeline/, а не правку JSON.
+  tasks:
+    - Разбивать на шаги не длиннее пары часов, каждый с проверяемым результатом.
+    - Новая или изменённая настройка — отдельный таск на кейс в
+      web/src/engine/__tests__/settings-effect.test.ts.
+    - Новые UI-строки, грузы или предприятия — отдельный таск на en.json / ru.json
+      (и cargos.ru.json / industries.ru.json), чтобы проходил i18n/__tests__/locales.test.ts.
+    - Отдельный таск на запись в CHANGELOG.md в секцию [Unreleased] (на английском).
+    - Последний таск — прогон make test (при правках данных также make data).
+
+# Per-operation guidance
+operations:
+  apply:
+    guidance:
+      - Перед отметкой задачи выполненной прогонять релевантные тесты: make test целиком либо
+        точечно (cd web && npx vitest run -t "...", pipeline/.venv/bin/python -m unittest ...).
+      - JSON в web/src/data/ не редактировать руками — перегенерировать через make data.
+      - Комментарии и сообщения коммитов по коду — на английском, отчёты в чат — на русском.
+  archive:
+    guidance:
+      - Перед архивацией убедиться, что запись в CHANGELOG.md [Unreleased] есть и на английском.
+      - Кратко назвать разряд semver для изменения и напомнить, что релиз делается только
+        через make release VERSION=x.y.z.

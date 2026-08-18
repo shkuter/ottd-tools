@@ -8,7 +8,7 @@ import {
 import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, industryName, localiseDot } from '../../i18n/names';
 import { num } from '../../components/format';
-import { CargoIcon } from '../consist/ConsistPage';
+import { CargoIcon } from '../../components/CargoIcon';
 import { useFirsStore } from '../../state/firsStore';
 import type { Economy } from '../../types';
 

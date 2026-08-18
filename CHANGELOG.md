@@ -50,6 +50,10 @@ of what users see):
   correction had to land in three places to keep the tabs showing the same money. Numbers are
   unchanged.
 
+- Shared vehicle and cargo icons live in `components/` instead of the catalogue page, so no tab
+  imports from another tab's page file any more. Dead engine exports that nothing called
+  (`accelSimulation`, `internalToKmh`, `yearTicks`, …) are gone — git history keeps them.
+
 ### Fixed
 
 - Vanilla introduction years are computed from the real calendar date

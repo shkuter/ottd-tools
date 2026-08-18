@@ -20,7 +20,6 @@ export const datasetMeta = metaJson as {
 
 export const trainById = new Map(trains.map((t) => [t.id, t]));
 export const cargoByLabel = new Map(cargos.map((c) => [c.label, c]));
-export const cargoById = new Map(cargos.map((c) => [c.id, c]));
 export const industryById = new Map(industries.map((i) => [i.id, i]));
 export const economyById = new Map(economies.map((e) => [e.id, e]));
 

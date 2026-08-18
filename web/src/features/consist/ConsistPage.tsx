@@ -12,49 +12,14 @@ import type { Train } from '../../types';
 import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { money, num } from '../../components/format';
+import { CargoIcon } from '../../components/CargoIcon';
+import { TrainImage } from '../../components/TrainImage';
 import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 
 const columnHelper = createColumnHelper<Train>();
-
-/**
- * Vehicle sprite: from the Iron Horse docs, or from the OpenGFX2 Classic base
- * set for vanilla vehicles. Hidden when there is no image for the model.
- */
-export function TrainImage({ trainId }: { trainId: string }) {
-  const dir = trainId.startsWith('vanilla_') ? 'vanilla_trains' : 'trains';
-  return (
-    <img
-      className="train-sprite"
-      src={`${import.meta.env.BASE_URL}icons/${dir}/${trainId}.png`}
-      alt=""
-      loading="lazy"
-      onError={(e) => {
-        (e.target as HTMLImageElement).style.display = 'none';
-      }}
-    />
-  );
-}
-
-/** Cargo icon: FIRS or the OpenGFX2 base set — the path comes from the data. */
-export function CargoIcon({ icon }: { icon: string }) {
-  if (!icon) return null;
-  return (
-    <img
-      className="cargo-icon"
-      src={`${import.meta.env.BASE_URL}${icon}`}
-      alt=""
-      width={10}
-      height={10}
-      loading="lazy"
-      onError={(e) => {
-        (e.target as HTMLImageElement).style.display = 'none';
-      }}
-    />
-  );
-}
 
 export default function ConsistPage() {
   const store = useConsistStore();
