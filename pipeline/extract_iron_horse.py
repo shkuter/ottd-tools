@@ -3,20 +3,13 @@
 Импортирует модель данных Iron Horse напрямую (без компиляции NewGRF):
 рецепт — как в vendor/iron-horse/src/id_report.py.
 """
-import os
-import sys
+from common import bootstrap_iron_horse, vendor_meta, write_json
 
-from common import VENDOR, vendor_meta, write_json
-
-IH_ROOT = os.path.join(VENDOR, "iron-horse")
-os.chdir(IH_ROOT)
-sys.argv = ["export", "--grf-name=iron-horse"]
-sys.path.insert(0, os.path.join(IH_ROOT, "src"))
-
-import iron_horse  # noqa: E402
-import global_constants  # noqa: E402
-from doc_helper import DocHelper  # noqa: E402
-from polar_fox import constants as polar_fox_constants  # noqa: E402
+ih = bootstrap_iron_horse()
+iron_horse = ih.iron_horse
+global_constants = ih.global_constants
+DocHelper = ih.DocHelper
+polar_fox_constants = ih.polar_fox_constants
 
 
 def unit_payload(unit):

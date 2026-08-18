@@ -3,18 +3,16 @@
 Выход: web/src/data/{cargos,industries,economies}.json + web/public/icons/cargo/*.png
 """
 import os
-import sys
 
-from common import ICONS_DIR, VENDOR, vendor_meta, write_json
+from PIL import Image
 
-FIRS_ROOT = os.path.join(VENDOR, "firs")
-os.chdir(FIRS_ROOT)
-sys.path.insert(0, os.path.join(FIRS_ROOT, "src"))
+from common import ICONS_DIR, bootstrap_firs, vendor_meta, write_json
 
-import firs  # noqa: E402
-import utils  # noqa: E402
-from docs.doc_helper import DocHelper  # noqa: E402
-from PIL import Image  # noqa: E402
+fx = bootstrap_firs()
+firs = fx.firs
+utils = fx.utils
+DocHelper = fx.DocHelper
+FIRS_ROOT = fx.root
 
 # initial_payment = price_factor * 2^21 / (10 * 20 * 255) — конверсия NML prop 0x12
 NML_PRICE_FACTOR_NUM = 1 << 21

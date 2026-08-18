@@ -3,22 +3,18 @@
 Эталоны Iron Horse сверены с https://grf.farm/iron-horse/4.29.0/ (17.08.2026),
 FIRS — с исходниками и конверсией NML price_factor -> prop 0x12.
 """
-import json
 import os
+import sys
 import unittest
 
-DATA = os.path.join(os.path.dirname(__file__), "..", "..", "web", "src", "data")
-
-
-def load(name):
-    with open(os.path.join(DATA, name)) as f:
-        return json.load(f)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from common import load_json  # noqa: E402
 
 
 class IronHorseKnownValues(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        payload = load("trains.json")
+        payload = load_json("trains.json")
         cls.meta = payload["meta"]
         cls.by_id = {t["id"]: t for t in payload["items"]}
 
@@ -72,9 +68,9 @@ class IronHorseKnownValues(unittest.TestCase):
 class FirsKnownValues(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.cargos = {c["id"]: c for c in load("cargos.json")["items"]}
-        cls.industries = {i["id"]: i for i in load("industries.json")["items"]}
-        cls.economies = {e["id"]: e for e in load("economies.json")["items"]}
+        cls.cargos = {c["id"]: c for c in load_json("cargos.json")["items"]}
+        cls.industries = {i["id"]: i for i in load_json("industries.json")["items"]}
+        cls.economies = {e["id"]: e for e in load_json("economies.json")["items"]}
 
     def test_coal_payment(self):
         coal = self.cargos["coal"]
@@ -96,10 +92,9 @@ class FirsKnownValues(unittest.TestCase):
         self.assertEqual(af["accept_mode"], "any_3")
 
     def test_version(self):
-        # данные должны собираться с релизного тега, а не с master:
-        # в master liquids_terminal уже переименован обратно в oil_terminal
-        import json as _json, os as _os
-        meta = _json.load(open(_os.path.join(DATA, "meta.json")))
+        # data must come from the release tag, not master: master already renamed
+        # liquids_terminal back to oil_terminal
+        meta = load_json("meta.json")
         self.assertEqual(meta["firs"], "5.2.0")
         self.assertIn("liquids_terminal", self.industries)
         self.assertNotIn("oil_terminal", self.industries)
@@ -127,8 +122,8 @@ class VanillaSpriteIds(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.trains = {t["id"]: t for t in load("vanilla_trains.json")["items"]}
-        cls.cargos = {c["id"]: c for c in load("vanilla_cargos.json")["items"]}
+        cls.trains = {t["id"]: t for t in load_json("vanilla_trains.json")["items"]}
+        cls.cargos = {c["id"]: c for c in load_json("vanilla_cargos.json")["items"]}
 
     def test_kirby_paul_tank(self):
         t = self.trains["vanilla_0"]

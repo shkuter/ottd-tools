@@ -9,14 +9,13 @@ Sprite numbers come from vanilla_*.json (extract_vanilla.py computes them from
 the game's own tables), so all that is left here is fetching the pixels.
 """
 import glob
-import json
 import os
 import re
 import sys
 
 from PIL import Image
 
-from common import DATA_DIR, REPO_ROOT, VENDOR, write_json
+from common import REPO_ROOT, VENDOR, load_json, write_json
 from grf_sprites import (
     ZOOM_IN_2X,
     GrfError,
@@ -65,11 +64,6 @@ def find_base_set():
         "OpenGFX2 Classic not found. Download it in game (Check Online Content → Base\n"
         "graphics) or put the set into vendor/opengfx2/ (see make fetch-opengfx2)"
     )
-
-
-def load_items(filename):
-    with open(os.path.join(DATA_DIR, filename)) as f:
-        return json.load(f)["items"]
 
 
 def colour_names():
@@ -187,8 +181,8 @@ def main():
             "shifted, so check against the game and update BASE_SET_MD5 deliberately"
         )
     palette = read_palette(PALETTES_H)
-    trains = load_items("vanilla_trains.json")
-    cargos = load_items("vanilla_cargos.json")
+    trains = load_json("vanilla_trains.json")["items"]
+    cargos = load_json("vanilla_cargos.json")["items"]
 
     drawn, missing_trains = render_trains(grf, palette, trains)
     icons, missing_cargos = render_cargos(grf, palette, cargos)

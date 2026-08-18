@@ -1,10 +1,9 @@
 """Валидация сгенерированных JSON + запись агрегированного meta.json."""
-import json
 import os
 import sys
 from datetime import date
 
-from common import DATA_DIR, write_json
+from common import DATA_DIR, load_json, write_json
 
 errors = []
 warnings = []
@@ -15,16 +14,11 @@ def check(condition, message):
         errors.append(message)
 
 
-def load(name):
-    with open(os.path.join(DATA_DIR, name)) as f:
-        return json.load(f)
-
-
 def main():
-    trains = load("trains.json")
-    cargos = load("cargos.json")
-    industries = load("industries.json")
-    economies = load("economies.json")
+    trains = load_json("trains.json")
+    cargos = load_json("cargos.json")
+    industries = load_json("industries.json")
+    economies = load_json("economies.json")
 
     # --- trains ---
     items = trains["items"]
@@ -74,8 +68,8 @@ def main():
                           f"industries/{ind['id']}/{eco_id}: некорректный input ratio {e}")
 
     # --- vanilla (используются при отключённых NewGRF) ---
-    vanilla_trains = load("vanilla_trains.json")["items"]
-    vanilla_cargos = load("vanilla_cargos.json")["items"]
+    vanilla_trains = load_json("vanilla_trains.json")["items"]
+    vanilla_cargos = load_json("vanilla_cargos.json")["items"]
     check(len(vanilla_trains) > 100, f"vanilla: мало машин: {len(vanilla_trains)}")
     check(len(vanilla_cargos) >= 25, f"vanilla: мало грузов: {len(vanilla_cargos)}")
     kirby = next((t for t in vanilla_trains if t["name"] == "Kirby Paul Tank"), None)

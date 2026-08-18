@@ -12,16 +12,13 @@ import shutil
 import sys
 import tempfile
 
-from common import REPO_ROOT, VENDOR
+from common import REPO_ROOT, bootstrap_iron_horse
 
-IH_ROOT = os.path.join(VENDOR, "iron-horse")
-os.chdir(IH_ROOT)
-sys.argv = ["export", "--grf-name=iron-horse"]
-sys.path.insert(0, os.path.join(IH_ROOT, "src"))
-
-import iron_horse  # noqa: E402
-from doc_helper import DocHelper  # noqa: E402
-import render_docs  # noqa: E402
+ih = bootstrap_iron_horse(with_render_docs=True)
+iron_horse = ih.iron_horse
+DocHelper = ih.DocHelper
+render_docs = ih.render_docs
+IH_ROOT = ih.root
 
 TRAIN_ICONS_DIR = os.path.join(REPO_ROOT, "web", "public", "icons", "trains")
 GENERATED_GRAPHICS = os.path.join(IH_ROOT, "generated", "graphics", "iron-horse")
@@ -60,13 +57,15 @@ def main():
                 src, os.path.join(TRAIN_ICONS_DIR, f"{catalogue.model_id}.png")
             )
             done += 1
-        except Exception as e:  # noqa: BLE001 — картинка не критична, идём дальше
+        except Exception as e:  # noqa: BLE001 — one missing picture must not stop the rest
             failed.append((catalogue.model_id, repr(e)[:80]))
 
     shutil.rmtree(tmp_dir, ignore_errors=True)
     print(f"train images: {done} -> {TRAIN_ICONS_DIR}, failed: {len(failed)}")
     for model_id, err in failed[:15]:
-        print(f"  FAIL {model_id}: {err}")
+        print(f"  FAIL {model_id}: {err}", file=sys.stderr)
+    if failed and done == 0:
+        sys.exit("train images: every render failed — the graphics stack is broken, not a stray model")
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ fetch:
 
 venv:
 	python3 -m venv $(VENV)
-	$(VENV)/bin/pip install Pillow Chameleon markdown
+	$(VENV)/bin/pip install -r pipeline/requirements.txt
 
 data:
 	$(PY) pipeline/extract_iron_horse.py

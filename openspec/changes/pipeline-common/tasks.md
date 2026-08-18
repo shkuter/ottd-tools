@@ -1,0 +1,6 @@
+- [x] 1. `common.py`: `bootstrap_iron_horse()`, `bootstrap_firs()`, `load_json()`
+- [x] 2. Перевести `extract_iron_horse.py`, `extract_train_images.py`, `extract_firs.py` на бутстрап; `validate.py`, `extract_opengfx2.py`, `tests/test_known_values.py` на `load_json`
+- [x] 3. `extract_train_images.py`: счётчик ошибок, ненулевой код при полном провале, ошибки в stderr
+- [x] 4. `pipeline/requirements.txt`, `make venv` из него; удалить `pipeline/schemas/`
+- [x] 5. `make data` → `git diff --stat web/src/data` пуст; `make test` зелёный
+- [x] 6. CHANGELOG `[Unreleased]` → `Changed`

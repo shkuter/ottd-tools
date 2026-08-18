@@ -67,6 +67,11 @@ of what users see):
   everything" clears the stores through a single registry (`state/index.ts`) instead of a
   hard-coded list of localStorage keys. Same numbers, same chart, zero lint warnings.
 
+- Pipeline: the Iron Horse / FIRS import dance (chdir → argv → sys.path → import) lives once
+  in `common.bootstrap_iron_horse()` / `bootstrap_firs()`, JSON reads go through
+  `common.load_json()`, `pipeline/requirements.txt` pins the venv, the empty `schemas/` stub is
+  gone, and `extract_train_images.py` fails loudly when every render fails instead of exiting 0.
+
 ### Fixed
 
 - **Vanilla data** — the extractor read the `RVI` table with two columns swapped, so every
