@@ -5,6 +5,12 @@ export interface TrainUnit {
   weight_t: number;
 }
 
+/**
+ * Track families the calculator can pick vehicles for. RAIL/NG/METRO come from Iron Horse,
+ * MONO/MAGLEV exist only in the vanilla catalogue.
+ */
+export type TrackType = 'RAIL' | 'NG' | 'METRO' | 'MONO' | 'MAGLEV';
+
 export interface Train {
   id: string;
   name: string;
@@ -15,7 +21,7 @@ export interface Train {
   joker: boolean;
   /** Wagon whose look is picked at random; the game hides it inside a variant group. */
   randomised: boolean;
-  base_track_type: 'RAIL' | 'NG' | 'METRO';
+  base_track_type: TrackType;
   track_types: string[];
   lgv_capable: boolean;
   intro_year: number;

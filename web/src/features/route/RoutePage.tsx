@@ -6,7 +6,7 @@ import {
   economies,
   economyById,
   economyIdForCargo,
-  trainsMeta,
+  activeTrainsMeta,
 } from '../../dataset';
 import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
@@ -35,7 +35,7 @@ export default function RoutePage() {
   const cargo = activeCargoByLabel(game).get(route.cargoLabel) ?? economyCargos[0];
 
   const stats = useMemo(
-    () => consistStats(consist.entries, cargo ?? null, calc.capacityIndex, trainsMeta, game, calc),
+    () => consistStats(consist.entries, cargo ?? null, calc.capacityIndex, activeTrainsMeta(game), game, calc),
     [consist.entries, cargo, calc, game],
   );
 
@@ -57,7 +57,7 @@ export default function RoutePage() {
             cargo,
             payment,
             distanceTiles: route.distanceTiles,
-            meta: trainsMeta,
+            meta: activeTrainsMeta(game),
             game,
             calc,
             loadedDaysOverride: route.manualDays,

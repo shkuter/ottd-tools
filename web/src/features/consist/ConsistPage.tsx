@@ -7,7 +7,7 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
-import { activeCargoByLabel, activeCargos, activeTrains, canCarryIn, trainsMeta } from '../../dataset';
+import { activeCargoByLabel, activeCargos, activeTrains, activeTrainsMeta, canCarryIn } from '../../dataset';
 import type { Train } from '../../types';
 import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
@@ -77,13 +77,13 @@ export default function ConsistPage() {
         header: () => t('table.capacity'),
         cell: (info) => (info.getValue() ? num(info.getValue()) : '—'),
       }),
-      columnHelper.accessor((row) => trainBuyCost(row, trainsMeta, game, calc), {
+      columnHelper.accessor((row) => trainBuyCost(row, activeTrainsMeta(game), game, calc), {
         id: 'cost',
         header: () => t('table.cost'),
         cell: (info) => money(info.getValue()),
         meta: { className: 'cell-money' },
       }),
-      columnHelper.accessor((row) => trainRunningCostPerYear(row, trainsMeta, game, calc), {
+      columnHelper.accessor((row) => trainRunningCostPerYear(row, activeTrainsMeta(game), game, calc), {
         id: 'running',
         header: () => t('table.running'),
         cell: (info) => money(info.getValue()),
@@ -113,7 +113,7 @@ export default function ConsistPage() {
 
   const cargo = store.cargoLabel ? (activeCargoByLabel(game).get(store.cargoLabel) ?? null) : null;
   const stats = useMemo(
-    () => consistStats(store.entries, cargo, calc.capacityIndex, trainsMeta, game, calc),
+    () => consistStats(store.entries, cargo, calc.capacityIndex, activeTrainsMeta(game), game, calc),
     [store.entries, cargo, calc, game],
   );
 

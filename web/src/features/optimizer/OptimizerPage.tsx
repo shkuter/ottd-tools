@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useNavigate } from 'react-router';
-import { activeCargos, activeTrains, economies, economyIdForCargo, trainsMeta } from '../../dataset';
+import { activeCargos, activeTrains, activeTrainsMeta, economies, economyIdForCargo } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { num } from '../../components/format';
@@ -102,7 +102,7 @@ export default function OptimizerPage() {
         game,
         calc,
       },
-      trainsMeta,
+      activeTrainsMeta(game),
       50,
     );
   }, [trains, cargo, economyId, year, distance, stationTiles, productionPerMonth, allowElectric, subsidised, excludedIds, game, calc]);

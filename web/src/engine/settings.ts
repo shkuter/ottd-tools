@@ -3,6 +3,8 @@
  * (src/table/settings/*.ini) и JGR's Patchpack.
  */
 
+import type { TrackType } from '../types';
+
 export interface GameSettings {
   /** Играем на JGR's Patchpack: доступны специфичные для патчпака настройки. */
   jgrpp: boolean;
@@ -173,7 +175,7 @@ export interface CalcSettings {
   /** Длина подъёма в тайлах для колонки «на подъёме». */
   hillTiles: number;
   /** Тип пути по умолчанию. */
-  trackType: 'RAIL' | 'NG' | 'METRO';
+  trackType: TrackType;
   /** Год для цен (используется при включённой инфляции). */
   priceYear: number;
 }

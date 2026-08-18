@@ -132,6 +132,11 @@ class VanillaSpriteIds(unittest.TestCase):
 
     def test_kirby_paul_tank(self):
         t = self.trains["vanilla_0"]
+        # engines.h: RVI( 2, G,   7,  64,     300,  47,    50, RC_S,  0, R, S)
+        self.assertEqual(t["cost_factor"], 7)
+        self.assertEqual(t["running_cost_class"], "running_steam")
+        self.assertEqual(t["engine_class"], "steam")
+        self.assertEqual(t["default_cargos"], [])  # CT_NONE
         self.assertEqual(t["image_index"], 2)
         self.assertEqual(t["sprite_id"], 0x0B6F)  # 28x12 in the set
         self.assertIsNone(t["sprite_id_rear"])
@@ -149,6 +154,16 @@ class VanillaSpriteIds(unittest.TestCase):
     def test_image_index_within_tables(self):
         # _engine_sprite_base holds 74 entries; going past it breaks the lookup
         self.assertLessEqual(max(t["image_index"] for t in self.trains.values()), 73)
+
+    def test_cargo_labels_are_the_games(self):
+        # cargo_type.h: CT_PASSENGERS{"PASS"}, CT_OIL{"OIL_"}, CT_GOODS{"GOOD"}
+        self.assertEqual(self.cargos["passengers"]["label"], "PASS")
+        self.assertEqual(self.cargos["oil"]["label"], "OIL_")
+        self.assertEqual(self.cargos["goods"]["label"], "GOOD")
+        self.assertEqual(self.trains["vanilla_22"]["default_cargos"], ["MAIL"])  # SH '125'
+        grain_hopper = next(t for t in self.trains.values() if t["name"] == "Grain Hopper")
+        self.assertEqual(grain_hopper["default_cargos"], ["GRAI", "WHEA", "MAIZ"])  # MCT_
+        self.assertIsNone(grain_hopper["model_life"])  # engine.cpp:141 — wagons never expire
 
     def test_cargo_icons(self):
         self.assertEqual(self.cargos["passengers"]["sprite_id"], 4297)  # SPR_CARGO_PASSENGERS

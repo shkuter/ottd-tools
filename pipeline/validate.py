@@ -81,8 +81,12 @@ def main():
     kirby = next((t for t in vanilla_trains if t["name"] == "Kirby Paul Tank"), None)
     check(kirby is not None and kirby["cost_factor"] == 7,
           "vanilla: Kirby Paul Tank не найден или цена не 7")
-    coal_v = next((c for c in vanilla_cargos if c["label"] == "CT_COAL"), None)
+    coal_v = next((c for c in vanilla_cargos if c["label"] == "COAL"), None)
     check(coal_v is not None and coal_v["initial_payment"] == 5916, "vanilla: уголь не 5916")
+    # labels must be the game's CargoLabels (cargo_type.h), not CT_* constant names
+    check(all(len(c["label"]) == 4 for c in vanilla_cargos), "vanilla: cargo label is not a 4-char CargoLabel")
+    check(kirby is not None and kirby["running_cost_class"] == "running_steam",
+          "vanilla: Kirby Paul Tank is a steam engine (RVI column h = RC_S)")
     labels_v = [c["label"] for c in vanilla_cargos]
     check(len(labels_v) == len(set(labels_v)), "vanilla: дубли меток грузов")
 

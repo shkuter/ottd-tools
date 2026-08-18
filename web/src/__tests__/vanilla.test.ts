@@ -1,20 +1,50 @@
 import { describe, expect, it } from 'vitest';
 import { vanillaCanCarry, vanillaCargos, vanillaTrains } from '../vanilla';
+import { activeTrainsMeta } from '../dataset';
+import { trainRunningCostPerYear, trainBuyCost } from '../engine/costs';
+import { DEFAULT_GAME_SETTINGS } from '../engine/settings';
+
+const vanillaMeta = activeTrainsMeta({ ...DEFAULT_GAME_SETTINGS, ironHorse: false, firs: false });
 
 const kirby = vanillaTrains.find((t) => t.name === 'Kirby Paul Tank')!;
 const sh125 = vanillaTrains.find((t) => t.name.includes('SH \'125\''))!;
 const coalWagon = vanillaTrains.find((t) => t.kind === 'wagon' && t.default_cargos.includes('COAL'))!;
 const mail = vanillaCargos.find((c) => c.label === 'MAIL')!;
 const coal = vanillaCargos.find((c) => c.label === 'COAL')!;
+const passengers = vanillaCargos.find((c) => c.label === 'PASS')!;
 
 describe('vanilla train adapter', () => {
-  it('Kirby Paul Tank: engine, cost 7, standard length, no cargo hold', () => {
+  it('Kirby Paul Tank: steam engine, cost 7, running by the steam base, no cargo hold', () => {
     expect(kirby.kind).toBe('engine');
     expect(kirby.cost_factor).toBe(7);
+    expect(trainBuyCost(kirby, vanillaMeta)).toBe(10937); // no Iron Horse shift on vanilla
     expect(kirby.running_cost_factor).toBe(50);
+    expect(kirby.running_cost_base).toBe('RUNNING_COST_STEAM');
+    expect(trainRunningCostPerYear(kirby, vanillaMeta)).toBe(1093); // 5600 × 50 / 256
+    expect(kirby.power_by_source).toEqual({ STEAM: 300 });
     expect(kirby.length).toBe(8);
     expect(kirby.capacities).toEqual([0, 0, 0, 0, 0]);
+    expect(kirby.default_cargos).toEqual([]);
     expect(kirby.base_track_type).toBe('RAIL');
+  });
+
+  it('electric engines report OHLE; monorail and maglev sit on their own tracks', () => {
+    const electric = vanillaTrains.filter(
+      (t) => t.kind === 'engine' && t.running_cost_base === 'RUNNING_COST_ELECTRIC' && t.base_track_type === 'RAIL',
+    );
+    expect(electric.map((t) => t.name)).toContain("'AsiaStar'");
+    for (const t of electric) expect(Object.keys(t.power_by_source ?? {})).toEqual(['OHLE']);
+    expect(vanillaTrains.filter((t) => t.base_track_type === 'MONO').length).toBeGreaterThan(0);
+    expect(vanillaTrains.filter((t) => t.base_track_type === 'MAGLEV').length).toBeGreaterThan(0);
+    expect(vanillaTrains.filter((t) => t.base_track_type === 'RAIL' && t.speed_mph! > 200)).toEqual([]);
+  });
+
+  it('labels are the game\'s CargoLabels; climate-dependent wagons list every cargo', () => {
+    expect(passengers).toBeDefined();
+    expect(vanillaCargos.find((c) => c.label === 'OIL_')).toBeDefined();
+    expect(vanillaCargos.every((c) => c.label.length === 4)).toBe(true);
+    const grain = vanillaTrains.find((t) => t.name === 'Grain Hopper')!;
+    expect(grain.default_cargos).toEqual(['GRAI', 'WHEA', 'MAIZ']);
   });
 
   it('SH 125: dual-headed, power and weight doubled', () => {

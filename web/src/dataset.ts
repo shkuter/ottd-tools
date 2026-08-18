@@ -29,6 +29,20 @@ export function activeTrains(game: GameSettings): Train[] {
 }
 
 /** Активный набор грузов: FIRS или ванильные грузы. */
+/**
+ * Catalogue metadata for the active train set. Iron Horse's basecost shifts are local to
+ * its own vehicles (the GRF defines them), so the vanilla catalogue gets zero shifts —
+ * only the game's difficulty and Base Costs GRF multipliers apply there.
+ */
+export function activeTrainsMeta(game: GameSettings): TrainsMeta {
+  return game.ironHorse ? trainsMeta : vanillaTrainsMeta;
+}
+
+const vanillaTrainsMeta: TrainsMeta = {
+  ...trainsMeta,
+  basecost_shifts: { build_engine: 0, build_wagon: 0, running_steam: 0, running_diesel: 0 },
+};
+
 export function activeCargos(game: GameSettings): Cargo[] {
   return game.firs ? cargos : vanillaCargos;
 }

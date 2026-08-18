@@ -6,6 +6,7 @@
 Источники (парсятся текстом, без сборки игры):
   vendor/openttd/src/table/engines.h      — _orig_engine_info (MT/MM/MW) + _orig_rail_vehicle_info
   vendor/openttd/src/table/cargo_const.h  — базовые грузы
+  vendor/openttd/src/cargo_type.h         — настоящие метки грузов (CT_OIL -> "OIL_")
   vendor/openttd/src/lang/english.txt     — имена машин и грузов
 """
 import datetime
@@ -19,6 +20,7 @@ from common import VENDOR, vendor_meta, write_json
 OTTD = os.path.join(VENDOR, "openttd")
 ENGINES_H = os.path.join(OTTD, "src", "table", "engines.h")
 CARGO_H = os.path.join(OTTD, "src", "table", "cargo_const.h")
+CARGO_TYPE_H = os.path.join(OTTD, "src", "cargo_type.h")
 LANG = os.path.join(OTTD, "src", "lang", "english.txt")
 TRAIN_SPRITES_H = os.path.join(OTTD, "src", "table", "train_sprites.h")
 SPRITES_H = os.path.join(OTTD, "src", "table", "sprites.h")
@@ -32,11 +34,22 @@ DIR_W = 6
 # в игре ландшафты: T=temperate, A=arctic, S=tropic(sub-tropical), Y=toyland
 CLIMATE_NAMES = {"T": "temperate", "A": "arctic", "S": "tropic", "Y": "toyland"}
 
+# RVI column h (engines.h: RC_S/RC_D/RC_E, RC_W = Price::Invalid for wagons)
 RUNNING_COST_KEYS = {
-    "Price::RunningTrainSteam": "running_steam",
-    "Price::RunningTrainDiesel": "running_diesel",
-    "Price::RunningTrainElectric": "running_electric",
-    "Price::Invalid": None,
+    "RC_S": "running_steam",
+    "RC_D": "running_diesel",
+    "RC_E": "running_electric",
+    "RC_W": None,
+}
+
+# RVI column k (engines.h: S/D/E/N/V = EngineClass::*, A = Steam for wagons)
+ENGINE_CLASS_KEYS = {
+    "S": "steam",
+    "D": "diesel",
+    "E": "electric",
+    "N": "monorail",
+    "V": "maglev",
+    "A": "steam",
 }
 
 
@@ -102,6 +115,15 @@ def train_sprite(image_index, direction=DIR_W):
     return ((direction + add[image_index]) & mask[image_index]) + base[image_index]
 
 
+@functools.lru_cache(maxsize=None)
+def parse_cargo_labels():
+    """CT_OIL{"OIL_"} -> {"CT_OIL": "OIL_"} — the labels NewGRFs (Iron Horse, FIRS) refer to."""
+    return {
+        f"CT_{m.group(1)}": m.group(2)
+        for m in re.finditer(r'CT_(\w+)\{"(.{4})"\}', read(CARGO_TYPE_H))
+    }
+
+
 def parse_cargo_sprites():
     """SPR_CARGO_<PLURAL> = 4297… — cargo icons in the base set."""
     return {
@@ -129,19 +151,27 @@ def parse_rail_vehicle_info():
             "power_hp": int(p[4]),
             "weight_t": int(p[5]),
             "running_cost": int(p[6]),
-            "engine_class": p[7],
+            "running_cost_class": RUNNING_COST_KEYS[p[7]],
             "capacity": int(p[8]),
             "railtype": p[9],
-            "running_cost_class": RUNNING_COST_KEYS.get(p[10], "running_diesel"),
+            "engine_class": ENGINE_CLASS_KEYS[p[10]],
         })
     return entries
+
+
+def default_cargo_labels(cargo_const, labels):
+    """CT_COAL -> ["COAL"]; MCT_GRAIN_WHEAT_MAIZE -> ["GRAI", "WHEA", "MAIZ"]; CT_NONE -> []."""
+    if cargo_const == "CT_NONE":
+        return []
+    if cargo_const.startswith("MCT_"):
+        return [labels[f"CT_{part}"] for part in cargo_const[len("MCT_"):].split("_")]
+    return [labels[cargo_const]]
 
 
 def build_trains():
     infos = parse_engine_info()
     rvis = parse_rail_vehicle_info()
-    names = parse_lang_names("STR_VEHICLE_NAME_TRAIN_")
-    name_list = [v for k, v in names.items()]
+    labels = parse_cargo_labels()
 
     items = []
     for info in infos:
@@ -149,9 +179,8 @@ def build_trains():
         if idx >= len(rvis):
             break  # дальше идут дорожные машины/суда/самолёты
         rvi = rvis[idx]
-        # имя: комментарий в таблице совпадает с lang-строкой («Kirby Paul Tank (Steam)»)
-        raw = re.sub(r"\s*\(.*?\)\s*$", "", info["comment"]).strip()
-        name = raw if raw in name_list else raw
+        # name: the table comment matches the lang string ("Kirby Paul Tank (Steam)")
+        name = re.sub(r"\s*\(.*?\)\s*$", "", info["comment"]).strip()
         is_wagon = rvi["type"] == "wagon"
         # base_intro = DAYS_TILL_ORIGINAL_BASE_YEAR + intro_days (table/engines.h MT),
         # т.е. дни от 1 января 1920 — из них берётся и год, и месяц появления
@@ -164,7 +193,8 @@ def build_trains():
             "intro_year": intro.year,
             "intro_month": intro.month,
             "vehicle_life": info["life_length"],
-            "model_life": info["base_life"],
+            # engine.cpp:141 — original wagons never expire (base_life forced to 0xFF)
+            "model_life": None if is_wagon else info["base_life"],
             "climates": info["climates"],
             "power_hp": rvi["power_hp"] * (2 if rvi["type"] == "multihead" else 1),
             "weight_t": rvi["weight_t"] * (2 if rvi["type"] == "multihead" else 1),
@@ -177,7 +207,10 @@ def build_trains():
             "running_cost_class": rvi["running_cost_class"],
             "engine_class": rvi["engine_class"],
             "railtype": rvi["railtype"],
-            "default_cargo": info["cargo"],
+            # CT_NONE: an engine without a cargo hold (the game aliases it to passengers).
+            # MCT_GRAIN_WHEAT_MAIZE: one wagon, a different cargo per climate (cargo_type.h
+            # MixedCargoType) — list every label so any climate's cargo matches.
+            "default_cargos": default_cargo_labels(info["cargo"], labels),
             # ваниль: TE-коэффициент 76/256, длина 8 единиц (полтайла)
             "te_coefficient": 76 / 256,
             "length": 8,
@@ -202,21 +235,22 @@ def build_cargos():
     block = text[start : text.index("\n};", start)]
     names = parse_lang_names("STR_CARGO_PLURAL_")
     cargo_sprites = parse_cargo_sprites()
+    labels = parse_cargo_labels()
     items = []
     for m in re.finditer(r"\bMK\(\s*(.*?)\)\s*,\s*$", block, re.M | re.S):
         args = [a.strip() for a in re.split(r",(?![^(]*\))", m.group(1))]
         if len(args) < 11:
             continue
         label_const = args[1]                       # CT_COAL
-        label = label_const.replace("CT_", "")
+        slug = label_const.replace("CT_", "")       # COAL / IRON_ORE — id and icon file name
         str_plural = args[10]                       # COAL
         # CT_INVALID — служебные слоты без имени (заполняются climate-таблицами)
         if label_const == "CT_INVALID" or str_plural == "NOTHING":
             continue
         items.append({
-            "label": label_const,
-            "id": label.lower(),
-            "name": names.get(f"STR_CARGO_PLURAL_{str_plural}", label.title()),
+            "label": labels[label_const],           # the game's CargoLabel: "COAL", "OIL_", "IORE"
+            "id": slug.lower(),
+            "name": names.get(f"STR_CARGO_PLURAL_{str_plural}", slug.title()),
             "initial_payment": int(args[5]),
             "transit_periods": [int(args[6]), int(args[7])],
             "weight_16ths": int(args[3]),
@@ -225,7 +259,7 @@ def build_cargos():
             "classes_raw": args[13] if len(args) > 13 else "",
             # MK_SPRITE(str_plural) → SPR_CARGO_<PLURAL> (cargo_const.h:54)
             "sprite_id": cargo_sprites.get(str_plural),
-            "icon": f"icons/vanilla_cargo/{label.lower()}.png",
+            "icon": f"icons/vanilla_cargo/{slug.lower()}.png",
         })
     return items
 

@@ -32,6 +32,12 @@ describe('canCarryIn', () => {
     expect(canCarryIn(noFirs, hopper, vCoal)).toBe(true);
     const vMail = activeCargos(noFirs).find((c) => c.label === 'MAIL')!;
     expect(canCarryIn(noFirs, hopper, vMail)).toBe(false);
+    // real CargoLabels: an Iron Horse passenger coach takes vanilla passengers
+    const vPass = activeCargos(noFirs).find((c) => c.label === 'PASS')!;
+    const coach = trains.find((t) => t.kind === 'wagon' && t.default_cargos.includes('PASS'))!;
+    expect(canCarryIn(noFirs, coach, vPass)).toBe(true);
+    const vOil = activeCargos(noFirs).find((c) => c.label === 'OIL_')!;
+    expect(trains.some((t) => t.kind === 'wagon' && canCarryIn(noFirs, t, vOil))).toBe(true);
   });
 
   it('full NewGRF refit: hopper takes coal, not passengers', () => {

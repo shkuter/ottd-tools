@@ -25,7 +25,8 @@ interface VanillaTrainRaw {
   running_cost_class: string | null;
   engine_class: string;
   railtype: string;
-  default_cargo: string;
+  /** The game's CargoLabels: one for most wagons, several for climate-dependent ones (MCT_*), none for engines. */
+  default_cargos: string[];
   te_coefficient: number;
   length: number;
 }
@@ -43,11 +44,28 @@ interface VanillaCargoRaw {
   icon: string;
 }
 
+/** Engine class of the game → power source in Iron Horse terms (`OHLE` marks pure electrics). */
+const POWER_SOURCE: Record<string, string> = {
+  steam: 'STEAM',
+  diesel: 'DIESEL',
+  electric: 'OHLE',
+  monorail: 'MONORAIL',
+  maglev: 'MAGLEV',
+};
+
+/** engines.h RVI railtype column: R/C = plain and electrified rail, O = monorail, L = maglev. */
+/** Extractor's running_cost_class → the RUNNING_COST_* vocabulary Iron Horse uses. */
+const RUNNING_COST_BASE: Record<string, string> = {
+  running_steam: 'RUNNING_COST_STEAM',
+  running_diesel: 'RUNNING_COST_DIESEL',
+  running_electric: 'RUNNING_COST_ELECTRIC',
+};
+
 const RAILTYPE_TRACK: Record<string, Train['base_track_type']> = {
-  'RailTypes{RAILTYPE_RAIL}': 'RAIL',
-  'RailTypes{RAILTYPE_ELECTRIC}': 'RAIL',
-  'RailTypes{RAILTYPE_MONO}': 'RAIL',
-  'RailTypes{RAILTYPE_MAGLEV}': 'RAIL',
+  R: 'RAIL',
+  C: 'RAIL',
+  O: 'MONO',
+  L: 'MAGLEV',
 };
 
 function toTrain(raw: VanillaTrainRaw): Train {
@@ -62,16 +80,14 @@ function toTrain(raw: VanillaTrainRaw): Train {
     joker: false,
     randomised: false,
     base_track_type: RAILTYPE_TRACK[raw.railtype] ?? 'RAIL',
-    track_types: [raw.railtype.replace(/^RailTypes\{RAILTYPE_|\}$/g, '')],
+    track_types: [RAILTYPE_TRACK[raw.railtype] ?? 'RAIL'],
     lgv_capable: false,
     intro_year: raw.intro_year,
     intro_month: raw.intro_month,
     vehicle_life: raw.vehicle_life,
     model_life: raw.model_life,
     power_hp: raw.power_hp,
-    power_by_source: raw.power_hp
-      ? { [raw.engine_class.replace('EngineClass::', '').toUpperCase()]: raw.power_hp }
-      : null,
+    power_by_source: raw.power_hp ? { [POWER_SOURCE[raw.engine_class] ?? 'NULL']: raw.power_hp } : null,
     te_coefficient: raw.te_coefficient,
     speed_mph: raw.speed_mph,
     speed_lgv_mph: null,
@@ -81,21 +97,21 @@ function toTrain(raw: VanillaTrainRaw): Train {
     units: [{ capacities: [capacity], length: raw.length, weight_t: raw.weight_t }],
     cost_factor: raw.cost_factor,
     running_cost_factor: raw.running_cost_factor,
-    running_cost_base: raw.running_cost_class ?? 'running_diesel',
+    // same vocabulary as Iron Horse (RUNNING_COST_STEAM/…); wagons (Price::Invalid) cost nothing
+    running_cost_base: RUNNING_COST_BASE[raw.running_cost_class ?? ''] ?? 'RUNNING_COST_DIESEL',
     // ванильные машины не имеют GRF-параметра вместимости — одно значение на все 5
     capacities: [capacity, capacity, capacity, capacity, capacity],
     capacity_label: null,
     loading_speed: 5,
-    default_cargos: [raw.default_cargo.replace('CT_', '')],
+    default_cargos: raw.default_cargos,
     refit: { classes: [], labels_allowed: [], labels_disallowed: [] },
   };
 }
 
 function toCargo(raw: VanillaCargoRaw): Cargo {
-  const label = raw.label.replace('CT_', '');
   return {
     id: raw.id,
-    label,
+    label: raw.label,
     name: raw.name,
     classes: [],
     is_freight: raw.is_freight,

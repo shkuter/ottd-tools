@@ -385,6 +385,8 @@ export default function SettingsPage() {
             <option value="RAIL">RAIL</option>
             <option value="NG">NG</option>
             <option value="METRO">METRO</option>
+            {!game.ironHorse && <option value="MONO">MONO</option>}
+            {!game.ironHorse && <option value="MAGLEV">MAGLEV</option>}
           </select>
         </Row>
         <Row label={t('settings.hillTiles')} hint={t('settings.hillTilesHint')}>

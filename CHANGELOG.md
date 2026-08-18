@@ -69,6 +69,16 @@ of what users see):
 
 ### Fixed
 
+- **Vanilla data** — the extractor read the `RVI` table with two columns swapped, so every
+  vanilla engine was charged the diesel running-cost base and its power source was garbage;
+  cargo labels were taken from the constant name (`OIL`, `PASSENGERS`) instead of the game's
+  `CargoLabel` (`OIL_`, `PASS`), which left Iron Horse wagons unable to carry 27 of the 31
+  vanilla cargos when FIRS is off. Both come from `vendor/openttd/src` now (`engines.h`,
+  `cargo_type.h`). Along the way: climate-dependent wagons (`MCT_GRAIN_WHEAT_MAIZE`) list every
+  cargo they take; monorail and maglev vehicles sit on their own `MONO`/`MAGLEV` track types
+  instead of RAIL; original wagons never expire (`engine.cpp` forces `base_life = 0xFF`);
+  Iron Horse's basecost shifts no longer apply to vanilla vehicles (Kirby Paul Tank is
+  £10,937 to buy and £1,093/yr again).
 - Vanilla introduction years are computed from the real calendar date
   (`DAYS_TILL_ORIGINAL_BASE_YEAR + intro_days`) instead of `intro_days / 365`; the years come
   out the same, but the month is now exact.
