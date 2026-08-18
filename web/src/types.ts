@@ -19,6 +19,8 @@ export interface Train {
   track_types: string[];
   lgv_capable: boolean;
   intro_year: number;
+  /** Месяц появления (1..12): игра вводит машину не 1 января, а по дате из GRF. */
+  intro_month: number;
   vehicle_life: number;
   model_life: number | null;
   power_hp: number;

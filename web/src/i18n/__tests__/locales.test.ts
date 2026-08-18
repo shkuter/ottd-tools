@@ -25,6 +25,9 @@ const KEPT_IN_ENGLISH = new Set([
   'settings.firs',
   'settings.jgrpp',
   'settings.inflationGrfError',
+  // JGRPP-специфичная строка без русского перевода в самой игре
+  // (vendor/openttd-patches/src/lang/extra/*): в русской игре она тоже английская
+  'settings.introRandomisation',
 ]);
 
 describe('locales', () => {

@@ -64,6 +64,10 @@ def catalogue_payload(catalogue, dh):
         "track_types": sorted({t.label for t in mv.track_types}),
         "lgv_capable": bool(mv.lgv_capable),
         "intro_year": catalogue.intro_year,
+        # месяц появления: Iron Horse ставит intro date как date(year, 1 + offset, 1)
+        # (train/schemas.py introduction_date), поэтому машины одного поколения
+        # расползаются по году — в игре они появляются не 1 января
+        "intro_month": 1 + mv.intro_date_months_offset,
         "vehicle_life": mv.vehicle_life,
         "model_life": mv.model_life if mv.model_life != "VEHICLE_NEVER_EXPIRES" else None,
         "power_hp": mv.power or 0,

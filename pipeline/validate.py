@@ -34,6 +34,7 @@ def main():
     for t in items:
         check(len(t["capacities"]) == 5, f"trains/{t['id']}: capacities != 5")
         check(t["intro_year"] > 1800, f"trains/{t['id']}: intro_year {t['intro_year']}")
+        check(1 <= t["intro_month"] <= 12, f"trains/{t['id']}: intro_month {t['intro_month']}")
         if t["kind"] == "engine":
             check(t["power_hp"] > 0, f"trains/{t['id']}: движок без мощности")
     shifts = trains["meta"]["basecost_shifts"]

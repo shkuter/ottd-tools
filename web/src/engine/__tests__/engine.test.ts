@@ -207,6 +207,38 @@ describe('optimizer', () => {
     expect(heavy.cargoPerTrip).toBe(heavy.capacity);
     expect(heavy.trainsNeeded).toBeGreaterThan(1);
   });
+
+  // машины, которых в игре может ещё не быть, игрок выбрасывает из подбора чекбоксом
+  it('excludedIds убирает машину из перебора и меняет выдачу', () => {
+    const params = {
+      year: 1961,
+      distanceTiles: 200,
+      cargo: cargoByLabel.get('COAL')!,
+      economyId: 'STEELTOWN',
+      maxLengthTiles: 6,
+      allowElectric: false,
+      game: DEFAULT_GAME_SETTINGS,
+      calc: DEFAULT_CALC_SETTINGS,
+    };
+    const top = optimizeConsists(trains, params, trainsMeta, 1)[0];
+    const withoutEngine = optimizeConsists(
+      trains,
+      { ...params, excludedIds: [top.engine.id] },
+      trainsMeta,
+      50,
+    );
+    expect(withoutEngine.some((r) => r.engine.id === top.engine.id)).toBe(false);
+
+    const withoutWagon = optimizeConsists(
+      trains,
+      { ...params, excludedIds: [top.wagon.id] },
+      trainsMeta,
+      50,
+    );
+    expect(withoutWagon.some((r) => r.wagon.id === top.wagon.id)).toBe(false);
+    // выдача не пустеет: подбор просто берёт следующий вариант
+    expect(withoutWagon.length).toBeGreaterThan(0);
+  });
 });
 
 describe('physics', () => {

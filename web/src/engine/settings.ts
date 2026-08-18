@@ -60,6 +60,13 @@ export interface GameSettings {
   costsWhenStopped: number;
   /** JGRPP economy.inflation_fixed_dates: инфляция только с 1920 по 2090. */
   inflationFixedDates: boolean;
+  /**
+   * JGRPP vehicle.vehicle_intro_randomisation («Randomise vehicle introduction
+   * dates»): игра сдвигает дату появления машины вперёд на случайные 0…511 дней.
+   * В ванили это поведение встроено и не отключается (engine.cpp StartupOneEngine),
+   * поэтому настройка читается только при jgrpp.
+   */
+  vehicleIntroRandomisation: boolean;
 }
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
@@ -86,6 +93,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   basecostTrainRunning: 1,
   costsWhenStopped: 1,
   inflationFixedDates: true,
+  vehicleIntroRandomisation: true,
 };
 
 /**

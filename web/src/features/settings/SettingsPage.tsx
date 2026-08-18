@@ -96,6 +96,20 @@ export default function SettingsPage() {
                 {game.inflationFixedDates ? t('settings.on') : t('settings.off')}
               </label>
             </Row>
+            <Row
+              label={t('settings.introRandomisation')}
+              hint={t('settings.introRandomisationHint')}
+            >
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  switch=""
+                  checked={game.vehicleIntroRandomisation}
+                  onChange={(e) => setGame('vehicleIntroRandomisation', e.target.checked)}
+                />
+                {game.vehicleIntroRandomisation ? t('settings.on') : t('settings.off')}
+              </label>
+            </Row>
             <Row label={t('settings.paymentAlgorithm')} hint={t('settings.paymentAlgorithmHint')}>
               <select
                 value={game.paymentAlgorithm}

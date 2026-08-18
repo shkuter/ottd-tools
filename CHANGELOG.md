@@ -18,8 +18,37 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- **Best train** — `Interval` and `Transported` columns. The interval is the round trip
+  shared by the trains the flow needs; the transported share is an estimate of the station
+  rating (`station_cmd.cpp` `GetTargetRating`), which is what decides how much of an
+  industry's output reaches the station at all — `(rating + 1) / 256`. Hover the cell for
+  the breakdown (speed, time since last pickup, waiting cargo, train age).
+- **Best train** — a `?` marker next to a vehicle that may not be on sale yet in the year you
+  picked. The calculator works in years, the game in dates: a NewGRF sets the introduction day
+  (Iron Horse spreads a generation across the year via `date(year, 1 + months_offset, 1)`) and
+  the game then pushes it forward by a random 0…511 days (`engine.cpp` `StartupOneEngine`).
+  Hovering the marker shows the earliest and the latest month the vehicle can show up.
+  Below the table hint the same vehicles are listed as checkboxes: unticking one drops it from
+  the search and everything is recalculated without it (kept in `ottd-tools-optimizer`, so a
+  dropped vehicle stays listed and can be brought back), plus an `Include all again` button.
+  One checkbox covers one buy-list entry: Iron Horse ships several models under a single name
+  (Coil Carrier is covered / covered asymmetric / tarpaulin / uncovered plus a randomised one),
+  so entries with the same name, capacity, length and introduction date are folded together and
+  unticking one drops them all. Same-named entries that really differ carry their capacity.
+- **Settings** — JGRPP `Randomise vehicle introduction dates`
+  (`vehicle.vehicle_intro_randomisation`). Vanilla OpenTTD always randomises, JGRPP can turn it
+  off, and the `?` markers follow the setting.
+- Train data now carries `intro_month`, extracted for both Iron Horse and vanilla engines.
+
 ### Fixed
 
+- Vanilla introduction years are computed from the real calendar date
+  (`DAYS_TILL_ORIGINAL_BASE_YEAR + intro_days`) instead of `intro_days / 365`; the years come
+  out the same, but the month is now exact.
+- Russian cargo name for `HWAR` is now "Оборудование", the name the game shows, instead of the
+  literal "Металлоизделия".
 - **Best train** no longer scrolls the whole page: the shell is one viewport tall, the header
   and footer stay put and the results table takes the leftover height instead of the
   hand-tuned `calc(100vh - 280px)` it used before.

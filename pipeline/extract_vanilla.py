@@ -8,6 +8,7 @@
   vendor/openttd/src/table/cargo_const.h  — базовые грузы
   vendor/openttd/src/lang/english.txt     — имена машин и грузов
 """
+import datetime
 import functools
 import os
 import re
@@ -21,6 +22,9 @@ CARGO_H = os.path.join(OTTD, "src", "table", "cargo_const.h")
 LANG = os.path.join(OTTD, "src", "lang", "english.txt")
 TRAIN_SPRITES_H = os.path.join(OTTD, "src", "table", "train_sprites.h")
 SPRITES_H = os.path.join(OTTD, "src", "table", "sprites.h")
+
+# CalendarTime::DAYS_TILL_ORIGINAL_BASE_YEAR — начало отсчёта дат введения машин
+ORIGINAL_BASE_DATE = datetime.date(1920, 1, 1)
 
 # Direction::W — the buy-menu view (direction_type.h, GetRailIcon in train_cmd.cpp)
 DIR_W = 6
@@ -149,12 +153,16 @@ def build_trains():
         raw = re.sub(r"\s*\(.*?\)\s*$", "", info["comment"]).strip()
         name = raw if raw in name_list else raw
         is_wagon = rvi["type"] == "wagon"
+        # base_intro = DAYS_TILL_ORIGINAL_BASE_YEAR + intro_days (table/engines.h MT),
+        # т.е. дни от 1 января 1920 — из них берётся и год, и месяц появления
+        intro = ORIGINAL_BASE_DATE + datetime.timedelta(days=info["intro_days"])
         items.append({
             "id": f"vanilla_{idx}",
             "name": name,
             "kind": "wagon" if is_wagon else "engine",
             "dual_headed": rvi["type"] == "multihead",
-            "intro_year": 1920 + info["intro_days"] // 365,
+            "intro_year": intro.year,
+            "intro_month": intro.month,
             "vehicle_life": info["life_length"],
             "model_life": info["base_life"],
             "climates": info["climates"],

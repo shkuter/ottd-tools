@@ -12,6 +12,7 @@ interface VanillaTrainRaw {
   kind: 'engine' | 'wagon';
   dual_headed: boolean;
   intro_year: number;
+  intro_month: number;
   vehicle_life: number;
   model_life: number;
   climates: string[];
@@ -64,6 +65,7 @@ function toTrain(raw: VanillaTrainRaw): Train {
     track_types: [raw.railtype.replace(/^RailTypes\{RAILTYPE_|\}$/g, '')],
     lgv_capable: false,
     intro_year: raw.intro_year,
+    intro_month: raw.intro_month,
     vehicle_life: raw.vehicle_life,
     model_life: raw.model_life,
     power_hp: raw.power_hp,

@@ -242,6 +242,34 @@ td:has(> .train-sprite) {
 
 .dim { color: var(--muted); font-size: 12px; }
 
+/* машины «под вопросом»: чекбоксом их можно выкинуть из подбора */
+.intro-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 14px;
+  margin: -6px 0 10px;
+  font-size: 13px;
+}
+
+.intro-toggles .checkbox {
+  cursor: help;
+  gap: 4px;
+}
+
+.intro-toggles .intro-reset {
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+/* «?» у машины, которая в выбранном году может ещё не появиться в игре */
+.intro-warn {
+  color: var(--accent);
+  font-weight: bold;
+  cursor: help;
+  padding-left: 2px;
+}
+
 .page-optimizer {
   display: flex;
   flex-direction: column;

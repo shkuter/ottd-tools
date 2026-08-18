@@ -30,10 +30,19 @@ function baseParams(game: GameSettings, calc: CalcSettings): OptimizeParams {
 }
 
 /** Снимок расчёта: топ-результат оптимизатора + статистика состава. */
-function snapshot(gameOverrides: Partial<GameSettings>, calcOverrides: Partial<CalcSettings> = {}) {
+function snapshot(
+  gameOverrides: Partial<GameSettings>,
+  calcOverrides: Partial<CalcSettings> = {},
+  paramOverrides: Partial<OptimizeParams> = {},
+) {
   const game = { ...DEFAULT_GAME_SETTINGS, ...gameOverrides };
   const calc = { ...DEFAULT_CALC_SETTINGS, ...calcOverrides };
-  const results = optimizeConsists(trains, baseParams(game, calc), trainsMeta, 5);
+  const results = optimizeConsists(
+    trains,
+    { ...baseParams(game, calc), ...paramOverrides },
+    trainsMeta,
+    5,
+  );
   const top = results[0];
   const entries = top
     ? [
@@ -55,12 +64,19 @@ function snapshot(gameOverrides: Partial<GameSettings>, calcOverrides: Partial<C
     statsBuy: stats.buyCostTotal,
     statsGrade: stats.balancingSpeedOnGradeMph,
     statsWeight: stats.loadedWeightT,
+    // машина может ещё не появиться в игре: настройки влияют не только на числа
+    introCertain: top ? top.engineIntro.certain && top.wagonIntro.certain : null,
   });
 }
 
 const BASELINE = snapshot({});
 
-const CASES: { name: string; game?: Partial<GameSettings>; calc?: Partial<CalcSettings> }[] = [
+const CASES: {
+  name: string;
+  game?: Partial<GameSettings>;
+  calc?: Partial<CalcSettings>;
+  params?: Partial<OptimizeParams>;
+}[] = [
   { name: 'freightTrains', game: { freightTrains: 4 } },
   { name: 'slopeSteepness', game: { slopeSteepness: 8 } },
   { name: 'cargoAgingRate', game: { cargoAgingRate: 400 } },
@@ -88,6 +104,12 @@ const CASES: { name: string; game?: Partial<GameSettings>; calc?: Partial<CalcSe
   { name: 'subsidyMultiplier', game: { subsidyMultiplier: 3 } },
   { name: 'dayLengthFactor (JGRPP)', game: { jgrpp: true, dayLengthFactor: 4 } },
   { name: 'costsWhenStopped (JGRPP)', game: { jgrpp: true, costsWhenStopped: 8 } },
+  {
+    // без рандомизации машина доступна с даты из GRF, с ней — на срок до 1,5 года позже
+    name: 'vehicleIntroRandomisation (JGRPP)',
+    game: { jgrpp: true, vehicleIntroRandomisation: false },
+    params: { year: 1961 },
+  },
   { name: 'capacityIndex', calc: { capacityIndex: 4 } },
   { name: 'hillTiles', calc: { hillTiles: 40 } },
   { name: 'priceYear (с инфляцией)', game: { inflation: true }, calc: { priceYear: 2050 } },
@@ -111,7 +133,7 @@ describe('каждая настройка влияет на расчёт', () =>
                 1,
               )[0]?.profitPerYear,
             )
-          : snapshot(c.game ?? {}, c.calc ?? {});
+          : snapshot(c.game ?? {}, c.calc ?? {}, c.params ?? {});
       const reference =
         c.name === 'subsidyMultiplier'
           ? JSON.stringify(
@@ -122,7 +144,10 @@ describe('каждая настройка влияет на расчёт', () =>
                 1,
               )[0]?.profitPerYear,
             )
-          : BASELINE;
+          : c.params
+            ? // кейс со своими параметрами задачи сравнивается с ними же на дефолтных настройках
+              snapshot({}, {}, c.params)
+            : BASELINE;
       expect(changed).not.toBe(reference);
     });
   }

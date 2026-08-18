@@ -9,12 +9,20 @@ interface OptimizerState {
   /** Industry output per economy month, 0 = do not limit the load. */
   productionPerMonth: number;
   allowElectric: boolean;
+  /**
+   * Машины, исключённые из перебора: те, что в выбранном году могут ещё не
+   * появиться в игре (engine/availability.ts) и не нужны игроку в выдаче.
+   */
+  excludedIds: string[];
   setYear: (year: number) => void;
   setCargoLabel: (label: string) => void;
   setDistanceTiles: (tiles: number) => void;
   setStationTiles: (tiles: number) => void;
   setProductionPerMonth: (amount: number) => void;
   setAllowElectric: (allow: boolean) => void;
+  /** Выключить/вернуть пункт списка покупки целиком: у него бывает несколько моделей. */
+  toggleExcluded: (ids: string[]) => void;
+  clearExcluded: () => void;
 }
 
 export const useOptimizerStore = create<OptimizerState>()(
@@ -26,12 +34,20 @@ export const useOptimizerStore = create<OptimizerState>()(
       stationTiles: 5,
       productionPerMonth: 0,
       allowElectric: false,
+      excludedIds: [],
       setYear: (year) => set({ year }),
       setCargoLabel: (cargoLabel) => set({ cargoLabel }),
       setDistanceTiles: (distanceTiles) => set({ distanceTiles }),
       setStationTiles: (stationTiles) => set({ stationTiles }),
       setProductionPerMonth: (productionPerMonth) => set({ productionPerMonth }),
       setAllowElectric: (allowElectric) => set({ allowElectric }),
+      toggleExcluded: (ids) =>
+        set((s) => ({
+          excludedIds: ids.every((id) => s.excludedIds.includes(id))
+            ? s.excludedIds.filter((x) => !ids.includes(x))
+            : [...s.excludedIds, ...ids.filter((id) => !s.excludedIds.includes(id))],
+        })),
+      clearExcluded: () => set({ excludedIds: [] }),
     }),
     { name: 'ottd-tools-optimizer' },
   ),

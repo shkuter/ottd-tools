@@ -9,6 +9,8 @@ import { consistPhysics, type ConsistEntry } from './consist';
 import { balancingSpeed } from './physics';
 import { buyCost, runningBaseKey, runningCostPerYear } from './costs';
 import { transportedGoodsIncome } from './income';
+import { estimateStationRating, type StationRating } from './rating';
+import { introAvailability, type IntroAvailability } from './availability';
 import { daysForDistance, transitPeriodsFromDays } from './units';
 import {
   DEFAULT_CALC_SETTINGS,
@@ -36,6 +38,8 @@ export interface OptimizeParams {
   allowElectric: boolean;
   /** Груз идёт под субсидией — доход умножается (difficulty.subsidy_multiplier). */
   subsidised?: boolean;
+  /** Машины, выброшенные из перебора (например, которых в игре ещё может не быть). */
+  excludedIds?: readonly string[];
   /**
    * Cargo produced per economy month at the source industry (0 = unlimited).
    * Caps what a train can actually haul, so extra capacity stops paying for itself
@@ -57,11 +61,19 @@ export interface OptimizeResult {
   engineCount: number;
   wagon: Train;
   wagonCount: number;
+  /** Когда локомотив появляется в игре: год выбран, а дата в игре точнее и плавает. */
+  engineIntro: IntroAvailability;
+  /** То же для вагона. */
+  wagonIntro: IntroAvailability;
   capacity: number;
   /** Cargo actually hauled per trip: the capacity, or the production flow share when smaller. */
   cargoPerTrip: number;
   /** Trains of this consist needed to clear the production flow (1 when unconstrained). */
   trainsNeeded: number;
+  /** Days between visits to the station: round trip shared by `trainsNeeded` trains. */
+  pickupIntervalDays: number;
+  /** Station rating this interval settles at; null when no production flow is given. */
+  stationRating: StationRating | null;
   lengthTiles: number;
   loadedSpeedMph: number;
   emptySpeedMph: number;
@@ -142,12 +154,14 @@ export function optimizeConsists(
   const payment = cargo.initial_payment_by_economy[params.economyId];
   if (!payment) return [];
 
+  const excluded = new Set(params.excludedIds ?? []);
   const engines = trains.filter(
     (t) =>
       t.kind === 'engine' &&
       t.base_track_type === trackType &&
       t.power_hp > 0 &&
       isAvailable(t, year) &&
+      !excluded.has(t.id) &&
       (params.allowElectric || !isPureElectric(t)),
   );
   const wagons = trains.filter(
@@ -155,6 +169,7 @@ export function optimizeConsists(
       t.kind === 'wagon' &&
       t.base_track_type === trackType &&
       isAvailable(t, year) &&
+      !excluded.has(t.id) &&
       canCarryIn(game, t, cargo) &&
       (t.capacities[capacityIndex] ?? 0) > 0,
   );
@@ -206,6 +221,19 @@ export function optimizeConsists(
     const trainsNeeded =
       flowPerYear > 0 && hauledPerYear > 0 ? Math.max(1, Math.ceil(flowPerYear / hauledPerYear)) : 1;
 
+    // How often the station is served decides its rating, and the rating decides how much
+    // the industry hands over at all — the money below still assumes the full flow.
+    const pickupIntervalDays = roundTripDays / trainsNeeded;
+    const stationRating =
+      flowPerYear > 0
+        ? estimateStationRating({
+            pickupIntervalDays,
+            maxSpeedInternal: loaded.physics.maxSpeedInternal,
+            cargoPerDay: flowPerYear / (daysPerEconomyYear(game) * effectiveDayLength(game)),
+            jgrpp: game.jgrpp,
+          })
+        : null;
+
     const incomePerTrip = transportedGoodsIncome(
       cargoPerTrip,
       distanceTiles,
@@ -226,9 +254,13 @@ export function optimizeConsists(
       engineCount,
       wagon,
       wagonCount,
+      engineIntro: introAvailability(engine, year, game),
+      wagonIntro: introAvailability(wagon, year, game),
       capacity,
       cargoPerTrip,
       trainsNeeded,
+      pickupIntervalDays,
+      stationRating,
       lengthTiles,
       loadedSpeedMph: Math.floor((loadedSpeed * 10) / 16),
       emptySpeedMph: Math.floor((emptySpeed * 10) / 16),
