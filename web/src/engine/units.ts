@@ -16,6 +16,15 @@ export function internalToMph(internal: number): number {
   return Math.floor((internal * 10) / 16);
 }
 
+/**
+ * Internal speed to km/h, the way the game does it: ConvertKmhishSpeedToDisplaySpeed =
+ * ToDisplay(speed * 10, round = false) / 16 with the metric factor 1.609344
+ * (strings.cpp:858 and :993). ToDisplay truncates when not rounding, the /16 is integer.
+ */
+export function internalToKmh(internal: number): number {
+  return Math.floor(Math.trunc(internal * 10 * 1.609344) / 16);
+}
+
 /** Тайлов в игровой день при постоянной скорости (v*3/4 прогресса дважды за тик, тайл = 3072). */
 export function tilesPerDay(internalSpeed: number): number {
   return (internalSpeed * DAY_TICKS) / 2048;

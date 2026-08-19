@@ -6,7 +6,7 @@ import type { Cargo, ConsistEntry, TrainsMeta } from '../types';
 import { consistMoney } from './costs';
 import type { ConsistPhysics } from './physics';
 import { balancingSpeed } from './physics';
-import { internalToMph, mphToInternal } from './units';
+import { mphToInternal } from './units';
 import { canCarryIn } from '../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
@@ -21,13 +21,13 @@ export interface ConsistStats {
   emptyWeightT: number;
   loadedWeightT: number;
   lengthTiles: number;
-  /** Лимит скорости состава, mph (null = не ограничен машинами). */
-  speedLimitMph: number | null;
+  /** Лимит скорости состава, внутренние единицы (null = не ограничен машинами). */
+  speedLimitInternal: number | null;
   buyCostTotal: number;
   runningCostTotal: number;
   capacityForCargo: number;
-  balancingSpeedMph: number;
-  balancingSpeedOnGradeMph: number;
+  balancingSpeedInternal: number;
+  balancingSpeedOnGradeInternal: number;
   numUnits: number;
 }
 
@@ -36,13 +36,17 @@ export function consistPhysics(
   cargo: Cargo | null,
   capacityIndex: number,
   game: GameSettings = DEFAULT_GAME_SETTINGS,
-): { physics: ConsistPhysics; stats: Omit<ConsistStats, 'balancingSpeedMph' | 'balancingSpeedOnGradeMph'> } {
+): {
+  physics: ConsistPhysics;
+  stats: Omit<ConsistStats, 'balancingSpeedInternal' | 'balancingSpeedOnGradeInternal'>;
+} {
   let powerHp = 0;
   let teWeightProduct = 0;
   let emptyWeightT = 0;
   let cargoWeightT = 0;
   let lengthUnits = 0;
-  let speedLimit: number | null = null;
+  let speedLimitMph: number | null = null;
+  let speedLimitInternal: number | null = null;
   let capacityForCargo = 0;
   let numUnits = 0;
 
@@ -55,7 +59,15 @@ export function consistPhysics(
       teWeightProduct += count * train.weight_t * train.te_coefficient;
     }
     if (train.speed_mph != null) {
-      speedLimit = speedLimit == null ? train.speed_mph : Math.min(speedLimit, train.speed_mph);
+      speedLimitMph =
+        speedLimitMph == null ? train.speed_mph : Math.min(speedLimitMph, train.speed_mph);
+    }
+    // показанный предел берётся из данных, чтобы совпадать с игрой (см. ниже про физику)
+    if (train.speed_mph != null && train.speed_internal != null) {
+      speedLimitInternal =
+        speedLimitInternal == null
+          ? train.speed_internal
+          : Math.min(speedLimitInternal, train.speed_internal);
     }
     if (cargo && canCarryIn(game, train, cargo)) {
       const capacity = count * (train.capacities[capacityIndex] ?? train.capacities[2]);
@@ -72,7 +84,10 @@ export function consistPhysics(
       massT: Math.round(emptyWeightT + cargoWeightT),
       powerHp,
       teWeightProduct,
-      maxSpeedInternal: mphToInternal(speedLimit ?? 200),
+      // осознанно не speed_internal: mphToInternal округляет mph * 1.6 и у быстрых машин
+      // даёт на единицу меньше настоящей внутренней скорости. Замена сдвинула бы числа
+      // расчёта, а это изменение касается только отображения (см. design.md, Risks)
+      maxSpeedInternal: mphToInternal(speedLimitMph ?? 200),
       numParts: numUnits,
       slopeSteepness: game.slopeSteepness,
     },
@@ -82,7 +97,7 @@ export function consistPhysics(
       emptyWeightT,
       loadedWeightT: emptyWeightT + cargoWeightT,
       lengthTiles: lengthUnits / 16, // тайл = 16 единиц длины
-      speedLimitMph: speedLimit,
+      speedLimitInternal,
       buyCostTotal: 0,
       runningCostTotal: 0,
       capacityForCargo,
@@ -112,7 +127,7 @@ export function consistStats(
     ...stats,
     buyCostTotal: buy,
     runningCostTotal: running,
-    balancingSpeedMph: internalToMph(flat),
-    balancingSpeedOnGradeMph: internalToMph(grade),
+    balancingSpeedInternal: flat,
+    balancingSpeedOnGradeInternal: grade,
   };
 }

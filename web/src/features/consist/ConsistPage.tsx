@@ -24,7 +24,7 @@ import {
 import type { Train } from '../../types';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
-import { money, num } from '../../components/format';
+import { money, num, speed } from '../../components/format';
 import { CargoIcon } from '../../components/CargoIcon';
 import { TrainImage } from '../../components/TrainImage';
 import { useConsistStore } from '../../state/consistStore';
@@ -201,7 +201,7 @@ export default function ConsistPage() {
                 accessor: 'speed',
                 title: t('table.speed'),
                 sortable: true,
-                render: (train) => (train.speed_mph ? `${train.speed_mph} ${t('units.mph')}` : '—'),
+                render: (train) => (train.speed_internal ? speed(train.speed_internal) : '—'),
               },
               {
                 accessor: 'weight_t',
@@ -315,15 +315,15 @@ export default function ConsistPage() {
               />
               <StatRow
                 label={t('consist.stats.speedLimit')}
-                value={stats.speedLimitMph ? `${stats.speedLimitMph} ${t('units.mph')}` : '—'}
+                value={stats.speedLimitInternal ? speed(stats.speedLimitInternal) : '—'}
               />
               <StatRow
                 label={t('consist.stats.balancing')}
-                value={`${stats.balancingSpeedMph} ${t('units.mph')}`}
+                value={speed(stats.balancingSpeedInternal)}
               />
               <StatRow
                 label={t('consist.stats.balancingGrade')}
-                value={`${stats.balancingSpeedOnGradeMph} ${t('units.mph')}`}
+                value={speed(stats.balancingSpeedOnGradeInternal)}
               />
               <StatRow
                 label={t('consist.stats.capacity')}

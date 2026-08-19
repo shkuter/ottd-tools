@@ -12,7 +12,7 @@ import {
 } from '../../dataset';
 import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
-import { money, num } from '../../components/format';
+import { money, num, speed } from '../../components/format';
 import { Money } from '../../components/Money';
 import { CargoIcon } from '../../components/CargoIcon';
 import { useRouteStore } from '../../state/routeStore';
@@ -151,7 +151,7 @@ export default function RoutePage() {
         {consistDays != null && (
           <Button variant="subtle" className="btn-link" onClick={() => route.setManualDays(null)}>
             {t('route.daysFromConsist')}: {num(consistDays, 1)} {t('combined.days')} (
-            {stats.balancingSpeedMph} {t('units.mph')})
+            {speed(stats.balancingSpeedInternal)})
           </Button>
         )}
 
@@ -217,7 +217,7 @@ export default function RoutePage() {
           <>
             <Text className="hint">
               {cargoName(cargo)} · {num(route.distanceTiles)} {t('consist.stats.tiles')} ·{' '}
-              {stats.balancingSpeedMph} {t('units.mph')} · {num(stats.capacityForCargo)}{' '}
+              {speed(stats.balancingSpeedInternal)} · {num(stats.capacityForCargo)}{' '}
               {cargoUnits(cargo?.units)}
             </Text>
             <Table className="summary-table stats-wide" withRowBorders={false}>

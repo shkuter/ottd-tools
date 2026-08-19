@@ -34,6 +34,9 @@ export interface Train {
   te_coefficient: number;
   speed_mph: number | null;
   speed_lgv_mph: number | null;
+  /** Speed in the game's internal unit — what the game derives the displayed number from. */
+  speed_internal: number | null;
+  speed_lgv_internal: number | null;
   weight_t: number;
   /** Единицы длины OpenTTD: 16 = тайл. */
   length: number;

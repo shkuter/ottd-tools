@@ -2,7 +2,12 @@ import { Button, Fieldset, Group, NumberInput, Select, Switch } from '@mantine/c
 import { trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
 import { t } from '../../i18n';
-import { CURRENCIES, useSettingsStore, type CurrencyCode } from '../../state/settingsStore';
+import {
+  CURRENCIES,
+  useSettingsStore,
+  type CurrencyCode,
+  type SpeedUnit,
+} from '../../state/settingsStore';
 import {
   BASECOST_MULTIPLIERS,
   MAX_GAME_YEAR,
@@ -45,7 +50,8 @@ function numericData(options: { value: number; label: string }[]) {
 }
 
 export default function SettingsPage() {
-  const { currency, game, calc, setCurrency, setGame, setCalc } = useSettingsStore();
+  const { currency, speedUnit, game, calc, setCurrency, setSpeedUnit, setGame, setCalc } =
+    useSettingsStore();
   const { locale, setLocale } = useLocaleStore();
 
   function resetAll() {
@@ -246,6 +252,17 @@ export default function SettingsPage() {
               value: code,
               label: `${code} (${c.symbol.trim() || code}) ×${c.rate}`,
             }))}
+          />
+        </Row>
+        <Row label={t('settings.speedUnit')} hint={t('settings.speedUnitHint')}>
+          <Select
+            allowDeselect={false}
+            value={speedUnit}
+            onChange={(v) => v && setSpeedUnit(v as SpeedUnit)}
+            data={[
+              { value: 'imperial', label: t('settings.speedUnit.imperial') },
+              { value: 'metric', label: t('settings.speedUnit.metric') },
+            ]}
           />
         </Row>
       </Fieldset>

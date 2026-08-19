@@ -12,6 +12,7 @@ import {
 import { balancingSpeed, forceN, maxTractiveEffortN, resistanceN } from '../physics';
 import {
   daysForDistance,
+  internalToKmh,
   internalToMph,
   mphToInternal,
   tilesPerDay,
@@ -350,6 +351,15 @@ describe('units', () => {
   it('mph -> internal -> mph', () => {
     expect(mphToInternal(90)).toBe(144);
     expect(internalToMph(144)).toBe(90);
+  });
+
+  it('внутренняя -> км/ч по формуле игры', () => {
+    // Firebird: 112 миль/ч в списке покупки = 180 внутр. ед. = 181 км/ч в игре,
+    // прямой перевод 112 * 1.609344 дал бы 180
+    expect(internalToKmh(180)).toBe(181);
+    // Kirby Paul Tank: 40 миль/ч = 64 внутр. ед.
+    expect(internalToKmh(64)).toBe(64);
+    expect(internalToMph(64)).toBe(40);
   });
 
   it('тайлы в день: 100 внутр. ед. = ~3.6 тайла', () => {

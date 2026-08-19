@@ -12,6 +12,35 @@ DocHelper = ih.DocHelper
 polar_fox_constants = ih.polar_fox_constants
 
 
+def display_mph(internal):
+    """Speed the game shows for an internal speed (strings.cpp ConvertKmhishSpeedToDisplaySpeed)."""
+    return (10 * internal) // 16
+
+
+def speed_internal(mph):
+    """Internal speed the GRF carries, as NML writes train property 0x09.
+
+    Iron Horse quotes speed in mph (templates/properties.pynml), NML converts it to the
+    game's internal unit (x 8/5, rounded) and then nudges the result by +-1 until the game
+    displays exactly the quoted mph -- nml/actions/action0.py adjust_value together with
+    action0properties.ottd_display_speed. Without that nudge fast vehicles land one unit
+    low (112 mph -> 179 instead of 180), and the km/h the calculator shows would differ
+    from the game by 1.
+    """
+    if mph is None:
+        return None
+    value = int(mph * 8 / 5 + 0.5)
+    while display_mph(value) > mph:
+        value -= 1
+    lower = value
+    while display_mph(value) < mph:
+        value += 1
+    higher = value
+    if abs(display_mph(lower) - mph) < abs(display_mph(higher) - mph):
+        return lower
+    return higher
+
+
 def unit_payload(unit):
     return {
         "capacities": unit.capacities,
@@ -68,6 +97,8 @@ def catalogue_payload(catalogue, dh):
         "te_coefficient": mv.tractive_effort_coefficient,
         "speed_mph": mv.speed,
         "speed_lgv_mph": mv.speed_on_lgv if mv.lgv_capable else None,
+        "speed_internal": speed_internal(mv.speed),
+        "speed_lgv_internal": speed_internal(mv.speed_on_lgv if mv.lgv_capable else None),
         "weight_t": mv.weight or 0,
         "length": mv.length,
         "dual_headed": bool(mv.dual_headed),

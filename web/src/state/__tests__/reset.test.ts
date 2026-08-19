@@ -35,6 +35,7 @@ describe('resetPersistedState', () => {
       bindStorage(useFirsStore, storage),
     ]);
     useSettingsStore.getState().setCurrency('EUR');
+    useSettingsStore.getState().setSpeedUnit('imperial');
     useOptimizerStore.getState().setYear(1999);
     useRouteStore.getState().setDistanceTiles(321);
     useFirsStore.getState().setEconomyId('STEELTOWN');
@@ -42,6 +43,7 @@ describe('resetPersistedState', () => {
     resetPersistedState();
     expect(Object.keys(storage.dump())).toEqual([]);
     expect(useSettingsStore.getState().currency).toBe('GBP');
+    expect(useSettingsStore.getState().speedUnit).toBe('metric');
     expect(useConsistStore.getState().entries).toEqual([]);
   });
 });

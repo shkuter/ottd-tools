@@ -19,11 +19,16 @@ export const CURRENCIES = {
 
 export type CurrencyCode = keyof typeof CURRENCIES;
 
+/** Speed units of the game's Localisation settings (locale.units_velocity), metric by default. */
+export type SpeedUnit = 'imperial' | 'metric';
+
 interface SettingsState {
   currency: CurrencyCode;
+  speedUnit: SpeedUnit;
   game: GameSettings;
   calc: CalcSettings;
   setCurrency: (currency: CurrencyCode) => void;
+  setSpeedUnit: (speedUnit: SpeedUnit) => void;
   setGame: <K extends keyof GameSettings>(key: K, value: GameSettings[K]) => void;
   setCalc: <K extends keyof CalcSettings>(key: K, value: CalcSettings[K]) => void;
   /** Applies several settings at once, e.g. everything a savegame states. */
@@ -52,9 +57,11 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       currency: 'GBP',
+      speedUnit: 'metric',
       game: DEFAULT_GAME_SETTINGS,
       calc: DEFAULT_CALC_SETTINGS,
       setCurrency: (currency) => set({ currency }),
+      setSpeedUnit: (speedUnit) => set({ speedUnit }),
       setGame: (key, value) => set((s) => ({ game: { ...s.game, [key]: value } })),
       setCalc: (key, value) => set((s) => ({ calc: { ...s.calc, [key]: value } })),
       applySettings: (game, calc) =>
@@ -62,6 +69,7 @@ export const useSettingsStore = create<SettingsState>()(
       reset: () =>
         set({
           currency: 'GBP',
+          speedUnit: 'metric',
           game: DEFAULT_GAME_SETTINGS,
           calc: DEFAULT_CALC_SETTINGS,
         }),

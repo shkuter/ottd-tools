@@ -18,6 +18,21 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- **Speed units (land)** — the settings tab now offers imperial (mph) and metric (km/h), named
+  as in the game's Localisation settings. Every speed the calculator shows follows the choice:
+  the vehicle catalogue, the consist stats, the optimizer table and the route income tab.
+  Displayed speeds are derived from the game's internal speed unit exactly as the game derives
+  them, so a fast Iron Horse engine reads 181 km/h like in the game, not the 180 a conversion
+  of the rounded mph would give. Train data now carries that internal speed.
+
+### Changed
+
+- **Speeds are shown in km/h by default**, matching the game's own default
+  (`locale.units_velocity`). Existing users see km/h until they pick imperial in the settings;
+  no saved setting is lost and no calculated number changes.
+
 ## [0.3.0] - 2026-08-19
 
 ### Added

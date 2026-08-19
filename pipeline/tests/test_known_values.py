@@ -53,6 +53,29 @@ class IronHorseKnownValues(unittest.TestCase):
             self.meta["capacity_param_multipliers"], [0.33, 0.67, 1, 1.33, 1.77]
         )
 
+    def test_speed_internal(self):
+        # internal speed as NML writes property 0x09: for fast vehicles it sits one unit
+        # above a naive round(mph * 1.6), else the game would show 111 instead of 112
+        self.assertEqual(self.by_id["firebird_cab"]["speed_internal"], 180)
+        self.assertEqual(self.by_id["abernant"]["speed_internal"], 96)
+        self.assertEqual(self.by_id["bean_feast"]["speed_internal"], 72)
+        # the LGV speed follows the same rule; vehicles without LGV keep the field empty
+        blaze = self.by_id["blaze_cab"]
+        self.assertEqual((blaze["speed_internal"], blaze["speed_lgv_internal"]), (205, 248))
+        self.assertIsNone(self.by_id["abernant"]["speed_lgv_internal"])
+
+    def test_speed_internal_shows_the_quoted_mph(self):
+        # the game shows (10 * internal) // 16 (strings.cpp) — must match the roster's mph
+        for t in self.by_id.values():
+            for mph, internal in (
+                (t["speed_mph"], t["speed_internal"]),
+                (t["speed_lgv_mph"], t["speed_lgv_internal"]),
+            ):
+                if mph is None:
+                    self.assertIsNone(internal, t["id"])
+                    continue
+                self.assertEqual((10 * internal) // 16, mph, t["id"])
+
     def test_names_match_the_game(self):
         # имена должны совпадать со списком покупки в игре: докозвой хелпер
         # Iron Horse дописывает рандомизированным вагонам "- Random", в игре

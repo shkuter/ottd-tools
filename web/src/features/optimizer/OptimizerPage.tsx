@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router';
 import { activeCargos, activeTrains, activeTrainsMeta, economies, economyIdForCargo } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
-import { num } from '../../components/format';
+import { num, speed } from '../../components/format';
 import { Money } from '../../components/Money';
 import { optimizeConsists } from '../../engine/optimize';
 import { cargoPaymentRate } from '../../engine/income';
@@ -292,8 +292,10 @@ export default function OptimizerPage() {
                     <span className="dim"> / {num(r.capacity)}</span>
                   )}
                 </Table.Td>
-                <Table.Td>{r.loadedSpeedMph} / {r.emptySpeedMph} {t('units.mph')}</Table.Td>
-                <Table.Td>{r.gradeSpeedMph} {t('units.mph')}</Table.Td>
+                <Table.Td>
+                  {speed(r.loadedSpeedInternal)} / {speed(r.emptySpeedInternal)}
+                </Table.Td>
+                <Table.Td>{speed(r.gradeSpeedInternal)}</Table.Td>
                 <Table.Td>{num(r.loadingDays, 1)} {t('combined.days')}</Table.Td>
                 <Table.Td>{num(r.roundTripDays, 1)} {t('combined.days')}</Table.Td>
                 <Table.Td>{num(r.tripsPerYear, 1)}</Table.Td>

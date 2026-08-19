@@ -24,6 +24,17 @@ describe('settingsStore persist', () => {
     for (const k of Object.keys(DEFAULT_GAME_SETTINGS)) expect(s.game).toHaveProperty(k);
     for (const k of Object.keys(DEFAULT_CALC_SETTINGS)) expect(s.calc).toHaveProperty(k);
     expect(s.game.jgrpp).toBe(DEFAULT_GAME_SETTINGS.jgrpp);
+    // единицы скорости в старом сохранении не было — берётся значение по умолчанию
+    expect(s.speedUnit).toBe('metric');
+  });
+
+  it('выбранная система единиц скорости переживает перезагрузку', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { speedUnit: 'imperial' }, version: 1 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().speedUnit).toBe('imperial');
   });
 
   it('сохранённые настройки сложности не перетираются новыми дефолтами', async () => {

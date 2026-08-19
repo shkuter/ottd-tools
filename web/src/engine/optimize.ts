@@ -11,7 +11,6 @@ import { cargoPaymentRate } from './income';
 import { estimateStationRating, type StationRating } from './rating';
 import { introAvailability, type IntroAvailability } from './availability';
 import { tripEconomics } from './trip';
-import { internalToMph } from './units';
 import {
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
@@ -69,10 +68,10 @@ export interface OptimizeResult {
   /** Station rating this interval settles at; null when no production flow is given. */
   stationRating: StationRating | null;
   lengthTiles: number;
-  loadedSpeedMph: number;
-  emptySpeedMph: number;
+  loadedSpeedInternal: number;
+  emptySpeedInternal: number;
   /** Гружёным на подъёме (холм заданной длины: на уклоне часть состава). */
-  gradeSpeedMph: number;
+  gradeSpeedInternal: number;
   /** Дни стоянки под погрузку и разгрузку за рейс. */
   loadingDays: number;
   roundTripDays: number;
@@ -193,9 +192,9 @@ export function optimizeConsists(
       pickupIntervalDays,
       stationRating,
       lengthTiles,
-      loadedSpeedMph: internalToMph(trip.loadedSpeedInternal),
-      emptySpeedMph: internalToMph(trip.emptySpeedInternal),
-      gradeSpeedMph: internalToMph(gradeSpeed),
+      loadedSpeedInternal: trip.loadedSpeedInternal,
+      emptySpeedInternal: trip.emptySpeedInternal,
+      gradeSpeedInternal: gradeSpeed,
       loadingDays: trip.loadingDays,
       roundTripDays: trip.roundTripDays,
       tripsPerYear: trip.tripsPerYear,
