@@ -220,3 +220,19 @@ https://grf.farm/iron-horse/4.29.0/ — при обновлении версий
 вагонам суффикс «- Random», которого в игре нет (тест `test_names_match_the_game`).
 Картинки — buy-menu спрайты того же ростера, у рандомизированных вагонов это композит
 «вагон + кубик + вагон» (`requires_custom_buy_menu_sprite`), в игре ровно такой же.
+
+## Agent skills
+
+### Issue tracker
+
+Задачи скиллов — markdown-файлы в `.scratch/<фича>/` (git remote нет); планирование фич живёт
+отдельно, в OpenSpec. См. `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Пять канонических ролей триажа с дефолтными названиями (`needs-triage`, `needs-info`,
+`ready-for-agent`, `ready-for-human`, `wontfix`). См. `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` и `docs/adr/` в корне. См. `docs/agents/domain.md`.
