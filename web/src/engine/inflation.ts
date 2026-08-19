@@ -1,7 +1,12 @@
 /**
  * Инфляция OpenTTD (economy.cpp:696): помесячный компаунд
- * infl += (infl * amount * 54) >> 16, действует с 1920 по 2090.
+ * infl += (infl * amount * 54) >> 16, начисляется 170 лет.
  * amount цен = difficulty.initial_interest (def 2), выплат = amount - 1.
+ *
+ * Моделей две (JGRPP economy.cpp:834-838, StartupEconomy:1029-1035):
+ * fixedDates — всегда с 1920 по 2090 независимо от года старта, причём инфляция за годы
+ * до старта партии начисляется при её создании; иначе (только JGRPP, модель до OpenTTD 1.10)
+ * — от года начала игры в течение 170 лет, без предстартового разгона.
  *
  * ВНИМАНИЕ: Iron Horse фатально несовместим с включённой инфляцией
  * (header.pynml: error(FATAL)) — по умолчанию расчёты ведём без неё.
@@ -40,13 +45,15 @@ function buildTables(interest: number): { price: number[]; payment: number[] } {
 
 /**
  * Множители инфляции на начало года (initial_interest: 2..4, def 2).
- * fixedDates=false (JGRPP) — инфляция не замирает после 2090.
+ * fixedDates=true — годы отсчитываются от 1920, иначе (JGRPP) от startingYear:
+ * год расчёта раньше начала партии даёт единицу, инфляции ещё не было.
  */
 export function inflationFactors(
   year: number,
   inflationOn: boolean,
   interest = 2,
   fixedDates = true,
+  startingYear = 1950,
 ): InflationFactors {
   if (!inflationOn) return { price: 1, payment: 1 };
   let table = tables.get(interest);
@@ -54,8 +61,10 @@ export function inflationFactors(
     table = buildTables(interest);
     tables.set(interest, table);
   }
-  const capped = fixedDates ? Math.min(year, MAX_YEAR) : year;
-  const idx = Math.min(Math.max(capped, BASE_YEAR), MAX_YEAR) - BASE_YEAR;
+  const years = fixedDates ? year - BASE_YEAR : year - startingYear;
+  // The tables only hold whole years, and both year inputs come from number fields that
+  // happily yield a fraction — an unrounded index would read past the array and give NaN.
+  const idx = Math.trunc(Math.min(Math.max(years, 0), MAX_YEAR - BASE_YEAR));
   return {
     price: table.price[idx] / FIXED_ONE,
     payment: table.payment[idx] / FIXED_ONE,

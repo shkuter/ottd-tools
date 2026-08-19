@@ -26,6 +26,16 @@ function Row({
   );
 }
 
+/**
+ * Years drive the inflation tables, and an emptied number field reads as 0 — which would
+ * count the full 170 years of inflation instead of none. Keep the value inside the range
+ * the input advertises.
+ */
+function clampYear(value: number): number {
+  if (!Number.isFinite(value)) return 1950;
+  return Math.min(2090, Math.max(1920, Math.trunc(value)));
+}
+
 export default function SettingsPage() {
   const { currency, game, calc, setCurrency, setGame, setCalc } = useSettingsStore();
   const { locale, setLocale } = useLocaleStore();
@@ -305,17 +315,15 @@ export default function SettingsPage() {
             <option value="wallclock">{t('settings.wallclock')}</option>
           </select>
         </Row>
-        {game.timekeeping === 'wallclock' && (
-          <Row label={t('settings.minutesPerYear')} hint={t('settings.minutesPerYearHint')}>
-            <input
-              type="number"
-              min={1}
-              max={1440}
-              value={game.minutesPerYear}
-              onChange={(e) => setGame('minutesPerYear', Math.max(1, Number(e.target.value)))}
-            />
-          </Row>
-        )}
+        <Row label={t('settings.startingYear')} hint={t('settings.startingYearHint')}>
+          <input
+            type="number"
+            min={1920}
+            max={2090}
+            value={game.startingYear}
+            onChange={(e) => setGame('startingYear', clampYear(Number(e.target.value)))}
+          />
+        </Row>
       </section>
 
       <section className="settings-group">

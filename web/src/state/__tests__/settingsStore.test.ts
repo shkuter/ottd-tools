@@ -25,4 +25,35 @@ describe('settingsStore persist', () => {
     for (const k of Object.keys(DEFAULT_CALC_SETTINGS)) expect(s.calc).toHaveProperty(k);
     expect(s.game.jgrpp).toBe(DEFAULT_GAME_SETTINGS.jgrpp);
   });
+
+  it('сохранённые настройки сложности не перетираются новыми дефолтами', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { game: { vehicleCosts: 1 } }, version: 0 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+    const s = useSettingsStore.getState();
+    expect(s.game.vehicleCosts).toBe(1);
+    // а год начала игры, которого в старом сохранении нет, приходит из дефолтов
+    expect(s.game.startingYear).toBe(1950);
+  });
+
+  it('множитель Base Costs, которого больше нет в списке, становится «unchanged»', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({
+        state: {
+          game: { basecostGrf: true, basecostLocomotive: 0, basecostWagon: 0, basecostTrainRunning: 0 },
+        },
+        version: 0,
+      }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+    const s = useSettingsStore.getState();
+    expect(s.game.basecostLocomotive).toBe(1);
+    expect(s.game.basecostWagon).toBe(1);
+    expect(s.game.basecostTrainRunning).toBe(1);
+    // GRF при этом остаётся включённым: сбрасываются только сами множители
+    expect(s.game.basecostGrf).toBe(true);
+  });
 });

@@ -8,6 +8,7 @@ import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { num } from '../../components/format';
 import { Money } from '../../components/Money';
 import { optimizeConsists } from '../../engine/optimize';
+import { cargoPaymentRate } from '../../engine/income';
 import type { StationRating } from '../../engine/rating';
 import { introRandomisationActive, type IntroAvailability } from '../../engine/availability';
 import { doubtfulGroups } from './doubtful';
@@ -197,7 +198,7 @@ export default function OptimizerPage() {
       {cargo && economyId && (
         <p className="hint">
           {cargoName(cargo)} · {economies.find((e) => e.id === economyId)?.name ?? t('settings.vanilla')} ·{' '}
-          {t('route.payment')}: {num(cargo.initial_payment_by_economy[economyId])} ·{' '}
+          {t('route.payment')}: {num(cargoPaymentRate(cargo, economyId, game, calc))} ·{' '}
           {productionPerMonth > 0 ? t('opt.assumptionProduction') : t('opt.assumption')}
         </p>
       )}

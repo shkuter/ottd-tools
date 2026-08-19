@@ -14,7 +14,9 @@ import {
   basecostBuyFactor,
   basecostRunningFactor,
   difficultyPriceFactor,
+  economyYearFraction,
   effectiveDayLength,
+  inflationModel,
 } from './settings';
 
 export const BASE_PRICES = {
@@ -37,11 +39,13 @@ export function price(
   difficultyFactor = 1,
   inflationInterest = 2,
   inflationFixedDates = true,
+  startingYear = 1950,
 ): number {
   const base = Math.floor(
     BASE_PRICES[baseKey] *
       difficultyFactor *
-      inflationFactors(year, inflationOn, inflationInterest, inflationFixedDates).price,
+      inflationFactors(year, inflationOn, inflationInterest, inflationFixedDates, startingYear)
+        .price,
   );
   // GetPrice: (base * factor) со сдвигом (grfShift - 8) одной операцией
   const totalShift = grfShift - 8;
@@ -60,9 +64,10 @@ export function buyCost(
   difficultyFactor = 1,
   inflationInterest = 2,
   inflationFixedDates = true,
+  startingYear = 1950,
 ): number {
   const key = kind === 'engine' ? 'build_engine' : 'build_wagon';
-  return price(key, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest, inflationFixedDates);
+  return price(key, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest, inflationFixedDates, startingYear);
 }
 
 export function runningCostPerYear(
@@ -74,8 +79,9 @@ export function runningCostPerYear(
   difficultyFactor = 1,
   inflationInterest = 2,
   inflationFixedDates = true,
+  startingYear = 1950,
 ): number {
-  return price(baseKey, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest, inflationFixedDates);
+  return price(baseKey, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest, inflationFixedDates, startingYear);
 }
 
 /** Iron Horse: running_cost_base из trains.json -> ключ базовой цены. */
@@ -107,15 +113,17 @@ export function trainBuyCost(
     game.inflation,
     difficultyPriceFactor(game.constructionCost) * basecostBuyFactor(game, train.kind),
     game.inflationInterest,
-    game.inflationFixedDates,
+    inflationModel(game),
+    game.startingYear,
   );
 }
 
 /**
  * Yearly running cost of one vehicle. The base price follows the vehicle's running class
  * (steam/diesel/electric), while the NewGRF shift only distinguishes steam from the rest —
- * Iron Horse ships no separate electric shift. Running cost is charged per tick, so a longer
- * day (JGRPP) stretches a calendar year over proportionally more ticks.
+ * Iron Horse ships no separate electric shift. Running cost is charged per tick against a
+ * fixed 365-day divisor, so a longer day (JGRPP) stretches a calendar year over proportionally
+ * more ticks, while a wallclock economy year (360 days) collects proportionally less.
  */
 export function trainRunningCostPerYear(
   train: Train,
@@ -135,8 +143,11 @@ export function trainRunningCostPerYear(
       game.inflation,
       difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game),
       game.inflationInterest,
-      game.inflationFixedDates,
-    ) * effectiveDayLength(game)
+      inflationModel(game),
+      game.startingYear,
+    ) *
+    effectiveDayLength(game) *
+    economyYearFraction(game)
   );
 }
 

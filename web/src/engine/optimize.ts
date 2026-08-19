@@ -7,6 +7,7 @@ import type { Cargo, ConsistEntry, Train, TrainsMeta } from '../types';
 import { canCarryIn } from '../dataset';
 import { consistPhysics } from './consist';
 import { balancingSpeed } from './physics';
+import { cargoPaymentRate } from './income';
 import { estimateStationRating, type StationRating } from './rating';
 import { introAvailability, type IntroAvailability } from './availability';
 import { tripEconomics } from './trip';
@@ -99,7 +100,8 @@ export function optimizeConsists(
   const game = params.game ?? DEFAULT_GAME_SETTINGS;
   const calc = params.calc ?? DEFAULT_CALC_SETTINGS;
   const { capacityIndex, trackType } = calc;
-  const payment = cargo.initial_payment_by_economy[params.economyId];
+  // Payment rides the same inflation clock as prices, so it comes from the shared helper.
+  const payment = cargoPaymentRate(cargo, params.economyId, game, calc);
   if (!payment) return [];
 
   const excluded = new Set(params.excludedIds ?? []);

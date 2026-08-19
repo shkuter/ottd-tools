@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
+  BASECOST_MULTIPLIERS,
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
   type CalcSettings,
@@ -28,6 +29,21 @@ interface SettingsState {
   reset: () => void;
 }
 
+/**
+ * A Base Costs multiplier saved before "free (no costs)" was dropped from the list would
+ * zero out every price, so anything the list no longer offers falls back to "unchanged".
+ */
+function normaliseGame(game: GameSettings): GameSettings {
+  const known = new Set(BASECOST_MULTIPLIERS.map((m) => m.value));
+  const fix = (v: number) => (known.has(v) ? v : 1);
+  return {
+    ...game,
+    basecostLocomotive: fix(game.basecostLocomotive),
+    basecostWagon: fix(game.basecostWagon),
+    basecostTrainRunning: fix(game.basecostTrainRunning),
+  };
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -52,7 +68,7 @@ export const useSettingsStore = create<SettingsState>()(
         return {
           ...current,
           ...p,
-          game: { ...DEFAULT_GAME_SETTINGS, ...(p.game ?? {}) },
+          game: normaliseGame({ ...DEFAULT_GAME_SETTINGS, ...(p.game ?? {}) }),
           calc: { ...DEFAULT_CALC_SETTINGS, ...(p.calc ?? {}) },
         };
       },

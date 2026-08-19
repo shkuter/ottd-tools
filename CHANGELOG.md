@@ -42,8 +42,29 @@ of what users see):
   off, and the `?` markers follow the setting.
 - Train data now carries `intro_month`, extracted for both Iron Horse and vanilla engines.
 
+- **Settings** — `Starting year` (`game_creation.starting_year`, default 1950): the point the
+  JGRPP "inflation from the start date" model counts its 170 years from.
+
 ### Changed
 
+- **BREAKING (numbers)** — economy settings are now read the way the game reads them, so the
+  same input can produce different figures than before:
+  - defaults match the game's own defaults: `difficulty.vehicle_costs` and
+    `construction_cost` are "low" (×6/8, not ×8/8) and `subsidy_multiplier` is ×3 (not ×2).
+    Out of the box a Kirby Paul Tank costs £8,203 instead of £10,937. Difficulty settings
+    already saved in localStorage are kept as they are — only a fresh browser sees the new
+    defaults. (One saved value is rewritten: see the Base Costs entry below.)
+  - wallclock timekeeping: an economy year is always 360 days
+    (`DAYS_IN_ECONOMY_YEAR`, `timer_game_economy.h:52`) regardless of
+    `economy.minutes_per_calendar_year`, which only stretches the calendar. Yearly running
+    cost is charged against a fixed 365-day divisor (`train_cmd.cpp:4272`), so in wallclock it
+    is now scaled by 360/365 instead of being counted over a full calendar year.
+  - with inflation on, cargo payment now grows with it too
+    (`initial_payment × inflation_payment`, `economy.cpp:790`). Income used to stay flat
+    while costs rose, which made every route look ruinous in later years.
+  - the Base Costs GRF multiplier list no longer offers "free (no costs)" — the game clamps
+    the multiplier at 1/256 (`MIN_PRICE_MODIFIER`, `economy_type.h:228`). A saved zero is
+    normalised to "unchanged" on load.
 - Russian names of cargos and industries now match what the game shows. They used to be
   written by hand here, so more than half of them differed from the translation players
   actually run — `Billets & Blooms` was "Заготовки и блюмы" in the calculator and
@@ -84,8 +105,31 @@ of what users see):
   `common.load_json()`, `pipeline/requirements.txt` pins the venv, the empty `schemas/` stub is
   gone, and `extract_train_images.py` fails loudly when every render fails instead of exiting 0.
 
+### Removed
+
+- **Settings** — `Minutes per year` (`economy.minutes_per_calendar_year`). The game itself
+  states it changes neither vehicle speed nor the economy model, and the calculator's economy
+  year no longer depends on it, so it had nothing left to change — this project keeps only
+  settings that move the numbers.
+
 ### Fixed
 
+- **Settings** — the `Starting year` field no longer accepts a value outside the range it
+  advertises. Clearing the box read as year 0, which counted the full 170 years of inflation:
+  prices jumped ×28.6 instead of staying flat.
+- Inflation is looked up by whole years. A fractional year (a number input yields one readily)
+  read past the table and turned every price, running cost and cargo payment into `NaN` —
+  the optimizer then returned an empty list, since `NaN` is falsy.
+- **FIRS chains** — the cargo card now shows the same payment rate as the route and optimizer
+  tabs. It was the one place left reading the raw base rate, so with inflation on the same
+  cargo showed two different figures under the same label.
+- **Settings** — `Apply inflation from 1920 to 2090` (JGRPP) was a dead switch: both branches
+  clamped the year to 2090, so the numbers never moved, and the meaning was inverted on top of
+  that. Both models are implemented now: fixed dates run 1920…2090 whatever year the game
+  starts in (inflation accrued before the start is applied when the game is created), while the
+  switch turned off runs 170 years from the start year with no pre-start build-up
+  (`economy.cpp:834-838, 1029-1035` in the patchpack). A price year earlier than the start of
+  the game therefore carries no inflation at all.
 - **Vanilla data** — the extractor read the `RVI` table with two columns swapped, so every
   vanilla engine was charged the diesel running-cost base and its power source was garbage;
   cargo labels were taken from the constant name (`OIL`, `PASSENGERS`) instead of the game's

@@ -25,13 +25,15 @@ export interface GameSettings {
   dayLengthFactor: number;
   /** economy.timekeeping_units: календарь или wallclock (минуты реального времени). */
   timekeeping: 'calendar' | 'wallclock';
-  /** economy.minutes_per_calendar_year (только wallclock, def 12). */
-  minutesPerYear: number;
+  /**
+   * game_creation.starting_year (def 1950): the year the game starts. Only the JGRPP
+   * "inflation from the start date" model reads it — that model counts 170 years from here.
+   */
+  startingYear: number;
   /** Подключён NewGRF Base Costs (глобальные множители базовых цен). */
   basecostGrf: boolean;
   /**
-   * Множители Base Costs GRF: степени двойки, 1 = unchanged, 2 = double,
-   * 0.5 = half; 0 = free (no costs).
+   * Множители Base Costs GRF: степени двойки, 1 = unchanged, 2 = double, 0.5 = half.
    */
   basecostLocomotive: number;
   basecostWagon: number;
@@ -81,14 +83,14 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   dayLengthFactor: 1,
   inflation: false,
   inflationInterest: 2,
-  vehicleCosts: 1,
-  constructionCost: 1,
-  subsidyMultiplier: 1,
+  vehicleCosts: 0,
+  constructionCost: 0,
+  subsidyMultiplier: 2,
   accelerationModel: 'realistic',
   gradualLoading: true,
   paymentAlgorithm: 'modern',
   timekeeping: 'calendar',
-  minutesPerYear: 12,
+  startingYear: 1950,
   basecostGrf: false,
   basecostLocomotive: 1,
   basecostWagon: 1,
@@ -106,9 +108,11 @@ export function difficultyPriceFactor(mod: 0 | 1 | 2): number {
   return (mod === 0 ? 6 : mod === 1 ? 8 : 9) / 8;
 }
 
-/** Варианты множителей Base Costs GRF: от «free» до 8192×. */
+/**
+ * Варианты множителей Base Costs GRF: 1/64…8192×. Нулевого («бесплатно») в игре нет —
+ * множитель ограничен снизу MIN_PRICE_MODIFIER = -8 (economy_type.h:228).
+ */
 export const BASECOST_MULTIPLIERS: { value: number; label: string }[] = [
-  { value: 0, label: 'free (no costs)' },
   { value: 1 / 64, label: '1/64' },
   { value: 1 / 32, label: '1/32' },
   { value: 1 / 16, label: '1/16' },
@@ -198,11 +202,29 @@ export function effectiveDayLength(settings: GameSettings): number {
 }
 
 /**
- * Длительность «года» в игровых днях. В wallclock-режиме экономический период —
- * это minutesPerYear минут реального времени, минута ≈ 30 дней календаря.
+ * Length of an economy year in game days. In wallclock mode it is always 360 days
+ * (DAYS_IN_ECONOMY_YEAR, timer_game_economy.h:52) — economy.minutes_per_calendar_year
+ * stretches the calendar (dates, vehicle ageing) but never the economy.
  */
 export function daysPerEconomyYear(settings: GameSettings): number {
-  if (settings.timekeeping === 'wallclock') return settings.minutesPerYear * 30;
-  return 365;
+  return settings.timekeeping === 'wallclock' ? 360 : 365;
+}
+
+/**
+ * Economy year as a share of the calendar year. Running cost is charged per tick against
+ * a fixed divisor of 365 days (train_cmd.cpp:4272), so a 360-day economy year collects
+ * proportionally less of it.
+ */
+export function economyYearFraction(settings: GameSettings): number {
+  return daysPerEconomyYear(settings) / 365;
+}
+
+/**
+ * Which inflation model applies: true = fixed dates (1920…2090 regardless of the start
+ * year), false = 170 years from the start of the game. The latter only exists in JGRPP;
+ * vanilla always uses fixed dates.
+ */
+export function inflationModel(settings: GameSettings): boolean {
+  return !settings.jgrpp || settings.inflationFixedDates;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { incomeCurve, timeFactor, transportedGoodsIncome } from '../income';
+import { cargoPaymentRate, incomeCurve, timeFactor, transportedGoodsIncome } from '../income';
 import { inflationFactors } from '../inflation';
 import {
   buyCost,
@@ -18,8 +18,25 @@ import {
   transitPeriodsFromDays,
 } from '../units';
 import { optimizeConsists } from '../optimize';
-import { trains, trainsMeta, cargoByLabel, economyIdForCargo, VANILLA_ECONOMY_ID } from '../../dataset';
-import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../settings';
+import { tripEconomics } from '../trip';
+import {
+  activeTrains,
+  activeTrainsMeta,
+  trains,
+  trainsMeta,
+  cargoByLabel,
+  economyIdForCargo,
+  VANILLA_ECONOMY_ID,
+} from '../../dataset';
+import {
+  DEFAULT_CALC_SETTINGS,
+  DEFAULT_GAME_SETTINGS,
+  difficultyPriceFactor,
+} from '../settings';
+
+/** Множители сложности из дефолтов: игра по умолчанию берёт «низкие» цены (×6/8). */
+const DEF_BUY_FACTOR = difficultyPriceFactor(DEFAULT_GAME_SETTINGS.constructionCost);
+const DEF_RUN_FACTOR = difficultyPriceFactor(DEFAULT_GAME_SETTINGS.vehicleCosts);
 
 describe('costs', () => {
   it('ванильный Kirby Paul Tank: 400000 * 7 / 256 = £10937', () => {
@@ -46,6 +63,14 @@ describe('costs', () => {
   });
 });
 
+describe('игровые значения по умолчанию', () => {
+  it('Kirby Paul Tank на дефолтных настройках: (400000 × 6/8) × 7 / 256 = £8203', () => {
+    const game = { ...DEFAULT_GAME_SETTINGS, ironHorse: false };
+    const kirby = activeTrains(game).find((t) => t.name === 'Kirby Paul Tank')!;
+    expect(trainBuyCost(kirby, activeTrainsMeta(game), game)).toBe(8203);
+  });
+});
+
 describe('деньги машины и состава', () => {
   const meta = trainsMeta;
   const engine = trains.find((t) => t.kind === 'engine')!;
@@ -53,10 +78,10 @@ describe('деньги машины и состава', () => {
 
   it('покупка берёт шифт по типу машины', () => {
     expect(trainBuyCost(engine, meta)).toBe(
-      buyCost('engine', engine.cost_factor, meta.basecost_shifts.build_engine),
+      buyCost('engine', engine.cost_factor, meta.basecost_shifts.build_engine, 1950, false, DEF_BUY_FACTOR),
     );
     expect(trainBuyCost(wagon, meta)).toBe(
-      buyCost('wagon', wagon.cost_factor, meta.basecost_shifts.build_wagon),
+      buyCost('wagon', wagon.cost_factor, meta.basecost_shifts.build_wagon, 1950, false, DEF_BUY_FACTOR),
     );
   });
 
@@ -64,13 +89,23 @@ describe('деньги машины и состава', () => {
     const steam = trains.find((t) => t.running_cost_base.includes('STEAM'))!;
     const other = trains.find((t) => !t.running_cost_base.includes('STEAM'))!;
     expect(trainRunningCostPerYear(steam, meta)).toBe(
-      runningCostPerYear('running_steam', steam.running_cost_factor, meta.basecost_shifts.running_steam),
+      runningCostPerYear(
+        'running_steam',
+        steam.running_cost_factor,
+        meta.basecost_shifts.running_steam,
+        1950,
+        false,
+        DEF_RUN_FACTOR,
+      ),
     );
     expect(trainRunningCostPerYear(other, meta)).toBe(
       runningCostPerYear(
         other.running_cost_base.includes('ELECTRIC') ? 'running_electric' : 'running_diesel',
         other.running_cost_factor,
         meta.basecost_shifts.running_diesel,
+        1950,
+        false,
+        DEF_RUN_FACTOR,
       ),
     );
   });
@@ -82,6 +117,14 @@ describe('деньги машины и состава', () => {
       6,
     );
     expect(trainBuyCost(engine, meta, long)).toBe(trainBuyCost(engine, meta));
+  });
+
+  it('wallclock: содержание за экономический год — 360/365 календарного', () => {
+    const wallclock = { ...DEFAULT_GAME_SETTINGS, timekeeping: 'wallclock' as const };
+    expect(trainRunningCostPerYear(engine, meta, wallclock)).toBeCloseTo(
+      trainRunningCostPerYear(engine, meta) * (360 / 365),
+      6,
+    );
   });
 
   it('деньги состава = сумма по машинам с учётом количества', () => {
@@ -217,6 +260,89 @@ describe('inflation', () => {
     const f = inflationFactors(1970, true);
     expect(f.price).toBeGreaterThan(f.payment);
     expect(f.payment).toBeGreaterThan(1);
+  });
+
+  it('фиксированные даты: в 1970 уже накоплено 50 лет с 1920', () => {
+    expect(inflationFactors(1970, true, 2, true, 1970).price).toBeGreaterThan(1);
+  });
+
+  it('модель от старта: в год начала игры единица, дальше — та же таблица со сдвигом', () => {
+    expect(inflationFactors(1970, true, 2, false, 1970).price).toBe(1);
+    expect(inflationFactors(1970, true, 2, false, 1970).payment).toBe(1);
+    // 30 лет начисления от старта 1970 = 30 лет фиксированной модели от 1920
+    expect(inflationFactors(2000, true, 2, false, 1970).price).toBe(
+      inflationFactors(1950, true, 2, true).price,
+    );
+  });
+
+  it('модель от старта: год расчёта раньше начала партии — инфляции ещё нет', () => {
+    expect(inflationFactors(1940, true, 2, false, 1970)).toEqual({ price: 1, payment: 1 });
+  });
+
+  it('дробный год не ломает таблицу: индекс усекается, а не читает мимо массива', () => {
+    // поля года в настройках — <input type="number">, из них приходит и «2000.5»
+    expect(inflationFactors(2000.5, true).price).toBe(inflationFactors(2000, true).price);
+    // 2000 − 1950.5 = 49.5 года начисления, усечение даёт ровно 49 — как от старта в 1951
+    expect(inflationFactors(2000, true, 2, false, 1950.5).price).toBe(
+      inflationFactors(2000, true, 2, false, 1951).price,
+    );
+    expect(Number.isNaN(inflationFactors(2000.5, true).payment)).toBe(false);
+  });
+
+  it('заниженный год старта не разгоняет инфляцию сверх таблицы', () => {
+    // 0 в поле «год начала игры» дало бы 170 лет начисления вместо нуля
+    expect(inflationFactors(1950, true, 2, false, 0).price).toBe(
+      inflationFactors(2090, true, 2, true).price,
+    );
+  });
+});
+
+describe('ставка оплаты груза', () => {
+  const coal = cargoByLabel.get('COAL')!;
+  const base = coal.initial_payment_by_economy.STEELTOWN;
+
+  it('без инфляции равна базовой из данных', () => {
+    expect(cargoPaymentRate(coal, 'STEELTOWN')).toBe(base);
+  });
+
+  it('с инфляцией растёт вместе с ценами', () => {
+    const game = { ...DEFAULT_GAME_SETTINGS, inflation: true };
+    const calc = { ...DEFAULT_CALC_SETTINGS, priceYear: 2000 };
+    expect(cargoPaymentRate(coal, 'STEELTOWN', game, calc)).toBeGreaterThan(base);
+  });
+
+  it('экономика не выбрана — ноль', () => {
+    expect(cargoPaymentRate(coal, null)).toBe(0);
+  });
+
+  it('груз без ставки в этой экономике — ноль, а не NaN', () => {
+    const rate = cargoPaymentRate(coal, 'NO_SUCH_ECONOMY');
+    expect(rate).toBe(0);
+    expect(Number.isNaN(rate)).toBe(false);
+  });
+});
+
+describe('wallclock', () => {
+  it('рейсов в год = 360 / круг независимо от календаря', () => {
+    const coal = cargoByLabel.get('COAL')!;
+    const engine = trains.find(
+      (t) => t.kind === 'engine' && t.power_hp > 0 && t.base_track_type === 'RAIL',
+    )!;
+    const wagon = trains.find(
+      (t) => t.kind === 'wagon' && t.base_track_type === 'RAIL' && (t.capacities[2] ?? 0) > 0,
+    )!;
+    const trip = tripEconomics({
+      entries: [
+        { train: engine, count: 1 },
+        { train: wagon, count: 5 },
+      ],
+      cargo: coal,
+      payment: coal.initial_payment_by_economy.STEELTOWN,
+      distanceTiles: 100,
+      meta: trainsMeta,
+      game: { ...DEFAULT_GAME_SETTINGS, timekeeping: 'wallclock' },
+    });
+    expect(trip.tripsPerYear).toBeCloseTo(360 / trip.roundTripDays, 9);
   });
 });
 

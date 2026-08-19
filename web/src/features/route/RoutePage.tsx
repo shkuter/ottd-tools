@@ -16,7 +16,7 @@ import { CargoIcon } from '../../components/CargoIcon';
 import { useRouteStore } from '../../state/routeStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useConsistStore } from '../../state/consistStore';
-import { incomeCurve, transportedGoodsIncome } from '../../engine/income';
+import { cargoPaymentRate, incomeCurve, transportedGoodsIncome } from '../../engine/income';
 import { transitPeriodsFromDays } from '../../engine/units';
 import { consistStats } from '../../engine/consist';
 import { tripEconomics } from '../../engine/trip';
@@ -40,8 +40,7 @@ export default function RoutePage() {
   );
 
   const paymentEconomyId = cargo ? economyIdForCargo(game, cargo, economy.id) : null;
-  const payment =
-    cargo && paymentEconomyId ? (cargo.initial_payment_by_economy[paymentEconomyId] ?? 0) : 0;
+  const payment = cargo ? cargoPaymentRate(cargo, paymentEconomyId, game, calc) : 0;
   const spec = useMemo(
     () => (cargo ? { currentPayment: payment, transitPeriods: cargo.transit_periods } : null),
     [cargo, payment],

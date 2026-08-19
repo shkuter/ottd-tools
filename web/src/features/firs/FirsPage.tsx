@@ -10,9 +10,12 @@ import { cargoName, cargoUnits, industryName, localiseDot } from '../../i18n/nam
 import { num } from '../../components/format';
 import { CargoIcon } from '../../components/CargoIcon';
 import { useFirsStore } from '../../state/firsStore';
+import { useSettingsStore } from '../../state/settingsStore';
+import { cargoPaymentRate } from '../../engine/income';
 import { chainNodes } from './chains';
 
 function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) {
+  const { game, calc } = useSettingsStore();
   const industry = industryById.get(nodeId);
   const cargo = cargoByLabel.get(nodeId);
   if (industry) {
@@ -63,7 +66,7 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
           {cargo.classes.join(', ')} · {cargoUnits(cargo.units)}
         </p>
         <p>
-          {t('firs.cargo.payment')}: {num(cargo.initial_payment_by_economy[economyId] ?? 0)} ·{' '}
+          {t('firs.cargo.payment')}: {num(cargoPaymentRate(cargo, economyId, game, calc))} ·{' '}
           {t('route.transitPeriods')}: {cargo.transit_periods[0]}/{cargo.transit_periods[1]}
         </p>
         <h4>{t('firs.cargo.producedBy')}</h4>

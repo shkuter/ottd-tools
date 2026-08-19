@@ -6,6 +6,15 @@
  * не ниже 31; дальше асимптотический хвост ~31/(x/32+1) (fixed point 4 бита), минимум 1.
  */
 
+import type { Cargo } from '../types';
+import { inflationFactors } from './inflation';
+import {
+  DEFAULT_CALC_SETTINGS,
+  DEFAULT_GAME_SETTINGS,
+  type CalcSettings,
+  type GameSettings,
+  inflationModel,
+} from './settings';
 import { DAYS_PER_TRANSIT_PERIOD, transitPeriodsFromDays } from './units';
 
 const MIN_TIME_FACTOR = 31;
@@ -18,6 +27,28 @@ export interface CargoPaymentSpec {
   currentPayment: number;
   /** Периоды по 2.5 дня: [p1, p2] (NewGRF props 0x10/0x11). */
   transitPeriods: [number, number];
+}
+
+/**
+ * Payment rate of a cargo in the given economy, inflated to the price year: the game keeps
+ * cargo payment on the same clock as prices (economy.cpp:790,
+ * current_payment = initial_payment * inflation_payment >> 16 — hence the truncation).
+ */
+export function cargoPaymentRate(
+  cargo: Cargo,
+  economyId: string | null,
+  game: GameSettings = DEFAULT_GAME_SETTINGS,
+  calc: CalcSettings = DEFAULT_CALC_SETTINGS,
+): number {
+  const base = economyId ? (cargo.initial_payment_by_economy[economyId] ?? 0) : 0;
+  const { payment } = inflationFactors(
+    calc.priceYear,
+    game.inflation,
+    game.inflationInterest,
+    inflationModel(game),
+    game.startingYear,
+  );
+  return Math.floor(base * payment);
 }
 
 export interface TimeFactorResult {

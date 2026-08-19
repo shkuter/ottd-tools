@@ -4,7 +4,10 @@ import { activeTrainsMeta } from '../dataset';
 import { trainRunningCostPerYear, trainBuyCost } from '../engine/costs';
 import { DEFAULT_GAME_SETTINGS } from '../engine/settings';
 
-const vanillaMeta = activeTrainsMeta({ ...DEFAULT_GAME_SETTINGS, ironHorse: false, firs: false });
+const vanillaGame = { ...DEFAULT_GAME_SETTINGS, ironHorse: false, firs: false };
+const vanillaMeta = activeTrainsMeta(vanillaGame);
+/** Prices below show the bare formula, so difficulty stays at the neutral ×8/8. */
+const neutralGame = { ...vanillaGame, constructionCost: 1 as const, vehicleCosts: 1 as const };
 
 const kirby = vanillaTrains.find((t) => t.name === 'Kirby Paul Tank')!;
 const sh125 = vanillaTrains.find((t) => t.name.includes('SH \'125\''))!;
@@ -17,10 +20,10 @@ describe('vanilla train adapter', () => {
   it('Kirby Paul Tank: steam engine, cost 7, running by the steam base, no cargo hold', () => {
     expect(kirby.kind).toBe('engine');
     expect(kirby.cost_factor).toBe(7);
-    expect(trainBuyCost(kirby, vanillaMeta)).toBe(10937); // no Iron Horse shift on vanilla
+    expect(trainBuyCost(kirby, vanillaMeta, neutralGame)).toBe(10937); // no Iron Horse shift on vanilla
     expect(kirby.running_cost_factor).toBe(50);
     expect(kirby.running_cost_base).toBe('RUNNING_COST_STEAM');
-    expect(trainRunningCostPerYear(kirby, vanillaMeta)).toBe(1093); // 5600 × 50 / 256
+    expect(trainRunningCostPerYear(kirby, vanillaMeta, neutralGame)).toBe(1093); // 5600 × 50 / 256
     expect(kirby.power_by_source).toEqual({ STEAM: 300 });
     expect(kirby.length).toBe(8);
     expect(kirby.capacities).toEqual([0, 0, 0, 0, 0]);

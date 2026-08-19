@@ -76,12 +76,24 @@ const CASES: {
   game?: Partial<GameSettings>;
   calc?: Partial<CalcSettings>;
   params?: Partial<OptimizeParams>;
+  /**
+   * Настройки эталона: нужны там, где переключатель читается только при других флагах
+   * (модели инфляции — при jgrpp и inflation). Без базы кейс сравнивался бы с дефолтом
+   * и «проходил» из-за этих флагов, а не из-за самой настройки.
+   */
+  base?: Partial<GameSettings>;
+  /**
+   * Настройки калькулятора для эталона. Нужны кейсу, чья испытуемая настройка живёт в calc:
+   * иначе эталон получил бы тот же calc, что и кейс, и снимки совпали бы.
+   */
+  baseCalc?: Partial<CalcSettings>;
 }[] = [
   { name: 'freightTrains', game: { freightTrains: 4 } },
   { name: 'slopeSteepness', game: { slopeSteepness: 8 } },
   { name: 'cargoAgingRate', game: { cargoAgingRate: 400 } },
   { name: 'vehicleCosts', game: { vehicleCosts: 2 } },
-  { name: 'constructionCost', game: { constructionCost: 0 } },
+  // дефолт теперь игровой (low, ×6/8) — сравниваем с high
+  { name: 'constructionCost', game: { constructionCost: 2 } },
   { name: 'accelerationModel', game: { accelerationModel: 'original' } },
   { name: 'gradualLoading', game: { gradualLoading: false } },
   { name: 'basecostGrf', game: { basecostGrf: true, basecostLocomotive: 8 } },
@@ -92,15 +104,23 @@ const CASES: {
   {
     name: 'inflationInterest',
     game: { inflation: true, inflationInterest: 4 },
+    base: { inflation: true },
     calc: { priceYear: 2000 },
   },
   {
     name: 'inflationFixedDates (JGRPP)',
     game: { jgrpp: true, inflation: true, inflationFixedDates: false },
+    base: { jgrpp: true, inflation: true },
     calc: { priceYear: 2090 },
   },
+  {
+    // год старта читает только модель «инфляция от начала партии» (JGRPP, fixed dates off)
+    name: 'startingYear (JGRPP)',
+    game: { jgrpp: true, inflation: true, inflationFixedDates: false, startingYear: 1990 },
+    base: { jgrpp: true, inflation: true, inflationFixedDates: false },
+    calc: { priceYear: 2000 },
+  },
   { name: 'timekeeping wallclock', game: { timekeeping: 'wallclock' } },
-  { name: 'minutesPerYear', game: { timekeeping: 'wallclock', minutesPerYear: 60 } },
   { name: 'subsidyMultiplier', game: { subsidyMultiplier: 3 } },
   { name: 'dayLengthFactor (JGRPP)', game: { jgrpp: true, dayLengthFactor: 4 } },
   { name: 'costsWhenStopped (JGRPP)', game: { jgrpp: true, costsWhenStopped: 8 } },
@@ -112,7 +132,14 @@ const CASES: {
   },
   { name: 'capacityIndex', calc: { capacityIndex: 4 } },
   { name: 'hillTiles', calc: { hillTiles: 40 } },
-  { name: 'priceYear (с инфляцией)', game: { inflation: true }, calc: { priceYear: 2050 } },
+  {
+    // сравнение с той же инфляцией в 1950-м: меняется только год, а не сам факт инфляции
+    name: 'priceYear (с инфляцией)',
+    game: { inflation: true },
+    base: { inflation: true },
+    baseCalc: {},
+    calc: { priceYear: 2050 },
+  },
   { name: 'trackType', calc: { trackType: 'NG' } },
 ];
 
@@ -144,10 +171,13 @@ describe('каждая настройка влияет на расчёт', () =>
                 1,
               )[0]?.profitPerYear,
             )
-          : c.params
-            ? // кейс со своими параметрами задачи сравнивается с ними же на дефолтных настройках
-              snapshot({}, {}, c.params)
-            : BASELINE;
+          : c.base
+            ? // кейс с базой: те же calc и params, отличается только испытуемая настройка
+              snapshot(c.base, c.baseCalc ?? c.calc ?? {}, c.params ?? {})
+            : c.params
+              ? // кейс со своими параметрами задачи сравнивается с ними же на дефолтных настройках
+                snapshot({}, {}, c.params)
+              : BASELINE;
       expect(changed).not.toBe(reference);
     });
   }
