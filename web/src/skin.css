@@ -17,8 +17,8 @@
  * light-blue, green, dark-green, blue, cream, mauve, purple, orange, brown,
  * grey and white.
  *
- * The skin is always on (data-skin="pixel", set in main.tsx): game font, 2px
- * bevels, no rounding.
+ * The skin is always on (data-skin="pixel", set in main.tsx): game font,
+ * bevels of --bevel pixels, no rounding.
  */
 
 @font-face {
@@ -99,7 +99,9 @@
 
   /* metrics */
   --skin-radius: 0;
-  --bevel: 2px;
+  /* the game draws a 1px bevel scaled by the interface scale (window_gui.h:98,
+     DrawFrameRect); 3px is what it looks like at 3x */
+  --bevel: 3px;
 
   /* bridge to the base theme tokens so existing rules keep working */
   --bg: var(--skin-desktop);

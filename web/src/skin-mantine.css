@@ -9,7 +9,8 @@
  *
  * Two shapes repeat, and they are the two the game draws (DrawFrameRect,
  * widget.cpp): RAISED has light edges top/left and dark ones bottom/right,
- * LOWERED swaps them. Everything else is colour.
+ * LOWERED swaps them. Everything else is colour. Bevel thickness is --bevel,
+ * set once in skin.css.
  */
 
 @layer app {
@@ -138,7 +139,9 @@
        knob; Mantine positions the thumb from --switch-thumb-size, so the width
        has to be set there rather than on the thumb itself */
     --switch-thumb-size: 8px;
-    --switch-track-label-padding: 0px;
+    /* the bar sits over the bevel, not inside it: pulling the offset out by one
+       bevel puts it flush with the outer edge at both ends */
+    --switch-track-label-padding: calc(-1 * var(--bevel));
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
@@ -154,9 +157,9 @@
     border: none;
     border-radius: var(--skin-radius);
     background: var(--skin-switch-off);
-    /* full height of the track: the bar runs from edge to edge */
-    top: 0;
-    bottom: 0;
+    /* full height of the track including its bevel, the way the game draws it */
+    top: calc(-1 * var(--bevel));
+    bottom: calc(-1 * var(--bevel));
     height: auto;
   }
 
