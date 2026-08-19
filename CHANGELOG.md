@@ -56,14 +56,6 @@ of what users see):
   while vanilla electric engines use the third. A previously saved single multiplier migrates
   to all three, so existing settings keep producing the numbers they produced before.
 - The Base Costs multiplier list now goes up to 64k, matching what the sets themselves offer.
-
-### Fixed
-
-- **Starting year and price year accept any year the game does.** Both fields were capped at
-  1920–2090, a range borrowed from the inflation model rather than from the setting itself, so
-  a game started in 1860 could not be entered — or imported. They now span `MIN_YEAR`…`MAX_YEAR`
-  as the game defines them, and emptying the field leaves the year alone instead of resetting it.
-
 - The interface is built on Mantine 9 — every tab, from the controls to the layout. The look is
   unchanged: Mantine reads the skin's own `--skin-*` tokens through a CSS-variables resolver,
   and the bevels are re-stated for its components in `skin-mantine.css`. Cascade layers
@@ -75,6 +67,13 @@ of what users see):
   hand-built SVG path; the dashed marker still reads "time → income" for the trip you entered.
 - The catalogue and income tabs load with their own chunks, so `mantine-datatable` and
   `recharts` stay out of the initial download.
+
+### Fixed
+
+- **Starting year and price year accept any year the game does.** Both fields were capped at
+  1920–2090, a range borrowed from the inflation model rather than from the setting itself, so
+  a game started in 1860 could not be entered — or imported. They now span `MIN_YEAR`…`MAX_YEAR`
+  as the game defines them, and emptying the field leaves the year alone instead of resetting it.
 
 ### Removed
 
