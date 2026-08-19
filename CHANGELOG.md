@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-19
+
 ### Added
 
 - **Best train** — `Interval` and `Transported` columns. The interval is the round trip
