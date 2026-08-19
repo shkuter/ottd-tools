@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/openspec-autocommit.sh",
+            "timeout": 30,
+            "statusMessage": "Автокоммит по стадии OpenSpec"
+          }
+        ]
+      }
+    ]
+  }
+}
