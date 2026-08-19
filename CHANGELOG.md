@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-19
+
 ### Added
 
 - **Import from a savegame** — load an OpenTTD or JGRPP save on the settings tab and the
