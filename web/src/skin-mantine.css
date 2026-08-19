@@ -134,13 +134,17 @@
      green when it is on. A checkbox is the same sunken plate with a tick.
      ========================================================================== */
 
+  /*
+   * A setting toggle, as DrawBoolButton draws it (settings_gui.cpp:1947): a
+   * lowered track twice as wide as it is tall, with a raised button one third
+   * of that width sitting at one end — over the track's bevel, not inside it.
+   * Mantine derives the thumb's travel from --switch-thumb-size, so the width
+   * belongs there rather than on the thumb.
+   */
   :root[data-skin] .mantine-Switch-track {
-    /* the game's thumb is a narrow bar hugging the edge of the track, not a
-       knob; Mantine positions the thumb from --switch-thumb-size, so the width
-       has to be set there rather than on the thumb itself */
-    --switch-thumb-size: 8px;
-    /* the bar sits over the bevel, not inside it: pulling the offset out by one
-       bevel puts it flush with the outer edge at both ends */
+    --switch-height: 38px;
+    --switch-width: 60px;
+    --switch-thumb-size: 20px;
     --switch-track-label-padding: calc(-1 * var(--bevel));
     border-radius: var(--skin-radius);
     border-style: solid;
@@ -154,13 +158,21 @@
   }
 
   :root[data-skin] .mantine-Switch-thumb {
-    border: none;
     border-radius: var(--skin-radius);
+    border-style: solid;
+    border-width: var(--bevel);
+    border-color: var(--skin-button-edge-hi) var(--skin-button-edge-lo) var(--skin-button-edge-lo)
+      var(--skin-button-edge-hi);
     background: var(--skin-switch-off);
-    /* full height of the track including its bevel, the way the game draws it */
+    /* as tall as the track including its bevel, the way the game draws it */
     top: calc(-1 * var(--bevel));
     bottom: calc(-1 * var(--bevel));
     height: auto;
+  }
+
+  /* the game's button is a plain plate — no dot in the middle of it */
+  :root[data-skin] .mantine-Switch-thumb::before {
+    content: none;
   }
 
   :root[data-skin] input.mantine-Checkbox-input,
