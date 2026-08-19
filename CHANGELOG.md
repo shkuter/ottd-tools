@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-19
+
 ### Added
 
 - **Speed units (land)** — the settings tab now offers imperial (mph) and metric (km/h), named
