@@ -1,5 +1,8 @@
 IRON_HORSE_REF ?= v4.29.0
 FIRS_REF ?= 5.2.0
+# The game's own locale names 57 of the cargos and industries the calculator shows,
+# so the checkout it comes from is pinned like every other data source.
+OPENTTD_REF ?= 15.3
 OPENGFX2_REF ?= 0.8.1
 # Russian FIRS translation players actually run (fork of FIRS 5.2.0), pinned by commit
 FIRS_RU_REF ?= 61a0f0973cce43c41e156f7809782e7567279330
@@ -13,7 +16,7 @@ fetch:
 	mkdir -p vendor
 	[ -d vendor/iron-horse ] || git clone --depth 1 --branch $(IRON_HORSE_REF) https://github.com/andythenorth/iron-horse.git vendor/iron-horse
 	[ -d vendor/firs ] || git clone --depth 1 --branch $(FIRS_REF) https://github.com/andythenorth/firs.git vendor/firs
-	[ -d vendor/openttd ] || git clone --depth 1 https://github.com/OpenTTD/OpenTTD.git vendor/openttd
+	[ -d vendor/openttd ] || git clone --depth 1 --branch $(OPENTTD_REF) https://github.com/OpenTTD/OpenTTD.git vendor/openttd
 	[ -d vendor/openttd-patches ] || git clone --depth 1 https://github.com/JGRennison/OpenTTD-patches.git vendor/openttd-patches
 	$(MAKE) fetch-firs-ru
 
@@ -31,7 +34,7 @@ venv:
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install -r pipeline/requirements.txt
 
-data:
+data: fetch-firs-ru
 	$(PY) pipeline/extract_iron_horse.py
 	$(PY) pipeline/extract_firs.py
 	$(PY) pipeline/extract_vanilla.py
@@ -69,7 +72,7 @@ test:
 	$(PY) -m unittest discover -s pipeline/tests
 	cd web && npx vitest run
 
-verify: check-i18n data test build
+verify: data check-i18n test build
 
 # Релиз по semver: закрывает Unreleased в CHANGELOG.md, бампает web/package.json,
 # коммитит и ставит тег vX.Y.Z. Пример: make release VERSION=0.2.0

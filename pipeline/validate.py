@@ -3,7 +3,7 @@ import os
 import sys
 from datetime import date
 
-from common import DATA_DIR, firs_ru_ref, load_json, write_json
+from common import DATA_DIR, firs_ru_ref, load_json, vendor_meta, write_json
 
 errors = []
 warnings = []
@@ -118,6 +118,9 @@ def main():
         "iron_horse": trains["meta"]["describe"],
         "firs": cargos["meta"]["describe"],
         "firs_ru": firs_ru_ref()[:7],
+        # names of vanilla cargos and of everything FIRS delegates to the game come from
+        # this checkout's locale, so its version belongs next to the NewGRF ones
+        "openttd": vendor_meta("openttd")["describe"],
         "schema_version": 1,
     })
     print("validate: OK")

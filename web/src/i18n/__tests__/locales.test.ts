@@ -153,6 +153,23 @@ describe('industry names', () => {
     expect(missing).toEqual([]);
   });
 
+  it('two industries of one economy never share a Russian name', () => {
+    // graph nodes and pickers address an industry by id but show it by name, so a shared
+    // name leaves two chains looking like one industry
+    useLocaleStore.getState().setLocale('ru');
+    for (const economy of economies.items) {
+      const byName = new Map<string, string[]>();
+      for (const id of economy.industry_ids) {
+        const industry = industries.items.find((i) => i.id === id);
+        if (!industry) continue;
+        const name = industryName(industry, economy.id);
+        byName.set(name, [...(byName.get(name) ?? []), id]);
+      }
+      const clashes = [...byName].filter(([, ids]) => ids.length > 1);
+      expect(clashes, `${economy.id}: ${JSON.stringify(clashes)}`).toEqual([]);
+    }
+  });
+
   it('translates the name, English stays untouched', () => {
     const mine = { id: 'coal_mine', name: 'Coal Mine' };
     useLocaleStore.getState().setLocale('en');

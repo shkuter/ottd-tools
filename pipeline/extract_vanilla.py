@@ -117,10 +117,13 @@ def train_sprite(image_index, direction=DIR_W):
 
 @functools.lru_cache(maxsize=None)
 def parse_cargo_labels():
-    """CT_OIL{"OIL_"} -> {"CT_OIL": "OIL_"} — the labels NewGRFs (Iron Horse, FIRS) refer to."""
+    """CT_OIL{'OIL_'} -> {"CT_OIL": "OIL_"} — the labels NewGRFs (Iron Horse, FIRS) refer to.
+
+    Releases spell the label as a character literal ('OIL_'), master as a string ("OIL_").
+    """
     return {
         f"CT_{m.group(1)}": m.group(2)
-        for m in re.finditer(r'CT_(\w+)\{"(.{4})"\}', read(CARGO_TYPE_H))
+        for m in re.finditer(r"""CT_(\w+)\{['"](.{4})['"]\}""", read(CARGO_TYPE_H))
     }
 
 

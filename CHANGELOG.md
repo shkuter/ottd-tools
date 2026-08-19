@@ -116,6 +116,28 @@ of what users see):
 
 ### Fixed
 
+- Two industries could end up under one Russian name: `sawmill` takes its name from the game's
+  locale, `timber_yard` from the FIRS translation, and both read "Лесопилка" — in the one
+  economy that enables both, the chain graph drew two nodes nobody could tell apart. Generation
+  now fails on a name shared inside an economy, naming both ids and the source each name came
+  from, and `Timber Yard` is "Лесной склад" again (it takes wood products and makes supplies —
+  a lumber yard, not a sawmill).
+- A name fix in `ru_overrides.json` now reaches every source. Fixes used to be applied to the
+  FIRS translation alone, so the names FIRS delegates to the game (`TTD_*`) and the whole
+  vanilla set could not be corrected at all — and an attempt failed with a message blaming the
+  wrong thing.
+- `make verify` regenerates the data before checking it for drift. It used to compare the
+  committed dictionaries against the sources first, so bumping a data pin failed the build on
+  the very first target, before the target that would have regenerated them.
+- The game checkout is pinned (`OPENTTD_REF`, currently 15.3) like every other data source and
+  its version is recorded in `meta.json` and shown in the footer. It names 57 of the cargos and
+  industries the calculator shows, yet it was cloned from master — so those names came from
+  whatever revision each machine happened to fetch. `make data` also depends on
+  `fetch-firs-ru`, so bumping the translation pin can no longer rebuild from a stale file.
+- Type checking actually runs now. The habitual `tsc --noEmit` checked nothing — the root
+  `tsconfig.json` only references the app and node projects and lists no files of its own — so
+  two type errors had accumulated unnoticed: a readonly consist array in `engine/trip.ts` and
+  the storage binding in the store reset test. `make verify` (which runs `tsc -b`) is green again.
 - **Settings** — the `Starting year` field no longer accepts a value outside the range it
   advertises. Clearing the box read as year 0, which counted the full 170 years of inflation:
   prices jumped ×28.6 instead of staying flat.

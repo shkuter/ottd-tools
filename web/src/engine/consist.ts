@@ -32,7 +32,7 @@ export interface ConsistStats {
 }
 
 export function consistPhysics(
-  entries: ConsistEntry[],
+  entries: readonly ConsistEntry[],
   cargo: Cargo | null,
   capacityIndex: number,
   game: GameSettings = DEFAULT_GAME_SETTINGS,
@@ -92,7 +92,7 @@ export function consistPhysics(
 }
 
 export function consistStats(
-  entries: ConsistEntry[],
+  entries: readonly ConsistEntry[],
   cargo: Cargo | null,
   capacityIndex: number,
   meta: TrainsMeta,

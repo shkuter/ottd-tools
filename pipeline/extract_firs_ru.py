@@ -75,8 +75,12 @@ def load_game_lang(language="russian"):
     return out
 
 
-def apply_overrides(translation, used_string_ids):
-    """Fix spelling, letter case and ё on top of the translation, in place.
+def load_overrides(resolve, used_string_ids):
+    """Fixes applied on top of whichever source names the object, as {string id: name}.
+
+    A fix is keyed by the lang string id the cargo or industry declares, so it reaches a
+    name from the FIRS translation and one from the game's own locale alike — the second
+    covers what FIRS delegates to the game (TTD_*) and the whole vanilla set.
 
     Each entry states the string it expects to find, and the string has to be one some
     cargo or industry actually shows: a mismatch means upstream changed the name and the
@@ -85,6 +89,7 @@ def apply_overrides(translation, used_string_ids):
     """
     with open(OVERRIDES, encoding="utf-8") as f:
         entries = json.load(f)["overrides"]
+    fixes = {}
     for entry in entries:
         string_id = entry["string_id"]
         if string_id not in used_string_ids:
@@ -92,19 +97,26 @@ def apply_overrides(translation, used_string_ids):
                 f"ru_overrides.json: {string_id} is not used by any cargo or industry — "
                 "drop the fix"
             )
-        current = translation.get(string_id)
+        current = resolve(string_id)
+        if current is None:
+            raise SystemExit(
+                f"ru_overrides.json: {string_id} has no name in the FIRS translation nor in "
+                "the game's locale — check the string id"
+            )
         if current != entry["from"]:
             raise SystemExit(
                 f"ru_overrides.json: {string_id} is {current!r} upstream, "
                 f"expected {entry['from']!r} — re-check the fix"
             )
-        translation[string_id] = entry["to"]
+        fixes[string_id] = entry["to"]
     print(f"overrides: {len(entries)} applied")
-    return translation
+    return fixes
 
 
-def translate(string_id, translation, game_lang):
+def translate(string_id, translation, game_lang, fixes=None):
     """Russian name for one lang string id, or None when nothing translates it."""
+    if fixes and string_id in fixes:
+        return fixes[string_id]
     if string_id.startswith("TTD_"):
         return game_lang.get(string_id[len("TTD_"):])
     return translation.get(string_id)
@@ -147,15 +159,64 @@ def industry_string_ids(economies):
     return out
 
 
-def vanilla_cargo_names(game_lang):
+def collisions(names, sources):
+    """Names shared by more than one id, as {name: [(id, source string id), ...]}."""
+    by_name = {}
+    for id_, name in names.items():
+        if name:
+            by_name.setdefault(name, []).append((id_, sources.get(id_, "?")))
+    return {name: ids for name, ids in by_name.items() if len(ids) > 1}
+
+
+def check_name_collisions(economies, cargos, industries, cargo_sources, industry_sources,
+                          vanilla_sources):
+    """Two objects of the same kind must read differently where they are seen together.
+
+    The graph and the pickers address an industry by id but show it by name, so two
+    industries of one economy under one name are indistinguishable there. Cargos and
+    industries live in separate lists, and industries of different economies are never
+    seen side by side, so only those pairs are compared. The names come from two sources
+    (the game's own locale and the FIRS translation), which is why the sources are named
+    in the error: a fix has to go into whichever one is wrong.
+    """
+    groups = []
+    for economy in economies:
+        eco_cargos = {c.id: cargos.get(c.id) for c in economy.cargos}
+        eco_industries = {
+            industry.id: industries.get(industry.id)
+            for industry in firs.industry_manager
+            if (industry.economy_variations.get(economy.id) is not None
+                and industry.economy_variations[economy.id].enabled)
+        }
+        groups.append((f"economy {economy.id}", "cargos", eco_cargos, cargo_sources))
+        groups.append((f"economy {economy.id}", "industries", eco_industries, industry_sources))
+    # With FIRS switched off the whole vanilla set is one list, so it is its own group.
+    vanilla = {id_: cargos.get(id_) for id_ in vanilla_sources}
+    groups.append(("vanilla set", "cargos", vanilla, vanilla_sources))
+
+    for where, kind, names, sources in groups:
+        found = collisions(names, sources)
+        if found:
+            lines = [
+                f"  {name!r}: " + ", ".join(f"{id_} ({src})" for id_, src in sorted(ids))
+                for name, ids in sorted(found.items())
+            ]
+            raise SystemExit(
+                f"{where}: {kind} share a name — the UI cannot tell them apart:\n"
+                + "\n".join(lines)
+            )
+
+
+def vanilla_cargo_names(game_lang, fixes=None):
     """vanilla cargo id -> Russian name.
 
     extract_vanilla.py records the STR_CARGO_PLURAL_* the game itself uses for the cargo,
     so the name is translated through that id — matching back through the English text
     would break on any two cargos sharing a name.
     """
+    fixes = fixes or {}
     return {
-        cargo["id"]: game_lang.get(cargo["str_plural"])
+        cargo["id"]: fixes.get(cargo["str_plural"]) or game_lang.get(cargo["str_plural"])
         for cargo in load_json("vanilla_cargos.json")["items"]
     }
 
@@ -199,22 +260,28 @@ def main(check=False):
     game_lang = load_game_lang()
     cargo_strings = cargo_string_ids()
     industry_strings = industry_string_ids(economies)
-    translation = apply_overrides(
-        load_translation(), set(cargo_strings.values()) | set(industry_strings.values())
+    translation = load_translation()
+    vanilla_sources = {
+        cargo["id"]: cargo["str_plural"] for cargo in load_json("vanilla_cargos.json")["items"]
+    }
+    fixes = load_overrides(
+        lambda string_id: translate(string_id, translation, game_lang),
+        set(cargo_strings.values()) | set(industry_strings.values())
+        | set(vanilla_sources.values()),
     )
     cargos = {
-        id_: translate(string_id, translation, game_lang)
+        id_: translate(string_id, translation, game_lang, fixes)
         for id_, string_id in cargo_strings.items()
     }
     industries = {
-        id_: translate(string_id, translation, game_lang)
+        id_: translate(string_id, translation, game_lang, fixes)
         for id_, string_id in industry_strings.items()
     }
     # The vanilla set shares ids with FIRS where it is the same cargo; where it is not
     # (WOOD is vanilla "wood" and FIRS "logs") the ids differ and both names survive.
     # A shared id whose two names disagree would silently lose the FIRS one — and with it
     # any ru_overrides.json fix written for that name.
-    for id_, name in vanilla_cargo_names(game_lang).items():
+    for id_, name in vanilla_cargo_names(game_lang, fixes).items():
         if not name:
             continue
         if cargos.get(id_) not in (None, name):
@@ -223,6 +290,9 @@ def main(check=False):
                 "the dictionary is keyed by cargo id and cannot hold both"
             )
         cargos[id_] = name
+    check_name_collisions(
+        economies, cargos, industries, cargo_strings, industry_strings, vanilla_sources
+    )
     missing = sorted(k for k, v in {**cargos, **industries}.items() if not v)
     if missing:
         raise SystemExit(

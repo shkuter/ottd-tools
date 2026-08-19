@@ -1,5 +1,5 @@
 {
-  "_comment": "Fixes applied on top of the Russian FIRS translation (vendor/firs-ru). Only spelling, letter case and ё — the source's word choice is kept as is, so names stay recognisable in game. `from` is checked against the source: once upstream fixes a string, the stale entry fails the build.",
+  "_comment": "Fixes applied on top of the Russian FIRS translation (vendor/firs-ru) and the game's own locale. Only spelling, letter case and ё — the source's word choice is kept as is, so names stay recognisable in game — plus telling apart two objects of one economy that the sources happen to name identically. `from` is checked against the source: once upstream fixes a string, the stale entry fails the build.",
   "overrides": [
     {
       "string_id": "STR_IND_FORGE_AND_FOUNDRY",
@@ -36,6 +36,12 @@
       "from": "Завод прецезионных деталей",
       "to": "Завод прецизионных деталей",
       "why": "spelling"
+    },
+    {
+      "string_id": "STR_IND_TIMBER_YARD",
+      "from": "Лесопилка",
+      "to": "Лесной склад",
+      "why": "collides with the game's own name for sawmill in IN_A_HOT_COUNTRY; a Timber Yard takes wood products and makes supplies, so it is a lumber yard, not a sawmill"
     },
     {
       "string_id": "STR_CARGO_NAME_LOGS",

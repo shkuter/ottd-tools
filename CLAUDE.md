@@ -63,10 +63,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Команды
 
 - `make fetch` — shallow-клоны исходников в `vendor/` (версии пинуются `IRON_HORSE_REF`,
-  `FIRS_REF`):
-  iron-horse, firs, openttd, openttd-patches (JGRPP — справочник по патчпаку)
+  `FIRS_REF`, `OPENTTD_REF`) плюс `fetch-firs-ru` (русский перевод FIRS качается одним файлом
+  по `FIRS_RU_REF`): iron-horse, firs, openttd, openttd-patches (JGRPP — справочник по патчпаку).
+  Цели пропускают уже существующий клон, поэтому **смена пина требует удалить каталог**
+  (`rm -rf vendor/openttd && make fetch`) — иначе данные соберутся из старой ревизии
 - `make venv` — venv пайплайна (`pipeline/.venv`, Python ≥3.12, Pillow + Chameleon + markdown)
-- `make data` — перегенерация JSON (iron-horse, firs, vanilla) + `validate.py`
+- `make data` — перегенерация JSON (iron-horse, firs, vanilla, русские названия) + `validate.py`
+- `make check-i18n` — не разъехались ли закоммиченные словари названий с источниками
+  (в `make verify` идёт после `data`, чтобы сравнивать свежесгенерированное)
 - `make data-images` — рендер спрайтшитов Iron Horse и нарезка спрайтов машин (небыстро)
 - `make data-opengfx2` — графика ванильного режима из OpenGFX2 Classic (спрайты машин,
   иконки грузов, палитра интерфейса); `make fetch-opengfx2` — только если набора нет локально
@@ -100,7 +104,8 @@ bash 3.2): проверяет формат версии, чистое дерев
 бампает `package.json` + `package-lock.json` (`npm version`), делает коммит «Релиз X.Y.Z» и
 аннотированный тег `vX.Y.Z`. Руками теги не ставить и версию в `package.json` не править.
 
-Версии данных (`IRON_HORSE_REF`, `FIRS_REF`, `OPENGFX2_REF` в Makefile → `data/meta.json`) —
+Версии данных (`IRON_HORSE_REF`, `FIRS_REF`, `OPENTTD_REF`, `FIRS_RU_REF`, `OPENGFX2_REF`
+в Makefile → `data/meta.json`) —
 отдельная ось: они живут своей нумерацией, а их обновление в приложении — обычный minor.
 
 ## Критичные инварианты (легко сломать)
