@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router';
 import { activeCargos, activeTrains, activeTrainsMeta, economies, economyIdForCargo } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
-import { num, speed } from '../../components/format';
+import { num, speed, speedUnitLabel, speedValue } from '../../components/format';
 import { Money } from '../../components/Money';
 import { optimizeConsists } from '../../engine/optimize';
 import { cargoPaymentRate } from '../../engine/income';
@@ -293,7 +293,8 @@ export default function OptimizerPage() {
                   )}
                 </Table.Td>
                 <Table.Td>
-                  {speed(r.loadedSpeedInternal)} / {speed(r.emptySpeedInternal)}
+                  {speedValue(r.loadedSpeedInternal)} / {speedValue(r.emptySpeedInternal)}{' '}
+                  {speedUnitLabel()}
                 </Table.Td>
                 <Table.Td>{speed(r.gradeSpeedInternal)}</Table.Td>
                 <Table.Td>{num(r.loadingDays, 1)} {t('combined.days')}</Table.Td>

@@ -14,9 +14,18 @@ export function money(value: number): string {
  * derived from it exactly as the game does (units.ts), never from an already rounded mph.
  */
 export function speed(internal: number): string {
+  return `${speedValue(internal)} ${speedUnitLabel()}`;
+}
+
+/** The bare number, for rows that print several speeds under one unit label. */
+export function speedValue(internal: number): string {
   return useSettingsStore.getState().speedUnit === 'imperial'
-    ? `${internalToMph(internal)} ${t('units.mph')}`
-    : `${internalToKmh(internal)} ${t('units.kmh')}`;
+    ? String(internalToMph(internal))
+    : String(internalToKmh(internal));
+}
+
+export function speedUnitLabel(): string {
+  return useSettingsStore.getState().speedUnit === 'imperial' ? t('units.mph') : t('units.kmh');
 }
 
 export function num(value: number, digits = 0): string {

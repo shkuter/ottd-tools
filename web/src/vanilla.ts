@@ -19,7 +19,8 @@ interface VanillaTrainRaw {
   power_hp: number;
   weight_t: number;
   speed_mph: number | null;
-  speed_internal: number | null;
+  /** 0 for wagons: the game's table leaves max_speed at 0. */
+  speed_internal: number;
   capacity: number;
   cost_factor: number;
   running_cost_factor: number;
@@ -92,7 +93,6 @@ function toTrain(raw: VanillaTrainRaw): Train {
     te_coefficient: raw.te_coefficient,
     speed_mph: raw.speed_mph,
     speed_lgv_mph: null,
-    // wagons have no speed of their own: the game's table leaves max_speed at 0
     speed_internal: raw.speed_mph == null ? null : raw.speed_internal,
     speed_lgv_internal: null,
     weight_t: raw.weight_t,

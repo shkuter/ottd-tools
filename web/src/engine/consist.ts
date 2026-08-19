@@ -31,6 +31,10 @@ export interface ConsistStats {
   numUnits: number;
 }
 
+function minOf(current: number | null, value: number): number {
+  return current == null ? value : Math.min(current, value);
+}
+
 export function consistPhysics(
   entries: readonly ConsistEntry[],
   cargo: Cargo | null,
@@ -58,16 +62,12 @@ export function consistPhysics(
     if (train.power_hp > 0) {
       teWeightProduct += count * train.weight_t * train.te_coefficient;
     }
+    // both units are tracked: physics keeps using mph (see the note below), the display
+    // takes the internal speed straight from the data so it matches the game
     if (train.speed_mph != null) {
-      speedLimitMph =
-        speedLimitMph == null ? train.speed_mph : Math.min(speedLimitMph, train.speed_mph);
-    }
-    // показанный предел берётся из данных, чтобы совпадать с игрой (см. ниже про физику)
-    if (train.speed_mph != null && train.speed_internal != null) {
-      speedLimitInternal =
-        speedLimitInternal == null
-          ? train.speed_internal
-          : Math.min(speedLimitInternal, train.speed_internal);
+      speedLimitMph = minOf(speedLimitMph, train.speed_mph);
+      const internal = train.speed_internal ?? mphToInternal(train.speed_mph);
+      speedLimitInternal = minOf(speedLimitInternal, internal);
     }
     if (cargo && canCarryIn(game, train, cargo)) {
       const capacity = count * (train.capacities[capacityIndex] ?? train.capacities[2]);
@@ -84,9 +84,9 @@ export function consistPhysics(
       massT: Math.round(emptyWeightT + cargoWeightT),
       powerHp,
       teWeightProduct,
-      // осознанно не speed_internal: mphToInternal округляет mph * 1.6 и у быстрых машин
-      // даёт на единицу меньше настоящей внутренней скорости. Замена сдвинула бы числа
-      // расчёта, а это изменение касается только отображения (см. design.md, Risks)
+      // deliberately not speed_internal: mphToInternal rounds mph * 1.6 and lands one unit
+      // below the real internal speed on fast trains. Swapping it would move the calculated
+      // numbers, and this change only touches display (see design.md, Risks)
       maxSpeedInternal: mphToInternal(speedLimitMph ?? 200),
       numParts: numUnits,
       slopeSteepness: game.slopeSteepness,
