@@ -146,8 +146,8 @@
     --switch-width: 38px;
     /* SETTING_BUTTON_WIDTH / 3, rounded to a whole pixel */
     --switch-thumb-size: 13px;
-    --switch-track-label-padding: 0px;
-    /* the button stands proud of the track, so it must not be clipped */
+    --switch-track-label-padding: calc(-1 * var(--bevel));
+    /* the button reaches over the bevel, which Mantine's overflow would clip */
     overflow: visible;
     border-radius: var(--skin-radius);
     border-style: solid;
@@ -167,10 +167,10 @@
     border-color: var(--skin-button-edge-hi) var(--skin-button-edge-lo) var(--skin-button-edge-lo)
       var(--skin-button-edge-hi);
     background: var(--skin-switch-off);
-    /* taller than the track: it covers the bevel and stands one bevel proud of
-       it at the top and the bottom */
-    top: calc(-2 * var(--bevel));
-    bottom: calc(-2 * var(--bevel));
+    /* the button covers the track's bevel on every side rather than sitting
+       inside it, which is what makes it read as tall as the whole track */
+    top: calc(-1 * var(--bevel));
+    bottom: calc(-1 * var(--bevel));
     height: auto;
   }
 
