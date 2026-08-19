@@ -1,0 +1,251 @@
+"""Russian names of FIRS cargos and industries, as the game shows them.
+
+FIRS ships English only, but players run a Russian translation built from the same 5.2.0
+sources (vendor/firs-ru, see `make fetch-firs-ru`). Every cargo and industry is mapped to
+the lang string id FIRS itself declares — `cargo.type_name` and the industry `name`
+property — because ids and string ids do not always match (`pipe_shop` is
+STR_IND_PIPEWORK_FABRICATOR). Names FIRS leaves to the game (TTD_STR_*) and the whole
+vanilla set come from the game's own Russian locale.
+
+Output: web/src/i18n/{cargos,industries}.ru.json
+"""
+import json
+import os
+import re
+import tomllib
+import argparse
+import sys
+
+from common import I18N_DIR, VENDOR, bootstrap_firs, load_json
+
+fx = bootstrap_firs()
+firs = fx.firs
+utils = fx.utils
+
+FIRS_RU_TOML = os.path.join(VENDOR, "firs-ru", "russian.toml")
+OVERRIDES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ru_overrides.json")
+
+# Short forms for the UI. The translation spells units out inside a sentence
+# ("{WEIGHT} стальных заготовок"), which does not fit a table column.
+UNITS = {
+    "litres": "л",
+    "tonnes": "т",
+    "bags": "мешков",
+    "crates": "ящиков",
+    "items": "шт.",
+    "passengers": "пасс.",
+}
+GAME_LANG_DIR = os.path.join(VENDOR, "openttd", "src", "lang")
+
+# Leading {G=m} and friends mark grammatical gender for the game's own string system;
+# the UI needs the bare nominative.
+LANG_MARKUP = re.compile(r"^(?:\{[^}]*\})+")
+
+
+def load_translation():
+    """FIRS string id -> Russian name, from the translation players run.
+
+    Markup and stray whitespace are stripped the same way as in the game's own locale:
+    a name that reaches the UI as "{G=f}Кислота" would also sort wrong and make the
+    matching ru_overrides.json entry impossible to write.
+    """
+    if not os.path.exists(FIRS_RU_TOML):
+        raise SystemExit(f"{FIRS_RU_TOML} is missing — run make fetch-firs-ru")
+    with open(FIRS_RU_TOML, "rb") as f:
+        data = tomllib.load(f)
+    return {
+        key: LANG_MARKUP.sub("", value["base"]).strip()
+        for key, value in data.items()
+        if "base" in value
+    }
+
+
+def load_game_lang(language="russian"):
+    """Game string id -> name, from the game's own locale.
+
+    Case forms (STR_CARGO_PLURAL_COAL.gen) do not match the pattern at all — the id
+    stops at the dot — and the UI only ever needs the nominative anyway.
+    """
+    out = {}
+    with open(os.path.join(GAME_LANG_DIR, f"{language}.txt"), encoding="utf-8") as f:
+        for line in f:
+            match = re.match(r"^(STR_[A-Z0-9_]+)\s*:(.*)$", line)
+            if match:
+                out[match.group(1)] = LANG_MARKUP.sub("", match.group(2)).strip()
+    return out
+
+
+def apply_overrides(translation, used_string_ids):
+    """Fix spelling, letter case and ё on top of the translation, in place.
+
+    Each entry states the string it expects to find, and the string has to be one some
+    cargo or industry actually shows: a mismatch means upstream changed the name and the
+    fix may no longer apply, an unused string means the fix is dead weight. Either way the
+    build stops instead of silently rewriting nothing or the wrong name.
+    """
+    with open(OVERRIDES, encoding="utf-8") as f:
+        entries = json.load(f)["overrides"]
+    for entry in entries:
+        string_id = entry["string_id"]
+        if string_id not in used_string_ids:
+            raise SystemExit(
+                f"ru_overrides.json: {string_id} is not used by any cargo or industry — "
+                "drop the fix"
+            )
+        current = translation.get(string_id)
+        if current != entry["from"]:
+            raise SystemExit(
+                f"ru_overrides.json: {string_id} is {current!r} upstream, "
+                f"expected {entry['from']!r} — re-check the fix"
+            )
+        translation[string_id] = entry["to"]
+    print(f"overrides: {len(entries)} applied")
+    return translation
+
+
+def translate(string_id, translation, game_lang):
+    """Russian name for one lang string id, or None when nothing translates it."""
+    if string_id.startswith("TTD_"):
+        return game_lang.get(string_id[len("TTD_"):])
+    return translation.get(string_id)
+
+
+def cargo_string_ids():
+    """cargo id -> lang string id declared by FIRS."""
+    return {
+        cargo.id: utils.unwrap_nml_string_declaration(cargo.type_name)
+        for cargo in firs.cargo_manager
+    }
+
+
+def industry_string_ids(economies):
+    """industry id -> lang string id declared by FIRS.
+
+    FIRS allows an industry to be renamed per economy, and the catalogue keeps those
+    variants (`name_by_economy`), but a dictionary keyed by industry id can hold only one
+    name — i18n/names.ts would then show the base name in Russian and the per-economy one
+    in English. No industry uses this today, so the build stops rather than pick a variant.
+    """
+    out = {}
+    for industry in firs.industry_manager:
+        ids = []
+        for economy in economies:
+            variation = industry.economy_variations.get(economy.id)
+            if variation is None or not variation.enabled:
+                continue
+            ids.append(
+                utils.unwrap_nml_string_declaration(industry.get_property("name", economy))
+            )
+        if not ids:
+            continue
+        if len(set(ids)) > 1:
+            raise SystemExit(
+                f"{industry.id} is named per economy ({sorted(set(ids))}) — the Russian "
+                "dictionary is keyed by industry id and cannot hold both"
+            )
+        out[industry.id] = ids[0]
+    return out
+
+
+def vanilla_cargo_names(game_lang):
+    """vanilla cargo id -> Russian name.
+
+    extract_vanilla.py records the STR_CARGO_PLURAL_* the game itself uses for the cargo,
+    so the name is translated through that id — matching back through the English text
+    would break on any two cargos sharing a name.
+    """
+    return {
+        cargo["id"]: game_lang.get(cargo["str_plural"])
+        for cargo in load_json("vanilla_cargos.json")["items"]
+    }
+
+
+def render(payload):
+    return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+def write_i18n(filename, payload, check=False):
+    """Write the dictionary, or in check mode report how the committed file drifted."""
+    path = os.path.join(I18N_DIR, filename)
+    rendered = render(payload)
+    if not check:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(rendered)
+        print(f"{filename}: {os.path.getsize(path)} bytes")
+        return True
+    committed = None
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            committed = f.read()
+    if committed == rendered:
+        print(f"{filename}: up to date")
+        return True
+    print(f"{filename}: DRIFTED from the sources — run make data", file=sys.stderr)
+    return False
+
+
+def units_payload(cargos_data):
+    """Units used by the data, checked so a new one cannot slip through untranslated."""
+    used = {c["units"] for c in cargos_data if c.get("units")}
+    unknown = sorted(used - set(UNITS))
+    if unknown:
+        raise SystemExit(f"no Russian form for units: {unknown}")
+    return {unit: UNITS[unit] for unit in sorted(used)}
+
+
+def main(check=False):
+    firs.main()
+    economies = list(firs.economy_manager)
+    game_lang = load_game_lang()
+    cargo_strings = cargo_string_ids()
+    industry_strings = industry_string_ids(economies)
+    translation = apply_overrides(
+        load_translation(), set(cargo_strings.values()) | set(industry_strings.values())
+    )
+    cargos = {
+        id_: translate(string_id, translation, game_lang)
+        for id_, string_id in cargo_strings.items()
+    }
+    industries = {
+        id_: translate(string_id, translation, game_lang)
+        for id_, string_id in industry_strings.items()
+    }
+    # The vanilla set shares ids with FIRS where it is the same cargo; where it is not
+    # (WOOD is vanilla "wood" and FIRS "logs") the ids differ and both names survive.
+    # A shared id whose two names disagree would silently lose the FIRS one — and with it
+    # any ru_overrides.json fix written for that name.
+    for id_, name in vanilla_cargo_names(game_lang).items():
+        if not name:
+            continue
+        if cargos.get(id_) not in (None, name):
+            raise SystemExit(
+                f"cargo {id_} is {cargos[id_]!r} in FIRS and {name!r} in the game — "
+                "the dictionary is keyed by cargo id and cannot hold both"
+            )
+        cargos[id_] = name
+    missing = sorted(k for k, v in {**cargos, **industries}.items() if not v)
+    if missing:
+        raise SystemExit(
+            f"no Russian name for {missing} — the translation is behind the data sources"
+        )
+    cargos_data = load_json("cargos.json")["items"]
+    ok = write_i18n("cargos.ru.json", {
+        "names": {id_: name for id_, name in cargos.items() if name},
+        "units": units_payload(cargos_data),
+    }, check)
+    ok &= write_i18n("industries.ru.json", {
+        id_: name for id_, name in industries.items() if name
+    }, check)
+    print(f"cargos: {len(cargos)}, industries: {len(industries)}")
+    if not ok:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="report whether the committed dictionaries drifted, write nothing",
+    )
+    main(**vars(parser.parse_args()))

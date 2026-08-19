@@ -49,8 +49,13 @@ context: |
     переводить в момент рендера, иначе застрянут на старом языке.
   - Названия настроек берутся из русской локали самой игры (vendor/openttd/src/lang/russian.txt,
     JGRPP — vendor/openttd-patches/src/lang/extra/russian.txt), а не переводятся по смыслу.
-  - Названия грузов и предприятий — в i18n/cargos.ru.json и industries.ru.json, подставляются
-    хелперами i18n/names.ts. i18n/__tests__/locales.test.ts падает на непереведённом ключе.
+  - Названия грузов и предприятий генерируются pipeline/extract_firs_ru.py (входит в make data)
+    из русского перевода FIRS, который стоит у игроков (vendor/firs-ru, пин FIRS_RU_REF), и из
+    локали самой игры для названий, которые FIRS оставляет игре, и всего ванильного набора.
+    cargos.ru.json и industries.ru.json руками не править; правки поверх перевода — только
+    орфография, регистр и ё, в pipeline/ru_overrides.json. Словари ключуются по id груза, не по
+    label (WOOD — это и ванильная Древесина, и FIRS logs Брёвна). Подстановка — i18n/names.ts,
+    i18n/__tests__/locales.test.ts падает на непереведённом ключе, make check-i18n — на дрейфе.
 
   Версионирование (semver, единственный источник правды — version в web/package.json):
   - major — тот же ввод осознанно даёт другие числа или сбрасывается localStorage;
@@ -77,8 +82,9 @@ rules:
     - Разбивать на шаги не длиннее пары часов, каждый с проверяемым результатом.
     - Новая или изменённая настройка — отдельный таск на кейс в
       web/src/engine/__tests__/settings-effect.test.ts.
-    - Новые UI-строки, грузы или предприятия — отдельный таск на en.json / ru.json
-      (и cargos.ru.json / industries.ru.json), чтобы проходил i18n/__tests__/locales.test.ts.
+    - Новые UI-строки — отдельный таск на en.json / ru.json, чтобы проходил
+      i18n/__tests__/locales.test.ts. Названия грузов и предприятий там не правятся — они
+      генерируются, таск ставится на make data (и, если нужно, на pipeline/ru_overrides.json).
     - Отдельный таск на запись в CHANGELOG.md в секцию [Unreleased] (на английском).
     - Последний таск — прогон make test (при правках данных также make data).
 

@@ -16,6 +16,7 @@ export const datasetMeta = metaJson as {
   generated_at: string;
   iron_horse: string;
   firs: string;
+  firs_ru: string;
 };
 
 export const trainById = new Map(trains.map((t) => [t.id, t]));

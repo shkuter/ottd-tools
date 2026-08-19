@@ -3,6 +3,7 @@
 Выход: web/src/data/{cargos,industries,economies}.json + web/public/icons/cargo/*.png
 """
 import os
+from collections import Counter
 
 from PIL import Image
 
@@ -139,8 +140,10 @@ def extract_industries(dh, economies):
             names[economy.id] = resolve_name(dh.get_industry_name(industry, economy))
         if not per_economy:
             continue
-        # имя одинаково в большинстве экономик — храним базовое + оверрайды
-        base_name = max(set(names.values()), key=list(names.values()).count)
+        # имя одинаково в большинстве экономик — храним базовое + оверрайды.
+        # Counter, а не max(set(...)): порядок обхода set для строк рандомизирован
+        # по хешу — на ничьей базовое имя прыгало бы между запусками.
+        base_name = Counter(names.values()).most_common(1)[0][0]
         name_overrides = {k: v for k, v in names.items() if v != base_name}
         item = {
             "id": industry.id,

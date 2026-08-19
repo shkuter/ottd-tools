@@ -1,0 +1,53 @@
+{
+  "_comment": "Fixes applied on top of the Russian FIRS translation (vendor/firs-ru). Only spelling, letter case and ё — the source's word choice is kept as is, so names stay recognisable in game. `from` is checked against the source: once upstream fixes a string, the stale entry fails the build.",
+  "overrides": [
+    {
+      "string_id": "STR_IND_FORGE_AND_FOUNDRY",
+      "from": "Кузнечно-литейный Цех",
+      "to": "Кузнечно-литейный цех",
+      "why": "letter case"
+    },
+    {
+      "string_id": "STR_IND_GLASS_WORKS",
+      "from": "Стекольный Завод",
+      "to": "Стекольный завод",
+      "why": "letter case"
+    },
+    {
+      "string_id": "STR_IND_HARDWARE_STORE",
+      "from": "Магазин Хозяйственных Товаров",
+      "to": "Магазин хозяйственных товаров",
+      "why": "letter case"
+    },
+    {
+      "string_id": "STR_IND_INTEGRATED_STEEL_MILL",
+      "from": "Сталелитейный Завод",
+      "to": "Сталелитейный завод",
+      "why": "letter case"
+    },
+    {
+      "string_id": "STR_IND_HERDING_COOP",
+      "from": "Скотоводеческий Кооператив",
+      "to": "Скотоводческий кооператив",
+      "why": "spelling + letter case"
+    },
+    {
+      "string_id": "STR_IND_PRECISION_PARTS_PLANT",
+      "from": "Завод прецезионных деталей",
+      "to": "Завод прецизионных деталей",
+      "why": "spelling"
+    },
+    {
+      "string_id": "STR_CARGO_NAME_LOGS",
+      "from": "Бревна",
+      "to": "Брёвна",
+      "why": "ё"
+    },
+    {
+      "string_id": "STR_CARGO_NAME_QUICKLIME",
+      "from": "Негашеная известь",
+      "to": "Негашёная известь",
+      "why": "ё"
+    }
+  ]
+}

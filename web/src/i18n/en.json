@@ -81,6 +81,7 @@
   "combined.assumptions": "Loaded and empty legs at their own steady speeds (the empty train runs lighter and faster), dwell time for loading and unloading included, no inflation (Iron Horse is incompatible with inflation).",
   "footer.version": "Version",
   "footer.data": "Data",
+  "footer.translation": "translation",
   "footer.generated": "generated",
   "footer.graphics": "Graphics",
   "nav.optimizer": "Best train",

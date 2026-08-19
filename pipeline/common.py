@@ -10,6 +10,7 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 VENDOR = os.path.join(REPO_ROOT, "vendor")
 DATA_DIR = os.path.join(REPO_ROOT, "web", "src", "data")
 ICONS_DIR = os.path.join(REPO_ROOT, "web", "public", "icons", "cargo")
+I18N_DIR = os.path.join(REPO_ROOT, "web", "src", "i18n")
 
 
 def bootstrap_iron_horse(with_render_docs=False):
@@ -68,6 +69,17 @@ def vendor_meta(repo_dir_name):
         "commit": git("rev-parse", "--short", "HEAD"),
         "describe": git("describe", "--tags", "--always"),
     }
+
+
+def firs_ru_ref():
+    """Commit of the Russian FIRS translation in vendor/firs-ru (see make fetch-firs-ru)."""
+    path = os.path.join(VENDOR, "firs-ru", ".ref")
+    if not os.path.exists(path):
+        raise SystemExit(
+            "vendor/firs-ru/.ref is missing — run make fetch-firs-ru"
+        )
+    with open(path) as f:
+        return f.read().strip()
 
 
 def write_json(filename, payload):

@@ -82,8 +82,8 @@ describe('cargo names', () => {
 
   it('covers every cargo in the data', () => {
     const missing = allCargos
-      .filter((c) => !(c.label in cargosRu.names))
-      .map((c) => `${c.label} (${c.name})`);
+      .filter((c) => !(c.id in cargosRu.names))
+      .map((c) => `${c.id} (${c.name})`);
     expect(missing).toEqual([]);
   });
 
@@ -95,7 +95,7 @@ describe('cargo names', () => {
   });
 
   it('translates names and units, English stays untouched', () => {
-    const coal = { label: 'COAL', name: 'Coal' };
+    const coal = { id: 'coal', name: 'Coal' };
     useLocaleStore.getState().setLocale('en');
     expect(cargoName(coal)).toBe('Coal');
     expect(cargoUnits('tonnes')).toBe('tonnes');
@@ -103,15 +103,24 @@ describe('cargo names', () => {
     useLocaleStore.getState().setLocale('ru');
     expect(cargoName(coal)).toBe('Уголь');
     expect(cargoUnits('tonnes')).toBe('т');
-    // unknown label keeps the name from the data instead of showing the label
-    expect(cargoName({ label: 'ZZZZ', name: 'Unobtainium' })).toBe('Unobtainium');
+    // unknown id keeps the name from the data instead of showing the id
+    expect(cargoName({ id: 'unobtainium', name: 'Unobtainium' })).toBe('Unobtainium');
+  });
+
+  it('tells apart the two cargos sharing the WOOD label', () => {
+    // vanilla WOOD is the game's Wood, FIRS WOOD is Logs — one label, two names
+    const vanillaWood = vanillaCargos.items.find((c) => c.label === 'WOOD')!;
+    const firsWood = firsCargos.items.find((c) => c.label === 'WOOD')!;
+    useLocaleStore.getState().setLocale('ru');
+    expect(cargoName(vanillaWood)).toBe('Древесина');
+    expect(cargoName(firsWood)).toBe('Брёвна');
   });
 
   it('sorts pickers by the name the user sees', () => {
     const list = [
-      { label: 'ACID', name: 'Acid' },
-      { label: 'COAL', name: 'Coal' },
-      { label: 'BEER', name: 'Alcohol' },
+      { id: 'acid', name: 'Acid' },
+      { id: 'coal', name: 'Coal' },
+      { id: 'alcohol', name: 'Alcohol' },
     ];
     useLocaleStore.getState().setLocale('en');
     expect(sortCargos(list, 'en').map((c) => c.name)).toEqual(['Acid', 'Alcohol', 'Coal']);
@@ -122,16 +131,16 @@ describe('cargo names', () => {
 
   it('keeps passengers and mail at the top, as the game does', () => {
     const list = [
-      { label: 'COAL', name: 'Coal' },
-      { label: 'MAIL', name: 'Mail' },
-      { label: 'ACID', name: 'Acid' },
-      { label: 'PASS', name: 'Passengers' },
+      { id: 'coal', name: 'Coal' },
+      { id: 'mail', name: 'Mail' },
+      { id: 'acid', name: 'Acid' },
+      { id: 'passengers', name: 'Passengers' },
     ];
     for (const locale of ['en', 'ru'] as const) {
       useLocaleStore.getState().setLocale(locale);
-      const order = sortCargos(list, locale).map((c) => c.label);
+      const order = sortCargos(list, locale).map((c) => c.id);
       // pinned first in a fixed order, everything else alphabetical
-      expect(order).toEqual(['PASS', 'MAIL', 'ACID', 'COAL']);
+      expect(order).toEqual(['passengers', 'mail', 'acid', 'coal']);
     }
   });
 });

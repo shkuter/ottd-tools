@@ -68,7 +68,9 @@ export default function App() {
       </main>
       <footer className="app-footer">
         {t('footer.version')} {__APP_VERSION__} · {t('footer.data')}: Iron Horse{' '}
-        {datasetMeta.iron_horse} · FIRS {datasetMeta.firs} ·{' '}
+        {datasetMeta.iron_horse} · FIRS {datasetMeta.firs}
+        {/* The translation revision only matters where names actually come from it. */}
+        {locale !== 'en' && ` (${t('footer.translation')} ${datasetMeta.firs_ru})`} ·{' '}
         {t('footer.generated')} {datasetMeta.generated_at}
         <br />
         {t('footer.graphics')}:{' '}

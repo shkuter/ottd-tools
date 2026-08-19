@@ -251,6 +251,8 @@ def build_cargos():
             "label": labels[label_const],           # the game's CargoLabel: "COAL", "OIL_", "IORE"
             "id": slug.lower(),
             "name": names.get(f"STR_CARGO_PLURAL_{str_plural}", slug.title()),
+            # The lang string the name comes from — other extractors translate through it.
+            "str_plural": f"STR_CARGO_PLURAL_{str_plural}",
             "initial_payment": int(args[5]),
             "transit_periods": [int(args[6]), int(args[7])],
             "weight_16ths": int(args[3]),

@@ -3,7 +3,7 @@ import os
 import sys
 from datetime import date
 
-from common import DATA_DIR, load_json, write_json
+from common import DATA_DIR, firs_ru_ref, load_json, write_json
 
 errors = []
 warnings = []
@@ -117,6 +117,7 @@ def main():
         "generated_at": date.today().isoformat(),
         "iron_horse": trains["meta"]["describe"],
         "firs": cargos["meta"]["describe"],
+        "firs_ru": firs_ru_ref()[:7],
         "schema_version": 1,
     })
     print("validate: OK")
