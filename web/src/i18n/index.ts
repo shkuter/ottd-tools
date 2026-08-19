@@ -11,10 +11,17 @@ type Strings = Record<string, string>;
 
 const dictionaries: Record<Locale, Strings> = { en: en as Strings, ru: ru as Strings };
 
-/** Missing string falls back to English, then to the key itself. */
-export function t(key: string): string {
+/**
+ * Missing string falls back to English, then to the key itself. Placeholders are written
+ * as {name} in the dictionaries and filled from `params`.
+ */
+export function t(key: string, params?: Record<string, string | number>): string {
   const { locale } = useLocaleStore.getState();
-  return dictionaries[locale][key] ?? (en as Strings)[key] ?? key;
+  const text = dictionaries[locale][key] ?? (en as Strings)[key] ?? key;
+  if (!params) return text;
+  return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match,
+  );
 }
 
 /**

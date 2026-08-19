@@ -3,9 +3,15 @@ import { trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
 import { t } from '../../i18n';
 import { CURRENCIES, useSettingsStore, type CurrencyCode } from '../../state/settingsStore';
-import { BASECOST_MULTIPLIERS } from '../../engine/settings';
+import {
+  BASECOST_MULTIPLIERS,
+  MAX_GAME_YEAR,
+  MIN_GAME_YEAR,
+  clampGameYear,
+} from '../../engine/settings';
 import { resetPersistedState } from '../../state';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
+import { SavegameImportPanel } from './SavegameImportPanel';
 
 function Row({
   label,
@@ -25,16 +31,6 @@ function Row({
       <div className="setting-control">{children}</div>
     </div>
   );
-}
-
-/**
- * Years drive the inflation tables, and an emptied number field reads as 0 — which would
- * count the full 170 years of inflation instead of none. Keep the value inside the range
- * the input advertises.
- */
-function clampYear(value: number): number {
-  if (!Number.isFinite(value)) return 1950;
-  return Math.min(2090, Math.max(1920, Math.trunc(value)));
 }
 
 /** A NumberInput hands back a string while it is being typed; settings are numbers. */
@@ -191,16 +187,45 @@ export default function SettingsPage() {
                 data={numericData(BASECOST_MULTIPLIERS)}
               />
             </Row>
-            <Row label={t('settings.basecostRunning')} hint={t('settings.basecostRunningHint')}>
+            <Row
+              label={t('settings.basecostRunningSteam')}
+              hint={t('settings.basecostRunningHint')}
+            >
               <Select
                 allowDeselect={false}
-                value={String(game.basecostTrainRunning)}
-                onChange={(v) => v && setGame('basecostTrainRunning', Number(v))}
+                value={String(game.basecostTrainRunningSteam)}
+                onChange={(v) => v && setGame('basecostTrainRunningSteam', Number(v))}
+                data={numericData(BASECOST_MULTIPLIERS)}
+              />
+            </Row>
+            <Row
+              label={t('settings.basecostRunningDiesel')}
+              hint={t('settings.basecostRunningHint')}
+            >
+              <Select
+                allowDeselect={false}
+                value={String(game.basecostTrainRunningDiesel)}
+                onChange={(v) => v && setGame('basecostTrainRunningDiesel', Number(v))}
+                data={numericData(BASECOST_MULTIPLIERS)}
+              />
+            </Row>
+            <Row
+              label={t('settings.basecostRunningElectric')}
+              hint={t('settings.basecostRunningHint')}
+            >
+              <Select
+                allowDeselect={false}
+                value={String(game.basecostTrainRunningElectric)}
+                onChange={(v) => v && setGame('basecostTrainRunningElectric', Number(v))}
                 data={numericData(BASECOST_MULTIPLIERS)}
               />
             </Row>
           </>
         )}
+      </Fieldset>
+
+      <Fieldset className="settings-group" legend={t('savegame.title')}>
+        <SavegameImportPanel />
       </Fieldset>
 
       <Fieldset className="settings-group" legend={t('settings.display')}>
@@ -303,10 +328,12 @@ export default function SettingsPage() {
         </Row>
         <Row label={t('settings.startingYear')} hint={t('settings.startingYearHint')}>
           <NumberInput
-            min={1920}
-            max={2090}
+            min={MIN_GAME_YEAR}
+            max={MAX_GAME_YEAR}
             value={game.startingYear}
-            onChange={(v) => setGame('startingYear', clampYear(asNumber(v, 1920)))}
+            onChange={(v) =>
+              setGame('startingYear', clampGameYear(Number(v), game.startingYear))
+            }
           />
         </Row>
       </Fieldset>
@@ -378,10 +405,10 @@ export default function SettingsPage() {
         </Row>
         <Row label={t('settings.priceYear')} hint={t('settings.priceYearHint')}>
           <NumberInput
-            min={1860}
-            max={2090}
+            min={MIN_GAME_YEAR}
+            max={MAX_GAME_YEAR}
             value={calc.priceYear}
-            onChange={(v) => setCalc('priceYear', asNumber(v, 1860))}
+            onChange={(v) => setCalc('priceYear', clampGameYear(Number(v), calc.priceYear))}
           />
         </Row>
       </Fieldset>

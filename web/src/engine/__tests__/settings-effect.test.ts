@@ -6,10 +6,11 @@ import { describe, expect, it } from 'vitest';
 import { optimizeConsists, type OptimizeParams } from '../optimize';
 import { consistStats } from '../consist';
 import { transportedGoodsIncome } from '../income';
-import { trains, trainsMeta, cargoByLabel } from '../../dataset';
+import { activeTrains, activeTrainsMeta, trains, trainsMeta, cargoByLabel } from '../../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
+  clampGameYear,
   type CalcSettings,
   type GameSettings,
 } from '../settings';
@@ -37,10 +38,12 @@ function snapshot(
 ) {
   const game = { ...DEFAULT_GAME_SETTINGS, ...gameOverrides };
   const calc = { ...DEFAULT_CALC_SETTINGS, ...calcOverrides };
+  // набор машин следует настройкам: без Iron Horse считаются ванильные поезда
+  const meta = activeTrainsMeta(game);
   const results = optimizeConsists(
-    trains,
+    activeTrains(game),
     { ...baseParams(game, calc), ...paramOverrides },
-    trainsMeta,
+    meta,
     5,
   );
   const top = results[0];
@@ -50,7 +53,7 @@ function snapshot(
         { train: top.wagon, count: top.wagonCount },
       ]
     : [];
-  const stats = consistStats(entries, cargo, calc.capacityIndex, trainsMeta, game, calc);
+  const stats = consistStats(entries, cargo, calc.capacityIndex, meta, game, calc);
   return JSON.stringify({
     profit: top?.profitPerYear,
     income: top?.incomePerTrip,
@@ -99,7 +102,21 @@ const CASES: {
   { name: 'basecostGrf', game: { basecostGrf: true, basecostLocomotive: 8 } },
   { name: 'basecostLocomotive', game: { basecostGrf: true, basecostLocomotive: 8 } },
   { name: 'basecostWagon', game: { basecostGrf: true, basecostWagon: 8 } },
-  { name: 'basecostTrainRunning', game: { basecostGrf: true, basecostTrainRunning: 4 } },
+  // Iron Horse ставит все движки в паровой класс, а вагоны — в дизельный
+  { name: 'basecostTrainRunningSteam', game: { basecostGrf: true, basecostTrainRunningSteam: 4 } },
+  {
+    name: 'basecostTrainRunningDiesel',
+    game: { basecostGrf: true, basecostTrainRunningDiesel: 4 },
+  },
+  // электрический класс встречается только у ванильных машин
+  {
+    name: 'basecostTrainRunningElectric',
+    game: { ironHorse: false, basecostGrf: true, basecostTrainRunningElectric: 4 },
+    base: { ironHorse: false, basecostGrf: true },
+    calc: { priceYear: 1990 },
+    baseCalc: { priceYear: 1990 },
+    params: { year: 1990 },
+  },
   { name: 'inflation', game: { inflation: true }, calc: { priceYear: 2000 } },
   {
     name: 'inflationInterest',
@@ -215,5 +232,23 @@ describe('переключение наборов NewGRF', () => {
     );
     // с ванильными правилами refit у Iron Horse-вагонов список сильно меняется
     expect(results.length).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('диапазон года', () => {
+  it('принимает год начала партии вне эпохи инфляции', () => {
+    // партии стартуют и в 1860, и раньше: в игре год ограничен только MIN_YEAR..MAX_YEAR
+    expect(clampGameYear(1860, 1950)).toBe(1860);
+    expect(clampGameYear(0, 1950)).toBe(0);
+    expect(clampGameYear(2200, 1950)).toBe(2200);
+  });
+
+  it('пустое поле оставляет прежнее значение, а не обнуляет год', () => {
+    expect(clampGameYear(Number.NaN, 1860)).toBe(1860);
+  });
+
+  it('за границы игры не выпускает', () => {
+    expect(clampGameYear(-5, 1950)).toBe(0);
+    expect(clampGameYear(9_000_000, 1950)).toBe(5_000_000);
   });
 });

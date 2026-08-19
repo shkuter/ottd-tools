@@ -26,6 +26,8 @@ interface SettingsState {
   setCurrency: (currency: CurrencyCode) => void;
   setGame: <K extends keyof GameSettings>(key: K, value: GameSettings[K]) => void;
   setCalc: <K extends keyof CalcSettings>(key: K, value: CalcSettings[K]) => void;
+  /** Applies several settings at once, e.g. everything a savegame states. */
+  applySettings: (game: Partial<GameSettings>, calc: Partial<CalcSettings>) => void;
   reset: () => void;
 }
 
@@ -40,7 +42,9 @@ function normaliseGame(game: GameSettings): GameSettings {
     ...game,
     basecostLocomotive: fix(game.basecostLocomotive),
     basecostWagon: fix(game.basecostWagon),
-    basecostTrainRunning: fix(game.basecostTrainRunning),
+    basecostTrainRunningSteam: fix(game.basecostTrainRunningSteam),
+    basecostTrainRunningDiesel: fix(game.basecostTrainRunningDiesel),
+    basecostTrainRunningElectric: fix(game.basecostTrainRunningElectric),
   };
 }
 
@@ -53,6 +57,8 @@ export const useSettingsStore = create<SettingsState>()(
       setCurrency: (currency) => set({ currency }),
       setGame: (key, value) => set((s) => ({ game: { ...s.game, [key]: value } })),
       setCalc: (key, value) => set((s) => ({ calc: { ...s.calc, [key]: value } })),
+      applySettings: (game, calc) =>
+        set((s) => ({ game: { ...s.game, ...game }, calc: { ...s.calc, ...calc } })),
       reset: () =>
         set({
           currency: 'GBP',
@@ -62,6 +68,30 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'ottd-tools-settings',
+      version: 1,
+      /**
+       * v1 split the single Base Costs running-cost multiplier into one per running class.
+       * The saved value applied to every train, so it carries over to all three and the
+       * migrated settings keep producing the numbers they produced before.
+       */
+      migrate: (persisted, version) => {
+        if (version >= 1) return persisted as SettingsState;
+        const p = (persisted ?? {}) as Partial<SettingsState> & {
+          game?: Partial<GameSettings> & { basecostTrainRunning?: number };
+        };
+        const legacy = p.game?.basecostTrainRunning;
+        if (legacy == null) return p as SettingsState;
+        const { basecostTrainRunning: _dropped, ...game } = p.game ?? {};
+        return {
+          ...p,
+          game: {
+            ...game,
+            basecostTrainRunningSteam: legacy,
+            basecostTrainRunningDiesel: legacy,
+            basecostTrainRunningElectric: legacy,
+          },
+        } as SettingsState;
+      },
       // новые поля настроек должны появляться у старых пользователей
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SettingsState>;

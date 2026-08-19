@@ -11,6 +11,7 @@ import {
   DEFAULT_GAME_SETTINGS,
   type CalcSettings,
   type GameSettings,
+  type RunningClass,
   basecostBuyFactor,
   basecostRunningFactor,
   difficultyPriceFactor,
@@ -84,11 +85,16 @@ export function runningCostPerYear(
   return price(baseKey, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest, inflationFixedDates, startingYear);
 }
 
+/** Iron Horse: running_cost_base из trains.json -> running-класс игры. */
+export function runningClassOf(runningCostBase: string): RunningClass {
+  if (runningCostBase.includes('STEAM')) return 'steam';
+  if (runningCostBase.includes('ELECTRIC')) return 'electric';
+  return 'diesel';
+}
+
 /** Iron Horse: running_cost_base из trains.json -> ключ базовой цены. */
 export function runningBaseKey(runningCostBase: string): BasePriceKey {
-  if (runningCostBase.includes('STEAM')) return 'running_steam';
-  if (runningCostBase.includes('ELECTRIC')) return 'running_electric';
-  return 'running_diesel';
+  return `running_${runningClassOf(runningCostBase)}` as BasePriceKey;
 }
 
 /**
@@ -131,9 +137,11 @@ export function trainRunningCostPerYear(
   game: GameSettings = DEFAULT_GAME_SETTINGS,
   calc: CalcSettings = DEFAULT_CALC_SETTINGS,
 ): number {
-  const shift = train.running_cost_base.includes('STEAM')
-    ? meta.basecost_shifts.running_steam
-    : meta.basecost_shifts.running_diesel;
+  const runningClass = runningClassOf(train.running_cost_base);
+  const shift =
+    runningClass === 'steam'
+      ? meta.basecost_shifts.running_steam
+      : meta.basecost_shifts.running_diesel;
   return (
     runningCostPerYear(
       runningBaseKey(train.running_cost_base),
@@ -141,7 +149,7 @@ export function trainRunningCostPerYear(
       shift,
       calc.priceYear,
       game.inflation,
-      difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game),
+      difficultyPriceFactor(game.vehicleCosts) * basecostRunningFactor(game, runningClass),
       game.inflationInterest,
       inflationModel(game),
       game.startingYear,

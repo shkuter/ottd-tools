@@ -37,7 +37,10 @@ export interface GameSettings {
    */
   basecostLocomotive: number;
   basecostWagon: number;
-  basecostTrainRunning: number;
+  /** Running cost multipliers, one per running class — the set defines them separately. */
+  basecostTrainRunningSteam: number;
+  basecostTrainRunningDiesel: number;
+  basecostTrainRunningElectric: number;
   /** Инфляция включена (Iron Horse с ней несовместим — по умолчанию off). */
   inflation: boolean;
   /** difficulty.initial_interest: скорость инфляции (2..4, def 2). */
@@ -94,11 +97,30 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   basecostGrf: false,
   basecostLocomotive: 1,
   basecostWagon: 1,
-  basecostTrainRunning: 1,
+  basecostTrainRunningSteam: 1,
+  basecostTrainRunningDiesel: 1,
+  basecostTrainRunningElectric: 1,
   costsWhenStopped: 1,
   inflationFixedDates: true,
   vehicleIntroRandomisation: true,
 };
+
+/**
+ * Год в игре: от MIN_YEAR до MAX_YEAR (timer_game_common.h:173). The calculator keeps the
+ * same range so a game that started outside the inflation era — 1860, say — can be entered
+ * and imported as it is.
+ */
+export const MIN_GAME_YEAR = 0;
+export const MAX_GAME_YEAR = 5_000_000;
+
+/**
+ * Keeps a year inside the game's range. An emptied number field reads as NaN, which would
+ * otherwise wipe the setting, so it falls back to the value already set.
+ */
+export function clampGameYear(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(MAX_GAME_YEAR, Math.max(MIN_GAME_YEAR, Math.trunc(value)));
+}
 
 /**
  * Множитель базовых цен от настройки сложности (economy.cpp RecomputePrices):
@@ -109,8 +131,9 @@ export function difficultyPriceFactor(mod: 0 | 1 | 2): number {
 }
 
 /**
- * Варианты множителей Base Costs GRF: 1/64…8192×. Нулевого («бесплатно») в игре нет —
- * множитель ограничен снизу MIN_PRICE_MODIFIER = -8 (economy_type.h:228).
+ * Варианты множителей Base Costs GRF: 1/64…64k×, как их предлагает сам набор
+ * (BaseCosts Mod 5.0, Action 14). Нулевого («бесплатно») в игре нет — множитель
+ * ограничен снизу MIN_PRICE_MODIFIER = -8 (economy_type.h:228).
  */
 export const BASECOST_MULTIPLIERS: { value: number; label: string }[] = [
   { value: 1 / 64, label: '1/64' },
@@ -133,6 +156,9 @@ export const BASECOST_MULTIPLIERS: { value: number; label: string }[] = [
   { value: 2048, label: '2048x' },
   { value: 4096, label: '4096x' },
   { value: 8192, label: '8192x' },
+  { value: 16384, label: '16kx' },
+  { value: 32768, label: '32kx' },
+  { value: 65536, label: '64kx' },
 ];
 
 
@@ -146,9 +172,22 @@ export function basecostBuyFactor(settings: GameSettings, kind: 'engine' | 'wago
   return kind === 'engine' ? settings.basecostLocomotive : settings.basecostWagon;
 }
 
-/** Множитель Base Costs GRF для расходов на содержание поездов. */
-export function basecostRunningFactor(settings: GameSettings): number {
-  return settings.basecostGrf ? settings.basecostTrainRunning : 1;
+/** Running class of a vehicle, as the game splits its running cost base prices. */
+export type RunningClass = 'steam' | 'diesel' | 'electric';
+
+/**
+ * Base Costs GRF multiplier for running costs. The game keeps a separate base price per
+ * running class (PR_RUNNING_TRAIN_STEAM / _DIESEL / _ELECTRIC), and a Base Costs set scales
+ * each of them with its own parameter, so the multiplier follows the vehicle's class.
+ */
+export function basecostRunningFactor(
+  settings: GameSettings,
+  runningClass: RunningClass,
+): number {
+  if (!settings.basecostGrf) return 1;
+  if (runningClass === 'steam') return settings.basecostTrainRunningSteam;
+  if (runningClass === 'electric') return settings.basecostTrainRunningElectric;
+  return settings.basecostTrainRunningDiesel;
 }
 
 /** Множитель дохода при действующей субсидии (economy.cpp DeliverGoods). */
