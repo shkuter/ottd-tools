@@ -13,7 +13,7 @@
   "consist.filter.track": "Track",
   "consist.filter.cargo": "Carries cargo",
   "consist.filter.any": "Any",
-  "consist.add": "Add",
+  "consist.add": "Add to consist",
   "consist.panel": "Consist",
   "consist.empty": "Add engines and wagons from the catalogue",
   "consist.clear": "Clear",
@@ -214,5 +214,10 @@
   "units.mph": "mph",
   "units.hp": "hp",
   "units.t": "t",
-  "units.kN": "kN"
+  "units.kN": "kN",
+  "notify.consistCleared": "Consist cleared",
+  "notify.introFilterReset": "Vehicle filter reset",
+  "table.noRecords": "No vehicles match the filter",
+  "table.of": "of",
+  "consist.remove": "Remove"
 }

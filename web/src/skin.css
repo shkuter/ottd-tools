@@ -1,3 +1,4 @@
+@layer app {
 /*
  * OpenGFX2 Classic look for the interface.
  *
@@ -127,7 +128,6 @@
 :root[data-skin] .route-controls,
 :root[data-skin] .firs-side,
 :root[data-skin] .settings-group,
-:root[data-skin] .chart,
 :root[data-skin] .table-wrap,
 :root[data-skin] .graph-container,
 :root[data-skin] .warning {
@@ -139,7 +139,6 @@
 }
 
 :root[data-skin] button,
-:root[data-skin] .tab,
 :root[data-skin] select {
   border-radius: var(--skin-radius);
   border-style: solid;
@@ -151,14 +150,12 @@
 }
 
 :root[data-skin] button:hover,
-:root[data-skin] .tab:hover,
 :root[data-skin] select:hover {
   background: var(--skin-button-hover);
 }
 
 /* pressed and current states are lowered, as in the game */
-:root[data-skin] button:active,
-:root[data-skin] .tab.active {
+:root[data-skin] button:active {
   border-color: var(--skin-button-edge-lo) var(--skin-button-edge-hi) var(--skin-button-edge-hi)
     var(--skin-button-edge-lo);
   background: var(--skin-button-active);
@@ -213,15 +210,12 @@
 :root[data-skin] .setting-label > span:first-child,
 :root[data-skin] .filters label,
 :root[data-skin] .field,
-:root[data-skin] .stats dt,
 :root[data-skin] .hint,
 :root[data-skin] .dim,
 :root[data-skin] .subtitle {
   color: var(--skin-label);
 }
 
-:root[data-skin] .stats dd,
-:root[data-skin] .checkbox,
 :root[data-skin] .group-toggle,
 :root[data-skin] .big {
   color: var(--skin-value);
@@ -296,59 +290,8 @@
 }
 
 /* ==========================================================================
-   SWITCHES — <input type="checkbox" switch>, see main.tsx for the polyfill.
-   The polyfill maps the computed accent-color onto its own --switch-accent.
-   ========================================================================== */
-
-:root[data-skin] input[type='checkbox'] {
-  /* native Safari switch and the polyfill both read accent-color */
-  accent-color: var(--skin-switch-on);
-  border: none;
-}
-
-/*
- * Polyfilled switches expose their own knobs (input.switch in the polyfill's
- * stylesheet), so the game's square two-tone toggle is reachable from here:
- * a sunken track, a bright thumb, and the accent filling it when on.
- */
-:root[data-skin] input.switch {
-  --switch-accent: var(--skin-switch-on);
-  --switch-background: var(--skin-switch-track);
-  --switch-thumb: var(--skin-switch-off);
-  /* off: narrow thumb on the left, the rest is empty track */
-  background-color: var(--switch-track, var(--skin-switch-track));
-  box-shadow: inset var(--skin-switch-thumb-width) 0 0 0 var(--switch-thumb);
-  border-radius: var(--skin-radius);
-  border-width: var(--bevel);
-  border-style: solid;
-  border-color: var(--skin-edge-lo) var(--skin-edge-hi) var(--skin-edge-hi) var(--skin-edge-lo);
-}
-
-/* on: the track fills with the accent and the thumb sits on the right */
-:root[data-skin] input.switch:checked {
-  box-shadow:
-    inset calc(-1 * var(--skin-switch-thumb-width)) 0 0 0 var(--switch-thumb),
-    inset 2em 0 0 0 var(--switch-accent);
-  border-color: var(--skin-edge-lo) var(--skin-edge-hi) var(--skin-edge-hi) var(--skin-edge-lo);
-}
-
-/* ==========================================================================
    ODDS AND ENDS
    ========================================================================== */
-
-:root[data-skin] .chip {
-  border-radius: var(--skin-radius);
-}
-
-:root[data-skin] .chip-engine {
-  background: var(--ottd-orange-light);
-  color: #000;
-}
-
-:root[data-skin] .chip-wagon {
-  background: var(--ottd-light-blue-light);
-  color: #000;
-}
 
 :root[data-skin] .btn-danger {
   border-color: var(--skin-button-edge-hi) var(--skin-button-edge-lo) var(--skin-button-edge-lo)
@@ -368,10 +311,6 @@
 /* the FIRS graph is rendered light by graphviz, so keep its own background */
 :root[data-skin] .graph-container {
   background: #fff;
-}
-
-:root[data-skin] .chart-label {
-  fill: var(--skin-label);
 }
 
 /* scrollbars: a sunken track with a raised thumb, like the game's */
@@ -418,7 +357,6 @@
 :root[data-skin='pixel'] input,
 :root[data-skin='pixel'] select,
 :root[data-skin='pixel'] button,
-:root[data-skin='pixel'] .tab,
 :root[data-skin='pixel'] table {
   font-family: inherit;
   font-size: 14px;
@@ -454,6 +392,4 @@
   padding: 2px 8px;
 }
 
-:root[data-skin='pixel'] .tab {
-  padding: 4px 10px;
 }

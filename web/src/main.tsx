@@ -1,25 +1,32 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
+import { MantineProvider } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import App from './App.tsx';
-import 'input-switch-polyfill/input-switch-polyfill.css';
+import './layers.css';
+import '@mantine/core/styles.layer.css';
+import '@mantine/notifications/styles.layer.css';
+import 'mantine-datatable/styles.layer.css';
 import './index.css';
 import './skin.css';
+import './skin-mantine.css';
 import { applyPalette } from './skin';
+import { cssVariablesResolver, theme } from './theme';
 
 // base-set colours become CSS custom properties before the first paint
 applyPalette();
 document.documentElement.dataset.skin = 'pixel';
 
-// <input type="checkbox" switch> is native in Safari 17.4+; elsewhere polyfill it
-if (!('switch' in HTMLInputElement.prototype)) {
-  await import('input-switch-polyfill/input-switch-polyfill.js');
-}
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    {/* one skin, no toggle: forceColorScheme also keeps Mantine from storing a
+        colour scheme of its own in localStorage */}
+    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver} forceColorScheme="dark">
+      <Notifications />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </MantineProvider>
   </StrictMode>,
 );

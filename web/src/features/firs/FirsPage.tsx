@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { List, Paper, Tabs, Text, Title } from '@mantine/core';
 import {
   cargoByLabel,
   economies,
@@ -24,28 +25,28 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
     const name = industryName(industry, economyId);
     return (
       <div className="node-card">
-        <h3>{name}</h3>
-        <p className="hint">
+        <Title order={3}>{name}</Title>
+        <Text className="hint">
           {industry.type.replace('Industry', '')} · {t(`firs.industry.mode.${eco.accept_mode}`)}
-        </p>
-        <h4>{t('firs.industry.accepts')}</h4>
-        <ul>
+        </Text>
+        <Title order={4}>{t('firs.industry.accepts')}</Title>
+        <List>
           {eco.accepts.map((entry) => (
-            <li key={entry.label}>
+            <List.Item key={entry.label}>
               <CargoName label={entry.label} />
               {entry.ratio != null ? ` — ${entry.ratio}/8` : ''}
-            </li>
+            </List.Item>
           ))}
-        </ul>
-        <h4>{t('firs.industry.produces')}</h4>
-        <ul>
+        </List>
+        <Title order={4}>{t('firs.industry.produces')}</Title>
+        <List>
           {eco.produces.map((entry) => (
-            <li key={entry.label}>
+            <List.Item key={entry.label}>
               <CargoName label={entry.label} />
               {entry.value != null ? ` — ${entry.value}` : ''}
-            </li>
+            </List.Item>
           ))}
-        </ul>
+        </List>
       </div>
     );
   }
@@ -59,28 +60,28 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
       .map((e) => e.to);
     return (
       <div className="node-card">
-        <h3>
+        <Title order={3}>
           <CargoIcon icon={cargo.icon} /> {cargoName(cargo)}
-        </h3>
-        <p className="hint">
+        </Title>
+        <Text className="hint">
           {cargo.classes.join(', ')} · {cargoUnits(cargo.units)}
-        </p>
-        <p>
+        </Text>
+        <Text>
           {t('firs.cargo.payment')}: {num(cargoPaymentRate(cargo, economyId, game, calc))} ·{' '}
           {t('route.transitPeriods')}: {cargo.transit_periods[0]}/{cargo.transit_periods[1]}
-        </p>
-        <h4>{t('firs.cargo.producedBy')}</h4>
-        <ul>
+        </Text>
+        <Title order={4}>{t('firs.cargo.producedBy')}</Title>
+        <List>
           {producers.map((id) => (
-            <li key={id}>{industryName(industryById.get(id)) || id}</li>
+            <List.Item key={id}>{industryName(industryById.get(id)) || id}</List.Item>
           ))}
-        </ul>
-        <h4>{t('firs.cargo.acceptedBy')}</h4>
-        <ul>
+        </List>
+        <Title order={4}>{t('firs.cargo.acceptedBy')}</Title>
+        <List>
           {consumers.map((id) => (
-            <li key={id}>{industryName(industryById.get(id)) || id}</li>
+            <List.Item key={id}>{industryName(industryById.get(id)) || id}</List.Item>
           ))}
-        </ul>
+        </List>
       </div>
     );
   }
@@ -158,22 +159,26 @@ export default function FirsPage() {
   return (
     <div className="page-firs">
       <section className="firs-controls">
-        <h2>{t('firs.title')}</h2>
-        <div className="economy-tabs">
-          {economies.map((eco) => (
-            <button
-              key={eco.id}
-              className={eco.id === economy.id ? 'tab active' : 'tab'}
-              onClick={() => setEconomyId(eco.id)}
-            >
-              {eco.name}
-            </button>
-          ))}
-        </div>
-        <p className="hint">
+        <Title order={2}>{t('firs.title')}</Title>
+        {/* the graph below belongs to whichever economy is selected, so the tabs
+            carry no panels of their own */}
+        <Tabs
+          className="economy-tabs"
+          value={economy.id}
+          onChange={(value) => value && setEconomyId(value)}
+        >
+          <Tabs.List>
+            {economies.map((eco) => (
+              <Tabs.Tab key={eco.id} value={eco.id}>
+                {eco.name}
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+        </Tabs>
+        <Text className="hint">
           {economy.industry_ids.length} {t('firs.industries')} · {economy.cargo_labels.length}{' '}
           {t('firs.cargos')} · {t('firs.hint')}
-        </p>
+        </Text>
       </section>
       <div className="firs-layout">
         <div
@@ -182,9 +187,9 @@ export default function FirsPage() {
           dangerouslySetInnerHTML={{ __html: svg }}
         />
         {selectedNode && (
-          <aside className="firs-side">
+          <Paper component="aside" className="firs-side" p="sm">
             <NodeCard economyId={economy.id} nodeId={selectedNode} />
-          </aside>
+          </Paper>
         )}
       </div>
     </div>

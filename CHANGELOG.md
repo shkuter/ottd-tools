@@ -18,6 +18,26 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- The interface is built on Mantine 9 — every tab, from the controls to the layout. The look is
+  unchanged: Mantine reads the skin's own `--skin-*` tokens through a CSS-variables resolver,
+  and the bevels are re-stated for its components in `skin-mantine.css`. Cascade layers
+  (`@layer mantine, app`) keep the skin ahead of the library without a single `!important`.
+- **Consist builder** — the catalogue no longer stops at the first 400 rows. All ~1650 vehicles
+  matching the filter are reachable through the table's own pagination, and sorting, filters and
+  the current page survive each other.
+- **Route income** — the income-over-time chart is drawn by `@mantine/charts` instead of a
+  hand-built SVG path; the dashed marker still reads "time → income" for the trip you entered.
+- The catalogue and income tabs load with their own chunks, so `mantine-datatable` and
+  `recharts` stay out of the initial download.
+
+### Removed
+
+- `@tanstack/react-table` and `input-switch-polyfill`: the table and the switches are Mantine's
+  now. `mantine-react-table` was not an option — it has not been published since February 2025
+  and its newest build wants Mantine 7.
+
 ## [0.2.0] - 2026-08-19
 
 ### Added

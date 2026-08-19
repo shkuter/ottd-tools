@@ -1,3 +1,4 @@
+@layer app {
 :root {
   --bg: #14181d;
   --bg-panel: #1c2229;
@@ -50,31 +51,10 @@ body {
   font-size: 12px;
 }
 
-.currency-select { margin-left: 12px; align-self: center; }
 
 nav {
   display: flex;
   gap: 4px;
-}
-
-.tab {
-  padding: 8px 14px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--muted);
-  text-decoration: none;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.tab:hover {
-  color: var(--text);
-}
-
-.tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
 }
 
 /*
@@ -238,7 +218,6 @@ td:has(> .train-sprite) {
   min-width: 0;
 }
 
-.checkbox { flex-direction: row !important; align-items: center; gap: 6px; }
 
 .dim { color: var(--muted); font-size: 12px; }
 
@@ -252,10 +231,6 @@ td:has(> .train-sprite) {
   font-size: 13px;
 }
 
-.intro-toggles .checkbox {
-  cursor: help;
-  gap: 4px;
-}
 
 .intro-toggles .intro-reset {
   padding: 1px 8px;
@@ -329,27 +304,6 @@ td:has(> .train-sprite) {
   white-space: nowrap;
 }
 
-.chip {
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  line-height: 18px;
-  text-align: center;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: bold;
-}
-
-.chip-engine {
-  background: #4a3f22;
-  color: #e8c268;
-}
-
-.chip-wagon {
-  background: #223a4a;
-  color: #68b6e8;
-}
-
 .btn-clear {
   margin-bottom: 12px;
 }
@@ -363,21 +317,28 @@ td:has(> .train-sprite) {
   font-size: 12px;
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: auto auto;
-  gap: 4px 14px;
-  margin: 14px 0 0;
+/* сводки: таблица «подпись — значение», подписи переносятся */
+.summary-table {
+  table-layout: fixed;
+  width: 100%;
+  margin-top: 14px;
   font-size: 13px;
 }
 
-.stats dt {
+.summary-table td {
+  /* Mantine keeps table cells on one line; the labels here are long */
+  white-space: normal;
+  overflow-wrap: break-word;
+  vertical-align: top;
+}
+
+.summary-table td:first-child {
+  /* the labels are the long half of the row; give them the room */
+  width: 62%;
   color: var(--muted);
 }
 
-.stats dd {
-  margin: 0;
-  text-align: right;
+.summary-table td:last-child {
   font-variant-numeric: tabular-nums;
 }
 
@@ -442,19 +403,6 @@ td:has(> .train-sprite) {
   color: var(--accent);
   padding: 0;
   text-align: left;
-}
-
-.chart {
-  width: 100%;
-  max-width: 720px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.chart-label {
-  fill: var(--muted);
-  font-size: 11px;
 }
 
 /* ---------- firs ---------- */
@@ -641,4 +589,6 @@ td:has(> .train-sprite) {
 .grf-error {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--loss);
+}
+
 }

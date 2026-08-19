@@ -13,7 +13,7 @@
   "consist.filter.track": "Путь",
   "consist.filter.cargo": "Возит груз",
   "consist.filter.any": "любой",
-  "consist.add": "Добавить",
+  "consist.add": "Добавить в состав",
   "consist.panel": "Состав",
   "consist.empty": "Добавьте локомотивы и вагоны из каталога",
   "consist.clear": "Очистить",
@@ -214,5 +214,10 @@
   "units.mph": "миль/ч",
   "units.hp": "лс",
   "units.t": "т",
-  "units.kN": "кН"
+  "units.kN": "кН",
+  "notify.consistCleared": "Состав очищен",
+  "notify.introFilterReset": "Фильтр машин сброшен",
+  "table.noRecords": "Под фильтр не подходит ни одна машина",
+  "table.of": "из",
+  "consist.remove": "Убрать"
 }

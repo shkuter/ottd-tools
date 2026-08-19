@@ -1,0 +1,11 @@
+/*
+ * Cascade layer order, declared before anything else is imported.
+ *
+ * Mantine ships its styles wrapped in @layer mantine (styles.layer.css), and
+ * the skin lives in @layer app. A later layer wins over an earlier one no
+ * matter how specific the earlier selector is, so the skin can restyle any
+ * Mantine component with a plain one-class rule — no !important, no counting
+ * specificity. Rules outside any layer still beat both; index.css is there
+ * until its pages have moved over.
+ */
+@layer mantine, app;

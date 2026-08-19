@@ -1,3 +1,4 @@
+import { Button, Fieldset, Group, NumberInput, Select, Switch } from '@mantine/core';
 import { trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
 import { t } from '../../i18n';
@@ -36,253 +37,238 @@ function clampYear(value: number): number {
   return Math.min(2090, Math.max(1920, Math.trunc(value)));
 }
 
+/** A NumberInput hands back a string while it is being typed; settings are numbers. */
+function asNumber(value: string | number, min: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? Math.max(min, parsed) : min;
+}
+
+/** Numeric settings travel through Select as strings — these two keep that in one place. */
+function numericData(options: { value: number; label: string }[]) {
+  return options.map((o) => ({ value: String(o.value), label: o.label }));
+}
+
 export default function SettingsPage() {
   const { currency, game, calc, setCurrency, setGame, setCalc } = useSettingsStore();
   const { locale, setLocale } = useLocaleStore();
 
   function resetAll() {
     resetPersistedState();
+    // route, optimizer and FIRS state only leaves memory on a reload, so a
+    // notification here would be swept away with the page
     location.reload();
   }
+
+  const difficultyData = numericData([
+    { value: 0, label: `${t('settings.low')} (×0.75)` },
+    { value: 1, label: `${t('settings.medium')} (×1)` },
+    { value: 2, label: `${t('settings.high')} (×1.125)` },
+  ]);
 
   return (
     <div className="page-settings">
       <h2>{t('settings.title')}</h2>
       <p className="hint">{t('settings.intro')}</p>
 
-      <section className="settings-group">
-        <h3>
-          {t('settings.jgrpp')}
-          <label className="checkbox group-toggle">
-            <input
-              type="checkbox"
-              switch=""
+      <Fieldset
+        className="settings-group"
+        legend={
+          <Group gap="xs">
+            {t('settings.jgrpp')}
+            <Switch
+              className="group-toggle"
               checked={game.jgrpp}
-              onChange={(e) => setGame('jgrpp', e.target.checked)}
+              onChange={(e) => setGame('jgrpp', e.currentTarget.checked)}
+              label={game.jgrpp ? t('settings.on') : t('settings.off')}
             />
-            {game.jgrpp ? t('settings.on') : t('settings.off')}
-          </label>
-        </h3>
+          </Group>
+        }
+      >
         <p className="hint">{t('settings.jgrppHint')}</p>
         {game.jgrpp && (
           <>
             <Row label={t('settings.dayLength')} hint={t('settings.dayLengthHint')}>
-              <input
-                type="number"
+              <NumberInput
                 min={1}
                 max={125}
                 value={game.dayLengthFactor}
-                onChange={(e) => setGame('dayLengthFactor', Math.max(1, Number(e.target.value)))}
+                onChange={(v) => setGame('dayLengthFactor', asNumber(v, 1))}
               />
             </Row>
             <Row label={t('settings.costsWhenStopped')} hint={t('settings.costsWhenStoppedHint')}>
-              <input
-                type="number"
+              <NumberInput
                 min={1}
                 max={8}
                 value={game.costsWhenStopped}
-                onChange={(e) => setGame('costsWhenStopped', Math.max(1, Number(e.target.value)))}
+                onChange={(v) => setGame('costsWhenStopped', asNumber(v, 1))}
               />
             </Row>
-            <Row label={t('settings.inflationFixedDates')} hint={t('settings.inflationFixedDatesHint')}>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  switch=""
-                  checked={game.inflationFixedDates}
-                  onChange={(e) => setGame('inflationFixedDates', e.target.checked)}
-                />
-                {game.inflationFixedDates ? t('settings.on') : t('settings.off')}
-              </label>
+            <Row
+              label={t('settings.inflationFixedDates')}
+              hint={t('settings.inflationFixedDatesHint')}
+            >
+              <Switch
+                checked={game.inflationFixedDates}
+                onChange={(e) => setGame('inflationFixedDates', e.currentTarget.checked)}
+                label={game.inflationFixedDates ? t('settings.on') : t('settings.off')}
+              />
             </Row>
             <Row
               label={t('settings.introRandomisation')}
               hint={t('settings.introRandomisationHint')}
             >
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  switch=""
-                  checked={game.vehicleIntroRandomisation}
-                  onChange={(e) => setGame('vehicleIntroRandomisation', e.target.checked)}
-                />
-                {game.vehicleIntroRandomisation ? t('settings.on') : t('settings.off')}
-              </label>
+              <Switch
+                checked={game.vehicleIntroRandomisation}
+                onChange={(e) => setGame('vehicleIntroRandomisation', e.currentTarget.checked)}
+                label={game.vehicleIntroRandomisation ? t('settings.on') : t('settings.off')}
+              />
             </Row>
             <Row label={t('settings.paymentAlgorithm')} hint={t('settings.paymentAlgorithmHint')}>
-              <select
+              <Select
+                allowDeselect={false}
                 value={game.paymentAlgorithm}
-                onChange={(e) =>
-                  setGame('paymentAlgorithm', e.target.value as typeof game.paymentAlgorithm)
+                onChange={(v) =>
+                  v && setGame('paymentAlgorithm', v as typeof game.paymentAlgorithm)
                 }
-              >
-                <option value="modern">{t('settings.paymentModern')}</option>
-                <option value="traditional">{t('settings.paymentTraditional')}</option>
-              </select>
+                data={[
+                  { value: 'modern', label: t('settings.paymentModern') },
+                  { value: 'traditional', label: t('settings.paymentTraditional') },
+                ]}
+              />
             </Row>
           </>
         )}
-      </section>
+      </Fieldset>
 
-      <section className="settings-group">
-        <h3>{t('settings.newgrf')}</h3>
+      <Fieldset className="settings-group" legend={t('settings.newgrf')}>
         <p className="hint">{t('settings.newgrfHint')}</p>
         <Row label={t('settings.ironHorse')} hint={t('settings.ironHorseHint')}>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              switch=""
-              checked={game.ironHorse}
-              onChange={(e) => setGame('ironHorse', e.target.checked)}
-            />
-            {game.ironHorse ? t('settings.on') : t('settings.off')}
-          </label>
+          <Switch
+            checked={game.ironHorse}
+            onChange={(e) => setGame('ironHorse', e.currentTarget.checked)}
+            label={game.ironHorse ? t('settings.on') : t('settings.off')}
+          />
         </Row>
         <Row label={t('settings.firs')} hint={t('settings.firsHint')}>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              switch=""
-              checked={game.firs}
-              onChange={(e) => setGame('firs', e.target.checked)}
-            />
-            {game.firs ? t('settings.on') : t('settings.off')}
-          </label>
+          <Switch
+            checked={game.firs}
+            onChange={(e) => setGame('firs', e.currentTarget.checked)}
+            label={game.firs ? t('settings.on') : t('settings.off')}
+          />
         </Row>
-      </section>
+      </Fieldset>
 
-      <section className="settings-group">
-        <h3>
-          {t('settings.basecostGrf')}
-          <label className="checkbox group-toggle">
-            <input
-              type="checkbox"
-              switch=""
+      <Fieldset
+        className="settings-group"
+        legend={
+          <Group gap="xs">
+            {t('settings.basecostGrf')}
+            <Switch
+              className="group-toggle"
               checked={game.basecostGrf}
-              onChange={(e) => setGame('basecostGrf', e.target.checked)}
+              onChange={(e) => setGame('basecostGrf', e.currentTarget.checked)}
+              label={game.basecostGrf ? t('settings.on') : t('settings.off')}
             />
-            {game.basecostGrf ? t('settings.on') : t('settings.off')}
-          </label>
-        </h3>
+          </Group>
+        }
+      >
         <p className="hint">{t('settings.basecostGrfHint')}</p>
         {game.basecostGrf && (
           <>
             <Row label={t('settings.basecostLoco')} hint={t('settings.basecostHint')}>
-              <select
-                value={game.basecostLocomotive}
-                onChange={(e) => setGame('basecostLocomotive', Number(e.target.value))}
-              >
-                {BASECOST_MULTIPLIERS.map((m) => (
-                  <option key={m.label} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+              <Select
+                allowDeselect={false}
+                value={String(game.basecostLocomotive)}
+                onChange={(v) => v && setGame('basecostLocomotive', Number(v))}
+                data={numericData(BASECOST_MULTIPLIERS)}
+              />
             </Row>
             <Row label={t('settings.basecostWagon')} hint={t('settings.basecostHint')}>
-              <select
-                value={game.basecostWagon}
-                onChange={(e) => setGame('basecostWagon', Number(e.target.value))}
-              >
-                {BASECOST_MULTIPLIERS.map((m) => (
-                  <option key={m.label} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+              <Select
+                allowDeselect={false}
+                value={String(game.basecostWagon)}
+                onChange={(v) => v && setGame('basecostWagon', Number(v))}
+                data={numericData(BASECOST_MULTIPLIERS)}
+              />
             </Row>
             <Row label={t('settings.basecostRunning')} hint={t('settings.basecostRunningHint')}>
-              <select
-                value={game.basecostTrainRunning}
-                onChange={(e) => setGame('basecostTrainRunning', Number(e.target.value))}
-              >
-                {BASECOST_MULTIPLIERS.map((m) => (
-                  <option key={m.label} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+              <Select
+                allowDeselect={false}
+                value={String(game.basecostTrainRunning)}
+                onChange={(v) => v && setGame('basecostTrainRunning', Number(v))}
+                data={numericData(BASECOST_MULTIPLIERS)}
+              />
             </Row>
           </>
         )}
-      </section>
+      </Fieldset>
 
-      <section className="settings-group">
-        <h3>{t('settings.display')}</h3>
+      <Fieldset className="settings-group" legend={t('settings.display')}>
         <Row label={t('settings.language')} hint={t('settings.languageHint')}>
-          <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
-            {Object.entries(LOCALES).map(([code, l]) => (
-              <option key={code} value={code}>
-                {l.name}
-              </option>
-            ))}
-          </select>
+          <Select
+            allowDeselect={false}
+            value={locale}
+            onChange={(v) => v && setLocale(v as Locale)}
+            data={Object.entries(LOCALES).map(([code, l]) => ({ value: code, label: l.name }))}
+          />
         </Row>
         <Row label={t('settings.currency')} hint={t('settings.currencyHint')}>
-          <select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)}>
-            {Object.entries(CURRENCIES).map(([code, c]) => (
-              <option key={code} value={code}>
-                {code} ({c.symbol.trim() || code}) ×{c.rate}
-              </option>
-            ))}
-          </select>
+          <Select
+            allowDeselect={false}
+            value={currency}
+            onChange={(v) => v && setCurrency(v as CurrencyCode)}
+            data={Object.entries(CURRENCIES).map(([code, c]) => ({
+              value: code,
+              label: `${code} (${c.symbol.trim() || code}) ×${c.rate}`,
+            }))}
+          />
         </Row>
-      </section>
+      </Fieldset>
 
-      <section className="settings-group">
-        <h3>{t('settings.finance')}</h3>
+      <Fieldset className="settings-group" legend={t('settings.finance')}>
         <Row label={t('settings.vehicleCosts')} hint={t('settings.vehicleCostsHint')}>
-          <select
-            value={game.vehicleCosts}
-            onChange={(e) => setGame('vehicleCosts', Number(e.target.value) as 0 | 1 | 2)}
-          >
-            <option value={0}>{t('settings.low')} (×0.75)</option>
-            <option value={1}>{t('settings.medium')} (×1)</option>
-            <option value={2}>{t('settings.high')} (×1.125)</option>
-          </select>
+          <Select
+            allowDeselect={false}
+            value={String(game.vehicleCosts)}
+            onChange={(v) => v && setGame('vehicleCosts', Number(v) as 0 | 1 | 2)}
+            data={difficultyData}
+          />
         </Row>
         <Row label={t('settings.constructionCost')} hint={t('settings.constructionCostHint')}>
-          <select
-            value={game.constructionCost}
-            onChange={(e) => setGame('constructionCost', Number(e.target.value) as 0 | 1 | 2)}
-          >
-            <option value={0}>{t('settings.low')} (×0.75)</option>
-            <option value={1}>{t('settings.medium')} (×1)</option>
-            <option value={2}>{t('settings.high')} (×1.125)</option>
-          </select>
+          <Select
+            allowDeselect={false}
+            value={String(game.constructionCost)}
+            onChange={(v) => v && setGame('constructionCost', Number(v) as 0 | 1 | 2)}
+            data={difficultyData}
+          />
         </Row>
         <Row label={t('settings.subsidyMultiplier')} hint={t('settings.subsidyMultiplierHint')}>
-          <select
-            value={game.subsidyMultiplier}
-            onChange={(e) =>
-              setGame('subsidyMultiplier', Number(e.target.value) as 0 | 1 | 2 | 3)
-            }
-          >
-            <option value={0}>×1.5</option>
-            <option value={1}>×2</option>
-            <option value={2}>×3</option>
-            <option value={3}>×4</option>
-          </select>
+          <Select
+            allowDeselect={false}
+            value={String(game.subsidyMultiplier)}
+            onChange={(v) => v && setGame('subsidyMultiplier', Number(v) as 0 | 1 | 2 | 3)}
+            data={numericData([
+              { value: 0, label: '×1.5' },
+              { value: 1, label: '×2' },
+              { value: 2, label: '×3' },
+              { value: 3, label: '×4' },
+            ])}
+          />
         </Row>
         <Row label={t('settings.cargoAgingRate')} hint={t('settings.cargoAgingRateHint')}>
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={1000}
             value={game.cargoAgingRate}
-            onChange={(e) => setGame('cargoAgingRate', Math.max(1, Number(e.target.value)))}
+            onChange={(v) => setGame('cargoAgingRate', asNumber(v, 1))}
           />
         </Row>
         <Row label={t('settings.inflation')} hint={t('settings.inflationHint')}>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              switch=""
-              checked={game.inflation}
-              onChange={(e) => setGame('inflation', e.target.checked)}
-            />
-            {game.inflation ? t('settings.on') : t('settings.off')}
-          </label>
+          <Switch
+            checked={game.inflation}
+            onChange={(e) => setGame('inflation', e.currentTarget.checked)}
+            label={game.inflation ? t('settings.on') : t('settings.off')}
+          />
         </Row>
         {game.inflation && (
           <Warning>
@@ -293,137 +279,119 @@ export default function SettingsPage() {
         )}
         {game.inflation && (
           <Row label={t('settings.interest')} hint={t('settings.interestHint')}>
-            <input
-              type="number"
+            <NumberInput
               min={2}
               max={4}
               value={game.inflationInterest}
-              onChange={(e) => setGame('inflationInterest', Number(e.target.value))}
+              onChange={(v) => setGame('inflationInterest', asNumber(v, 2))}
             />
           </Row>
         )}
-      </section>
+      </Fieldset>
 
-      <section className="settings-group">
-        <h3>{t('settings.time')}</h3>
+      <Fieldset className="settings-group" legend={t('settings.time')}>
         <Row label={t('settings.timekeeping')} hint={t('settings.timekeepingHint')}>
-          <select
+          <Select
+            allowDeselect={false}
             value={game.timekeeping}
-            onChange={(e) => setGame('timekeeping', e.target.value as typeof game.timekeeping)}
-          >
-            <option value="calendar">{t('settings.calendar')}</option>
-            <option value="wallclock">{t('settings.wallclock')}</option>
-          </select>
+            onChange={(v) => v && setGame('timekeeping', v as typeof game.timekeeping)}
+            data={[
+              { value: 'calendar', label: t('settings.calendar') },
+              { value: 'wallclock', label: t('settings.wallclock') },
+            ]}
+          />
         </Row>
         <Row label={t('settings.startingYear')} hint={t('settings.startingYearHint')}>
-          <input
-            type="number"
+          <NumberInput
             min={1920}
             max={2090}
             value={game.startingYear}
-            onChange={(e) => setGame('startingYear', clampYear(Number(e.target.value)))}
+            onChange={(v) => setGame('startingYear', clampYear(asNumber(v, 1920)))}
           />
         </Row>
-      </section>
+      </Fieldset>
 
-      <section className="settings-group">
-        <h3>{t('settings.vehicles')}</h3>
+      <Fieldset className="settings-group" legend={t('settings.vehicles')}>
         <Row label={t('settings.accelModel')} hint={t('settings.accelModelHint')}>
-          <select
+          <Select
+            allowDeselect={false}
             value={game.accelerationModel}
-            onChange={(e) =>
-              setGame('accelerationModel', e.target.value as typeof game.accelerationModel)
-            }
-          >
-            <option value="realistic">{t('settings.accelRealistic')}</option>
-            <option value="original">{t('settings.accelOriginal')}</option>
-          </select>
+            onChange={(v) => v && setGame('accelerationModel', v as typeof game.accelerationModel)}
+            data={[
+              { value: 'realistic', label: t('settings.accelRealistic') },
+              { value: 'original', label: t('settings.accelOriginal') },
+            ]}
+          />
         </Row>
         <Row label={t('settings.freightTrains')} hint={t('settings.freightTrainsHint')}>
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={255}
             value={game.freightTrains}
-            onChange={(e) => setGame('freightTrains', Math.max(1, Number(e.target.value)))}
+            onChange={(v) => setGame('freightTrains', asNumber(v, 1))}
           />
         </Row>
         <Row label={t('settings.slopeSteepness')} hint={t('settings.slopeSteepnessHint')}>
-          <input
-            type="number"
+          <NumberInput
             min={0}
             max={10}
             value={game.slopeSteepness}
-            onChange={(e) => setGame('slopeSteepness', Number(e.target.value))}
+            onChange={(v) => setGame('slopeSteepness', asNumber(v, 0))}
           />
         </Row>
         <Row label={t('settings.gradualLoading')} hint={t('settings.gradualLoadingHint')}>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              switch=""
-              checked={game.gradualLoading}
-              onChange={(e) => setGame('gradualLoading', e.target.checked)}
-            />
-            {game.gradualLoading ? t('settings.on') : t('settings.off')}
-          </label>
+          <Switch
+            checked={game.gradualLoading}
+            onChange={(e) => setGame('gradualLoading', e.currentTarget.checked)}
+            label={game.gradualLoading ? t('settings.on') : t('settings.off')}
+          />
         </Row>
-      </section>
+      </Fieldset>
 
-      <section className="settings-group">
-        <h3>{t('settings.calc')}</h3>
+      <Fieldset className="settings-group" legend={t('settings.calc')}>
         <Row label={t('consist.capacityParam')} hint={t('settings.capacityHint')}>
-          <select
-            value={calc.capacityIndex}
-            onChange={(e) => setCalc('capacityIndex', Number(e.target.value))}
-          >
-            {trainsMeta.capacity_param_multipliers.map((m, i) => (
-              <option key={i} value={i}>
-                ×{m}
-                {i === 2 ? ` (${t('settings.default')})` : ''}
-              </option>
-            ))}
-          </select>
+          <Select
+            allowDeselect={false}
+            value={String(calc.capacityIndex)}
+            onChange={(v) => v && setCalc('capacityIndex', Number(v))}
+            data={trainsMeta.capacity_param_multipliers.map((m, i) => ({
+              value: String(i),
+              label: `×${m}${i === 2 ? ` (${t('settings.default')})` : ''}`,
+            }))}
+          />
         </Row>
         <Row label={t('settings.trackType')} hint={t('settings.trackTypeHint')}>
-          <select
+          <Select
+            allowDeselect={false}
             value={calc.trackType}
-            onChange={(e) => setCalc('trackType', e.target.value as typeof calc.trackType)}
-          >
-            <option value="RAIL">RAIL</option>
-            <option value="NG">NG</option>
-            <option value="METRO">METRO</option>
-            {!game.ironHorse && <option value="MONO">MONO</option>}
-            {!game.ironHorse && <option value="MAGLEV">MAGLEV</option>}
-          </select>
+            onChange={(v) => v && setCalc('trackType', v as typeof calc.trackType)}
+            data={['RAIL', 'NG', 'METRO', ...(game.ironHorse ? [] : ['MONO', 'MAGLEV'])]}
+          />
         </Row>
         <Row label={t('settings.hillTiles')} hint={t('settings.hillTilesHint')}>
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={64}
             value={calc.hillTiles}
-            onChange={(e) => setCalc('hillTiles', Math.max(1, Number(e.target.value)))}
+            onChange={(v) => setCalc('hillTiles', asNumber(v, 1))}
           />
         </Row>
         <Row label={t('settings.priceYear')} hint={t('settings.priceYearHint')}>
-          <input
-            type="number"
+          <NumberInput
             min={1860}
             max={2090}
             value={calc.priceYear}
-            onChange={(e) => setCalc('priceYear', Number(e.target.value))}
+            onChange={(v) => setCalc('priceYear', asNumber(v, 1860))}
           />
         </Row>
-      </section>
+      </Fieldset>
 
-      <section className="settings-group">
-        <h3>{t('settings.storage')}</h3>
+      <Fieldset className="settings-group" legend={t('settings.storage')}>
         <p className="hint">{t('settings.storageHint')}</p>
-        <button className="btn-danger" onClick={resetAll}>
+        <Button className="btn-danger" onClick={resetAll}>
           {t('settings.reset')}
-        </button>
-      </section>
+        </Button>
+      </Fieldset>
     </div>
   );
 }

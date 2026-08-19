@@ -13,10 +13,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   `web/src/data/` + иконки грузов и спрайты машин в `web/public/icons/`. JSON закоммичены —
   SPA собирается без Python. `extract_vanilla.py` парсит таблицы самой игры, чтобы расчёт
   работал при отключённых NewGRF.
-- `web/` — React 19 + Vite + TypeScript SPA. Игровые формулы — чистые TS-модули в
+- `web/` — React 19 + Vite + TypeScript SPA на Mantine 9. Игровые формулы — чистые TS-модули в
   `web/src/engine/` (income/physics/costs/inflation/units/optimize/consist/settings),
   UI-фичи в `web/src/features/`, zustand-сторы (persist в localStorage) в `web/src/state/`.
-  i18n: все UI-строки через `t()` из `web/src/i18n/`.
+  i18n: все UI-строки через `t()` из `web/src/i18n/`. Каталог машин — `mantine-datatable`,
+  график дохода — `@mantine/charts`; обе вкладки грузятся лениво, чтобы их библиотеки не
+  лежали в основном чанке.
 
 ## Локализация
 
@@ -24,7 +26,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   (отдельно от `GameSettings`/`CalcSettings`, как и скин: язык не меняет расчёт).
   `t()` читает стор вне React, поэтому `App` подписан через `useLocale()` — от него
   перерисовывается дерево. Строки, попадающие в `useMemo`, переводить **в момент рендера**
-  (заголовки таблицы каталога — `header: () => t('table.name')`), иначе застрянут на старом языке.
+  (колонки каталога описываются прямо в JSX — `title: t('table.name')` вычисляется на каждый
+  рендер), иначе застрянут на старом языке.
 - Названия настроек взяты из русской локали самой игры (`vendor/openttd/src/lang/russian.txt`,
   JGRPP — `vendor/openttd-patches/src/lang/extra/russian.txt`), чтобы пользователь находил их
   один в один в своей игре. Новую настройку переводить так же, а не «по смыслу».
@@ -178,11 +181,21 @@ JGRPP-специфика (флаг `jgrpp` раскрывает эти наст�
   1-9 затёрты служебными маркерами, спрайты с ними становятся малиновыми.
 - Версия набора пинится md5 файла `ogfx21_base_8.grf` (`BASE_SET_MD5`): другой релиз сдвинет
   все номера спрайтов.
-- Скин интерфейса (`web/src/skin.css`) — чистый CSS: рамки окон OpenTTD не спрайты, движок
-  рисует их цветами палитры (`DrawFrameRect`, widget.cpp). Цвета берутся из recolour-спрайтов
-  775…790 набора → `data/opengfx2_palette.json` → CSS-переменные (`skin.ts`).
-- Выбор скина живёт в отдельном `state/skinStore.ts`, а НЕ в `GameSettings`/`CalcSettings` —
-  иначе нарушится правило «каждая настройка меняет расчёт».
+- Скин интерфейса — чистый CSS: рамки окон OpenTTD не спрайты, движок рисует их цветами
+  палитры (`DrawFrameRect`, widget.cpp). Цвета берутся из recolour-спрайтов 775…790 набора →
+  `data/opengfx2_palette.json` → CSS-переменные (`skin.ts`). Скин собран из трёх частей:
+  `skin.css` — токены `--skin-*` и правила для голых тегов, `skin-mantine.css` — те же формы
+  для компонентов Mantine, `theme.ts` — тема Mantine и `cssVariablesResolver`, который
+  подставляет в переменные библиотеки те же токены. **Перекрашивать — только блок токенов в
+  `skin.css`.**
+- Каскад держится на слоях (`layers.css`: `@layer mantine, app;`): стили Mantine
+  импортируются как `styles.layer.css`, наши — в `@layer app`, поэтому правило скина
+  выигрывает у библиотеки без `!important`. Сторонний CSS без слоёв заворачивать через
+  `@import … layer(mantine)`, иначе он перебьёт скин.
+- Скин один и включён всегда (`data-skin="pixel"` в `main.tsx`), у Mantine принудительно
+  `forceColorScheme="dark"` — иначе библиотека заведёт свой ключ цветовой схемы в localStorage.
+  Настройка, не влияющая на расчёт, живёт в отдельном сторе (как `localeStore`), а НЕ в
+  `GameSettings`/`CalcSettings` — иначе нарушится правило «каждая настройка меняет расчёт».
 
 ## Правки данных
 

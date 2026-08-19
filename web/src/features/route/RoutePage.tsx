@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { Button, NumberInput, Paper, Select, Table, Text, Title } from '@mantine/core';
+import { LineChart } from '@mantine/charts';
 import {
   activeCargoByLabel,
   activeCargos,
@@ -93,18 +95,7 @@ export default function RoutePage() {
     [spec, route.amount, route.distanceTiles, days, game.cargoAgingRate, game.jgrpp, game.paymentAlgorithm],
   );
 
-  const chartMax = Math.max(...chart.map((p) => p.income), 1);
-  const chartW = 640;
-  const chartH = 220;
-  const path = chart
-    .map(
-      (p, i) =>
-        `${i === 0 ? 'M' : 'L'}${((p.days / Math.max(chart.at(-1)?.days ?? 1, 1)) * chartW).toFixed(1)},${(chartH - (p.income / chartMax) * (chartH - 10)).toFixed(1)}`,
-    )
-    .join(' ');
-  const markerX = chart.length
-    ? (days / Math.max(chart.at(-1)?.days ?? 1, 1)) * chartW
-    : 0;
+  const chartMaxDays = chart.at(-1)?.days ?? 0;
 
   const profit = trip
     ? {
@@ -115,145 +106,168 @@ export default function RoutePage() {
 
   return (
     <div className="page-route">
-      <section className="route-controls">
-        <h2>{t('route.title')}</h2>
-        <label className="field">
-          {t('route.economy')}
-          <select value={economy.id} onChange={(e) => route.setEconomyId(e.target.value)}>
-            {economies.map((eco) => (
-              <option key={eco.id} value={eco.id}>
-                {eco.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          {t('route.cargo')}
-          <span className="field-with-icon">
-            <CargoIcon icon={cargo?.icon ?? ''} />
-            <select value={cargo?.label ?? ''} onChange={(e) => route.setCargoLabel(e.target.value)}>
-              {economyCargos.map((c) => (
-                <option key={c.label} value={c.label}>
-                  {cargoName(c)}
-                </option>
-              ))}
-            </select>
-          </span>
-        </label>
-        <label className="field">
-          {t('route.distance')}
-          <input
-            type="number"
-            min={1}
-            value={route.distanceTiles}
-            onChange={(e) => route.setDistanceTiles(Number(e.target.value))}
-          />
-        </label>
-        <label className="field">
-          {t('route.amount')}
-          <input
-            type="number"
-            min={1}
-            value={route.amount}
-            onChange={(e) => route.setAmount(Number(e.target.value))}
-          />
-        </label>
-        <label className="field">
-          {t('route.days')}
-          <input
-            type="number"
-            min={0}
-            step={0.5}
-            value={route.manualDays ?? Number(days.toFixed(1))}
-            onChange={(e) => route.setManualDays(Number(e.target.value))}
-          />
-        </label>
+      <Paper component="section" className="route-controls" p="sm">
+        <Title order={2}>{t('route.title')}</Title>
+        <Select
+          className="field"
+          label={t('route.economy')}
+          allowDeselect={false}
+          value={economy.id}
+          onChange={(v) => v && route.setEconomyId(v)}
+          data={economies.map((eco) => ({ value: eco.id, label: eco.name }))}
+        />
+        <Select
+          className="field"
+          label={t('route.cargo')}
+          searchable
+          allowDeselect={false}
+          leftSection={<CargoIcon icon={cargo?.icon ?? ''} />}
+          value={cargo?.label ?? null}
+          onChange={(v) => v && route.setCargoLabel(v)}
+          data={economyCargos.map((c) => ({ value: c.label, label: cargoName(c) }))}
+        />
+        <NumberInput
+          className="field"
+          label={t('route.distance')}
+          min={1}
+          value={route.distanceTiles}
+          onChange={(v) => route.setDistanceTiles(Number(v) || 1)}
+        />
+        <NumberInput
+          className="field"
+          label={t('route.amount')}
+          min={1}
+          value={route.amount}
+          onChange={(v) => route.setAmount(Number(v) || 1)}
+        />
+        <NumberInput
+          className="field"
+          label={t('route.days')}
+          min={0}
+          step={0.5}
+          value={route.manualDays ?? Number(days.toFixed(1))}
+          onChange={(v) => route.setManualDays(Number(v) || 0)}
+        />
         {consistDays != null && (
-          <button className="btn-link" onClick={() => route.setManualDays(null)}>
+          <Button variant="subtle" className="btn-link" onClick={() => route.setManualDays(null)}>
             {t('route.daysFromConsist')}: {num(consistDays, 1)} {t('combined.days')} (
             {stats.balancingSpeedMph} {t('units.mph')})
-          </button>
+          </Button>
         )}
 
         {cargo && (
-          <dl className="stats">
-            <dt>{t('route.payment')}</dt>
-            <dd>{num(payment)}</dd>
-            <dt>{t('route.transitPeriods')}</dt>
-            <dd>
-              {cargo.transit_periods[0]} / {cargo.transit_periods[1]}
-            </dd>
-            <dt>{t('route.income')}</dt>
-            <dd className="big">{money(income)}</dd>
-          </dl>
+          <Table className="summary-table" withRowBorders={false}>
+            <Table.Tbody>
+              <Table.Tr>
+                <Table.Td>{t('route.payment')}</Table.Td>
+                <Table.Td align="right">{num(payment)}</Table.Td>
+              </Table.Tr>
+              <Table.Tr>
+                <Table.Td>{t('route.transitPeriods')}</Table.Td>
+                <Table.Td align="right">
+                  {cargo.transit_periods[0]} / {cargo.transit_periods[1]}
+                </Table.Td>
+              </Table.Tr>
+              <Table.Tr>
+                <Table.Td>{t('route.income')}</Table.Td>
+                <Table.Td align="right" className="big">
+                  {money(income)}
+                </Table.Td>
+              </Table.Tr>
+            </Table.Tbody>
+          </Table>
         )}
-      </section>
+      </Paper>
 
       <section className="route-chart">
-        <h3>{t('route.chart')}</h3>
-        <svg viewBox={`0 0 ${chartW} ${chartH + 20}`} className="chart">
-          <path d={path} fill="none" stroke="var(--accent)" strokeWidth={2} />
-          <line
-            x1={markerX}
-            y1={0}
-            x2={markerX}
-            y2={chartH}
-            stroke="var(--muted)"
-            strokeDasharray="4 3"
-          />
-          <text x={Math.min(markerX + 6, chartW - 120)} y={14} className="chart-label">
-            {num(days, 1)} {t('combined.days')} → {money(income)}
-          </text>
-          <text x={0} y={chartH + 16} className="chart-label">
-            0
-          </text>
-          <text x={chartW - 60} y={chartH + 16} className="chart-label">
-            {num(chart.at(-1)?.days ?? 0, 0)} {t('combined.days')}
-          </text>
-        </svg>
+        <Title order={3}>{t('route.chart')}</Title>
+        {/* the same points as before, drawn by the chart component instead of a
+            hand-built path; the dashed line marks the trip currently entered */}
+        <LineChart
+          h={240}
+          data={chart}
+          dataKey="days"
+          withDots={false}
+          curveType="linear"
+          series={[{ name: 'income', color: 'ottdBlue.6', label: t('route.income') }]}
+          xAxisProps={{
+            type: 'number',
+            domain: [0, chartMaxDays],
+            tickFormatter: (value: number) => num(value, 0),
+          }}
+          valueFormatter={(value) => money(value)}
+          yAxisProps={{ width: 96 }}
+          referenceLines={[
+            {
+              x: days,
+              color: 'gray.3',
+              strokeDasharray: '4 3',
+              label: `${num(days, 1)} ${t('combined.days')} → ${money(income)}`,
+              labelPosition: 'insideTopRight',
+            },
+          ]}
+        />
       </section>
 
-      <section className="route-profit">
-        <h3>{t('combined.title')}</h3>
+      <Paper component="section" className="route-profit" p="sm">
+        <Title order={3}>{t('combined.title')}</Title>
         {profit == null ? (
-          <p className="hint">{t('combined.needConsist')}</p>
+          <Text className="hint">{t('combined.needConsist')}</Text>
         ) : (
           <>
-            <p className="hint">
+            <Text className="hint">
               {cargoName(cargo)} · {num(route.distanceTiles)} {t('consist.stats.tiles')} ·{' '}
               {stats.balancingSpeedMph} {t('units.mph')} · {num(stats.capacityForCargo)}{' '}
               {cargoUnits(cargo?.units)}
-            </p>
-            <dl className="stats stats-wide">
-              <dt>{t('combined.roundTrip')}</dt>
-              <dd>
-                {num(profit.roundTripDays, 1)} {t('combined.days')}
-              </dd>
-              <dt>{t('combined.tripsPerYear')}</dt>
-              <dd>{num(profit.tripsPerYear, 1)}</dd>
-              <dt>{t('combined.incomePerTrip')}</dt>
-              <dd>
-                <Money value={profit.incomePerTrip} />
-              </dd>
-              <dt>{t('combined.runningCost')}</dt>
-              <dd>
-                <Money value={profit.runningCostPerYear} />
-              </dd>
-              <dt>{t('combined.profitPerYear')}</dt>
-              <dd className={profit.profitPerYear >= 0 ? 'big profit' : 'big loss'}>
-                <Money value={profit.profitPerYear} />
-              </dd>
-              <dt>{t('combined.profitPerTile')}</dt>
-              <dd>
-                <Money value={profit.profitPerTile} />
-              </dd>
-              <dt>{t('combined.payback')}</dt>
-              <dd>{profit.paybackYears ? `${num(profit.paybackYears, 1)} ${t('combined.years')}` : '—'}</dd>
-            </dl>
-            <p className="hint">{t('combined.assumptions')}</p>
+            </Text>
+            <Table className="summary-table stats-wide" withRowBorders={false}>
+              <Table.Tbody>
+                <Table.Tr>
+                  <Table.Td>{t('combined.roundTrip')}</Table.Td>
+                  <Table.Td align="right">
+                    {num(profit.roundTripDays, 1)} {t('combined.days')}
+                  </Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Td>{t('combined.tripsPerYear')}</Table.Td>
+                  <Table.Td align="right">{num(profit.tripsPerYear, 1)}</Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Td>{t('combined.incomePerTrip')}</Table.Td>
+                  <Table.Td align="right">
+                    <Money value={profit.incomePerTrip} />
+                  </Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Td>{t('combined.runningCost')}</Table.Td>
+                  <Table.Td align="right">
+                    <Money value={profit.runningCostPerYear} />
+                  </Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Td>{t('combined.profitPerYear')}</Table.Td>
+                  <Table.Td align="right" className={profit.profitPerYear >= 0 ? 'big profit' : 'big loss'}>
+                    <Money value={profit.profitPerYear} />
+                  </Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Td>{t('combined.profitPerTile')}</Table.Td>
+                  <Table.Td align="right">
+                    <Money value={profit.profitPerTile} />
+                  </Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Td>{t('combined.payback')}</Table.Td>
+                  <Table.Td align="right">
+                    {profit.paybackYears ? `${num(profit.paybackYears, 1)} ${t('combined.years')}` : '—'}
+                  </Table.Td>
+                </Table.Tr>
+              </Table.Tbody>
+            </Table>
+            <Text className="hint">{t('combined.assumptions')}</Text>
           </>
         )}
-      </section>
+      </Paper>
     </div>
   );
 }

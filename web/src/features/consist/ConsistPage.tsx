@@ -1,15 +1,28 @@
 import { useMemo, useState } from 'react';
 import {
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
-import { activeCargoByLabel, activeCargos, activeTrains, activeTrainsMeta, canCarryIn } from '../../dataset';
+  ActionIcon,
+  Button,
+  Group,
+  NumberInput,
+  Paper,
+  Select,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { DataTable, type DataTableSortStatus } from 'mantine-datatable';
+import {
+  activeCargoByLabel,
+  activeCargos,
+  activeTrains,
+  activeTrainsMeta,
+  canCarryIn,
+} from '../../dataset';
 import type { Train } from '../../types';
-import { t, useLocale } from '../../i18n';
+import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { money, num } from '../../components/format';
 import { CargoIcon } from '../../components/CargoIcon';
@@ -19,7 +32,8 @@ import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 
-const columnHelper = createColumnHelper<Train>();
+/** Rows held in the DOM at a time; the catalogue itself runs to ~1650 vehicles. */
+const PAGE_SIZE = 50;
 
 export default function ConsistPage() {
   const store = useConsistStore();
@@ -30,7 +44,11 @@ export default function ConsistPage() {
   const [year, setYear] = useState(1950);
   const [track, setTrack] = useState<'all' | 'RAIL' | 'NG' | 'METRO'>('RAIL');
   const [cargoFilter, setCargoFilter] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'intro_year', desc: false }]);
+  const [sortStatus, setSortStatus] = useState<DataTableSortStatus<Train>>({
+    columnAccessor: 'intro_year',
+    direction: 'asc',
+  });
+  const [page, setPage] = useState(1);
 
   const locale = useLocale();
   const cargoList = useMemo(() => sortCargos(activeCargos(game), locale), [game, locale]);
@@ -50,66 +68,46 @@ export default function ConsistPage() {
     });
   }, [kindFilter, search, year, track, cargoFilter, game]);
 
-  const columns = useMemo(
-    () => [
-      columnHelper.display({
-        id: 'image',
-        header: '',
-        cell: (info) => <TrainImage trainId={info.row.original.id} />,
-      }),
-      columnHelper.accessor('name', { header: () => t('table.name') }),
-      columnHelper.accessor('intro_year', { id: 'intro_year', header: () => t('table.year') }),
-      columnHelper.accessor('power_hp', {
-        header: () => t('table.power'),
-        cell: (info) => (info.getValue() ? `${num(info.getValue())} ${t('units.hp')}` : '—'),
-      }),
-      columnHelper.accessor((row) => row.speed_mph ?? 0, {
-        id: 'speed',
-        header: () => t('table.speed'),
-        cell: (info) => (info.getValue() ? `${info.getValue()} ${t('units.mph')}` : '—'),
-      }),
-      columnHelper.accessor('weight_t', {
-        header: () => t('table.weight'),
-        cell: (info) => `${num(info.getValue())} ${t('units.t')}`,
-      }),
-      columnHelper.accessor((row) => row.capacities[calc.capacityIndex] ?? 0, {
-        id: 'capacity',
-        header: () => t('table.capacity'),
-        cell: (info) => (info.getValue() ? num(info.getValue()) : '—'),
-      }),
-      columnHelper.accessor((row) => trainBuyCost(row, activeTrainsMeta(game), game, calc), {
-        id: 'cost',
-        header: () => t('table.cost'),
-        cell: (info) => money(info.getValue()),
-        meta: { className: 'cell-money' },
-      }),
-      columnHelper.accessor((row) => trainRunningCostPerYear(row, activeTrainsMeta(game), game, calc), {
-        id: 'running',
-        header: () => t('table.running'),
-        cell: (info) => money(info.getValue()),
-        meta: { className: 'cell-money' },
-      }),
-      columnHelper.display({
-        id: 'add',
-        header: '',
-        cell: (info) => (
-          <button className="btn-add" onClick={() => addToConsist(info.row.original.id)}>
-            +
-          </button>
-        ),
-      }),
-    ],
-    [calc, game, addToConsist],
+  /**
+   * DataTable reports which column to sort by and leaves the sorting to us, so
+   * every sortable column needs the value it sorts on — including the ones that
+   * are computed rather than stored (price, running cost, capacity).
+   */
+  const sortValue: Record<string, (train: Train) => number | string> = useMemo(
+    () => ({
+      name: (train) => train.name,
+      intro_year: (train) => train.intro_year,
+      power_hp: (train) => train.power_hp ?? 0,
+      speed: (train) => train.speed_mph ?? 0,
+      weight_t: (train) => train.weight_t,
+      capacity: (train) => train.capacities[calc.capacityIndex] ?? 0,
+      cost: (train) => trainBuyCost(train, activeTrainsMeta(game), game, calc),
+      running: (train) => trainRunningCostPerYear(train, activeTrainsMeta(game), game, calc),
+    }),
+    [game, calc],
   );
 
-  const table = useReactTable({
-    data: filtered,
-    columns,
-    state: { sorting },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-  });
+  const sorted = useMemo(() => {
+    const value = sortValue[sortStatus.columnAccessor as string];
+    if (!value) return filtered;
+    const collator = new Intl.Collator(intlLocale(locale), { numeric: true });
+    const rows = [...filtered].sort((a, b) => {
+      const left = value(a);
+      const right = value(b);
+      return typeof left === 'string' && typeof right === 'string'
+        ? collator.compare(left, right)
+        : Number(left) - Number(right);
+    });
+    return sortStatus.direction === 'desc' ? rows.reverse() : rows;
+  }, [filtered, sortStatus, sortValue, locale]);
+
+  // a narrower filter can leave the current page beyond the end of the results
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const records = useMemo(
+    () => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [sorted, currentPage],
+  );
 
   const cargo = store.cargoLabel ? (activeCargoByLabel(game).get(store.cargoLabel) ?? null) : null;
   const stats = useMemo(
@@ -117,165 +115,235 @@ export default function ConsistPage() {
     [store.entries, cargo, calc, game],
   );
 
+  const cargoOptions = cargoList.map((c) => ({ value: c.label, label: cargoName(c) }));
+
   return (
     <div className="page-consist">
       <section className="catalogue">
-        <h2>{t('consist.catalogue')}</h2>
-        <div className="filters">
-          <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}>
-            <option value="all">{t('consist.filter.all')}</option>
-            <option value="engine">{t('consist.filter.engines')}</option>
-            <option value="wagon">{t('consist.filter.wagons')}</option>
-          </select>
-          <select value={track} onChange={(e) => setTrack(e.target.value as typeof track)}>
-            <option value="all">{t('consist.filter.track')}: {t('consist.filter.all')}</option>
-            <option value="RAIL">RAIL</option>
-            <option value="NG">NG</option>
-            <option value="METRO">METRO</option>
-          </select>
-          <label>
-            {t('consist.filter.year')}
-            <input
-              type="number"
-              value={year}
-              min={1860}
-              max={2050}
-              onChange={(e) => setYear(Number(e.target.value))}
-            />
-          </label>
-          <span className="field-with-icon">
+        <Title order={2}>{t('consist.catalogue')}</Title>
+        <Group className="filters" align="flex-end" gap="xs">
+          <Select
+            allowDeselect={false}
+            value={kindFilter}
+            onChange={(v) => v && setKindFilter(v as typeof kindFilter)}
+            data={[
+              { value: 'all', label: t('consist.filter.all') },
+              { value: 'engine', label: t('consist.filter.engines') },
+              { value: 'wagon', label: t('consist.filter.wagons') },
+            ]}
+          />
+          <Select
+            allowDeselect={false}
+            value={track}
+            onChange={(v) => v && setTrack(v as typeof track)}
+            data={[
+              { value: 'all', label: `${t('consist.filter.track')}: ${t('consist.filter.all')}` },
+              { value: 'RAIL', label: 'RAIL' },
+              { value: 'NG', label: 'NG' },
+              { value: 'METRO', label: 'METRO' },
+            ]}
+          />
+          <NumberInput
+            label={t('consist.filter.year')}
+            min={1860}
+            max={2050}
+            value={year}
+            onChange={(v) => setYear(Number(v) || 1860)}
+          />
+          <Group gap={4} wrap="nowrap" className="field-with-icon">
             <CargoIcon icon={cargoList.find((c) => c.label === cargoFilter)?.icon ?? ''} />
-            <select value={cargoFilter} onChange={(e) => setCargoFilter(e.target.value)}>
-              <option value="">{t('consist.filter.cargo')}: {t('consist.filter.any')}</option>
-              {cargoList.map((c) => (
-                <option key={c.label} value={c.label}>
-                  {cargoName(c)}
-                </option>
-              ))}
-            </select>
-          </span>
-          <input
+            <Select
+              searchable
+              value={cargoFilter || null}
+              onChange={(v) => setCargoFilter(v ?? '')}
+              placeholder={`${t('consist.filter.cargo')}: ${t('consist.filter.any')}`}
+              data={cargoOptions}
+            />
+          </Group>
+          <TextInput
             type="search"
             placeholder={t('consist.filter.search')}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
-        </div>
+        </Group>
         <div className="table-wrap">
-          <table>
-            <thead>
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
-                  {hg.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
-                      className={[header.column.getCanSort() ? 'sortable' : '', (header.column.columnDef.meta as { className?: string } | undefined)?.className ?? ''].join(' ')}
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {{ asc: ' ▲', desc: ' ▼' }[header.column.getIsSorted() as string] ?? ''}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.slice(0, 400).map((row) => (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className={(cell.column.columnDef.meta as { className?: string } | undefined)?.className}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            idAccessor="id"
+            records={records}
+            sortStatus={sortStatus}
+            onSortStatusChange={setSortStatus}
+            totalRecords={sorted.length}
+            recordsPerPage={PAGE_SIZE}
+            page={currentPage}
+            onPageChange={setPage}
+            pinFirstColumn
+            pinLastColumn
+            noRecordsText={t('table.noRecords')}
+            paginationText={({ from, to, totalRecords }) =>
+              `${from}–${to} ${t('table.of')} ${totalRecords}`
+            }
+            columns={[
+              {
+                accessor: 'image',
+                title: '',
+                render: (train) => <TrainImage trainId={train.id} />,
+              },
+              { accessor: 'name', title: t('table.name'), sortable: true },
+              { accessor: 'intro_year', title: t('table.year'), sortable: true },
+              {
+                accessor: 'power_hp',
+                title: t('table.power'),
+                sortable: true,
+                render: (train) => (train.power_hp ? `${num(train.power_hp)} ${t('units.hp')}` : '—'),
+              },
+              {
+                accessor: 'speed',
+                title: t('table.speed'),
+                sortable: true,
+                render: (train) => (train.speed_mph ? `${train.speed_mph} ${t('units.mph')}` : '—'),
+              },
+              {
+                accessor: 'weight_t',
+                title: t('table.weight'),
+                sortable: true,
+                render: (train) => `${num(train.weight_t)} ${t('units.t')}`,
+              },
+              {
+                accessor: 'capacity',
+                title: t('table.capacity'),
+                sortable: true,
+                render: (train) => {
+                  const capacity = train.capacities[calc.capacityIndex] ?? 0;
+                  return capacity ? num(capacity) : '—';
+                },
+              },
+              {
+                accessor: 'cost',
+                title: t('table.cost'),
+                sortable: true,
+                textAlign: 'right',
+                render: (train) => money(trainBuyCost(train, activeTrainsMeta(game), game, calc)),
+              },
+              {
+                accessor: 'running',
+                title: t('table.running'),
+                sortable: true,
+                textAlign: 'right',
+                render: (train) =>
+                  money(trainRunningCostPerYear(train, activeTrainsMeta(game), game, calc)),
+              },
+              {
+                accessor: 'add',
+                title: '',
+                render: (train) => (
+                  <ActionIcon
+                    className="btn-add"
+                    aria-label={t('consist.add')}
+                    onClick={() => addToConsist(train.id)}
+                  >
+                    +
+                  </ActionIcon>
+                ),
+              },
+            ]}
+          />
         </div>
       </section>
 
-      <aside className="consist-side">
-        <h2>{t('consist.panel')}</h2>
+      <Paper component="aside" className="consist-side" p="sm">
+        <Title order={2}>{t('consist.panel')}</Title>
         {store.entries.length === 0 ? (
-          <p className="hint">{t('consist.empty')}</p>
+          <Text className="hint">{t('consist.empty')}</Text>
         ) : (
-          <ul className="consist-list">
+          <Stack gap={4} className="consist-list">
             {store.entries.map(({ train, count }) => (
-              <li key={train.id}>
+              <Group key={train.id} gap={6} wrap="nowrap">
                 <TrainImage trainId={train.id} />
-                <span className="consist-name">{train.name}</span>
-                <input
-                  type="number"
+                <Text className="consist-name">{train.name}</Text>
+                <NumberInput
                   min={0}
                   value={count}
-                  onChange={(e) => store.setCount(train.id, Number(e.target.value))}
+                  onChange={(v) => store.setCount(train.id, Number(v) || 0)}
+                  w={70}
                 />
-                <button onClick={() => store.remove(train.id)}>×</button>
-              </li>
+                <ActionIcon aria-label={t('consist.remove')} onClick={() => store.remove(train.id)}>
+                  ×
+                </ActionIcon>
+              </Group>
             ))}
-          </ul>
+          </Stack>
         )}
         {store.entries.length > 0 && (
-          <button className="btn-clear" onClick={store.clear}>
+          <Button
+            className="btn-clear"
+            onClick={() => {
+              store.clear();
+              notifications.show({ message: t('notify.consistCleared') });
+            }}
+          >
             {t('consist.clear')}
-          </button>
+          </Button>
         )}
 
-        <label className="field">
-          {t('consist.cargoForCapacity')}
-          <span className="field-with-icon">
-            <CargoIcon icon={cargoList.find((c) => c.label === store.cargoLabel)?.icon ?? ''} />
-            <select
-              value={store.cargoLabel ?? ''}
-              onChange={(e) => store.setCargoLabel(e.target.value || null)}
-            >
-              <option value="">{t('consist.none')}</option>
-              {cargoList.map((c) => (
-                <option key={c.label} value={c.label}>
-                  {cargoName(c)}
-                </option>
-              ))}
-            </select>
-          </span>
-        </label>
+        <Select
+          className="field"
+          label={t('consist.cargoForCapacity')}
+          searchable
+          leftSection={<CargoIcon icon={cargoList.find((c) => c.label === store.cargoLabel)?.icon ?? ''} />}
+          placeholder={t('consist.none')}
+          value={store.cargoLabel ?? null}
+          onChange={(v) => store.setCargoLabel(v)}
+          data={cargoOptions}
+        />
 
         {store.entries.length > 0 && (
-          <dl className="stats">
-            <dt>{t('consist.stats.power')}</dt>
-            <dd>
-              {num(stats.powerHp)} {t('units.hp')}
-            </dd>
-            <dt>{t('consist.stats.maxTe')}</dt>
-            <dd>
-              {num(stats.maxTeN / 1000, 1)} {t('units.kN')}
-            </dd>
-            <dt>{t('consist.stats.weight')}</dt>
-            <dd>
-              {num(stats.emptyWeightT)} / {num(stats.loadedWeightT)} {t('units.t')}
-            </dd>
-            <dt>{t('consist.stats.length')}</dt>
-            <dd>
-              {num(stats.lengthTiles, 2)} {t('consist.stats.tiles')}
-            </dd>
-            <dt>{t('consist.stats.speedLimit')}</dt>
-            <dd>{stats.speedLimitMph ? `${stats.speedLimitMph} ${t('units.mph')}` : '—'}</dd>
-            <dt>{t('consist.stats.balancing')}</dt>
-            <dd>
-              {stats.balancingSpeedMph} {t('units.mph')}
-            </dd>
-            <dt>{t('consist.stats.balancingGrade')}</dt>
-            <dd>
-              {stats.balancingSpeedOnGradeMph} {t('units.mph')}
-            </dd>
-            <dt>{t('consist.stats.capacity')}</dt>
-            <dd>
-              {num(stats.capacityForCargo)} {cargoUnits(cargo?.units)}
-            </dd>
-            <dt>{t('consist.stats.buyCost')}</dt>
-            <dd>{money(stats.buyCostTotal)}</dd>
-            <dt>{t('consist.stats.runningCost')}</dt>
-            <dd>{money(stats.runningCostTotal)}</dd>
-          </dl>
+          <Table className="summary-table" withRowBorders={false}>
+            <Table.Tbody>
+              <StatRow label={t('consist.stats.power')} value={`${num(stats.powerHp)} ${t('units.hp')}`} />
+              <StatRow
+                label={t('consist.stats.maxTe')}
+                value={`${num(stats.maxTeN / 1000, 1)} ${t('units.kN')}`}
+              />
+              <StatRow
+                label={t('consist.stats.weight')}
+                value={`${num(stats.emptyWeightT)} / ${num(stats.loadedWeightT)} ${t('units.t')}`}
+              />
+              <StatRow
+                label={t('consist.stats.length')}
+                value={`${num(stats.lengthTiles, 2)} ${t('consist.stats.tiles')}`}
+              />
+              <StatRow
+                label={t('consist.stats.speedLimit')}
+                value={stats.speedLimitMph ? `${stats.speedLimitMph} ${t('units.mph')}` : '—'}
+              />
+              <StatRow
+                label={t('consist.stats.balancing')}
+                value={`${stats.balancingSpeedMph} ${t('units.mph')}`}
+              />
+              <StatRow
+                label={t('consist.stats.balancingGrade')}
+                value={`${stats.balancingSpeedOnGradeMph} ${t('units.mph')}`}
+              />
+              <StatRow
+                label={t('consist.stats.capacity')}
+                value={`${num(stats.capacityForCargo)} ${cargoUnits(cargo?.units)}`}
+              />
+              <StatRow label={t('consist.stats.buyCost')} value={money(stats.buyCostTotal)} />
+              <StatRow label={t('consist.stats.runningCost')} value={money(stats.runningCostTotal)} />
+            </Table.Tbody>
+          </Table>
         )}
-      </aside>
+      </Paper>
     </div>
+  );
+}
+
+function StatRow({ label, value }: { label: string; value: string }) {
+  return (
+    <Table.Tr>
+      <Table.Td>{label}</Table.Td>
+      <Table.Td align="right">{value}</Table.Td>
+    </Table.Tr>
   );
 }
