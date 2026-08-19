@@ -54,7 +54,7 @@ if [ -f "$root/web/package-lock.json" ]; then
 fi
 
 git -C "$root" add $files
-git -C "$root" commit -m "Релиз $version" >/dev/null
+git -C "$root" commit -m "Release $version" >/dev/null
 git -C "$root" tag -a "v$version" -m "$version"
 
 echo "release: v$version committed and tagged"
