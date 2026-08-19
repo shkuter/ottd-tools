@@ -9,7 +9,7 @@ FIRS_RU_REF ?= 61a0f0973cce43c41e156f7809782e7567279330
 VENV = pipeline/.venv
 PY = $(VENV)/bin/python
 
-.PHONY: fetch fetch-firs-ru fetch-opengfx2 venv data check-i18n data-images data-opengfx2 dev build test verify release
+.PHONY: fetch fetch-firs-ru fetch-opengfx2 venv data check-i18n data-images data-opengfx2 dev build test verify release release-auto
 
 # Shallow-клоны исходников в vendor/ (iron-horse и firs пинуются релизными тегами)
 fetch:
@@ -78,3 +78,8 @@ verify: data check-i18n test build
 # коммитит и ставит тег vX.Y.Z. Пример: make release VERSION=0.2.0
 release:
 	@scripts/release.sh $(VERSION)
+
+# То же, но версия считается по CHANGELOG: **BREAKING**/Removed — major, Added — minor,
+# остальное — patch (пока версия 0.x, major понижается до minor)
+release-auto:
+	@scripts/release.sh "$$(scripts/next-version.sh)"

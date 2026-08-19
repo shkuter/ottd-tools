@@ -55,17 +55,27 @@ active_change() {
   printf '%s' "$names"
 }
 
+# A release is its own axis: several archived changes can ship together, so this only
+# reports what the changelog would produce — cutting the release stays a manual step.
+release_hint() {
+  local version
+  version=$(scripts/next-version.sh 2>/dev/null) || return 0
+  [ -n "$version" ] || return 0
+  printf ' · накопилось на %s: make release-auto' "$version"
+}
+
 commit() {
   local message="$1"
+  local hint="${HINT:-}"
   shift
   if [ "${OPENSPEC_AUTOCOMMIT_DRY_RUN:-}" = "1" ]; then
-    printf 'would commit: %s\n' "$message"
+    printf 'would commit: %s%s\n' "$message" "$hint"
     return 0
   fi
   git add -A "$@" >/dev/null 2>&1 || return 1
   git diff --cached --quiet && return 1
   git commit -q -m "$message" || return 1
-  printf '{"systemMessage":"Автокоммит: %s"}\n' "$message"
+  printf '{"systemMessage":"Автокоммит: %s%s"}\n' "$message" "$hint"
 }
 
 # 1. archive: the change moved under archive/, main specs may have been synced with it
@@ -75,6 +85,7 @@ if only_under openspec/; then
     name=${archived#openspec/changes/archive/}
     name=${name%%/*}
     name=$(printf '%s' "$name" | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
+    HINT=$(release_hint)
     commit "OpenSpec: archive $name" openspec
     exit 0
   fi

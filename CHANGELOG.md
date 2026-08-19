@@ -33,7 +33,7 @@ of what users see):
 
 ### Changed
 
-- **Base Costs GRF running-cost multiplier is now three multipliers**, one per running class
+- **BREAKING** — **the Base Costs GRF running-cost multiplier is now three multipliers**, one per running class
   (steam, diesel, electric), because both the game and the base-cost sets scale those base
   prices separately. Iron Horse puts engines in the steam class and wagons in the diesel one,
   while vanilla electric engines use the third. A previously saved single multiplier migrates
