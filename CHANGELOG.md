@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-20
+
 ### Fixed
 
 - **BREAKING** **Station rating period follows the JGRPP day length.** The "transported" column
