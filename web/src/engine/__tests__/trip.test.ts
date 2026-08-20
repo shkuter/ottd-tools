@@ -73,6 +73,29 @@ describe('tripEconomics', () => {
     expect(capped.roundTripDays).toBe(full.roundTripDays);
   });
 
+  // The delivered share arrives here already inside cargo per trip (see ADR-0001): half the
+  // offered flow is half the income, while physics still runs on a full load.
+  it('половинная загрузка режет доход, но не вместимость и не круг', () => {
+    const entries = [{ train: engine, count: 1 }, { train: hopper, count: 10 }];
+    const full = tripEconomics({ ...base, entries });
+    const half = tripEconomics({ ...base, entries, cargoPerTrip: full.capacity / 2 });
+    // The game rounds income to whole units, so the half matches to within a coin.
+    expect(Math.abs(half.incomePerTrip - full.incomePerTrip / 2)).toBeLessThanOrEqual(1);
+    expect(half.capacity).toBe(full.capacity);
+    expect(half.roundTripDays).toBeCloseTo(full.roundTripDays, 9);
+    expect(half.tripsPerYear).toBeCloseTo(full.tripsPerYear, 9);
+  });
+
+  it('парк из двух составов: деньги вдвое больше, окупаемость та же', () => {
+    const entries = [{ train: engine, count: 1 }, { train: hopper, count: 10 }];
+    const one = tripEconomics({ ...base, entries });
+    const two = tripEconomics({ ...base, entries, fleetSize: 2 });
+    expect(two.buyCostTotal).toBeCloseTo(one.buyCostTotal * 2, 9);
+    expect(two.runningCostPerYear).toBeCloseTo(one.runningCostPerYear * 2, 9);
+    expect(two.profitPerYear).toBeCloseTo(one.profitPerYear * 2, 9);
+    expect(two.paybackYears!).toBeCloseTo(one.paybackYears!, 9);
+  });
+
   it('убыточный состав → окупаемости нет', () => {
     const t = tripEconomics({ ...base, entries: [{ train: engine, count: 2 }, { train: hopper, count: 1 }], distanceTiles: 1, cargoPerTrip: 0 });
     expect(t.profitPerYear).toBeLessThan(0);

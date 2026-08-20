@@ -116,6 +116,25 @@ h4 {
   margin-bottom: 10px;
 }
 
+/* "show more" under the table: buttons and counter on a single line */
+.table-more {
+  margin-top: 8px;
+}
+
+/* search goal: label, switch and the reason it is blocked, in one column */
+.goal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* the explanation sits beside the switch, not under it, or the filter row skews */
+.filters .goal-hint {
+  max-width: 260px;
+  margin: 0;
+  font-size: 12px;
+}
+
 .filters label {
   display: flex;
   align-items: center;

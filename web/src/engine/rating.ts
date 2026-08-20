@@ -102,6 +102,17 @@ export interface StationRating {
 const clampRating = (v: number) => Math.max(0, Math.min(255, v));
 
 /**
+ * Rating periods one pickup interval covers — the counter is capped at 255 and never
+ * reads below 1. Exported because it is what a rating result actually depends on: two
+ * intervals landing on the same period count give the same rating, which lets callers
+ * that sweep many consists cache by it.
+ */
+export function ratingPeriods(pickupIntervalDays: number, dayLengthFactor: number): number {
+  const periodDays = effectiveRatingPeriodDays(dayLengthFactor);
+  return Math.max(1, Math.min(255, Math.round(pickupIntervalDays / periodDays)));
+}
+
+/**
  * Estimate of the rating a station settles at when one train type serves it at a fixed
  * interval. Both the pickup counter and the waiting pile restart at zero after every
  * load, so the target rating is averaged over the interval rather than taken at its
@@ -116,7 +127,7 @@ export function estimateStationRating(p: StationRatingParams): StationRating {
   const age = vehicleAgeRating(p.vehicleAgeYears ?? 0, p.jgrpp);
   const statue = p.statue ? 26 : 0;
   const periodDays = effectiveRatingPeriodDays(p.dayLengthFactor);
-  const periods = Math.max(1, Math.min(255, Math.round(p.pickupIntervalDays / periodDays)));
+  const periods = ratingPeriods(p.pickupIntervalDays, p.dayLengthFactor);
 
   let waitTime = 0;
   let waitingCargo = 0;

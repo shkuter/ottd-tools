@@ -8,6 +8,7 @@
 import type { Cargo, ConsistEntry, TrainsMeta } from '../types';
 import { canCarryIn } from '../dataset';
 import { consistPhysics } from './consist';
+import type { ConsistPhysics } from './physics';
 import { consistMoney } from './costs';
 import { balancingSpeed } from './physics';
 import { transportedGoodsIncome } from './income';
@@ -37,10 +38,19 @@ export interface TripParams {
   /** Cargo is under subsidy: income is multiplied (difficulty.subsidy_multiplier). */
   subsidised?: boolean;
   /**
-   * Cargo actually hauled per trip when the source industry cannot fill the train.
+   * Cargo actually hauled per trip when the source industry cannot fill the train — the
+   * share of what the station hands over falling to one train of the fleet. The delivered
+   * share belongs in this figure, not in a separate income multiplier: a train that finds
+   * a full load waiting earns on all of it (see docs/adr/0001).
    * Defaults to the consist capacity.
    */
   cargoPerTrip?: number;
+  /**
+   * Identical consists running the route. Buy cost, running cost and yearly income are
+   * stated for the whole fleet, so rows with different fleet sizes compare directly.
+   * Defaults to 1.
+   */
+  fleetSize?: number;
   /**
    * Loaded leg duration set by hand (route income tab). The empty leg is scaled by the
    * speed ratio, so a manual figure still gets a faster return run.
@@ -61,9 +71,11 @@ export interface TripEconomics {
   loadingDays: number;
   roundTripDays: number;
   tripsPerYear: number;
+  /** Income of a single trip of a single consist, for the cargo it actually carries. */
   incomePerTrip: number;
-  /** Running cost over a calendar year, discounted for time spent stopped (JGRPP). */
+  /** Running cost of the whole fleet over a calendar year, discounted for time spent stopped (JGRPP). */
   runningCostPerYear: number;
+  /** Buy cost of the whole fleet. */
   buyCostTotal: number;
   profitPerYear: number;
   paybackYears: number | null;
@@ -95,7 +107,28 @@ export function tripLoadingDays(
   return (2 * slowest) / DAY_TICKS;
 }
 
-export function tripEconomics(params: TripParams): TripEconomics {
+/**
+ * The half of a trip that does not depend on the load or the fleet: physics, timings and
+ * the price of one consist. Split out so a search over fleet sizes and loads pays for the
+ * consist physics once instead of once per candidate.
+ */
+export interface TripSetup {
+  capacity: number;
+  /** Loaded consist physics, reused by callers that need e.g. speed on a grade. */
+  loadedPhysics: ConsistPhysics;
+  loadedSpeedInternal: number;
+  emptySpeedInternal: number;
+  daysLoaded: number;
+  daysEmpty: number;
+  loadingDays: number;
+  roundTripDays: number;
+  tripsPerYear: number;
+  /** Buy cost and yearly running cost of a single consist. */
+  buy: number;
+  running: number;
+}
+
+export function tripSetup(params: TripParams): TripSetup {
   const game = params.game ?? DEFAULT_GAME_SETTINGS;
   const calc = params.calc ?? DEFAULT_CALC_SETTINGS;
   const { entries, cargo, distanceTiles, meta } = params;
@@ -129,6 +162,52 @@ export function tripEconomics(params: TripParams): TripEconomics {
       ? (daysPerEconomyYear(game) * effectiveDayLength(game)) / roundTripDays
       : 0;
 
+  const { buy, running } = consistMoney(entries, meta, game, calc);
+
+  return {
+    capacity,
+    loadedPhysics: loaded.physics,
+    loadedSpeedInternal,
+    emptySpeedInternal,
+    daysLoaded,
+    daysEmpty,
+    loadingDays,
+    roundTripDays,
+    tripsPerYear,
+    buy,
+    running,
+  };
+}
+
+/**
+ * The cheap half: what the trip earns and costs for a given load and fleet size. Takes the
+ * setup above so both can be varied without recomputing physics; the formula still lives in
+ * this one module.
+ */
+/**
+ * What the money half of a trip needs on top of a computed setup. The setup already carries
+ * the physics, so the vehicles, the route and the settings that shaped it are not asked for
+ * again — only the cargo being paid for and the load actually hauled.
+ */
+export interface TripMoneyParams {
+  cargo: Cargo;
+  /** Payment rate of the cargo in the selected economy. */
+  payment: number;
+  distanceTiles: number;
+  game?: GameSettings;
+  /** Cargo is under subsidy: income is multiplied (difficulty.subsidy_multiplier). */
+  subsidised?: boolean;
+  /** Cargo actually hauled per trip; defaults to the consist capacity. */
+  cargoPerTrip?: number;
+  /** Identical consists running the route; money is stated for all of them. Defaults to 1. */
+  fleetSize?: number;
+}
+
+export function tripMoney(setup: TripSetup, params: TripMoneyParams): TripEconomics {
+  const game = params.game ?? DEFAULT_GAME_SETTINGS;
+  const { cargo, distanceTiles } = params;
+  const { capacity, daysLoaded, roundTripDays, loadingDays, tripsPerYear, buy, running } = setup;
+
   const cargoPerTrip = params.cargoPerTrip ?? capacity;
   const incomePerTrip =
     transportedGoodsIncome(
@@ -140,27 +219,32 @@ export function tripEconomics(params: TripParams): TripEconomics {
       game.jgrpp ? game.paymentAlgorithm : 'modern',
     ) * (params.subsidised ? subsidyFactor(game.subsidyMultiplier) : 1);
 
-  const { buy, running } = consistMoney(entries, meta, game, calc);
+  const fleetSize = params.fleetSize ?? 1;
   // JGRPP can charge less while a vehicle stands still: split the year by that share.
   const stoppedShare = roundTripDays > 0 ? loadingDays / roundTripDays : 0;
   const runningCostPerYear =
-    running * (1 - stoppedShare + stoppedShare / stoppedCostDivisor(game));
-  const profitPerYear = incomePerTrip * tripsPerYear - runningCostPerYear;
+    running * fleetSize * (1 - stoppedShare + stoppedShare / stoppedCostDivisor(game));
+  const buyCostTotal = buy * fleetSize;
+  const profitPerYear = incomePerTrip * tripsPerYear * fleetSize - runningCostPerYear;
 
   return {
     capacity,
     cargoPerTrip,
-    loadedSpeedInternal,
-    emptySpeedInternal,
+    loadedSpeedInternal: setup.loadedSpeedInternal,
+    emptySpeedInternal: setup.emptySpeedInternal,
     daysLoaded,
-    daysEmpty,
+    daysEmpty: setup.daysEmpty,
     loadingDays,
     roundTripDays,
     tripsPerYear,
     incomePerTrip,
     runningCostPerYear,
-    buyCostTotal: buy,
+    buyCostTotal,
     profitPerYear,
-    paybackYears: profitPerYear > 0 ? buy / profitPerYear : null,
+    paybackYears: profitPerYear > 0 ? buyCostTotal / profitPerYear : null,
   };
+}
+
+export function tripEconomics(params: TripParams): TripEconomics {
+  return tripMoney(tripSetup(params), params);
 }

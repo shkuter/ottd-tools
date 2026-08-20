@@ -19,6 +19,7 @@ import {
   transitPeriodsFromDays,
 } from '../units';
 import { optimizeConsists } from '../optimize';
+import { createOptimizerCache } from '../optimizeCache';
 import { estimateStationRating } from '../rating';
 import { tripEconomics } from '../trip';
 import {
@@ -423,9 +424,13 @@ describe('optimizer', () => {
     expect(unlimited.cargoPerTrip).toBe(unlimited.capacity);
     expect(unlimited.trainsNeeded).toBe(1);
     expect(limited.lengthTiles).toBeLessThan(unlimited.lengthTiles);
-    // везёт ровно то, что успело произвестись за рейс, и не больше вместимости
+    // Hauls exactly what the station has collected since the last visit, capped by capacity.
     expect(limited.cargoPerTrip).toBeLessThanOrEqual(limited.capacity);
-    expect(limited.cargoPerTrip * limited.tripsPerYear).toBeCloseTo(40 * 12, 6);
+    const offeredLimited = 40 * 12 * limited.stationRating!.deliveredShare;
+    expect(limited.cargoPerTrip * limited.tripsPerYear * limited.fleetSize).toBeCloseTo(
+      offeredLimited,
+      6,
+    );
     expect(limited.buyCostTotal).toBeLessThan(unlimited.buyCostTotal);
 
     // поток, который один поезд не увозит, требует нескольких
@@ -435,8 +440,17 @@ describe('optimizer', () => {
       trainsMeta,
       1,
     )[0];
-    expect(heavy.cargoPerTrip).toBe(heavy.capacity);
     expect(heavy.trainsNeeded).toBeGreaterThan(1);
+    // The flow is shared by the fleet: each train takes its share, capped by capacity.
+    expect(heavy.cargoPerTrip).toBeLessThanOrEqual(heavy.capacity);
+    expect(heavy.cargoPerTrip).toBeCloseTo(
+      Math.min(
+        heavy.capacity,
+        (5000 * 12 * heavy.stationRating!.deliveredShare) /
+          (heavy.fleetSize * heavy.tripsPerYear),
+      ),
+      6,
+    );
   });
 
   // рейтинг станции считается по периоду счётчика, растянутому замедлением экономики
@@ -505,6 +519,356 @@ describe('optimizer', () => {
     expect(withoutWagon.some((r) => r.wagon.id === top.wagon.id)).toBe(false);
     // выдача не пустеет: подбор просто берёт следующий вариант
     expect(withoutWagon.length).toBeGreaterThan(0);
+  });
+
+  // --- search goal: profit against transported ---
+
+  const goalBase = {
+    year: 1938,
+    cargo: cargoByLabel.get('COAL')!,
+    economyId: 'STEELTOWN',
+    allowElectric: false,
+    game: DEFAULT_GAME_SETTINGS,
+    calc: DEFAULT_CALC_SETTINGS,
+  };
+
+  // Money follows what the industry actually hands over: the share cuts the flow before it
+  // is split between the trains, and income then follows the load a train really carries.
+  it('доля вывоза режет поток, а не доход поверх загрузки', () => {
+    const distanceTiles = 82;
+    const r = optimizeConsists(
+      trains,
+      { ...goalBase, distanceTiles, maxLengthTiles: 6, productionPerMonth: 200 },
+      trainsMeta,
+      1,
+    )[0];
+    const share = r.stationRating!.deliveredShare;
+    expect(share).toBeLessThan(1);
+
+    const entries = [
+      { train: r.engine, count: r.engineCount },
+      { train: r.wagon, count: r.wagonCount },
+    ];
+    const trip = (cargoPerTrip: number) =>
+      tripEconomics({
+        entries,
+        cargo: goalBase.cargo,
+        payment: cargoPaymentRate(goalBase.cargo, goalBase.economyId, goalBase.game, goalBase.calc),
+        distanceTiles,
+        meta: trainsMeta,
+        game: goalBase.game,
+        calc: goalBase.calc,
+        cargoPerTrip,
+        fleetSize: r.fleetSize,
+      });
+
+    // Cargo per trip is the share of the output that one train of the fleet receives.
+    expect(r.cargoPerTrip).toBeCloseTo(
+      Math.min(r.capacity, (200 * 12 * share) / (r.fleetSize * r.tripsPerYear)),
+      6,
+    );
+    // Money follows exactly that cargo, with no second multiplication by the share.
+    expect(r.incomePerTrip).toBeCloseTo(trip(r.cargoPerTrip).incomePerTrip, 6);
+    // ...and less than it would be if the station handed over the whole output.
+    const withoutShare = trip(Math.min(r.capacity, (200 * 12) / (r.fleetSize * r.tripsPerYear)));
+    expect(r.incomePerTrip).toBeLessThan(withoutShare.incomePerTrip);
+  });
+
+  // A saturated fleet loads from a full waiting pile, so the share no longer enters here.
+  it('парк — узкое место: деньги по фактической загрузке, без вычета доли', () => {
+    const distanceTiles = 300;
+    const r = optimizeConsists(
+      trains,
+      {
+        ...goalBase,
+        distanceTiles,
+        maxLengthTiles: 6,
+        productionPerMonth: 400,
+        goal: 'transported' as const,
+        maxTrains: 1,
+      },
+      trainsMeta,
+      1,
+    )[0];
+    expect(r.fleetLimited).toBe(true);
+    // The train takes everything it can hold: the pile grew bigger than the consist.
+    expect(r.cargoPerTrip).toBeCloseTo(r.capacity, 6);
+
+    const full = tripEconomics({
+      entries: [
+        { train: r.engine, count: r.engineCount },
+        { train: r.wagon, count: r.wagonCount },
+      ],
+      cargo: goalBase.cargo,
+      payment: cargoPaymentRate(goalBase.cargo, goalBase.economyId, goalBase.game, goalBase.calc),
+      distanceTiles,
+      meta: trainsMeta,
+      game: goalBase.game,
+      calc: goalBase.calc,
+      fleetSize: r.fleetSize,
+    });
+    expect(r.incomePerTrip).toBeCloseTo(full.incomePerTrip, 6);
+    // The money of the row agrees with the haul it shows.
+    expect(r.hauledPerYear).toBeCloseTo(r.cargoPerTrip * r.tripsPerYear * r.fleetSize, 6);
+  });
+
+  // The smallest fleet is measured against what is offered, not against the full output.
+  it('меньший парк увозит отдаваемое — и он же выигрывает при цели «Прибыль»', () => {
+    const params = {
+      ...goalBase,
+      distanceTiles: 300,
+      maxLengthTiles: 7,
+      allowElectric: true,
+      productionPerMonth: 500,
+    };
+    const r = optimizeConsists(trains, params, trainsMeta, 1)[0];
+    // Fewer trains than the full output would need...
+    expect(r.fleetSize).toBeLessThan(r.trainsNeeded);
+    // ...yet they clear everything the station offers.
+    expect(r.fleetLimited).toBe(false);
+    expect(r.hauledPerYear).toBeCloseTo(500 * 12 * r.stationRating!.deliveredShare, 6);
+    // And the fleet is minimal: one train less would not have moved it.
+    if (r.fleetSize > 1) {
+      const perTrain = r.tripsPerYear * r.capacity;
+      expect((r.fleetSize - 1) * perTrain).toBeLessThan(r.hauledPerYear);
+    }
+  });
+
+  // The goal changes both what is swept and the order of the output.
+  it('цель «Вывоз» ставит первой строку с наибольшим вывозом за год', () => {
+    // Production low enough that the two goals disagree: hauling the last few crates costs
+    // more than they pay, so the profitable fleet is smaller than the one that hauls most.
+    const params = { ...goalBase, distanceTiles: 82, maxLengthTiles: 6, productionPerMonth: 60 };
+    const byProfit = optimizeConsists(trains, params, trainsMeta, 20);
+    const byHauled = optimizeConsists(
+      trains,
+      { ...params, goal: 'transported' as const, maxTrains: 4 },
+      trainsMeta,
+      20,
+    );
+    expect(byHauled[0].hauledPerYear).toBe(Math.max(...byHauled.map((r) => r.hauledPerYear)));
+    expect(byHauled[0].hauledPerYear).toBeGreaterThan(byProfit[0].hauledPerYear);
+    // Ranking by profit stays the most profitable one: the transported goal promises no such thing.
+    expect(byProfit[0].profitPerYear).toBeGreaterThanOrEqual(
+      Math.max(...byProfit.map((r) => r.profitPerYear)) - 1,
+    );
+  });
+
+  // The fleet limit does not drop a candidate, it shows a capped haul instead.
+  it('парка не хватает на поток → вывоз по провозной способности и пометка', () => {
+    const r = optimizeConsists(
+      trains,
+      {
+        ...goalBase,
+        distanceTiles: 300,
+        maxLengthTiles: 6,
+        productionPerMonth: 400,
+        goal: 'transported' as const,
+        maxTrains: 1,
+      },
+      trainsMeta,
+      1,
+    )[0];
+    expect(r.trainsNeeded).toBeGreaterThan(1);
+    expect(r.fleetSize).toBe(1);
+    expect(r.fleetLimited).toBe(true);
+    expect(r.hauledPerYear).toBeCloseTo(r.fleetSize * r.tripsPerYear * r.capacity, 6);
+    expect(r.hauledPerYear).toBeLessThan(400 * 12 * r.stationRating!.deliveredShare);
+  });
+
+  // Consist physics is cached between calls: the key has to catch everything it depends on.
+  it('кэш физики не отдаёт числа от прошлых настроек', () => {
+    const params = {
+      ...goalBase,
+      distanceTiles: 180,
+      maxLengthTiles: 6,
+      productionPerMonth: 300,
+      goal: 'transported' as const,
+      maxTrains: 3,
+    };
+    const key = (rows: ReturnType<typeof optimizeConsists>) =>
+      rows.map((r) => [r.engine.id, r.wagonCount, Math.round(r.profitPerYear), Math.round(r.roundTripDays * 100)].join('|'));
+
+    // The very cache the tab keeps between edits of its fields.
+    const cache = createOptimizerCache();
+    const first = key(optimizeConsists(trains, params, trainsMeta, 20, cache));
+    // In between: calls that change everything physics and prices depend on.
+    optimizeConsists(trains, { ...params, distanceTiles: 400 }, trainsMeta, 20, cache);
+    optimizeConsists(
+      trains,
+      { ...params, game: { ...DEFAULT_GAME_SETTINGS, jgrpp: true, dayLengthFactor: 4 } },
+      trainsMeta,
+      20,
+      cache,
+    );
+    optimizeConsists(
+      trains,
+      { ...params, calc: { ...DEFAULT_CALC_SETTINGS, capacityIndex: 4 } },
+      trainsMeta,
+      20,
+      cache,
+    );
+    expect(key(optimizeConsists(trains, params, trainsMeta, 20, cache))).toEqual(first);
+  });
+
+  // Two things used to leak the input order into the output: a comparator with a "differs by
+  // more than 1" tolerance (not transitive), and picking the representative of a group of
+  // identical wagons by which one was met first.
+  it('выдача не зависит от порядка машин во входных данных', () => {
+    const params = {
+      ...goalBase,
+      distanceTiles: 180,
+      maxLengthTiles: 6,
+      allowElectric: true,
+      productionPerMonth: 500,
+      goal: 'transported' as const,
+      maxTrains: 4,
+    };
+    // The whole row is compared, in the order it came out: the wagon a row shows is part of
+    // the answer (a shuffled input used to swap every one of them for an identical twin),
+    // and rows that agree on every number are ordered by identifiers rather than by luck.
+    const rows = (result: ReturnType<typeof optimizeConsists>) =>
+      result.map((r) =>
+        [r.engine.id, r.engineCount, r.wagon.id, r.wagonCount, r.fleetSize,
+         Math.round(r.hauledPerYear), Math.round(r.profitPerYear),
+         Math.round(r.buyCostTotal)].join('|'),
+      );
+    const straight = optimizeConsists(trains, params, trainsMeta, 50);
+    const reversed = optimizeConsists([...trains].reverse(), params, trainsMeta, 50);
+    expect(rows(reversed)).toEqual(rows(straight));
+  });
+
+  // The fleet sweep must not stop at the smallest fleet that clears what the station offers:
+  // more trains shorten the interval, which lifts the rating, which lifts what the station
+  // hands over — so under the profit goal a bigger fleet can be the more profitable one.
+  it('цель «Прибыль» берёт больший парк, когда он прибыльнее', () => {
+    const params = {
+      ...goalBase,
+      distanceTiles: 300,
+      maxLengthTiles: 7,
+      productionPerMonth: 500,
+    };
+    const small = optimizeConsists(trains, { ...params, maxTrains: 4 }, trainsMeta, 1)[0];
+    const big = optimizeConsists(trains, { ...params, maxTrains: 12 }, trainsMeta, 1)[0];
+    expect(big.fleetSize).toBeGreaterThan(small.fleetSize);
+    expect(big.stationRating!.deliveredShare).toBeGreaterThan(small.stationRating!.deliveredShare);
+    expect(big.profitPerYear).toBeGreaterThan(small.profitPerYear);
+    // ...and the fleet shown is the most profitable one allowed, not merely a bigger one.
+    const perLimit = Array.from({ length: 12 }, (_, i) =>
+      optimizeConsists(trains, { ...params, maxTrains: i + 1 }, trainsMeta, 1)[0],
+    );
+    expect(big.profitPerYear).toBeCloseTo(Math.max(...perLimit.map((r) => r.profitPerYear)), 6);
+  });
+
+  // A shorter consist runs more often; under the haul goal that can beat a full-length one.
+  it('короткий состав выигрывает по вывозу', () => {
+    const params = {
+      ...goalBase,
+      distanceTiles: 300,
+      maxLengthTiles: 7,
+      productionPerMonth: 500,
+      goal: 'transported' as const,
+      maxTrains: 12,
+    };
+    const short = optimizeConsists(trains, params, trainsMeta, 50).find((r) => r.engine.id === 'kraken')!;
+    const full = optimizeConsists(trains, { ...params, goal: 'profit' as const }, trainsMeta, 50)
+      .find((r) => r.engine.id === 'kraken')!;
+    // The station allows a longer consist than the haul goal picks.
+    expect(short.lengthTiles).toBeLessThan(params.maxLengthTiles - 0.5);
+    expect(short.wagonCount).toBeLessThan(full.wagonCount);
+    expect(short.hauledPerYear).toBeGreaterThan(full.hauledPerYear);
+  });
+
+  // "Not enough trains" is about the trains, not about the station rating.
+  it('парк не помечен ограниченным, когда вывоз режет доля, а не поезда', () => {
+    const r = optimizeConsists(
+      trains,
+      {
+        ...goalBase,
+        distanceTiles: 300,
+        maxLengthTiles: 7,
+        allowElectric: true,
+        productionPerMonth: 500,
+        goal: 'transported' as const,
+        maxTrains: 4,
+      },
+      trainsMeta,
+      1,
+    )[0];
+    const offered = 500 * 12 * r.stationRating!.deliveredShare;
+    // Formally fewer trains than the FULL output would need...
+    expect(r.trainsNeeded).toBeGreaterThan(r.fleetSize);
+    // ...but they clear everything the station offers, so they are not the constraint.
+    expect(r.fleetSize * r.tripsPerYear * r.capacity).toBeGreaterThan(offered);
+    expect(r.hauledPerYear).toBeCloseTo(offered, 6);
+    expect(r.fleetLimited).toBe(false);
+  });
+
+  // The rating hit its ceiling: a second train hauls no more and costs twice as much.
+  it('при равном вывозе выигрывает парк поменьше', () => {
+    const params = {
+      ...goalBase,
+      distanceTiles: 10,
+      maxLengthTiles: 5,
+      productionPerMonth: 60,
+      goal: 'transported' as const,
+    };
+    const one = optimizeConsists(trains, { ...params, maxTrains: 1 }, trainsMeta, 1)[0];
+    const upTo4 = optimizeConsists(trains, { ...params, maxTrains: 4 }, trainsMeta, 1)[0];
+    expect(upTo4.hauledPerYear).toBeCloseTo(one.hauledPerYear, 6);
+    expect(upTo4.fleetSize).toBe(1);
+    expect(upTo4.profitPerYear).toBeCloseTo(one.profitPerYear, 6);
+  });
+
+  // Without a flow there is no delivered share, so there is nothing to rank by.
+  it('без производства цель «Вывоз» равна цели «Прибыль»', () => {
+    const params = { ...goalBase, distanceTiles: 82, maxLengthTiles: 6 };
+    const byProfit = optimizeConsists(trains, params, trainsMeta, 20);
+    const byHauled = optimizeConsists(
+      trains,
+      { ...params, goal: 'transported' as const, maxTrains: 4 },
+      trainsMeta,
+      20,
+    );
+    const key = (r: (typeof byProfit)[number]) =>
+      `${r.engine.id}|${r.engineCount}|${r.wagon.id}|${r.wagonCount}|${r.fleetSize}|${r.profitPerYear}`;
+    expect(byHauled.map(key)).toEqual(byProfit.map(key));
+  });
+
+  // The flow is shared by the fleet instead of reaching every train whole.
+  it('вдвое больший парк берёт вдвое меньше груза за рейс и окупается хуже', () => {
+    const params = {
+      ...goalBase,
+      distanceTiles: 82,
+      maxLengthTiles: 2,
+      productionPerMonth: 30,
+      goal: 'transported' as const,
+      // One consist for both outputs: the sweep would otherwise land on another engine.
+      excludedIds: trains
+        .filter(
+          (t) =>
+            (t.kind === 'engine' && t.id !== 'gowsty') ||
+            (t.kind === 'wagon' && t.id !== 'coal_hopper_car_type_1_pony_gen_3A'),
+        )
+        .map((t) => t.id),
+    };
+    const one = optimizeConsists(trains, { ...params, maxTrains: 1 }, trainsMeta, 1)[0];
+    const two = optimizeConsists(trains, { ...params, maxTrains: 2 }, trainsMeta, 1)[0];
+    expect(one.fleetSize).toBe(1);
+    expect(two.fleetSize).toBe(2);
+    // Neither of them hit its capacity: it is the flow that is being split.
+    expect(one.cargoPerTrip).toBeLessThan(one.capacity);
+    expect(two.cargoPerTrip).toBeLessThan(two.capacity);
+    // Each takes its share of what is offered: the flow is split, not the capacity.
+    const offered = (r: typeof one) => 30 * 12 * r.stationRating!.deliveredShare;
+    expect(one.cargoPerTrip).toBeCloseTo(offered(one) / one.tripsPerYear, 6);
+    expect(two.cargoPerTrip).toBeCloseTo(offered(two) / (2 * two.tripsPerYear), 6);
+    // A second train shortens the interval and lifts the share, so cargo per trip drops by
+    // less than half — but it drops.
+    expect(two.cargoPerTrip).toBeLessThan(one.cargoPerTrip);
+    // The extra train loses no haul but pays for it in payback.
+    expect(two.hauledPerYear).toBeGreaterThanOrEqual(one.hauledPerYear);
+    expect(two.paybackYears!).toBeGreaterThan(one.paybackYears!);
   });
 });
 

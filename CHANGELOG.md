@@ -18,6 +18,81 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- **Search goal on the optimizer tab.** Next to "Profit" (the previous behaviour) there is now
+  "Haul", which ranks rows by the cargo actually hauled per year. The haul goal searches every
+  consist length and every fleet size from one train up to a "Trains at most" limit (4 by
+  default), because a shorter interval lifts the station rating and a shorter consist runs more
+  often. A fleet that cannot move what the station hands over stays in the output with its
+  reduced haul and a marker. The goal needs a production figure to
+  have a delivered share at all, so it is unavailable — and ignored by the engine — while
+  production is 0.
+- Absolute haul per year is shown as its own column under the haul goal; the share column stays.
+
+### Changed
+
+- **BREAKING** **Money follows what the station actually receives.** When production is stated,
+  the flow is cut by the share the station forwards ((rating + 1) / 256, `station_cmd.cpp`)
+  before the fleet divides it, instead of assuming the full output reaches the train. The same
+  input now yields smaller money — the part the industry really hands over. The share cuts the
+  flow, not the income on top of the load: a train that finds a full pile waiting earns on all
+  of it. Consist length and physics are still computed on a full load (see
+  `docs/adr/0001-delivered-share-cuts-money-only.md`).
+- **BREAKING** **Money in the optimizer table covers the whole fleet.** Buy cost, running cost
+  and yearly profit are stated for as many trains as the row shows, so rows with different fleet
+  sizes compare directly. What the station offers is shared by the fleet as well: a train beyond
+  what the industry can fill adds cost without adding cargo, so payback gets worse with fleet
+  size and an equal haul is won by the smaller fleet. Both goals now sweep the fleet from one
+  train up, so a small fleet that already clears everything the station forwards is found even
+  when the full output would need more trains.
+- **BREAKING** **The profit goal now sweeps the fleet to the limit too.** It used to stop at the
+  smallest fleet that cleared what the station offers, on the assumption that further trains only
+  add cost. With the delivered share in the model that assumption is wrong: more trains shorten
+  the interval, which lifts the station rating, which lifts what the industry hands over. On coal
+  in 1938 over 300 tiles at 500/month the tab showed a fleet of 4 earning 346 312 while a fleet of
+  11 earns 474 769 — 37 % more. Both goals now evaluate every allowed fleet size and let the
+  comparator decide, so "Trains at most" applies under both goals and is always visible.
+- The route income tab is unchanged and keeps costing a single train on the full output, so its
+  figures no longer match the optimizer once production is stated. The tab hint says so.
+- The optimizer's capacity column is now **Cargo/trip**: it always showed what the train actually
+  loads (the output piled up since its last visit), not the consist capacity — which is the figure
+  after the slash. With the output now shared by the fleet, a partly loaded train is the normal
+  case, so the old heading was actively misleading.
+- The optimizer got roughly eight times faster without giving up any accuracy: consist physics is
+  computed once per engine/wagon pair instead of once per candidate and cached between edits that
+  cannot change it, station ratings are memoised, wagons that agree on every number the
+  calculation reads are swept as one (142 wagons take coal in 2050, 14 of them differ), and the
+  numeric fields feed the search through a 250 ms debounce. The table now draws the first 15 rows
+  with a "show more" button — drawing fifty rows of sprites cost more than the search itself.
+- The optimizer's three "transported" figures are named apart in the interface: **Delivered
+  share** is the part of the output reaching the station, **Haul/yr** the cargo actually moved
+  over a year, and **Haul** the search goal; the train count column is now **Fleet**, as the
+  glossary calls it.
+
+### Fixed
+
+- The row comparison used "differs by more than 1" tolerances and was therefore not transitive:
+  which of two near-equal consists won depended on the order they happened to be swept in, and a
+  wagon costing more could survive at equal profit. Comparison keys are now rounded to whole
+  units.
+- The wagon a row showed depended on the order of the input data. Wagons identical to the
+  calculation are swept as one representative, and that representative was whichever one the
+  data happened to list first — so the same search over a differently ordered vehicle list
+  swapped the wagon in every row for an identical twin. The representative is now picked by the
+  same tie-break that decides a row, and rows tied on every number are ordered by identifiers
+  rather than by sweep order.
+- The optimizer's "→" button handed the route income tab the distance being typed rather than
+  the one the row was computed for, so a row transferred within the 250 ms debounce window
+  arrived with numbers no row had been priced at.
+- Consists shorter than the station were skipped under the profit goal by comparing a consist
+  against the industry's full output, while the rest of the model had moved to what the station
+  actually offers. The check now asks whether a single train can fill the consist from what is
+  offered — which is what decides whether more wagons still pay for themselves.
+- Whether the haul goal was available followed the production field as it was typed rather than
+  the production the shown rows were computed for, so within the debounce window the haul column
+  could be labelled from a search made at production 0.
+
 ## [0.5.0] - 2026-08-20
 
 ### Fixed

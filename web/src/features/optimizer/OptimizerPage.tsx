@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
   Button,
   Checkbox,
   Group,
   NumberInput,
+  SegmentedControl,
   Select,
   Switch,
   Table,
@@ -13,6 +14,7 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useSettingsStore } from '../../state/settingsStore';
@@ -23,6 +25,7 @@ import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { num, speed, speedUnitLabel, speedValue } from '../../components/format';
 import { Money } from '../../components/Money';
 import { optimizeConsists } from '../../engine/optimize';
+import { createOptimizerCache } from '../../engine/optimizeCache';
 import { cargoPaymentRate } from '../../engine/income';
 import type { StationRating } from '../../engine/rating';
 import { introRandomisationActive, type IntroAvailability } from '../../engine/availability';
@@ -31,6 +34,9 @@ import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
 import { CargoIcon } from '../../components/CargoIcon';
 import { TrainImage } from '../../components/TrainImage';
+
+/** Rows drawn before the "show more" button; the search itself still ranks all of them. */
+const PAGE_SIZE = 15;
 
 /** Tooltip listing what the estimated station rating is made of. */
 function ratingBreakdown(r: StationRating): string {
@@ -77,9 +83,10 @@ function introTitle(intro: IntroAvailability): string {
 
 export default function OptimizerPage() {
   const {
-    year, cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, allowElectric,
-    excludedIds, setYear, setCargoLabel, setDistanceTiles: setDistance, setStationTiles,
-    setProductionPerMonth, setAllowElectric, toggleExcluded, clearExcluded,
+    year, cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, goal, maxTrains,
+    allowElectric, excludedIds, setYear, setCargoLabel, setDistanceTiles: setDistance,
+    setStationTiles, setProductionPerMonth, setGoal, setMaxTrains, setAllowElectric,
+    toggleExcluded, clearExcluded,
   } = useOptimizerStore();
   const [engineFilter, setEngineFilter] = useState('');
   const [subsidised, setSubsidised] = useState(false);
@@ -101,17 +108,40 @@ export default function OptimizerPage() {
   );
   const economyId = cargo ? economyIdForCargo(game, cargo) : null;
 
+  // The search runs synchronously and takes about a second on the worst input (late year,
+  // long station, transported goal). Typing a distance would otherwise re-run it per
+  // keystroke, so the numeric fields feed the search only after they settle.
+  const searchFields = useMemo(
+    () => ({ year, distance, stationTiles, productionPerMonth, maxTrains }),
+    [year, distance, stationTiles, productionPerMonth, maxTrains],
+  );
+  const [searchInput] = useDebouncedValue(searchFields, 250);
+
+  // Ranking by transported cargo needs a flow to have a delivered share at all; the engine
+  // falls back to profit on its own, the UI only stops the user from picking a dead option.
+  // It reads the settled production, not the field: inside the debounce window the rows on
+  // screen were computed for the old value, and a goal ahead of them would label columns
+  // with numbers that do not belong to the search that produced them.
+  const goalAvailable = searchInput.productionPerMonth > 0;
+  const activeGoal = goalAvailable ? goal : 'profit';
+
+  // Consist physics survives between searches, so editing production or the fleet limit
+  // only redoes the money. The cache belongs to the tab: the search stays a pure function.
+  const searchCache = useRef(createOptimizerCache());
+
   const results = useMemo(() => {
     if (!cargo || !economyId) return [];
     return optimizeConsists(
       trains,
       {
-        year,
-        distanceTiles: distance,
+        year: searchInput.year,
+        distanceTiles: searchInput.distance,
         cargo,
         economyId,
-        maxLengthTiles: stationTiles,
-        productionPerMonth,
+        maxLengthTiles: searchInput.stationTiles,
+        productionPerMonth: searchInput.productionPerMonth,
+        goal: activeGoal,
+        maxTrains: searchInput.maxTrains,
         allowElectric,
         subsidised,
         excludedIds,
@@ -120,19 +150,31 @@ export default function OptimizerPage() {
       },
       activeTrainsMeta(game),
       50,
+      searchCache.current,
     );
-  }, [trains, cargo, economyId, year, distance, stationTiles, productionPerMonth, allowElectric, subsidised, excludedIds, game, calc]);
+  }, [trains, cargo, economyId, searchInput, activeGoal, allowElectric, subsidised, excludedIds, game, calc]);
 
   // машины, которые в выбранном году могут ещё не появиться, — их можно выключить
   const collator = useMemo(() => new Intl.Collator(intlLocale(locale)), [locale]);
   const doubtful = useMemo(
-    () => doubtfulGroups(results, trains, excludedIds, year, game, calc.capacityIndex, collator),
-    [results, trains, excludedIds, year, game, calc.capacityIndex, collator],
+    () => doubtfulGroups(results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, collator),
+    [results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, collator],
   );
 
-  const shown = engineFilter
-    ? results.filter((r) => r.engine.name.toLowerCase().includes(engineFilter.toLowerCase()))
-    : results;
+  const matching = useMemo(
+    () =>
+      engineFilter
+        ? results.filter((r) => r.engine.name.toLowerCase().includes(engineFilter.toLowerCase()))
+        : results,
+    [results, engineFilter],
+  );
+  // Drawing fifty rows of sprites costs more than the search itself, and the answer is in
+  // the first few anyway — the rest is one click away. The page resets on a new set of rows,
+  // not on a new row count: a different search of the same size is still a different answer.
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => setVisibleCount(PAGE_SIZE), [matching]);
+  const shown = matching.slice(0, visibleCount);
+  const hiddenCount = matching.length - shown.length;
 
   function applyToConsist(index: number) {
     const r = shown[index];
@@ -144,7 +186,9 @@ export default function OptimizerPage() {
     consistStore.setCargoLabel(cargoLabel);
     routeStore.setCargoLabel(cargoLabel);
     if (economyId) routeStore.setEconomyId(economyId);
-    routeStore.setDistanceTiles(distance);
+    // The row was computed for the settled distance, so that is what travels with it:
+    // inside the debounce window the field already holds a distance no row was priced at.
+    routeStore.setDistanceTiles(searchInput.distance);
     navigate('/income');
   }
 
@@ -188,6 +232,27 @@ export default function OptimizerPage() {
             step={10}
             value={productionPerMonth}
             onChange={(v) => setProductionPerMonth(Math.max(0, Number(v) || 0))}
+          />
+        </Tooltip>
+        <div className="goal-field">
+          <Text component="label" size="sm">{t('opt.goal')}</Text>
+          <SegmentedControl
+            value={activeGoal}
+            onChange={(v) => setGoal(v as typeof goal)}
+            data={[
+              { value: 'profit', label: t('opt.goalProfit') },
+              { value: 'transported', label: t('opt.goalTransported'), disabled: !goalAvailable },
+            ]}
+          />
+        </div>
+        {!goalAvailable && <Text className="hint goal-hint">{t('opt.goalNeedsProduction')}</Text>}
+        <Tooltip label={t('opt.maxTrainsHint')} multiline w={320}>
+          <NumberInput
+            label={t('opt.maxTrains')}
+            min={1}
+            max={20}
+            value={maxTrains}
+            onChange={(v) => setMaxTrains(Math.max(1, Number(v) || 1))}
           />
         </Tooltip>
         <Switch
@@ -257,15 +322,16 @@ export default function OptimizerPage() {
               <Table.Th>#</Table.Th>
               <Table.Th colSpan={2}>{t('opt.engine')}</Table.Th>
               <Table.Th colSpan={2}>{t('opt.wagons')}</Table.Th>
-              <Table.Th>{t('table.capacity')}</Table.Th>
+              <Table.Th title={t('opt.cargoTripHint')}>{t('opt.cargoTrip')}</Table.Th>
               <Table.Th>{t('opt.speedLoadedEmpty')}</Table.Th>
               <Table.Th>{t('opt.gradeSpeed')}</Table.Th>
               <Table.Th>{t('opt.dwell')}</Table.Th>
               <Table.Th>{t('combined.roundTrip')}</Table.Th>
               <Table.Th>{t('opt.trips')}</Table.Th>
-              <Table.Th>{t('opt.trains')}</Table.Th>
+              <Table.Th title={t('opt.fleetHint')}>{t('opt.fleet')}</Table.Th>
               <Table.Th title={t('opt.intervalHint')}>{t('opt.interval')}</Table.Th>
               <Table.Th title={t('opt.ratingHint')}>{t('opt.rating')}</Table.Th>
+              {activeGoal === 'transported' && <Table.Th>{t('opt.hauled')}</Table.Th>}
               <Table.Th className="cell-money">{t('opt.incomeTrip')}</Table.Th>
               <Table.Th className="cell-money">{t('table.running')}</Table.Th>
               <Table.Th className="cell-money">{t('table.cost')}</Table.Th>
@@ -300,11 +366,19 @@ export default function OptimizerPage() {
                 <Table.Td>{num(r.loadingDays, 1)} {t('combined.days')}</Table.Td>
                 <Table.Td>{num(r.roundTripDays, 1)} {t('combined.days')}</Table.Td>
                 <Table.Td>{num(r.tripsPerYear, 1)}</Table.Td>
-                <Table.Td>{r.trainsNeeded}</Table.Td>
+                <Table.Td>
+                  {r.fleetSize}
+                  {r.fleetLimited && (
+                    <sup className="intro-warn" title={t('opt.fleetLimited')}>!</sup>
+                  )}
+                </Table.Td>
                 <Table.Td>{num(r.pickupIntervalDays, 1)} {t('combined.days')}</Table.Td>
                 <Table.Td title={r.stationRating ? ratingBreakdown(r.stationRating) : undefined}>
                   {r.stationRating ? `${Math.round(r.stationRating.deliveredShare * 100)}%` : '—'}
                 </Table.Td>
+                {activeGoal === 'transported' && (
+                  <Table.Td>{num(r.hauledPerYear)} {cargoUnits(cargo?.units)}</Table.Td>
+                )}
                 <Table.Td className="cell-money"><Money value={r.incomePerTrip} /></Table.Td>
                 <Table.Td className="cell-money"><Money value={r.runningCostPerYear} /></Table.Td>
                 <Table.Td className="cell-money"><Money value={r.buyCostTotal} /></Table.Td>
@@ -325,6 +399,19 @@ export default function OptimizerPage() {
           </Table.Tbody>
         </Table>
       </div>
+      {hiddenCount > 0 && (
+        <Group className="table-more" gap="xs" align="center">
+          <Button variant="subtle" onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}>
+            {t('opt.showMore', { count: num(Math.min(PAGE_SIZE, hiddenCount)) })}
+          </Button>
+          <Button variant="subtle" onClick={() => setVisibleCount(matching.length)}>
+            {t('opt.showAll', { count: num(matching.length) })}
+          </Button>
+          <Text className="hint">
+            {t('opt.shownOf', { shown: num(shown.length), total: num(matching.length) })}
+          </Text>
+        </Group>
+      )}
     </div>
   );
 }
