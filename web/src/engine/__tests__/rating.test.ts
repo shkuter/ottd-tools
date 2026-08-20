@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   RATING_PERIOD_DAYS,
+  effectiveRatingPeriodDays,
   estimateStationRating,
   speedRating,
   vehicleAgeRating,
@@ -11,6 +12,11 @@ import {
 describe('station rating parts', () => {
   it('период счётчика — 185 тиков = 2.5 дня', () => {
     expect(RATING_PERIOD_DAYS).toBe(2.5);
+  });
+
+  it('замедление экономики JGRPP растягивает период', () => {
+    expect(effectiveRatingPeriodDays(1)).toBe(2.5); // ваниль: счётчик тикает каждый тик
+    expect(effectiveRatingPeriodDays(5)).toBe(12.5);
   });
 
   it('скорость: (last_speed - 85) >> 2, ниже 85 — ноль', () => {
@@ -52,6 +58,7 @@ describe('оценка рейтинга станции', () => {
     maxSpeedInternal: 96, // 60 mph
     cargoPerDay: 2304 / (365 * 5), // 192 ящика в экономический месяц, day length 5
     jgrpp: true,
+    dayLengthFactor: 1,
   };
 
   it('редкие заходы дают низкий вывоз, частые — высокий', () => {
@@ -77,6 +84,41 @@ describe('оценка рейтинга станции', () => {
     expect(r.deliveredShare).toBeCloseTo((r.rating + 1) / 256, 10);
     expect(r.rating).toBeGreaterThanOrEqual(0);
     expect(r.rating).toBeLessThanOrEqual(255);
+  });
+
+  it('множитель длины дня укладывает интервал в меньшее число периодов', () => {
+    // Партия из proposal.md: ферросплавы, круг 179,5 дня, 2 поезда, множитель 5.
+    const party = { ...base, cargoPerDay: (510 * 12) / (365 * 5), pickupIntervalDays: 179.5 / 2 };
+    const slow = estimateStationRating({ ...party, dayLengthFactor: 5 });
+    const plain = estimateStationRating(party);
+
+    // 89,75 дня — это 7 периодов по 12,5 дня против 36 периодов по 2,5:
+    // среднее по ступеням 3/6/12/21 пиннит и то, и другое число
+    expect(slow.parts.waitTime).toBeCloseTo(725 / 7, 10);
+    expect(plain.parts.waitTime).toBeCloseTo(1200 / 36, 10);
+    expect(slow.deliveredShare).toBeCloseTo(0.696, 3);
+    expect(plain.deliveredShare).toBeCloseTo(0.427, 3);
+  });
+
+  it('доля сходится с эталоном партии, а без множителя — нет', () => {
+    // В игре на той же партии 72 % перевезено при рейтинге 73 %. Точный состав неизвестен
+    // (по разнице рейтингов он был быстрее базы в 60 mph), поэтому эталон проверяется с
+    // допуском: важно, что растянутый период попадает в окрестность игрового числа, а
+    // период в 2,5 дня промахивается втрое дальше — ради этого изменение и делалось.
+    const party = { ...base, cargoPerDay: (510 * 12) / (365 * 5), pickupIntervalDays: 179.5 / 2 };
+    const GAME = 0.72;
+    const slow = estimateStationRating({ ...party, dayLengthFactor: 5 });
+    const plain = estimateStationRating(party);
+
+    expect(Math.abs(slow.deliveredShare - GAME)).toBeLessThan(0.05);
+    expect(Math.abs(plain.deliveredShare - GAME)).toBeGreaterThan(0.25);
+  });
+
+  it('при множителе 1 числа те же, что и до его появления', () => {
+    // ванильная ветка (jgrpp: false, множитель 1) не должна поехать: значение снято
+    // с версии формулы до правки
+    const r = estimateStationRating({ ...base, pickupIntervalDays: 40, dayLengthFactor: 1 });
+    expect(r.rating).toBeCloseTo(142.1875, 4);
   });
 
   it('статуя и свежий поезд поднимают рейтинг', () => {

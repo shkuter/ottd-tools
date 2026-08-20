@@ -176,6 +176,7 @@ export function optimizeConsists(
             maxSpeedInternal: loadedPhysics.maxSpeedInternal,
             cargoPerDay: flowPerYear / (daysPerEconomyYear(game) * effectiveDayLength(game)),
             jgrpp: game.jgrpp,
+            dayLengthFactor: effectiveDayLength(game),
           })
         : null;
 

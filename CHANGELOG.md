@@ -18,6 +18,19 @@ of what users see):
 
 ## [Unreleased]
 
+### Fixed
+
+- **BREAKING** **Station rating period follows the JGRPP day length.** The "transported" column
+  in the optimizer scales the rating counter period (185 ticks, 2.5 days) by the day length
+  factor. The game only advances that counter from `CallLandscapeTick()`, which JGRPP runs in
+  the "full" tick of a day, so with a slowed-down economy a period lasts 2.5 days times the
+  factor. The calculator counted 2.5 days regardless and reported far too low a share: on a
+  save with factor 5 it promised 45% where the game delivered 72%. At a given day length factor
+  the share now comes out higher than this calculator used to report; comparing different
+  factors against each other is not monotonic, because the factor also moves the flow per game
+  day, the trips per year and the consist the optimizer picks. Vanilla and JGRPP with factor 1
+  are unaffected.
+
 ## [0.4.0] - 2026-08-19
 
 ### Added

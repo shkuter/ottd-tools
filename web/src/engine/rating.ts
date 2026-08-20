@@ -14,6 +14,17 @@
 export const RATING_PERIOD_DAYS = 185 / 74;
 
 /**
+ * Length of one rating period in game days. `OnTick_Station` only runs from
+ * `CallLandscapeTick()`, which JGRPP calls in the "full" tick of a day — the one where
+ * `_tick_skip_counter` reached `DayLengthFactor()` (openttd.cpp `StateGameLoop`). So the
+ * 185-tick counter advances once per day length factor ticks and the period stretches with
+ * it; vanilla ticks the landscape every tick, hence a factor of 1.
+ */
+export function effectiveRatingPeriodDays(dayLengthFactor: number): number {
+  return RATING_PERIOD_DAYS * dayLengthFactor;
+}
+
+/**
  * Bonus for the speed of the last train. The game stores `cached_max_speed` (the
  * consist's top speed in internal units, capped at 255), not the speed it actually ran.
  */
@@ -22,7 +33,7 @@ export function speedRating(maxSpeedInternal: number): number {
   return b >= 0 ? b >> 2 : 0;
 }
 
-/** Bonus for time since the last pickup, counted in rating periods (2.5 days). */
+/** Bonus for time since the last pickup, counted in rating periods (`ratingPeriodDays`). */
 export function waitTimeRating(periods: number): number {
   const t = Math.min(255, Math.floor(periods));
   let rating = 0;
@@ -62,6 +73,12 @@ export interface StationRatingParams {
   /** Cargo produced per day, in the same days as the interval. */
   cargoPerDay: number;
   jgrpp: boolean;
+  /**
+   * JGRPP day length factor (`effectiveDayLength`), stretching the rating period.
+   * Required rather than defaulted: vanilla and JGRPP-off already get 1 from that helper,
+   * and a forgotten argument would silently bring the pre-fix numbers back.
+   */
+  dayLengthFactor: number;
   /** Age of the train in years (0 = just bought). */
   vehicleAgeYears?: number;
   /** Company statue in the station's town. */
@@ -98,10 +115,8 @@ export function estimateStationRating(p: StationRatingParams): StationRating {
   const speed = speedRating(p.maxSpeedInternal);
   const age = vehicleAgeRating(p.vehicleAgeYears ?? 0, p.jgrpp);
   const statue = p.statue ? 26 : 0;
-  const periods = Math.max(
-    1,
-    Math.min(255, Math.round(p.pickupIntervalDays / RATING_PERIOD_DAYS)),
-  );
+  const periodDays = effectiveRatingPeriodDays(p.dayLengthFactor);
+  const periods = Math.max(1, Math.min(255, Math.round(p.pickupIntervalDays / periodDays)));
 
   let waitTime = 0;
   let waitingCargo = 0;
@@ -113,7 +128,7 @@ export function estimateStationRating(p: StationRatingParams): StationRating {
     let cargoSum = 0;
     for (let t = 1; t <= periods; t++) {
       waitSum += waitTimeRating(t);
-      const waiting = (p.cargoPerDay * share * t * RATING_PERIOD_DAYS) / 2;
+      const waiting = (p.cargoPerDay * share * t * periodDays) / 2;
       cargoSum += waitingCargoRating(waiting);
     }
     waitTime = waitSum / periods;

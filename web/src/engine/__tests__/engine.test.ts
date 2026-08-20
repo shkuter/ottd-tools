@@ -19,6 +19,7 @@ import {
   transitPeriodsFromDays,
 } from '../units';
 import { optimizeConsists } from '../optimize';
+import { estimateStationRating } from '../rating';
 import { tripEconomics } from '../trip';
 import {
   activeTrains,
@@ -32,6 +33,7 @@ import {
 import {
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
+  daysPerEconomyYear,
   difficultyPriceFactor,
 } from '../settings';
 
@@ -435,6 +437,42 @@ describe('optimizer', () => {
     )[0];
     expect(heavy.cargoPerTrip).toBe(heavy.capacity);
     expect(heavy.trainsNeeded).toBeGreaterThan(1);
+  });
+
+  // рейтинг станции считается по периоду счётчика, растянутому замедлением экономики
+  it('оптимизатор отдаёт рейтинг станции с множителем длины дня', () => {
+    const dayLengthFactor = 5;
+    const productionPerMonth = 510;
+    const game = { ...DEFAULT_GAME_SETTINGS, jgrpp: true, dayLengthFactor };
+    const top = optimizeConsists(
+      trains,
+      {
+        year: 1938,
+        distanceTiles: 82,
+        cargo: cargoByLabel.get('COAL')!,
+        economyId: 'STEELTOWN',
+        maxLengthTiles: 6,
+        allowElectric: false,
+        productionPerMonth,
+        game,
+        calc: DEFAULT_CALC_SETTINGS,
+      },
+      trainsMeta,
+      1,
+    )[0];
+
+    const rated = {
+      pickupIntervalDays: top.pickupIntervalDays,
+      maxSpeedInternal: top.loadedSpeedInternal,
+      // тот же поток за игровой день, что считает оптимизатор
+      cargoPerDay: (productionPerMonth * 12) / (daysPerEconomyYear(game) * dayLengthFactor),
+      jgrpp: true,
+    };
+    expect(top.stationRating).toEqual(estimateStationRating({ ...rated, dayLengthFactor }));
+    // без множителя тот же интервал разбился бы на впятеро больше периодов
+    expect(top.stationRating!.rating).toBeGreaterThan(
+      estimateStationRating({ ...rated, dayLengthFactor: 1 }).rating,
+    );
   });
 
   // машины, которых в игре может ещё не быть, игрок выбрасывает из подбора чекбоксом

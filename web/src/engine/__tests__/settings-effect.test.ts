@@ -139,7 +139,14 @@ const CASES: {
   },
   { name: 'timekeeping wallclock', game: { timekeeping: 'wallclock' } },
   { name: 'subsidyMultiplier', game: { subsidyMultiplier: 3 } },
-  { name: 'dayLengthFactor (JGRPP)', game: { jgrpp: true, dayLengthFactor: 4 } },
+  {
+    // эталон уже с JGRPP: иначе кейс «проходил» бы из-за самого флага, а не из-за
+    // множителя. Что множитель доходит до рейтинга станции, сторожит engine.test.ts —
+    // здесь доля вывоза в снимок не входит, иначе через неё «прошёл» бы чужой кейс
+    name: 'dayLengthFactor (JGRPP)',
+    game: { jgrpp: true, dayLengthFactor: 4 },
+    base: { jgrpp: true },
+  },
   { name: 'costsWhenStopped (JGRPP)', game: { jgrpp: true, costsWhenStopped: 8 } },
   {
     // без рандомизации машина доступна с даты из GRF, с ней — на срок до 1,5 года позже
