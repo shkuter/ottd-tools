@@ -40,7 +40,10 @@ the offered flow falling to one train of the fleet, whichever is smaller. Physic
 computed on a full load: the train waits to be filled rather than running light.
 
 **Pickup interval** (_интервал_) — days between visits to the station, `roundTripDays / fleet`.
-Shorter interval → higher station rating → larger delivered share.
+Shorter interval → higher station rating → larger delivered share. The same figure is the gap
+between arrivals at the far end, so it feeds two unrelated mechanics at once: the station rating
+at the source and the **supply window** at the destination. One number, deliberately not two —
+splitting it would invite the two sides to drift apart.
 
 **Trains needed** (`trainsNeeded`) — the smallest fleet that clears the **full** output by
 capacity. It only bounds the search: the fleet a row really needs is usually smaller, because
@@ -79,3 +82,36 @@ weight, length, power, tractive effort, speed, costs, loading speed). Vehicles s
 identical rows, so the optimizer searches one per profile. Deliberately blind to the name: it
 groups harder than a **purchase entry** — that one is for lists a human reads, this one is for
 the search.
+
+## Industry supply
+
+**Supply window** (_окно поставок_) — the stretch FIRS looks back over when it decides whether
+an input counts as delivered: 27 production cycles of 256 ticks each, 6912 ticks. A constant of
+the newgrf — not an OpenTTD setting, not a parameter, not something the player can change. The
+industry window words it as "every three minutes", which is the same span read on OpenTTD 14+
+wallclock time. It is measured in **ticks**, so a longer JGRPP day makes it span fewer game
+days, never more.
+
+**Supplied** (_подан_) — an input whose last delivery falls inside the **supply window**. The
+industry stores a per-cargo countdown, reset on every delivery and stepped down each production
+cycle; "supplied" is that countdown still being above zero. Nothing here depends on how *much*
+arrived — one unit inside the window counts the same as a full train.
+
+**Conversion** (_конверсия_) — the share of its output an industry gets out of what it is fed:
+`min(8, Σ input ratio over supplied inputs) / 8`. Every FIRS acceptance rule falls out of this
+one sum — an industry the game describes as "any three of five" is five inputs of ratio 3 under
+a ceiling of 8. Output is the delivered amount **times** conversion, so an input that missed
+the window also shrinks the yield of the inputs that arrived on time.
+
+**Supply ratio** (_отношение к окну_) — the **pickup interval** measured against the **supply
+window**. At most 1 the receiving industry stays supplied; above 1 it drops out of the window
+between arrivals. This is the fleet-side view of **supplied**.
+
+**Trains for window** (`trainsForWindow`) — the smallest fleet whose **supply ratio** reaches 1,
+i.e. that keeps the receiving industry supplied. Not to be confused with **trains needed**,
+which is about clearing the source industry's output rather than feeding the destination.
+
+**Supply pool** (_накопительный пул_) — the acceptance rule primaries and ports use instead of
+**conversion**: units delivered across the **supply window** counted against two thresholds, an
+improved level and a full one. Ports pool every cargo they accept into one count; primaries
+count their one supply cargo.
