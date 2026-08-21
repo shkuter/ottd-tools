@@ -96,11 +96,16 @@
   }
 
   /*
-   * A left section defaults to the field's own height (34px), which dwarfs the
-   * 10px cargo icon that is the only thing we put there.
+   * Sections default to the field's height less 2px — 34px — which dwarfs both
+   * the 10px cargo icon on the left and the 18px chevron on the right, and eats
+   * room the value needs.
    */
   :root[data-skin] .mantine-Input-wrapper {
     --input-left-section-width: 20px;
+  }
+
+  :root[data-skin] .mantine-Select-wrapper {
+    --input-right-section-width: 24px;
   }
 
   :root[data-skin] .mantine-InputWrapper-label {

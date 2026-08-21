@@ -225,18 +225,6 @@ td:has(> .train-sprite) {
   flex-shrink: 0;
 }
 
-/* cargo icon next to its select */
-.field-with-icon {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.field-with-icon select {
-  flex: 1;
-  min-width: 0;
-}
-
 
 .dim { color: var(--muted); font-size: 12px; }
 
@@ -310,10 +298,6 @@ td:has(> .train-sprite) {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.consist-list input {
-  width: 52px;
 }
 
 .consist-name {
@@ -522,7 +506,7 @@ td:has(> .train-sprite) {
 
 .setting-row {
   display: grid;
-  grid-template-columns: 1fr 180px;
+  grid-template-columns: 1fr 210px;
   gap: 12px;
   align-items: start;
   padding: 8px 0;

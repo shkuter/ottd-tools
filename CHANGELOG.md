@@ -30,8 +30,14 @@ of what users see):
   `index.css` shares the `app` cascade layer with the skin, so it overrode Mantine's own padding
   — including the space the library reserves for a field's sections. Every field with a section
   drew its text underneath: the cargo icon on the left, the dropdown chevron and the number
-  stepper on the right. The skin now restates the padding from Mantine's variables, and a left
-  section is sized for the 10px cargo icon instead of the field's full height.
+  stepper on the right. The skin now restates the padding from Mantine's variables, and each
+  section is sized for what it holds — 20px for the 10px cargo icon, 24px for the dropdown's
+  18px chevron — instead of the field's full height. Fields that were too narrow for the
+  restored spacing grew to match: the wagon counter in the consist builder and the control
+  column on the settings tab.
+- **The catalogue's cargo filter draws its icon inside the field.** It was rendered as a
+  sibling next to the dropdown, unlike the three other cargo pickers, which pass it as the
+  field's left section.
 
 ## [0.6.0] - 2026-08-21
 

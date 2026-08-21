@@ -162,16 +162,14 @@ export default function ConsistPage() {
             value={year}
             onChange={(v) => setYear(Number(v) || 1860)}
           />
-          <Group gap={4} wrap="nowrap" className="field-with-icon">
-            <CargoIcon icon={cargoList.find((c) => c.label === cargoFilter)?.icon ?? ''} />
-            <Select
-              searchable
-              value={cargoFilter || null}
-              onChange={(v) => setCargoFilter(v ?? '')}
-              placeholder={`${t('consist.filter.cargo')}: ${t('consist.filter.any')}`}
-              data={cargoOptions}
-            />
-          </Group>
+          <Select
+            searchable
+            leftSection={<CargoIcon icon={cargoList.find((c) => c.label === cargoFilter)?.icon ?? ''} />}
+            value={cargoFilter || null}
+            onChange={(v) => setCargoFilter(v ?? '')}
+            placeholder={`${t('consist.filter.cargo')}: ${t('consist.filter.any')}`}
+            data={cargoOptions}
+          />
           <TextInput
             type="search"
             placeholder={t('consist.filter.search')}
@@ -277,7 +275,7 @@ export default function ConsistPage() {
                   min={0}
                   value={count}
                   onChange={(v) => store.setCount(train.id, Number(v) || 0)}
-                  w={70}
+                  w={84}
                 />
                 <ActionIcon aria-label={t('consist.remove')} onClick={() => store.remove(train.id)}>
                   ×
