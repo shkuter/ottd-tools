@@ -84,6 +84,7 @@
   "footer.translation": "перевод",
   "footer.generated": "сгенерировано",
   "footer.graphics": "Графика",
+  "footer.source": "Исходники",
   "nav.optimizer": "Лучший поезд",
   "opt.title": "Лучший поезд для задачи",
   "opt.distance": "Расстояние (клеток)",

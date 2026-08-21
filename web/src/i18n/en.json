@@ -84,6 +84,7 @@
   "footer.translation": "translation",
   "footer.generated": "generated",
   "footer.graphics": "Graphics",
+  "footer.source": "Source",
   "nav.optimizer": "Best train",
   "opt.title": "Best train for the job",
   "opt.distance": "Distance (tiles)",
