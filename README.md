@@ -40,6 +40,7 @@ make dev     # vite dev server
 make test    # pipeline regression tests + vitest formula tests
 make build   # production build
 make verify  # data + test + build
+make deploy  # republish the site from the current branch (a v* tag deploys on its own)
 ```
 
 ## Data update

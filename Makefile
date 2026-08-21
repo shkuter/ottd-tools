@@ -9,7 +9,7 @@ FIRS_RU_REF ?= 61a0f0973cce43c41e156f7809782e7567279330
 VENV = pipeline/.venv
 PY = $(VENV)/bin/python
 
-.PHONY: fetch fetch-firs-ru fetch-opengfx2 venv data check-i18n data-images data-opengfx2 dev build test verify release release-auto
+.PHONY: fetch fetch-firs-ru fetch-opengfx2 venv data check-i18n data-images data-opengfx2 dev build test verify release release-auto deploy
 
 # Shallow-клоны исходников в vendor/ (iron-horse и firs пинуются релизными тегами)
 fetch:
@@ -83,3 +83,11 @@ release:
 # остальное — patch (пока версия 0.x, major понижается до minor)
 release-auto:
 	@scripts/release.sh "$$(scripts/next-version.sh)"
+
+# Ручная выкладка сайта без релиза: запускает pages.yml на текущей ветке и ждёт результата.
+# Тег vX.Y.Z публикует сайт сам, эта цель — чтобы перевыложить master между релизами.
+deploy:
+	gh workflow run pages.yml --ref "$$(git rev-parse --abbrev-ref HEAD)"
+	@echo "deploy: запуск создаётся..."
+	@sleep 8
+	@gh run watch "$$(gh run list --workflow=pages.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status

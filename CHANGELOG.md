@@ -21,7 +21,7 @@ of what users see):
 ### Added
 
 - Published to GitHub Pages at https://shkuter.github.io/ottd-tools/. A `v*` tag (or a manual
-  run of the workflow) builds `web/` and deploys it; the repository is now public under
+  run of `make deploy`) builds `web/` and deploys it; the repository is now public under
   GPL-2.0-only, with data and artwork sources credited in the README.
 
 ### Fixed
