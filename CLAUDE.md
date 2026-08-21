@@ -118,7 +118,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `.github/workflows/pages.yml`: сборка `web/` (`npm ci` → `oxlint` → `vitest` → `build`) и
 публикация на https://shkuter.github.io/ottd-tools/. Тот же воркфлоу запускается вручную —
 `make deploy` (обёртка над `gh workflow run pages.yml` для текущей ветки), когда сайт надо
-перевыложить без релиза. Python в CI не нужен — JSON и
+перевыложить без релиза. Environment `github-pages` пускает деплой только с того, что
+перечислено в его deployment branch policy: кроме `master` там заведено правило `v*` типа
+Tag — без него запуск с тега собирается, но падает на шаге deploy («not allowed to deploy
+to github-pages due to environment protection rules»). Python в CI не нужен — JSON и
 иконки закоммичены. Сайт стоит на подпути, поэтому `base: '/ottd-tools/'` в `vite.config.ts`
 (и на dev-сервере тоже) плюс `basename` у `BrowserRouter`; Pages — статика, поэтому прямые
 ссылки на вкладки держатся на `404.html`, который плагин `spa-404-fallback` кладёт копией
