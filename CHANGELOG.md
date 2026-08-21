@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-21
+
 ### Added
 
 - Published to GitHub Pages at https://shkuter.github.io/ottd-tools/. A `v*` tag (or a manual
