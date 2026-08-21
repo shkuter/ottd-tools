@@ -18,6 +18,12 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- Published to GitHub Pages at https://shkuter.github.io/ottd-tools/. A `v*` tag (or a manual
+  run of the workflow) builds `web/` and deploys it; the repository is now public under
+  GPL-2.0-only, with data and artwork sources credited in the README.
+
 ## [0.6.0] - 2026-08-21
 
 ### Added

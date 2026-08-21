@@ -82,7 +82,7 @@ export default function App() {
         {t('footer.graphics')}:{' '}
         <Anchor href="https://github.com/OpenTTD/OpenGFX2/">OpenGFX2 Classic</Anchor>,{' '}
         <Anchor href="https://github.com/andythenorth/iron-horse">Iron Horse</Anchor>,{' '}
-        <Anchor href="https://github.com/andythenorth/firs">FIRS</Anchor> — GPL-2.0+
+        <Anchor href="https://github.com/andythenorth/firs">FIRS</Anchor> — GPL-2.0
       </Box>
     </div>
   );

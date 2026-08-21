@@ -114,6 +114,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 бампает `package.json` + `package-lock.json` (`npm version`), делает коммит «Релиз X.Y.Z» и
 аннотированный тег `vX.Y.Z`. Руками теги не ставить и версию в `package.json` не править.
 
+Тег `vX.Y.Z`, отправленный на GitHub (`git push --follow-tags`), запускает
+`.github/workflows/pages.yml`: сборка `web/` (`npm ci` → `oxlint` → `vitest` → `build`) и
+публикация на https://shkuter.github.io/ottd-tools/. Тот же воркфлоу запускается вручную
+(`workflow_dispatch`), когда сайт надо перевыложить без релиза. Python в CI не нужен — JSON и
+иконки закоммичены. Сайт стоит на подпути, поэтому `base: '/ottd-tools/'` в `vite.config.ts`
+(и на dev-сервере тоже) плюс `basename` у `BrowserRouter`; Pages — статика, поэтому прямые
+ссылки на вкладки держатся на `404.html`, который плагин `spa-404-fallback` кладёт копией
+`index.html`. Репозиторий публичный под GPL-2.0-only (`LICENSE`), источники данных и графики
+перечислены в README.
+
 Версии данных (`IRON_HORSE_REF`, `FIRS_REF`, `OPENTTD_REF`, `FIRS_RU_REF`, `OPENGFX2_REF`
 в Makefile → `data/meta.json`) —
 отдельная ось: они живут своей нумерацией, а их обновление в приложении — обычный minor.

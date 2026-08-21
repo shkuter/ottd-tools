@@ -1,5 +1,7 @@
 # OTTD Tools
 
+**[shkuter.github.io/ottd-tools](https://shkuter.github.io/ottd-tools/)** — published from `master` on every `vX.Y.Z` tag.
+
 Calculator for OpenTTD with the Iron Horse (Pony roster) and FIRS 5 NewGRF sets:
 
 - **Consist builder** — assemble a train from the full Iron Horse catalogue: power, tractive
@@ -53,3 +55,21 @@ Bump `IRON_HORSE_REF` / `FIRS_REF` in the Makefile, re-checkout the tag in `vend
 - FIRS `price_factor` → NewGRF base payment: `price_factor × 2^21 / 51000` (NML conversion).
 - Cargo payment time penalties are in transit periods of 2.5 game days, not days.
 - Inflation is off by default: Iron Horse refuses to load with inflation enabled.
+
+## License
+
+GPL-2.0-only — see [LICENSE](LICENSE). The calculator redistributes data and artwork derived
+from GPL-2.0 projects, so the same terms cover this repository as a whole.
+
+Derived material and its sources:
+
+- Vehicle stats and buy-menu sprites — [Iron Horse](https://github.com/andythenorth/iron-horse)
+  4.29.0, © andythenorth and contributors.
+- Industry, cargo and economy data — [FIRS](https://github.com/andythenorth/firs) 5.2.0,
+  © andythenorth and contributors.
+- Vanilla vehicle/cargo tables, economy and physics formulas, Russian setting and cargo names —
+  [OpenTTD](https://github.com/OpenTTD/OpenTTD) 15.3, © the OpenTTD team.
+- Vanilla-mode vehicle sprites, cargo icons and the interface palette —
+  [OpenGFX2 Classic](https://github.com/OpenTTD/OpenGFX2) 0.8.1, © the OpenGFX2 authors.
+- Russian FIRS translation — [firs-ru](https://github.com/ChronosXYZ/firs-ru), a fork of
+  FIRS 5.2.0.

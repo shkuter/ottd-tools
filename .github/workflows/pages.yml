@@ -1,0 +1,52 @@
+# Publishes web/dist to GitHub Pages (https://shkuter.github.io/ottd-tools/).
+#
+# Runs on release tags, so the site always matches a version in CHANGELOG.md; the manual
+# trigger is for republishing without cutting a release. Generated JSON and sprites are
+# committed, so the build needs Node only — no Python, no vendor/ clones.
+name: Deploy to Pages
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One published site: let a running deployment finish rather than cancelling it mid-release.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx vitest run
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

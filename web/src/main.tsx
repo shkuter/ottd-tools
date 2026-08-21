@@ -24,7 +24,8 @@ createRoot(document.getElementById('root')!).render(
         colour scheme of its own in localStorage */}
     <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver} forceColorScheme="dark">
       <Notifications />
-      <BrowserRouter>
+      {/* base path of the deployment ('/ottd-tools/' on Pages, '/' anywhere else) */}
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <App />
       </BrowserRouter>
     </MantineProvider>
