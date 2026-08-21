@@ -9,8 +9,9 @@
 ## 2. Правка стилей
 
 - [ ] 2.1 В `web/src/skin-mantine.css` дописать в блок `.mantine-Input-input` падинги ссылками
-      на переменные Mantine (`--input-padding-y`, `--input-padding-inline-start`,
-      `--input-padding-inline-end`), с комментарием на английском о том, что теговое правило
+      на переменные Mantine — `padding-block: var(--input-padding-y, 0)` (фолбэк обязателен,
+      у обычного поля переменная не определена), `padding-inline-start`/`-end` — на
+      одноимённые переменные, с комментарием на английском о том, что теговое правило
       `input, select` из `index.css` иначе перебивает их по слою `app`
 - [ ] 2.2 Там же задать компактный `--input-left-section-width` под иконку груза 10×10
       (ширина иконки плюс поля по бокам), не трогая правую секцию
