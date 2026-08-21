@@ -30,9 +30,10 @@ import { TrainImage } from '../../components/TrainImage';
 import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { consistStats } from '../../engine/consist';
+import { purchaseRepresentatives } from '../../engine/purchase';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 
-/** Rows held in the DOM at a time; the catalogue itself runs to ~1650 vehicles. */
+/** Rows held in the DOM at a time; the catalogue itself runs to ~965 purchase entries. */
 const PAGE_SIZE = 50;
 
 export default function ConsistPage() {
@@ -52,9 +53,20 @@ export default function ConsistPage() {
 
   const locale = useLocale();
   const cargoList = useMemo(() => sortCargos(activeCargos(game), locale), [game, locale]);
+  /**
+   * Набор держит семейства визуальных вариантов (десяток «Mail Van» с одними числами и
+   * разными спрайтами), поэтому каталог показывает пункты списка покупки — то, что игрок
+   * различает в игре. Схлопывается один раз на весь набор, до фильтров: внутри пункта
+   * совпадают и рефит, и `model_life`, так что фильтр по грузу или году не может оставить
+   * одного члена пункта и убрать другого, а представитель не прыгает при вводе в поиск.
+   */
+  const catalogue = useMemo(
+    () => purchaseRepresentatives(activeTrains(game), calc.capacityIndex, game),
+    [game, calc.capacityIndex],
+  );
   const filtered = useMemo(() => {
     const cargo = cargoFilter ? activeCargoByLabel(game).get(cargoFilter) : null;
-    return activeTrains(game).filter((train) => {
+    return catalogue.filter((train) => {
       if (kindFilter !== 'all' && train.kind !== kindFilter) return false;
       if (track !== 'all' && train.base_track_type !== track) return false;
       if (train.intro_year > year) return false;
@@ -66,7 +78,7 @@ export default function ConsistPage() {
       if (cargo && !canCarryIn(game, train, cargo)) return false;
       return true;
     });
-  }, [kindFilter, search, year, track, cargoFilter, game]);
+  }, [catalogue, kindFilter, search, year, track, cargoFilter, game]);
 
   /**
    * DataTable reports which column to sort by and leaves the sorting to us, so

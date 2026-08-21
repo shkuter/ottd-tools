@@ -72,6 +72,16 @@ of what users see):
 
 ### Fixed
 
+- **The consist builder catalogue listed every visual variant as its own row.** Iron Horse keeps
+  a whole family of models behind one entry of the game's purchase list — Coil Carrier is
+  covered / covered asymmetric / tarpaulin / uncovered plus a randomised one — and they differ
+  only in the sprite. The catalogue now lists purchase entries instead of models: 1648 rows
+  become 965 (engines are untouched, the vanilla set is unaffected). An entry is keyed by
+  everything the calculation reads, so vehicles that merely look alike are merged while
+  `Metro Coach` surface (23 t) and tube (21 t) stay apart, and the default cargoes only join
+  the key in the one mode that reads them (Iron Horse with FIRS off). Grouping now lives in
+  `engine/purchase.ts` and is shared with the optimizer's "doubtful vehicles" checkboxes, so
+  the same vehicle stands for an entry everywhere. Saved consists keep working.
 - The row comparison used "differs by more than 1" tolerances and was therefore not transitive:
   which of two near-equal consists won depended on the order they happened to be swept in, and a
   wagon costing more could survive at equal profit. Comparison keys are now rounded to whole

@@ -9,6 +9,7 @@ import { balancingSpeed } from './physics';
 import { cargoPaymentRate } from './income';
 import { estimateStationRating, ratingPeriods, speedRating, type StationRating } from './rating';
 import { introAvailability, type IntroAvailability } from './availability';
+import { preferTrain } from './purchase';
 import { tripMoney, tripSetup } from './trip';
 import {
   cachedSetup,
@@ -164,18 +165,6 @@ function goalStrategy(goal: OptimizeGoal): GoalStrategy {
   };
 }
 
-/**
- * Which of two interchangeable wagons a row should show. The game lists the non-randomised
- * variant as the head of its group of variants, with the randomised one hidden inside; the
- * identifier settles whatever is still tied. Nothing here looks at the order the vehicles
- * arrived in: that order is an accident of the dataset, and letting it decide would change
- * the wagon in every row as soon as the input is shuffled.
- */
-function preferWagon(a: Train, b: Train): number {
-  if (a.randomised !== b.randomised) return a.randomised ? 1 : -1;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-}
-
 function isAvailable(train: Train, year: number): boolean {
   if (train.intro_year > year) return false;
   if (train.model_life != null && year >= train.intro_year + train.model_life) return false;
@@ -243,7 +232,7 @@ export function optimizeConsists(
     const prev = representatives.get(key);
     // The representative is picked by the same tie-break as the winner of a row, so the
     // wagon shown is the one the full sweep would have shown.
-    if (!prev || preferWagon(w, prev) < 0) representatives.set(key, w);
+    if (!prev || preferTrain(w, prev) < 0) representatives.set(key, w);
   }
   const searchWagons = [...representatives.values()];
 
@@ -432,7 +421,7 @@ export function optimizeConsists(
     if (primary !== 0) return primary < 0;
     if (ra.profit !== rb.profit) return ra.profit > rb.profit;
     if (ra.cost !== rb.cost) return ra.cost < rb.cost;
-    const wagons = preferWagon(a.wagon, b.wagon);
+    const wagons = preferTrain(a.wagon, b.wagon);
     if (wagons !== 0) return wagons < 0;
     // Rows that agree on every number above still need one winner, or which of them the
     // output shows would follow the order the vehicles were swept in. A smaller fleet is

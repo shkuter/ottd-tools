@@ -58,3 +58,24 @@ share is low enough.
 **Goal** (_цель_) — what the optimizer ranks by: `profit` (yearly profit) or `transported`
 (hauled per year). Without a flow there is no delivered share, so `transported` degrades to
 `profit` inside the engine — the UI only stops the user from picking a dead option.
+
+## Catalogue
+
+**Variant family** (_семейство вариантов_) — the models Iron Horse ships behind one entry of
+the game's purchase list: Coil Carrier is covered / covered asymmetric / tarpaulin / uncovered
+plus a randomised one. They share the name and every number the calculator reads, and differ
+only in the sprite; the game hides them inside a variant group and shows the non-randomised
+one as its head. A family is not a **purchase entry** by itself — two generations of "Coal
+Wagon" are two entries, each with its own family.
+
+**Purchase entry** (_пункт списка покупки_) — one line the player can actually pick out in the
+game: kind, track type, name, capacity, length, introduction date and weight all equal. This is
+the unit the vehicle catalogue lists, and the unit the optimizer's "doubtful" checkboxes switch
+off. Its representative is the non-randomised member, ties settled by identifier, so the same
+vehicle stands for the entry everywhere in the app.
+
+**Calculation profile** (_расчётный профиль_) — the numbers a sweep actually reads (capacity,
+weight, length, power, tractive effort, speed, costs, loading speed). Vehicles sharing it give
+identical rows, so the optimizer searches one per profile. Deliberately blind to the name: it
+groups harder than a **purchase entry** — that one is for lists a human reads, this one is for
+the search.
