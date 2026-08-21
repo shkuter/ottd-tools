@@ -43,10 +43,12 @@ Mantine (слой `mantine`), в том числе `padding-inline-start`, ко�
 
 ## Impact
 
-- `web/src/index.css` — глобальное правило `input, select`.
-- `web/src/skin-mantine.css` — падинги полей Mantine и ширина левой секции.
+- `web/src/skin-mantine.css` — единственный правимый файл стилей: падинги полей Mantine и
+  ширина левой секции.
+- `web/src/index.css` — источник конфликта (глобальное правило `input, select`), но правкой
+  НЕ затрагивается: оно продолжает обслуживать голые теги на непереехавших участках.
 - `web/src/features/route/RoutePage.tsx`, `web/src/features/optimizer/OptimizerPage.tsx`,
-  `web/src/features/consist/ConsistPage.tsx` — три `Select` груза с `leftSection` (правка нужна,
-  только если ширину секции удобнее задавать пропом, а не переменной).
+  `web/src/features/consist/ConsistPage.tsx` — три `Select` груза с `leftSection`; компоненты
+  не правятся, ширина секции задаётся переменной в скине (см. `design.md` → Decisions).
 - Данные, формулы и `engine/` не затрагиваются; тесты пайплайна и vitest остаются в силе.
 - `CHANGELOG.md` — запись в `[Unreleased]`.
