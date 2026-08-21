@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-21
+
 ### Added
 
 - **Search goal on the optimizer tab.** Next to "Profit" (the previous behaviour) there is now
