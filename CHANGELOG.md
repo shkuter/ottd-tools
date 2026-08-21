@@ -24,6 +24,15 @@ of what users see):
   run of the workflow) builds `web/` and deploys it; the repository is now public under
   GPL-2.0-only, with data and artwork sources credited in the README.
 
+### Fixed
+
+- **Cargo icon no longer sits on top of the cargo name.** The bare-tag `input, select` rule in
+  `index.css` shares the `app` cascade layer with the skin, so it overrode Mantine's own padding
+  — including the space the library reserves for a field's sections. Every field with a section
+  drew its text underneath: the cargo icon on the left, the dropdown chevron and the number
+  stepper on the right. The skin now restates the padding from Mantine's variables, and a left
+  section is sized for the 10px cargo icon instead of the field's full height.
+
 ## [0.6.0] - 2026-08-21
 
 ### Added

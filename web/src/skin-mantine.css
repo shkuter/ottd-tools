@@ -74,6 +74,15 @@
      FIELDS — sunken plates, labels in the window's own text colour
      ========================================================================== */
 
+  /*
+   * index.css still styles bare `input`/`select` tags, and that rule sits in
+   * the same @layer app — it would override the library's own padding and let
+   * the sections (cargo icon on the left, dropdown chevron or number stepper on
+   * the right) draw on top of the text. Restating the padding here, from
+   * Mantine's own variables, hands the reserved space back. The vertical one
+   * needs the fallback: Mantine only defines --input-padding-y for the unstyled
+   * variant, the field's height comes from --input-size.
+   */
   :root[data-skin] .mantine-Input-input {
     border-radius: var(--skin-radius);
     border-style: solid;
@@ -81,6 +90,17 @@
     border-color: var(--skin-edge-lo) var(--skin-edge-hi) var(--skin-edge-hi) var(--skin-edge-lo);
     background: var(--skin-field-bg);
     color: var(--skin-field-text);
+    padding-block: var(--input-padding-y, 0);
+    padding-inline-start: var(--input-padding-inline-start);
+    padding-inline-end: var(--input-padding-inline-end);
+  }
+
+  /*
+   * A left section defaults to the field's own height (34px), which dwarfs the
+   * 10px cargo icon that is the only thing we put there.
+   */
+  :root[data-skin] .mantine-Input-wrapper {
+    --input-left-section-width: 20px;
   }
 
   :root[data-skin] .mantine-InputWrapper-label {
