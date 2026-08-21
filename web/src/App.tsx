@@ -8,6 +8,7 @@ import { datasetMeta } from './dataset';
 import { t, useLocale } from './i18n';
 import { useSettingsStore } from './state/settingsStore';
 import { Warning } from './components/Warning';
+import { usePageviews } from './analytics';
 
 // the catalogue pulls in mantine-datatable and the income tab pulls in recharts;
 // nothing else needs either, so both tabs load with their own chunk
@@ -27,6 +28,7 @@ export default function App() {
   const firs = useSettingsStore((s) => s.game.firs);
   // t() reads the locale outside React, so the whole tree re-renders from here
   const locale = useLocale();
+  usePageviews();
 
   useEffect(() => {
     document.documentElement.lang = locale;

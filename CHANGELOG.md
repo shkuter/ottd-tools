@@ -18,6 +18,16 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- The deployed site now counts pageviews through GoatCounter, to tell whether anyone finds
+  and uses it. It is cookie-free and stores no personal data, so the site needs no consent
+  banner, and it ignores localhost, so only the deployed copy reports. Counting is manual
+  (`src/analytics.ts`) because the router swaps tabs without a page load, and because paths
+  are reported without the deployment's base path: the dashboard lists `/income`, not
+  `/ottd-tools/income`. Nothing is recorded until the site code in that module is registered
+  on goatcounter.com.
+
 ## [0.7.0] - 2026-08-21
 
 ### Added
