@@ -33,15 +33,34 @@ export function speedRating(maxSpeedInternal: number): number {
   return b >= 0 ? b >> 2 : 0;
 }
 
+/**
+ * Steps of the wait-time bonus: an interval of at most `periods` periods collects `bonus`.
+ * Written as data because the interval column names the same steps in days, and in days
+ * they stretch with the day length factor (`waitTimeThresholdDays`).
+ */
+export const WAIT_TIME_STEPS = [
+  { periods: 21, bonus: 25 },
+  { periods: 12, bonus: 25 },
+  { periods: 6, bonus: 45 },
+  { periods: 3, bonus: 35 },
+] as const;
+
 /** Bonus for time since the last pickup, counted in rating periods (`ratingPeriodDays`). */
 export function waitTimeRating(periods: number): number {
   const t = Math.min(255, Math.floor(periods));
   let rating = 0;
-  if (t <= 21) rating += 25;
-  if (t <= 12) rating += 25;
-  if (t <= 6) rating += 45;
-  if (t <= 3) rating += 35;
+  for (const step of WAIT_TIME_STEPS) if (t <= step.periods) rating += step.bonus;
   return rating;
+}
+
+/**
+ * The wait-time steps as pickup intervals in game days. A JGRPP day holds `dayLengthFactor`
+ * times fewer rating periods, so with a slowed economy the thresholds sit that much further
+ * out — 52.5 days becomes 262.5 at factor 5.
+ */
+export function waitTimeThresholdDays(dayLengthFactor: number): number[] {
+  const periodDays = effectiveRatingPeriodDays(dayLengthFactor);
+  return WAIT_TIME_STEPS.map((step) => step.periods * periodDays);
 }
 
 /** Penalty for cargo piling up; the game counts `max_waiting_cargo`, i.e. per next hop. */

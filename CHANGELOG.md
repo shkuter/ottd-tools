@@ -28,6 +28,12 @@ of what users see):
   `/ottd-tools/income`. Nothing is recorded until the site code in that module is registered
   on goatcounter.com.
 
+### Fixed
+
+- The interval column's tooltip stated the station-rating thresholds in days for an unslowed
+  economy only. They now follow the JGRPP day length factor, where a rating period lasts that
+  many times longer: 52.5 / 30 / 15 / 7.5 days become 262.5 / 150 / 75 / 37.5 at factor 5.
+
 ## [0.7.0] - 2026-08-21
 
 ### Added

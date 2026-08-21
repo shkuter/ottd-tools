@@ -27,7 +27,8 @@ import { Money } from '../../components/Money';
 import { optimizeConsists } from '../../engine/optimize';
 import { createOptimizerCache } from '../../engine/optimizeCache';
 import { cargoPaymentRate } from '../../engine/income';
-import type { StationRating } from '../../engine/rating';
+import { waitTimeThresholdDays, type StationRating } from '../../engine/rating';
+import { effectiveDayLength } from '../../engine/settings';
 import { introRandomisationActive, type IntroAvailability } from '../../engine/availability';
 import { doubtfulGroups } from './doubtful';
 import { useConsistStore } from '../../state/consistStore';
@@ -124,6 +125,15 @@ export default function OptimizerPage() {
   // with numbers that do not belong to the search that produced them.
   const goalAvailable = searchInput.productionPerMonth > 0;
   const activeGoal = goalAvailable ? goal : 'profit';
+
+  // The rating thresholds are stated in days, and a slowed JGRPP economy stretches them:
+  // at factor 5 the first one sits at 262.5 days, not 52.5. Built at render time so the
+  // string follows the language the way the table headers do.
+  const intervalHint = t('opt.intervalHint', {
+    thresholds: waitTimeThresholdDays(effectiveDayLength(game))
+      .map((d) => num(d, 1))
+      .join(' / '),
+  });
 
   // Consist physics survives between searches, so editing production or the fleet limit
   // only redoes the money. The cache belongs to the tab: the search stays a pure function.
@@ -329,7 +339,7 @@ export default function OptimizerPage() {
               <Table.Th>{t('combined.roundTrip')}</Table.Th>
               <Table.Th>{t('opt.trips')}</Table.Th>
               <Table.Th title={t('opt.fleetHint')}>{t('opt.fleet')}</Table.Th>
-              <Table.Th title={t('opt.intervalHint')}>{t('opt.interval')}</Table.Th>
+              <Table.Th title={intervalHint}>{t('opt.interval')}</Table.Th>
               <Table.Th title={t('opt.ratingHint')}>{t('opt.rating')}</Table.Th>
               {activeGoal === 'transported' && <Table.Th>{t('opt.hauled')}</Table.Th>}
               <Table.Th className="cell-money">{t('opt.incomeTrip')}</Table.Th>

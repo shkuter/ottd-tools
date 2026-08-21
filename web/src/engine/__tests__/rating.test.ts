@@ -3,9 +3,11 @@ import {
   RATING_PERIOD_DAYS,
   effectiveRatingPeriodDays,
   estimateStationRating,
+  ratingPeriods,
   speedRating,
   vehicleAgeRating,
   waitTimeRating,
+  waitTimeThresholdDays,
   waitingCargoRating,
 } from '../rating';
 
@@ -34,6 +36,18 @@ describe('station rating parts', () => {
     expect(waitTimeRating(21)).toBe(25);
     expect(waitTimeRating(22)).toBe(0);
     expect(waitTimeRating(83)).toBe(0); // круг 208 дней при одном поезде
+  });
+
+  it('те же ступени в днях едут вместе с множителем длины дня', () => {
+    // подсказка колонки «Интервал» берёт пороги отсюда, а не своим списком чисел
+    expect(waitTimeThresholdDays(1)).toEqual([52.5, 30, 15, 7.5]);
+    expect(waitTimeThresholdDays(5)).toEqual([262.5, 150, 75, 37.5]);
+    for (const days of waitTimeThresholdDays(5)) {
+      // порог ещё в своей ступени, а один период сверх него уже в следующей
+      const atThreshold = waitTimeRating(ratingPeriods(days, 5));
+      expect(atThreshold).toBeGreaterThan(0);
+      expect(waitTimeRating(ratingPeriods(days + 12.5, 5))).toBeLessThan(atThreshold);
+    }
   });
 
   it('ждущий груз: от +40 при пустой станции до -90 при завале', () => {

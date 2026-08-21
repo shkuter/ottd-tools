@@ -100,7 +100,7 @@
   "opt.fleet": "Fleet",
   "opt.fleetHint": "Identical trains sharing the route. Every money figure in the row covers the whole fleet, and what the station hands over is shared by it.",
   "opt.interval": "Interval",
-  "opt.intervalHint": "Days between train visits: the round trip divided by the number of trains. Rating thresholds are 52.5 / 30 / 15 / 7.5 days.",
+  "opt.intervalHint": "Days between train visits: the round trip divided by the number of trains. Rating thresholds are {thresholds} days.",
   "opt.rating": "Delivered share",
   "opt.hauled": "Haul/yr",
   "opt.cargoTrip": "Cargo/trip",
