@@ -137,3 +137,17 @@ which is about clearing the source industry's output rather than feeding the des
 **conversion**: units delivered across the **supply window** counted against two thresholds, an
 improved level and a full one. Ports pool every cargo they accept into one count; primaries
 count their one supply cargo.
+
+## Cargo sets
+
+**Economy** (_экономика_) — the FIRS variant a game runs: Temperate Basic, Arctic Basic, Tropic
+Basic, Steeltown, In A Hot Country. It decides which cargos and industries exist at all — 62 of
+them in Steeltown against 18 in Temperate Basic — and how an industry is named and what it
+accepts. It does **not** change what a cargo pays: FIRS 5 states the same payment rate for a
+cargo in every economy that has it. A game runs exactly one economy, so the calculator holds one
+too, and everything it shows — the catalogue, the optimizer, route income, the chain graph —
+speaks of that one economy.
+
+**Active cargos** (_активные грузы_) — the cargos a calculation may use: the current
+**economy**'s cargos with FIRS on, the vanilla set with it off. A cargo outside the active set
+is not offered anywhere; it has no payment rate to compute with.
