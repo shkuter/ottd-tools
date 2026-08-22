@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-22
+
 ### Added
 
 - The full-load branch adds an accumulation wait to the round trip: `max(physical round trip,
