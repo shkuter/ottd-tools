@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-22
+
 ### Added
 
 - Supply window: the optimizer now answers whether a fleet visits often enough to keep the
