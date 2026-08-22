@@ -56,14 +56,28 @@ row showed a haul limited by the fleet but a profit limited by the station. Insi
 both cases agree: with an unsaturated fleet the numbers are the ones the multiplier gave, with
 a saturated one the money matches the haul the row displays.
 
+## Revision (2026-08-22, loading branches)
+
+`add-loading-wait` split a route into two branches — a consist that leaves with what
+accumulated, and one under a full-load order — which touches this decision in two places
+without overturning it:
+
+- "The train waits to be filled" was written of the *physics*, and reads today as if it
+  described the orders. It does not: physics stays on a full load in both branches, but only
+  the full-load branch actually stands and waits, and its wait is now modelled explicitly
+  rather than folded into a fuller train.
+- The share still cuts the flow before the fleet divides it — unchanged. What is new is that
+  each branch reads its own share, because a consist that stands for a full load calls less
+  often and a station called on less often is handed less.
+
 ## Consequences
 
 - Money on the optimizer tab drops for everyone who states a production figure — flagged
   `**BREAKING**` in `CHANGELOG.md` (minor bump under the 0.x rule).
-- The route income tab does not know the production flow and keeps its old numbers, so the two
-  tabs disagree once production is stated. That divergence is now specified
-  (`route-economics`, "Единая модель во всех вкладках") and named in the UI hint rather than
-  quietly tolerated.
+- The route income tab took a production figure of its own with the loading branches
+  (`add-loading-wait`, 2026-08-22) and now settles on the same flow as the optimizer through
+  one shared helper (`engine/waiting.ts`, `settleBranchFlows`). Until then it did not know the
+  flow at all and the two tabs disagreed once production was stated.
 - `paybackYears` and `profitPerYear` stay derived inside `trip.ts`: the fleet multiplier lives
   there too (`fleetSize`), so no caller re-implements the profit formula.
 

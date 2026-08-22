@@ -18,7 +18,33 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- The full-load branch adds an accumulation wait to the round trip: `max(physical round trip,
+  fleet × capacity ÷ accumulation rate)` (`engine/waiting.ts`), and reads its own delivered
+  share — a consist that stands for a full load visits the station less often, so its rating is
+  lower and the industry hands it less. The load also ages while it is built up, so it pays
+  less on delivery: cargo ages in the wagons only (`VehicleCargoList::AgeCargo`) and the game
+  pays by the average age aboard — what piled up while the train was away is loaded in one go
+  and ages the whole wait, the rest ages half of it. Assumes the flow splits evenly between
+  the trains of a fleet; real consists bunch up and wait unevenly.
+- The route income tab gained a source output field and a "wait for a full load" switch, plus
+  rows for the accumulation wait, the delivered share and the cargo actually hauled per trip.
+  Both are form state, not settings: the branch is a property of a route, not of the game.
+
 ### Changed
+
+- **BREAKING** Routes are now costed in both loading branches — a consist that leaves with
+  whatever accumulated, and one under a full-load order that leaves only when it is full — and
+  the optimizer keeps whichever is better for the chosen goal. Rows where the order changes the
+  outcome carry a mark saying which branch won and why the other is worse, so the calculator can
+  now answer whether a full-load order is helping a route or holding it back. Same input, different
+  rows: on routes the waiting branch wins, the numbers move.
+  The new numbers are checked against a real game (Londworth Transport, June 1989): the branch
+  that runs with what accumulated reproduces the station's monthly intake to within 2 % and the
+  consist's running cost to within 0.03 %, while the round trip comes out 4 % short of the
+  in-game timetable and the station rating ~4 points high. See the change's `design.md` for the
+  recorded gaps; nothing was tuned to close them.
 
 - The deployed site now counts pageviews through GoatCounter, to tell whether anyone finds
   and uses it. It is cookie-free and stores no personal data, so the site needs no consent

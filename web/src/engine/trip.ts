@@ -14,12 +14,18 @@ import { balancingSpeed } from './physics';
 import { transportedGoodsIncome } from './income';
 import { daysForDistance, transitPeriodsFromDays } from './units';
 import {
+  accumulationRoundTrip,
+  flowPerYearFromMonthly,
+  routeStationRating,
+  settleBranchFlows,
+} from './waiting';
+import type { StationRating } from './rating';
+import {
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
   type CalcSettings,
   type GameSettings,
-  daysPerEconomyYear,
-  effectiveDayLength,
+  engineDaysPerYear,
   loadingTicks,
   stoppedCostDivisor,
   subsidyFactor,
@@ -56,6 +62,10 @@ export interface TripParams {
    * speed ratio, so a manual figure still gets a faster return run.
    */
   loadedDaysOverride?: number | null;
+  /** Loading branch: the consist leaves only when full. Defaults to false. */
+  waitForFullLoad?: boolean;
+  /** Cargo the station is offered over an economy year; only the waiting branch reads it. */
+  offeredPerYear?: number;
 }
 
 export interface TripEconomics {
@@ -69,6 +79,10 @@ export interface TripEconomics {
   daysEmpty: number;
   /** Days spent standing: loading at one end, unloading at the other. */
   loadingDays: number;
+  /** Which loading branch these numbers are for. */
+  waitForFullLoad: boolean;
+  /** Days of the round trip spent waiting for the load to accumulate (0 outside that branch). */
+  waitDays: number;
   roundTripDays: number;
   tripsPerYear: number;
   /** Income of a single trip of a single consist, for the cargo it actually carries. */
@@ -159,7 +173,7 @@ export function tripSetup(params: TripParams): TripSetup {
   // JGRPP: a longer day does not change the trip in ticks, but the calendar year holds more of them.
   const tripsPerYear =
     roundTripDays > 0 && Number.isFinite(roundTripDays)
-      ? (daysPerEconomyYear(game) * effectiveDayLength(game)) / roundTripDays
+      ? engineDaysPerYear(game) / roundTripDays
       : 0;
 
   const { buy, running } = consistMoney(entries, meta, game, calc);
@@ -201,27 +215,75 @@ export interface TripMoneyParams {
   cargoPerTrip?: number;
   /** Identical consists running the route; money is stated for all of them. Defaults to 1. */
   fleetSize?: number;
+  /**
+   * Loading branch. `false` (the default) is the plain route: the consist leaves with what
+   * accumulated, `cargoPerTrip` caps the load and the round trip is the physical one. `true`
+   * is the full-load order: the load is always the capacity and the round trip grows by the
+   * time the source needs to build it up.
+   */
+  waitForFullLoad?: boolean;
+  /**
+   * Cargo the station is offered over an economy year, delivered share included — the flow
+   * the waiting branch accumulates from. Only that branch reads it; without it there is
+   * nothing to wait for and both branches agree.
+   */
+  offeredPerYear?: number;
 }
 
 export function tripMoney(setup: TripSetup, params: TripMoneyParams): TripEconomics {
   const game = params.game ?? DEFAULT_GAME_SETTINGS;
   const { cargo, distanceTiles } = params;
-  const { capacity, daysLoaded, roundTripDays, loadingDays, tripsPerYear, buy, running } = setup;
+  const { capacity, daysLoaded, loadingDays, buy, running } = setup;
+  const fleetSize = params.fleetSize ?? 1;
+  const waitForFullLoad = params.waitForFullLoad ?? false;
 
-  const cargoPerTrip = params.cargoPerTrip ?? capacity;
+  // The full-load branch leaves only when the consist is full, so its round trip cannot be
+  // shorter than the time the source needs to fill the whole fleet. Everything downstream —
+  // trips per year, the interval callers derive from the round trip — follows from that.
+  const accumulation = waitForFullLoad
+    ? accumulationRoundTrip({
+        physicalRoundTripDays: setup.roundTripDays,
+        capacity,
+        fleetSize,
+        offeredPerYear: params.offeredPerYear ?? 0,
+        game,
+      })
+    : null;
+  const waitDays = accumulation?.waitDays ?? 0;
+  const roundTripDays = accumulation?.roundTripDays ?? setup.roundTripDays;
+  const tripsPerYear =
+    waitDays > 0
+      ? engineDaysPerYear(game) / roundTripDays
+      : setup.tripsPerYear;
+
+  // Waiting for a full load means exactly that: the cap the flow puts on a train that leaves
+  // with what accumulated does not apply, because this one does not leave until it is full.
+  const cargoPerTrip = waitForFullLoad ? capacity : (params.cargoPerTrip ?? capacity);
+  // Cargo ages in the wagons, not on the platform — only `VehicleCargoList::AgeCargo` exists
+  // (`cargopacket.cpp`) — and the game pays by the average age of the packets carried
+  // (`CargoList::PeriodsInTransit`). A consist under a full-load order takes its load on in
+  // two parts: what piled up while it was away is loaded in one go at the start of the stop
+  // and ages the whole wait, while the rest trickles in over the wait and ages half of it. At
+  // an even inflow the two parts are proportional to the physical round trip and the wait.
+  const ageDays =
+    waitDays > 0
+      ? daysLoaded +
+        (waitDays * (setup.roundTripDays + waitDays / 2)) / (setup.roundTripDays + waitDays)
+      : daysLoaded;
   const incomePerTrip =
     transportedGoodsIncome(
       cargoPerTrip,
       distanceTiles,
-      transitPeriodsFromDays(daysLoaded),
+      transitPeriodsFromDays(ageDays),
       { currentPayment: params.payment, transitPeriods: cargo.transit_periods },
       game.cargoAgingRate,
       game.jgrpp ? game.paymentAlgorithm : 'modern',
     ) * (params.subsidised ? subsidyFactor(game.subsidyMultiplier) : 1);
 
-  const fleetSize = params.fleetSize ?? 1;
-  // JGRPP can charge less while a vehicle stands still: split the year by that share.
-  const stoppedShare = roundTripDays > 0 ? loadingDays / roundTripDays : 0;
+  // JGRPP can charge less while a vehicle stands still: split the year by that share. A
+  // consist waiting for its load stands at the platform just like one being loaded, so the
+  // wait counts towards the same share.
+  const stoppedShare = roundTripDays > 0 ? (loadingDays + waitDays) / roundTripDays : 0;
   const runningCostPerYear =
     running * fleetSize * (1 - stoppedShare + stoppedShare / stoppedCostDivisor(game));
   const buyCostTotal = buy * fleetSize;
@@ -235,6 +297,8 @@ export function tripMoney(setup: TripSetup, params: TripMoneyParams): TripEconom
     daysLoaded,
     daysEmpty: setup.daysEmpty,
     loadingDays,
+    waitForFullLoad,
+    waitDays,
     roundTripDays,
     tripsPerYear,
     incomePerTrip,
@@ -245,6 +309,77 @@ export function tripMoney(setup: TripSetup, params: TripMoneyParams): TripEconom
   };
 }
 
+export interface TripBranches {
+  /** No full-load order: the consist leaves with whatever the station accumulated. */
+  runsWithWhatAccumulated: TripEconomics;
+  /** Full-load order: the consist leaves only when it is full. */
+  waitsForFullLoad: TripEconomics;
+  /**
+   * The branches actually produce different numbers. False when the source outruns the fleet
+   * — and when no flow is stated at all, because then there is nothing to wait for.
+   */
+  differ: boolean;
+}
+
+/**
+ * Both loading branches of the same route. Costed off one setup, so a caller comparing them
+ * pays for the physics and the prices once — which is what lets the optimizer sweep the
+ * branch as a dimension and the UI say what the full-load order does to a route.
+ */
+export function tripBranches(setup: TripSetup, params: TripMoneyParams): TripBranches {
+  const runsWithWhatAccumulated = tripMoney(setup, { ...params, waitForFullLoad: false });
+  const waitsForFullLoad = tripMoney(setup, { ...params, waitForFullLoad: true });
+  const differ =
+    waitsForFullLoad.waitDays > 0 ||
+    Math.abs(waitsForFullLoad.cargoPerTrip - runsWithWhatAccumulated.cargoPerTrip) > 1e-9;
+  return { runsWithWhatAccumulated, waitsForFullLoad, differ };
+}
+
 export function tripEconomics(params: TripParams): TripEconomics {
   return tripMoney(tripSetup(params), params);
+}
+
+export interface RouteWithFlowParams extends TripParams {
+  /** Output of the source industry per economy month; `0` means "not stated". */
+  productionPerMonth: number;
+}
+
+export interface RouteWithFlow {
+  economics: TripEconomics;
+  /** Rating the chosen branch settles at; `null` when no output is stated. */
+  rating: StationRating | null;
+}
+
+/**
+ * A single consist on a stated flow, in the branch the caller picked — what the route income
+ * tab shows. The optimizer settles a route the same way for every candidate of its search;
+ * this is that path for one consist, so both tabs read one model rather than two copies of it.
+ */
+export function routeWithFlow(params: RouteWithFlowParams): RouteWithFlow {
+  const game = params.game ?? DEFAULT_GAME_SETTINGS;
+  const setup = tripSetup(params);
+  const flowPerYear = flowPerYearFromMonthly(params.productionPerMonth);
+  if (flowPerYear <= 0) return { economics: tripMoney(setup, params), rating: null };
+
+  // One consist, so the interval is the round trip itself. The rating reads the consist's
+  // speed limit, as the game does (`economy.cpp` stores `vcache.cached_max_speed`).
+  const ratingOf = routeStationRating(flowPerYear, game);
+  const flows = settleBranchFlows({
+    physicalRoundTripDays: setup.roundTripDays,
+    tripsPerYear: setup.tripsPerYear,
+    capacity: setup.capacity,
+    fleetSize: 1,
+    flowPerYear,
+    game,
+    ratingAt: (interval) => ratingOf(interval, setup.loadedPhysics.maxSpeedInternal),
+  });
+  const branch = params.waitForFullLoad ? flows.waitsForFullLoad : flows.runsWithWhatAccumulated;
+  return {
+    economics: tripMoney(setup, {
+      ...params,
+      cargoPerTrip: flows.cargoPerTrip,
+      offeredPerYear: branch.offeredPerYear,
+    }),
+    rating: branch.rating,
+  };
 }

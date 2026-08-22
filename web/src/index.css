@@ -252,6 +252,22 @@ td:has(> .train-sprite) {
   padding-left: 2px;
 }
 
+/* Loading branch of an optimizer row: lit when the full-load order is the better one,
+   struck through when it is what holds the route back. */
+.branch-mark {
+  cursor: help;
+  padding-left: 3px;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.branch-mark--off {
+  color: var(--muted);
+  font-weight: normal;
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
 .page-optimizer {
   display: flex;
   flex-direction: column;

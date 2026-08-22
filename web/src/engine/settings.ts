@@ -250,6 +250,15 @@ export function daysPerEconomyYear(settings: GameSettings): number {
 }
 
 /**
+ * Engine days in an economy year: the days trips and accumulation are counted in. A JGRPP day
+ * length factor stretches the year in those days without changing what an industry makes in a
+ * month, so a slowed economy fits proportionally more of them into the same output.
+ */
+export function engineDaysPerYear(settings: GameSettings): number {
+  return daysPerEconomyYear(settings) * effectiveDayLength(settings);
+}
+
+/**
  * Economy year as a share of the calendar year. Running cost is charged per tick against
  * a fixed divisor of 365 days (train_cmd.cpp:4272), so a 360-day economy year collects
  * proportionally less of it.

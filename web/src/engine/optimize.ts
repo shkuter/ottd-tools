@@ -7,10 +7,11 @@ import type { Cargo, ConsistEntry, Train, TrainsMeta } from '../types';
 import { canCarryIn } from '../dataset';
 import { balancingSpeed } from './physics';
 import { cargoPaymentRate } from './income';
-import { estimateStationRating, ratingPeriods, speedRating, type StationRating } from './rating';
+import { ratingPeriods, speedRating, type StationRating } from './rating';
 import { introAvailability, type IntroAvailability } from './availability';
 import { preferTrain } from './purchase';
-import { tripMoney, tripSetup } from './trip';
+import { tripBranches, tripMoney, tripSetup, type TripEconomics } from './trip';
+import { flowPerYearFromMonthly, routeStationRating, settleBranchFlows } from './waiting';
 import {
   cachedSetup,
   createOptimizerCache,
@@ -23,7 +24,6 @@ import {
   type CalcSettings,
   type GameSettings,
   effectiveDayLength,
-  daysPerEconomyYear,
 } from './settings';
 
 /** What the optimizer ranks its output by. */
@@ -66,6 +66,14 @@ export function isPureElectric(train: Train): boolean {
   return sources.length > 0 && sources.every((s) => s === 'OHLE');
 }
 
+/** The losing branch of a row, in the two figures that show why it lost. */
+export interface BranchFigures {
+  /** Days between visits to the station in that branch. */
+  pickupIntervalDays: number;
+  /** Cargo one train would carry per trip in that branch. */
+  cargoPerTrip: number;
+}
+
 export interface OptimizeResult {
   engine: Train;
   engineCount: number;
@@ -94,6 +102,24 @@ export interface OptimizeResult {
   stationRating: StationRating | null;
   /** Cargo hauled over a year by the whole fleet, after the delivered share. */
   hauledPerYear: number;
+  /**
+   * The loading branch this row won in: true = the consist waits for a full load, false = it
+   * leaves with what accumulated. Only meaningful when `branchesDiffer`.
+   */
+  waitForFullLoad: boolean;
+  /**
+   * The two loading branches give different numbers on this route, so the full-load order
+   * actually decides something. False when the source outruns the fleet — and always false
+   * without a stated output, where the branches are indistinguishable.
+   */
+  branchesDiffer: boolean;
+  /** Days of the round trip spent waiting for the load (0 outside the waiting branch). */
+  waitDays: number;
+  /**
+   * What the branch that lost would have given: the comparison is the answer the player is
+   * after, and words alone do not let them compare. Null when the branches are the same.
+   */
+  otherBranch: BranchFigures | null;
   lengthTiles: number;
   loadedSpeedInternal: number;
   emptySpeedInternal: number;
@@ -141,10 +167,14 @@ interface GoalStrategy {
  * left underfilled at one train is underfilled at every fleet size — and a longer one would
  * carry the same cargo for a higher price. Measured against what the station offers rather
  * than the full output: the industry hands over only part of it (ADR-0001).
+ *
+ * Read off the loading branches rather than off the winning row's load: a row that won in the
+ * waiting branch carries a full load by definition and would claim the source keeps up, when
+ * in fact it is the wait that makes the branches differ at all.
  */
-function underfilled(rows: readonly OptimizeResult[]): boolean {
+function sourceCannotFillConsist(rows: readonly OptimizeResult[]): boolean {
   const oneTrain = rows[0];
-  return oneTrain != null && oneTrain.cargoPerTrip < oneTrain.capacity - 1e-9;
+  return oneTrain != null && oneTrain.branchesDiffer;
 }
 
 function goalStrategy(goal: OptimizeGoal): GoalStrategy {
@@ -159,8 +189,8 @@ function goalStrategy(goal: OptimizeGoal): GoalStrategy {
   }
   return {
     // Filling the station is optimal unless the industry cannot keep the consist full.
-    sweepsShorter: underfilled,
-    stopsSweep: underfilled,
+    sweepsShorter: sourceCannotFillConsist,
+    stopsSweep: sourceCannotFillConsist,
     primary: () => 0,
   };
 }
@@ -238,30 +268,56 @@ export function optimizeConsists(
 
   const maxLengthUnits = maxLengthTiles * 16; // тайл = 16 единиц длины (стандартная машина 8 = полтайла)
   // Industry output is stated per economy month, trips are counted per economy year.
-  const flowPerYear = Math.max(0, params.productionPerMonth ?? 0) * 12;
+  const flowPerYear = flowPerYearFromMonthly(params.productionPerMonth);
   // Without a flow there is no delivered share to rank by, so the transported goal is
   // pointless: fall back to profit rather than leave the tab with a meaningless order.
   const goal: OptimizeGoal = flowPerYear > 0 ? (params.goal ?? 'profit') : 'profit';
   const maxTrains = Math.max(1, Math.floor(params.maxTrains ?? 4));
   const strategy = goalStrategy(goal);
   const results: OptimizeResult[] = [];
-  const cargoPerDay = flowPerYear / (daysPerEconomyYear(game) * effectiveDayLength(game));
+
+  // How two candidates are ordered: by the goal first, then by the shared profit and price
+  // tie-breaks (wagons of the same capacity differ only in price, so an equal profit picks
+  // the cheaper one). The same comparison settles the loading branch of a single row and
+  // the one row kept per "engine × number of units".
+  // Comparison keys are rounded to whole units — the game counts whole crates and whole
+  // pounds anyway, and ties on the delivered share are common because it is quantised by an
+  // integer rating. Rounding rather than an "differs by more than X" tolerance matters: a
+  // tolerance is not transitive, so which candidate won depended on the order they were
+  // swept in, and two equally good rows could beat each other.
+  const rank = (r: OptimizeResult): RankKeys => ({
+    hauled: Math.round(r.hauledPerYear),
+    profit: Math.round(r.profitPerYear),
+    cost: Math.round(r.buyCostTotal),
+  });
+  const better = (a: OptimizeResult, b: OptimizeResult) => {
+    const ra = rank(a);
+    const rb = rank(b);
+    const primary = strategy.primary(ra, rb);
+    if (primary !== 0) return primary < 0;
+    if (ra.profit !== rb.profit) return ra.profit > rb.profit;
+    if (ra.cost !== rb.cost) return ra.cost < rb.cost;
+    const wagons = preferTrain(a.wagon, b.wagon);
+    if (wagons !== 0) return wagons < 0;
+    // Rows that agree on every number above still need one winner, or which of them the
+    // output shows would follow the order the vehicles were swept in. A smaller fleet is
+    // the cheaper way to the same result; the rest is settled by identifiers.
+    if (a.fleetSize !== b.fleetSize) return a.fleetSize < b.fleetSize;
+    if (a.wagonCount !== b.wagonCount) return a.wagonCount < b.wagonCount;
+    if (a.engine.id !== b.engine.id) return a.engine.id < b.engine.id;
+    return a.engineCount < b.engineCount;
+  };
   // The rating settles by iterating over every period of the interval, which is the most
   // expensive step of an evaluation — and thousands of candidates share the same answer:
   // the interval only enters as its period count and the speed only as its speed bonus,
   // so the key is built from those two functions rather than from a copy of their bodies.
+  const ratingOf = routeStationRating(flowPerYear, game);
   const ratingCache = new Map<string, StationRating>();
   const ratingFor = (pickupIntervalDays: number, maxSpeedInternal: number): StationRating => {
     const key = `${ratingPeriods(pickupIntervalDays, effectiveDayLength(game))}|${speedRating(maxSpeedInternal)}`;
     let cached = ratingCache.get(key);
     if (!cached) {
-      cached = estimateStationRating({
-        pickupIntervalDays,
-        maxSpeedInternal,
-        cargoPerDay,
-        jgrpp: game.jgrpp,
-        dayLengthFactor: effectiveDayLength(game),
-      });
+      cached = ratingOf(pickupIntervalDays, maxSpeedInternal);
       ratingCache.set(key, cached);
     }
     return cached;
@@ -308,65 +364,100 @@ export function optimizeConsists(
     const gradeSpeed = balancingSpeed(loadedPhysics, massOnSlope, game.accelerationModel);
 
     const forFleet = (fleetSize: number): OptimizeResult => {
-      // How often the station is served decides its rating, and the rating decides how
-      // much of the output the industry hands over at all.
-      const pickupIntervalDays = setup.roundTripDays / fleetSize;
-      const stationRating =
-        flowPerYear > 0 ? ratingFor(pickupIntervalDays, loadedPhysics.maxSpeedInternal) : null;
-      const deliveredShare = stationRating?.deliveredShare ?? 1;
-      const offeredPerYear = flowPerYear * deliveredShare;
-
-      // What the station hands over is shared by the fleet: a train beyond what it can fill
-      // adds cost without adding cargo. The share cuts the flow here rather than the income
-      // later, so a train that finds a full pile waiting still earns on all of it (ADR-0001).
-      // Physics stays on a full load either way.
-      const cargoPerTrip =
-        flowPerYear > 0
-          ? Math.min(capacity, offeredPerYear / (fleetSize * setup.tripsPerYear))
-          : capacity;
-
-      const trip = tripMoney(setup, {
-        cargo, payment, distanceTiles, game,
-        cargoPerTrip, fleetSize, subsidised: params.subsidised,
-      });
-
-      // Whichever runs out first: the share the industry hands over, or what the allowed
-      // fleet can physically move.
-      const fleetCapacityPerYear = fleetSize * setup.tripsPerYear * capacity;
-      const hauledPerYear =
-        flowPerYear > 0 ? Math.min(offeredPerYear, fleetCapacityPerYear) : fleetCapacityPerYear;
-
-      return {
-        engine,
-        engineCount,
-        wagon,
-        wagonCount,
-        engineIntro: introAvailability(engine, year, game),
-        wagonIntro: introAvailability(wagon, year, game),
+      // Where both branches settle: the share the station is handed, the load one train gets
+      // out of it, and whether the source leaves anything to wait for. Shared with the route
+      // income tab so a route reads the same on both.
+      const flows = settleBranchFlows({
+        physicalRoundTripDays: setup.roundTripDays,
+        tripsPerYear: setup.tripsPerYear,
         capacity,
-        cargoPerTrip,
-        trainsNeeded,
         fleetSize,
-        // The fleet is the binding constraint only when it cannot move what the station
-        // actually offers. `trainsNeeded` measures the full output, but a station handing
-        // over 64 % of it needs proportionally fewer trains — flagging by that would call
-        // a fleet short while it still clears everything waiting.
-        fleetLimited: flowPerYear > 0 && fleetCapacityPerYear < offeredPerYear - 1e-6,
-        pickupIntervalDays,
-        stationRating,
-        hauledPerYear,
-        lengthTiles,
-        loadedSpeedInternal: trip.loadedSpeedInternal,
-        emptySpeedInternal: trip.emptySpeedInternal,
-        gradeSpeedInternal: gradeSpeed,
-        loadingDays: trip.loadingDays,
-        roundTripDays: trip.roundTripDays,
-        tripsPerYear: trip.tripsPerYear,
-        incomePerTrip: trip.incomePerTrip,
-        runningCostPerYear: trip.runningCostPerYear,
-        buyCostTotal: trip.buyCostTotal,
-        profitPerYear: trip.profitPerYear,
-        paybackYears: trip.paybackYears,
+        flowPerYear,
+        game,
+        ratingAt: (interval) => ratingFor(interval, loadedPhysics.maxSpeedInternal),
+      });
+      const { cargoPerTrip, canWait } = flows;
+      const { rating: stationRating, offeredPerYear } = flows.runsWithWhatAccumulated;
+      const { rating: waitingRating, offeredPerYear: waitingOffered } = flows.waitsForFullLoad;
+
+      // Both loading branches off the one setup: the expensive half (physics, prices) is
+      // already paid for, only the money is done twice — and only when waiting is possible.
+      const money = {
+        cargo, payment, distanceTiles, game,
+        cargoPerTrip, fleetSize, offeredPerYear: waitingOffered, subsidised: params.subsidised,
+      };
+      const branches = canWait
+        ? tripBranches(setup, money)
+        : {
+            runsWithWhatAccumulated: tripMoney(setup, money),
+            waitsForFullLoad: null,
+            differ: false,
+          };
+
+      const row = (
+        trip: TripEconomics,
+        rating: StationRating | null,
+        offered: number,
+      ): OptimizeResult => {
+        // Whichever runs out first: the share the industry hands over, or what the fleet can
+        // physically move at this branch's trip count.
+        const fleetCapacityPerYear = fleetSize * trip.tripsPerYear * capacity;
+        const hauledPerYear =
+          flowPerYear > 0 ? Math.min(offered, fleetCapacityPerYear) : fleetCapacityPerYear;
+
+        return {
+          engine,
+          engineCount,
+          wagon,
+          wagonCount,
+          engineIntro: introAvailability(engine, year, game),
+          wagonIntro: introAvailability(wagon, year, game),
+          capacity,
+          cargoPerTrip: trip.cargoPerTrip,
+          trainsNeeded,
+          fleetSize,
+          // The fleet is the binding constraint only when it cannot move what the station
+          // actually offers. `trainsNeeded` measures the full output, but a station handing
+          // over 64 % of it needs proportionally fewer trains — flagging by that would call
+          // a fleet short while it still clears everything waiting.
+          fleetLimited: flowPerYear > 0 && fleetCapacityPerYear < offered - 1e-6,
+          // The waiting branch spaces the visits out by exactly the wait it adds.
+          pickupIntervalDays: trip.roundTripDays / fleetSize,
+          stationRating: rating,
+          hauledPerYear,
+          waitForFullLoad: trip.waitForFullLoad,
+          branchesDiffer: branches.differ,
+          waitDays: trip.waitDays,
+          otherBranch: null,
+          lengthTiles,
+          loadedSpeedInternal: trip.loadedSpeedInternal,
+          emptySpeedInternal: trip.emptySpeedInternal,
+          gradeSpeedInternal: gradeSpeed,
+          loadingDays: trip.loadingDays,
+          roundTripDays: trip.roundTripDays,
+          tripsPerYear: trip.tripsPerYear,
+          incomePerTrip: trip.incomePerTrip,
+          runningCostPerYear: trip.runningCostPerYear,
+          buyCostTotal: trip.buyCostTotal,
+          profitPerYear: trip.profitPerYear,
+          paybackYears: trip.paybackYears,
+        };
+      };
+
+      // The branch is a dimension of the search, not a setting: the row keeps whichever one is
+      // better for the chosen goal, judged by the same comparison that picks between consists.
+      // Indistinguishable branches leave the plain one standing, so a route the full-load order
+      // does nothing to reads exactly as it did before the branches existed.
+      const plain = row(branches.runsWithWhatAccumulated, stationRating, offeredPerYear);
+      if (!branches.differ || !branches.waitsForFullLoad) return plain;
+      const waiting = row(branches.waitsForFullLoad, waitingRating, waitingOffered);
+      const [won, lost] = better(waiting, plain) ? [waiting, plain] : [plain, waiting];
+      return {
+        ...won,
+        otherBranch: {
+          pickupIntervalDays: lost.pickupIntervalDays,
+          cargoPerTrip: lost.cargoPerTrip,
+        },
       };
     };
 
@@ -402,35 +493,6 @@ export function optimizeConsists(
     }
   }
 
-  // One row per "engine × number of units": the best candidate for the chosen goal (wagons
-  // of the same capacity differ only in price, so an equal profit picks the cheaper one).
-  // Comparison keys are rounded to whole units — the game counts whole crates and whole
-  // pounds anyway, and ties on the delivered share are common because it is quantised by an
-  // integer rating. Rounding rather than an "differs by more than X" tolerance matters: a
-  // tolerance is not transitive, so which candidate won depended on the order they were
-  // swept in, and two equally good rows could beat each other.
-  const rank = (r: OptimizeResult): RankKeys => ({
-    hauled: Math.round(r.hauledPerYear),
-    profit: Math.round(r.profitPerYear),
-    cost: Math.round(r.buyCostTotal),
-  });
-  const better = (a: OptimizeResult, b: OptimizeResult) => {
-    const ra = rank(a);
-    const rb = rank(b);
-    const primary = strategy.primary(ra, rb);
-    if (primary !== 0) return primary < 0;
-    if (ra.profit !== rb.profit) return ra.profit > rb.profit;
-    if (ra.cost !== rb.cost) return ra.cost < rb.cost;
-    const wagons = preferTrain(a.wagon, b.wagon);
-    if (wagons !== 0) return wagons < 0;
-    // Rows that agree on every number above still need one winner, or which of them the
-    // output shows would follow the order the vehicles were swept in. A smaller fleet is
-    // the cheaper way to the same result; the rest is settled by identifiers.
-    if (a.fleetSize !== b.fleetSize) return a.fleetSize < b.fleetSize;
-    if (a.wagonCount !== b.wagonCount) return a.wagonCount < b.wagonCount;
-    if (a.engine.id !== b.engine.id) return a.engine.id < b.engine.id;
-    return a.engineCount < b.engineCount;
-  };
   const best = new Map<string, OptimizeResult>();
   for (const r of results) {
     const key = `${r.engine.id}|${r.engineCount}`;

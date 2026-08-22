@@ -24,7 +24,7 @@ import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { num, speed, speedUnitLabel, speedValue } from '../../components/format';
 import { Money } from '../../components/Money';
-import { optimizeConsists } from '../../engine/optimize';
+import { optimizeConsists, type OptimizeResult } from '../../engine/optimize';
 import { createOptimizerCache } from '../../engine/optimizeCache';
 import { cargoPaymentRate } from '../../engine/income';
 import { waitTimeThresholdDays, type StationRating } from '../../engine/rating';
@@ -49,6 +49,32 @@ function ratingBreakdown(r: StationRating): string {
     `${t('opt.ratingAge')}: ${signed(r.parts.age)}`,
     `${t('opt.ratingTotal')}: ${Math.round(r.rating)} / 255`,
   ].join('\n');
+}
+
+/**
+ * Which loading branch the row won in. Shown only where the branches actually differ: on a
+ * route the source keeps up with, the full-load order changes nothing and saying so would be
+ * noise. Struck through when the order is the thing costing the route its haul.
+ */
+function LoadingBranchMark({ row }: { row: OptimizeResult }) {
+  if (!row.branchesDiffer || !row.otherBranch) return null;
+  // What the branch that lost would have given, so the tooltip compares rather than asserts.
+  const other = {
+    interval: num(row.otherBranch.pickupIntervalDays, 1),
+    cargo: num(row.otherBranch.cargoPerTrip),
+  };
+  return (
+    <sup
+      className={row.waitForFullLoad ? 'branch-mark' : 'branch-mark branch-mark--off'}
+      title={
+        row.waitForFullLoad
+          ? t('opt.branchWait', { days: num(row.waitDays, 1), ...other })
+          : t('opt.branchNoWait', other)
+      }
+    >
+      {t('opt.fullLoadMark')}
+    </sup>
+  );
 }
 
 /** «Май 1960» на языке интерфейса. */
@@ -199,6 +225,10 @@ export default function OptimizerPage() {
     // The row was computed for the settled distance, so that is what travels with it:
     // inside the debounce window the field already holds a distance no row was priced at.
     routeStore.setDistanceTiles(searchInput.distance);
+    // The output and the loading branch travel too: both tabs settle a route by the same
+    // model, and a row carried over without them would be recomputed by a different one.
+    routeStore.setProductionPerMonth(searchInput.productionPerMonth);
+    routeStore.setWaitForFullLoad(r.waitForFullLoad);
     navigate('/income');
   }
 
@@ -367,6 +397,7 @@ export default function OptimizerPage() {
                   {r.cargoPerTrip < r.capacity - 0.5 && (
                     <span className="dim"> / {num(r.capacity)}</span>
                   )}
+                  <LoadingBranchMark row={r} />
                 </Table.Td>
                 <Table.Td>
                   {speedValue(r.loadedSpeedInternal)} / {speedValue(r.emptySpeedInternal)}{' '}

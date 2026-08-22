@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Button, NumberInput, Paper, Select, Table, Text, Title } from '@mantine/core';
+import { Button, NumberInput, Paper, Select, Switch, Table, Text, Title } from '@mantine/core';
 import { LineChart } from '@mantine/charts';
 import {
   activeCargoByLabel,
@@ -21,7 +21,7 @@ import { useConsistStore } from '../../state/consistStore';
 import { cargoPaymentRate, incomeCurve, transportedGoodsIncome } from '../../engine/income';
 import { transitPeriodsFromDays } from '../../engine/units';
 import { consistStats } from '../../engine/consist';
-import { tripEconomics } from '../../engine/trip';
+import { routeWithFlow } from '../../engine/trip';
 
 export default function RoutePage() {
   const route = useRouteStore();
@@ -49,24 +49,29 @@ export default function RoutePage() {
   );
 
   // Round-trip economics of the consist built on the Consist tab — the same model the
-  // optimizer uses, so a consist carried over with "→" shows the same figures here.
-  const trip = useMemo(
-    () =>
-      consist.entries.length > 0 && cargo
-        ? tripEconomics({
-            entries: consist.entries,
-            cargo,
-            payment,
-            distanceTiles: route.distanceTiles,
-            meta: activeTrainsMeta(game),
-            game,
-            calc,
-            loadedDaysOverride: route.manualDays,
-          })
-        : null,
-    [consist.entries, cargo, payment, route.distanceTiles, route.manualDays, game, calc],
-  );
-  const consistDays = trip && trip.loadedSpeedInternal > 0 ? trip.daysLoaded : null;
+  // optimizer uses, so a consist carried over with "→" shows the same figures here. The
+  // optimizer picks the loading branch by its goal; this tab has no goal, so the branch is
+  // the user's to set, and with it the source output the waiting branch accumulates from.
+  const routeTrip = useMemo(() => {
+    if (consist.entries.length === 0 || !cargo) return null;
+    return routeWithFlow({
+      entries: consist.entries,
+      cargo,
+      payment,
+      distanceTiles: route.distanceTiles,
+      meta: activeTrainsMeta(game),
+      game,
+      calc,
+      loadedDaysOverride: route.manualDays,
+      productionPerMonth: route.productionPerMonth,
+      waitForFullLoad: route.waitForFullLoad,
+    });
+  }, [
+    consist.entries, cargo, payment, route.distanceTiles, route.manualDays,
+    route.productionPerMonth, route.waitForFullLoad, game, calc,
+  ]);
+  const consistDays =
+    routeTrip && routeTrip.economics.loadedSpeedInternal > 0 ? routeTrip.economics.daysLoaded : null;
   const days = route.manualDays ?? consistDays ?? 0;
 
   const income = spec
@@ -97,10 +102,11 @@ export default function RoutePage() {
 
   const chartMaxDays = chart.at(-1)?.days ?? 0;
 
-  const profit = trip
+  const profit = routeTrip
     ? {
-        ...trip,
-        profitPerTile: stats.lengthTiles > 0 ? trip.profitPerYear / stats.lengthTiles : 0,
+        ...routeTrip.economics,
+        profitPerTile:
+          stats.lengthTiles > 0 ? routeTrip.economics.profitPerYear / stats.lengthTiles : 0,
       }
     : null;
 
@@ -147,6 +153,25 @@ export default function RoutePage() {
           step={0.5}
           value={route.manualDays ?? Number(days.toFixed(1))}
           onChange={(v) => route.setManualDays(Number(v) || 0)}
+        />
+        <NumberInput
+          className="field"
+          label={t('route.production')}
+          description={t('route.productionHint')}
+          min={0}
+          value={route.productionPerMonth}
+          onChange={(v) => route.setProductionPerMonth(Math.max(0, Number(v) || 0))}
+        />
+        <Switch
+          className="field"
+          label={t('route.waitForFullLoad')}
+          description={
+            route.productionPerMonth > 0
+              ? t('route.waitForFullLoadHint')
+              : t('route.waitForFullLoadNeedsFlow')
+          }
+          checked={route.waitForFullLoad}
+          onChange={(e) => route.setWaitForFullLoad(e.currentTarget.checked)}
         />
         {consistDays != null && (
           <Button variant="subtle" className="btn-link" onClick={() => route.setManualDays(null)}>
@@ -232,6 +257,31 @@ export default function RoutePage() {
                   <Table.Td>{t('combined.tripsPerYear')}</Table.Td>
                   <Table.Td align="right">{num(profit.tripsPerYear, 1)}</Table.Td>
                 </Table.Tr>
+                {profit.waitDays > 0 && (
+                  <Table.Tr>
+                    <Table.Td>{t('combined.accumulationWait')}</Table.Td>
+                    <Table.Td align="right">
+                      {num(profit.waitDays, 1)} {t('combined.days')}
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+                {routeTrip?.rating && (
+                  <>
+                    <Table.Tr>
+                      <Table.Td>{t('combined.deliveredShare')}</Table.Td>
+                      <Table.Td align="right">
+                        {Math.round(routeTrip.rating.deliveredShare * 100)}%
+                      </Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Td>{t('combined.cargoPerTrip')}</Table.Td>
+                      <Table.Td align="right">
+                        {num(profit.cargoPerTrip)} / {num(profit.capacity)}{' '}
+                        {cargoUnits(cargo?.units)}
+                      </Table.Td>
+                    </Table.Tr>
+                  </>
+                )}
                 <Table.Tr>
                   <Table.Td>{t('combined.incomePerTrip')}</Table.Td>
                   <Table.Td align="right">

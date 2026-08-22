@@ -35,9 +35,31 @@ for the whole fleet, so rows with different fleet sizes compare directly. What t
 offers is shared by the fleet, so a train beyond what the industry can fill adds cost without
 adding cargo.
 
-**Cargo per trip** (_груз за рейс_) — what one consist carries on one trip: its capacity, or
-the offered flow falling to one train of the fleet, whichever is smaller. Physics is always
-computed on a full load: the train waits to be filled rather than running light.
+**Cargo per trip** (_груз за рейс_) — what one consist carries on one trip. It follows the
+**loading branch**: with no full-load order, the capacity or the offered flow falling to one
+train of the fleet, whichever is smaller; with one, always the capacity. Physics is computed on
+a full load in both branches — a half-empty train is lighter and faster in game, but that
+correction is a separate change.
+
+**Loading branch** (_ветка загрузки_) — which of the two order modes a route is costed in.
+"Runs with what accumulated" (_уезжает с накопленным_) is the plain route: the consist leaves on
+arrival with whatever the station has. "Waits for a full load" (_ждёт полной загрузки_) is the
+full-load order: the consist leaves only when it is full, so its round trip carries an
+**accumulation wait**. The branch is a parameter of the calculation, never a setting — the
+optimizer costs both and keeps the better one for the chosen goal, and the route income tab
+lets the user pick.
+
+**Accumulation wait** (_ожидание накопления_) — the part of a round trip a consist spends
+standing while the source builds the load up: `round trip = max(physical round trip, fleet ×
+capacity ÷ accumulation rate)`, where the rate is what the station is **offered** per day, i.e.
+after the delivered share. A closed form rather than an iteration, and it assumes the flow
+splits evenly between the trains of the fleet: real consists bunch up and wait unevenly, so this
+is the average. Each branch reads its own **delivered share**: a consist that waits visits the
+station less often, so its rating is lower and the industry hands it less — which is how a
+full-load order can cost a route its output rather than merely re-spacing the same deliveries.
+The interval feeds the rating, the rating the flow, the flow the wait, and the wait the
+interval; the loop is walked until the rating stops moving, which it always does, because
+waiting can only lower it.
 
 **Pickup interval** (_интервал_) — days between visits to the station, `roundTripDays / fleet`.
 Shorter interval → higher station rating → larger delivered share. The same figure is the gap
