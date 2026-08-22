@@ -5,8 +5,10 @@ import {
   canCarry,
   canCarryIn,
   cargoByLabel,
+  cargoConsumers,
   economies,
   economyIdForPayment,
+  industries,
   trains,
   trainsMeta,
   VANILLA_ECONOMY_ID,
@@ -134,5 +136,38 @@ describe('canCarry (refit classes)', () => {
     const w2 = { refit: { classes: [], labels_allowed: ['YYYY'], labels_disallowed: [] } } as unknown as Train;
     expect(canCarry(w2, mk([], 'YYYY'))).toBe(true);
     expect(canCarry(w2, mk(rules.allowed, 'ZZZZ'))).toBe(false);
+  });
+});
+
+describe('cargoConsumers', () => {
+  const steeltown = { ...DEFAULT_GAME_SETTINGS, firs: true, firsEconomy: DEFAULT_FIRS_ECONOMY };
+
+  it('matches the accepts stated in the data, for every cargo of the economy', () => {
+    const expected = new Map<string, string[]>();
+    for (const industry of industries) {
+      const inEconomy = industry.economies[steeltown.firsEconomy];
+      if (!inEconomy) continue;
+      for (const accepted of inEconomy.accepts) {
+        expected.set(accepted.label, [...(expected.get(accepted.label) ?? []), industry.id]);
+      }
+    }
+    expect(expected.size).toBeGreaterThan(0);
+    for (const [label, ids] of expected) {
+      expect(cargoConsumers(steeltown, label).map((i) => i.id)).toEqual(ids);
+    }
+  });
+
+  it('a cargo nobody accepts gives an empty list', () => {
+    expect(cargoConsumers(steeltown, 'NO SUCH CARGO')).toEqual([]);
+  });
+
+  it('with FIRS off there are no consumers at all', () => {
+    const vanilla = { ...steeltown, firs: false };
+    expect(cargoConsumers(vanilla, 'COAL')).toEqual([]);
+  });
+
+  it('the index is not rebuilt: a second call returns the same array', () => {
+    const first = cargoConsumers(steeltown, 'COAL');
+    expect(cargoConsumers(steeltown, 'COAL')).toBe(first);
   });
 });

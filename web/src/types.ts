@@ -102,6 +102,22 @@ export interface IndustryEconomyData {
   produces: IndustryCargoEntry[];
 }
 
+/** One threshold of the supply pool, with the production bonus reaching it grants. */
+export interface SupplyPoolLevel {
+  threshold: number;
+  production_percent: number;
+}
+
+/**
+ * Thresholds a primary or port measures its deliveries against. Absent on industries the
+ * pool does not drive: secondaries convert what they are fed instead, and some primaries
+ * take no supplies at all.
+ */
+export interface SupplyPool {
+  level1: SupplyPoolLevel;
+  level2: SupplyPoolLevel;
+}
+
 export interface Industry {
   id: string;
   name: string;
@@ -109,6 +125,15 @@ export interface Industry {
   map_colour: string | null;
   economies: Record<string, IndustryEconomyData>;
   name_by_economy?: Record<string, string>;
+  supply_pool?: SupplyPool;
+}
+
+export interface IndustriesMeta {
+  source: string;
+  commit: string;
+  describe: string;
+  /** How long one delivery keeps an industry supplied: 27 production cycles of 256 ticks. */
+  supply_window_ticks: number;
 }
 
 export interface GraphEdge {

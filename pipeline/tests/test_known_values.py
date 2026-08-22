@@ -93,6 +93,7 @@ class FirsKnownValues(unittest.TestCase):
     def setUpClass(cls):
         cls.cargos = {c["id"]: c for c in load_json("cargos.json")["items"]}
         cls.industries = {i["id"]: i for i in load_json("industries.json")["items"]}
+        cls.industries_meta = load_json("industries.json")["meta"]
         cls.economies = {e["id"]: e for e in load_json("economies.json")["items"]}
 
     def test_coal_payment(self):
@@ -113,6 +114,36 @@ class FirsKnownValues(unittest.TestCase):
     def test_appliance_factory_any3(self):
         af = self.industries["appliance_factory"]["economies"]["STEELTOWN"]
         self.assertEqual(af["accept_mode"], "any_3")
+        # "any three of them" is not a rule of its own: every input is ratio 3, so any three
+        # reach the ceiling of 8 the conversion divides by
+        self.assertEqual([e["ratio"] for e in af["accepts"]], [3, 3, 3, 3, 3])
+
+    def test_supply_window(self):
+        # 27 remembered production cycles of 256 ticks each. Secondaries store 28 in a
+        # countdown and lose one per cycle, which is the same 27 (produce_secondary.pynml)
+        self.assertEqual(self.industries_meta["supply_window_ticks"], 27 * 256)
+
+    def test_supply_pool_thresholds(self):
+        # mines and farms take the parameter defaults as they are; the industry multiplier is 1
+        mine = self.industries["coal_mine"]["supply_pool"]
+        self.assertEqual(mine["level1"], {"threshold": 16, "production_percent": 150})
+        self.assertEqual(mine["level2"], {"threshold": 80, "production_percent": 250})
+        # ports multiply both thresholds by 8, and pool every cargo they accept into one count
+        port = self.industries["port"]["supply_pool"]
+        self.assertEqual(port["level1"], {"threshold": 128, "production_percent": 150})
+        self.assertEqual(port["level2"], {"threshold": 640, "production_percent": 250})
+
+    def test_supply_pool_only_where_supplies_drive_production(self):
+        # secondaries convert what they are fed instead of pooling it, and FIRS marks some
+        # primaries as taking no supplies at all — neither carries a pool
+        self.assertNotIn("supply_pool", self.industries["blast_furnace"])
+        no_supplies = [
+            i for i in self.industries.values()
+            if i["type"] == "IndustryPrimaryNoSupplies"
+        ]
+        self.assertTrue(no_supplies)
+        for industry in no_supplies:
+            self.assertNotIn("supply_pool", industry)
 
     def test_version(self):
         # data must come from the release tag, not master: master already renamed

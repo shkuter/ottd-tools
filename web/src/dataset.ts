@@ -3,14 +3,16 @@ import cargosJson from './data/cargos.json';
 import industriesJson from './data/industries.json';
 import economiesJson from './data/economies.json';
 import metaJson from './data/meta.json';
-import type { Cargo, Economy, Industry, Train, TrainsMeta } from './types';
+import type { Cargo, Economy, IndustriesMeta, Industry, Train, TrainsMeta } from './types';
 import { vanillaCanCarry, vanillaCargos, vanillaTrains } from './vanilla';
 import { DEFAULT_FIRS_ECONOMY, type GameSettings } from './engine/settings';
+import type { SupplyTarget } from './engine/supply';
 
 export const trains = (trainsJson as { items: unknown }).items as Train[];
 export const trainsMeta = (trainsJson as { meta: unknown }).meta as TrainsMeta;
 export const cargos = (cargosJson as { items: unknown }).items as Cargo[];
 export const industries = (industriesJson as { items: unknown }).items as Industry[];
+export const industriesMeta = (industriesJson as { meta: unknown }).meta as IndustriesMeta;
 export const economies = (economiesJson as { items: unknown }).items as Economy[];
 export const datasetMeta = metaJson as {
   generated_at: string;
@@ -118,6 +120,89 @@ function cargosOfEconomy(economy: Economy): Cargo[] {
     .filter((c): c is Cargo => Boolean(c));
   cargosByEconomy.set(economy.id, list);
   return list;
+}
+
+/** One index per economy: the consumer lookup runs inside the `useMemo` of the optimizer. */
+const consumersByEconomy = new Map<string, Map<string, Industry[]>>();
+
+/**
+ * Which industries of an economy accept a cargo, by cargo label.
+ *
+ * Derived rather than stored: the answer already sits in every industry's `accepts`, and a
+ * second copy in the data could disagree with it without anyone noticing. Cached per economy
+ * because a game runs one, and rebuilt for none of them beyond that.
+ */
+function consumersOfEconomy(economy: Economy): Map<string, Industry[]> {
+  const cached = consumersByEconomy.get(economy.id);
+  if (cached) return cached;
+  const index = new Map<string, Industry[]>();
+  for (const industry of industries) {
+    const inEconomy = industry.economies[economy.id];
+    if (!inEconomy) continue;
+    for (const accepted of inEconomy.accepts) {
+      const consumers = index.get(accepted.label);
+      if (consumers) consumers.push(industry);
+      else index.set(accepted.label, [industry]);
+    }
+  }
+  consumersByEconomy.set(economy.id, index);
+  return index;
+}
+
+/**
+ * Industries of the active economy that accept this cargo, in data order. Empty when nobody
+ * takes it — a cargo can be produced and never consumed — and empty with FIRS off, where
+ * there are no industries to speak of.
+ *
+ * The array is shared between callers, so none of them may mutate it.
+ */
+export function cargoConsumers(game: GameSettings, cargoLabel: string): Industry[] {
+  if (!game.firs) return [];
+  return consumersOfEconomy(activeEconomy(game)).get(cargoLabel) ?? [];
+}
+
+/**
+ * Industry a route delivers to: the chosen one while the active economy still has it, else
+ * the first consumer of the cargo. Null when nobody takes the cargo at all.
+ *
+ * Resolved on every read rather than written back to the store, the way the economy itself
+ * falls back (ADR-0002): switching economies then cannot leave a consumer from another set
+ * standing, and no migration is needed for what is already in localStorage.
+ */
+function resolveDestination(
+  game: GameSettings,
+  cargoLabel: string,
+  chosenId: string,
+): Industry | null {
+  const consumers = cargoConsumers(game, cargoLabel);
+  if (consumers.length === 0) return null;
+  return consumers.find((industry) => industry.id === chosenId) ?? consumers[0];
+}
+
+/**
+ * The supply target for a route, as the engine wants it: the receiving industry, the window
+ * from the dataset, and the input ratios around the hauled cargo.
+ *
+ * The other inputs come along because the conversion is a sum over all of them — the engine
+ * takes them as fed by somebody else and the interface says so.
+ */
+export function supplyTargetFor(
+  game: GameSettings,
+  cargoLabel: string,
+  chosenId: string,
+): SupplyTarget | null {
+  const industry = resolveDestination(game, cargoLabel, chosenId);
+  if (!industry) return null;
+  const accepts = industry.economies[activeEconomy(game).id]?.accepts ?? [];
+  const hauled = accepts.find((entry) => entry.label === cargoLabel);
+  return {
+    industry,
+    windowTicks: industriesMeta.supply_window_ticks,
+    cargoRatio: hauled?.ratio ?? null,
+    otherRatios: accepts
+      .filter((entry) => entry.label !== cargoLabel)
+      .map((entry) => entry.ratio ?? 0),
+  };
 }
 
 /** Payment-rate key for vanilla cargos: they carry a single rate instead of one per economy. */

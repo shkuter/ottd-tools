@@ -13,6 +13,13 @@ interface OptimizerState {
   goal: OptimizeGoal;
   /** Upper bound on trains per route, used by the transported goal. */
   maxTrains: number;
+  /**
+   * Industry the cargo is hauled to, for the supply column and the supply goal. Empty when
+   * none was chosen; an id the active economy has no industry for is replaced on read, the
+   * way the economy itself falls back (ADR-0002), so switching economies cannot leave a
+   * consumer from another set standing.
+   */
+  destinationId: string;
   allowElectric: boolean;
   /**
    * Машины, исключённые из перебора: те, что в выбранном году могут ещё не
@@ -26,6 +33,7 @@ interface OptimizerState {
   setProductionPerMonth: (amount: number) => void;
   setGoal: (goal: OptimizeGoal) => void;
   setMaxTrains: (trains: number) => void;
+  setDestinationId: (id: string) => void;
   setAllowElectric: (allow: boolean) => void;
   /** Выключить/вернуть пункт списка покупки целиком: у него бывает несколько моделей. */
   toggleExcluded: (ids: string[]) => void;
@@ -42,6 +50,7 @@ export const useOptimizerStore = create<OptimizerState>()(
       productionPerMonth: 0,
       goal: 'profit',
       maxTrains: 4,
+      destinationId: '',
       allowElectric: false,
       excludedIds: [],
       setYear: (year) => set({ year }),
@@ -51,6 +60,7 @@ export const useOptimizerStore = create<OptimizerState>()(
       setProductionPerMonth: (productionPerMonth) => set({ productionPerMonth }),
       setGoal: (goal) => set({ goal }),
       setMaxTrains: (maxTrains) => set({ maxTrains }),
+      setDestinationId: (destinationId) => set({ destinationId }),
       setAllowElectric: (allowElectric) => set({ allowElectric }),
       toggleExcluded: (ids) =>
         set((s) => ({

@@ -13,6 +13,13 @@ import { preferTrain } from './purchase';
 import { tripBranches, tripMoney, tripSetup, type TripEconomics } from './trip';
 import { flowPerYearFromMonthly, routeStationRating, settleBranchFlows } from './waiting';
 import {
+  type SupplyAssessment,
+  type SupplyTarget,
+  assessSupply,
+  holdsSupplied,
+  supplyWindowDays,
+} from './supply';
+import {
   cachedSetup,
   createOptimizerCache,
   resetIfStale,
@@ -24,10 +31,11 @@ import {
   type CalcSettings,
   type GameSettings,
   effectiveDayLength,
+  engineDaysPerYear,
 } from './settings';
 
 /** What the optimizer ranks its output by. */
-export type OptimizeGoal = 'profit' | 'transported';
+export type OptimizeGoal = 'profit' | 'transported' | 'supply';
 
 export interface OptimizeParams {
   year: number;
@@ -54,6 +62,11 @@ export interface OptimizeParams {
    * without one it is treated as 'profit' — the engine is the single source of truth here.
    */
   goal?: OptimizeGoal;
+  /**
+   * Receiving industry the supply goal and the supply column judge against. Absent when the
+   * cargo has no consumer in the active economy, which is also when the goal is unavailable.
+   */
+  supplyTarget?: SupplyTarget | null;
   /** Upper bound on trains per route, used by the transported goal. */
   maxTrains?: number;
   game?: GameSettings;
@@ -116,6 +129,12 @@ export interface OptimizeResult {
   /** Days of the round trip spent waiting for the load (0 outside the waiting branch). */
   waitDays: number;
   /**
+   * How this row leaves the receiving industry: its interval against the supply window, and
+   * what that means under the industry's own acceptance rule. Null when no receiving industry
+   * was given — the cargo has no consumer in this economy, or none was chosen.
+   */
+  supply: SupplyAssessment | null;
+  /**
    * What the branch that lost would have given: the comparison is the answer the player is
    * after, and words alone do not let them compare. Null when the branches are the same.
    */
@@ -136,11 +155,34 @@ export interface OptimizeResult {
   paybackYears: number | null;
 }
 
-/** The three numbers rows are ranked by, rounded to whole units. */
+/**
+ * How well the receiving industry ends up supplied, as one number to rank by: the conversion
+ * share for secondaries, the pool level for primaries and ports. Stepped on purpose — it is
+ * what the industry actually gets, and ties on it are settled by profit, so the goal picks
+ * the cheapest way to the same result rather than the shortest interval for its own sake.
+ *
+ * The conversion alone is not enough to rank by. It counts the industry's other inputs as fed,
+ * and the sum is capped at 8, so at an industry that needs "any three of five" the four other
+ * inputs already reach the ceiling and this route changes nothing — every row scores 1,
+ * including the ones that fall out of the window. Hence `supplyHolds` below as the second key:
+ * the conversion never contradicts it, it just cannot always see it.
+ */
+function supplyScore(assessment: SupplyAssessment | null): number {
+  if (!assessment) return 0;
+  if (assessment.conversion !== null) return assessment.conversion;
+  if (assessment.pool) return assessment.pool.level / 2;
+  return 0;
+}
+
+/** The figures a row is ranked by; which of them lead is up to the goal's `primary`. */
 interface RankKeys {
   hauled: number;
   profit: number;
   cost: number;
+  /** How well the receiving industry ends up supplied, 0..1. Stepped, not continuous. */
+  supply: number;
+  /** Whether this route's own input stays inside the window: 1 yes, 0 no. */
+  supplyHolds: number;
 }
 
 /**
@@ -180,6 +222,19 @@ function sourceCannotFillConsist(rows: readonly OptimizeResult[]): boolean {
 }
 
 function goalStrategy(goal: OptimizeGoal): GoalStrategy {
+  if (goal === 'supply') {
+    return {
+      // A shorter consist runs more often, so it holds the window where a full-length one
+      // falls out of it: this goal has to see every length, same as the transported one.
+      sweepsShorter: () => true,
+      stopsSweep: () => false,
+      primary: (a, b) => {
+        if (a.supply !== b.supply) return a.supply > b.supply ? -1 : 1;
+        if (a.supplyHolds !== b.supplyHolds) return a.supplyHolds > b.supplyHolds ? -1 : 1;
+        return 0;
+      },
+    };
+  }
   if (goal === 'transported') {
     return {
       // A shorter consist runs more often, so it can haul more than a full-length one: this
@@ -273,7 +328,13 @@ export function optimizeConsists(
   const flowPerYear = flowPerYearFromMonthly(params.productionPerMonth);
   // Without a flow there is no delivered share to rank by, so the transported goal is
   // pointless: fall back to profit rather than leave the tab with a meaningless order.
-  const goal: OptimizeGoal = flowPerYear > 0 ? (params.goal ?? 'profit') : 'profit';
+  // Without a flow there is no interval, and without a receiving industry there is nothing to
+  // be supplied: either way the supply goal has no order to impose, so it falls back to profit
+  // rather than leaving the tab ranked by nothing.
+  const supplyTarget = params.supplyTarget ?? null;
+  const requested = params.goal ?? 'profit';
+  const goal: OptimizeGoal =
+    flowPerYear <= 0 || (requested === 'supply' && !supplyTarget) ? 'profit' : requested;
   const maxTrains = Math.max(1, Math.floor(params.maxTrains ?? 4));
   const strategy = goalStrategy(goal);
   const results: OptimizeResult[] = [];
@@ -291,6 +352,10 @@ export function optimizeConsists(
     hauled: Math.round(r.hauledPerYear),
     profit: Math.round(r.profitPerYear),
     cost: Math.round(r.buyCostTotal),
+    // Rounded like the rest: the conversion is a multiple of 1/8 and the pool a level, so
+    // rounding only guards against float noise in the division.
+    supply: Math.round(supplyScore(r.supply) * 1000) / 1000,
+    supplyHolds: r.supply && holdsSupplied(r.supply.verdict) ? 1 : 0,
   });
   const better = (a: OptimizeResult, b: OptimizeResult) => {
     const ra = rank(a);
@@ -432,6 +497,19 @@ export function optimizeConsists(
           waitForFullLoad: trip.waitForFullLoad,
           branchesDiffer: branches.differ,
           waitDays: trip.waitDays,
+          // Without a stated output there is no interval to space visits by and no volume to
+          // pool: both stay unknown rather than being invented from what the fleet could carry.
+          supply: supplyTarget
+            ? assessSupply(supplyTarget, {
+                pickupIntervalDays: flowPerYear > 0 ? trip.roundTripDays / fleetSize : null,
+                roundTripDays: trip.roundTripDays,
+                deliveredPerWindow:
+                  flowPerYear > 0
+                    ? (hauledPerYear * supplyWindowDays(supplyTarget.windowTicks)) /
+                      engineDaysPerYear(game)
+                    : null,
+              })
+            : null,
           otherBranch: null,
           lengthTiles,
           loadedSpeedInternal: trip.loadedSpeedInternal,

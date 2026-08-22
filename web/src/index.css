@@ -604,3 +604,27 @@ td:has(> .train-sprite) {
 }
 
 }
+
+/* Sortable result headers: the whole cell is the control, so it needs to read as one. */
+.table-wrap th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.table-wrap th.sortable:hover {
+  background: var(--bg-hover);
+}
+
+.table-wrap th.sorted {
+  color: var(--accent);
+}
+
+.sort-mark {
+  font-size: 11px;
+}
+
+/* Supply column: the figure carries the verdict, so the colour only reinforces it — green
+   where the fleet holds the window, red where it misses. A ratio close to 1 deliberately keeps
+   the plain text colour: it holds, but only just, and the tooltip is where that is explained. */
+.supply-holds { color: var(--profit); }
+.supply-misses { color: var(--loss); }

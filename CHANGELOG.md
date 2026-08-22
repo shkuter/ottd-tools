@@ -20,6 +20,21 @@ of what users see):
 
 ### Added
 
+- Supply window: the optimizer now answers whether a fleet visits often enough to keep the
+  receiving industry fed. FIRS remembers a delivery for 27 production cycles of 256 ticks, and
+  an input that falls out of that window stops counting as supplied — a secondary then converts
+  a smaller share of everything it is fed, and a primary or port loses a production bonus it
+  earns by volume. A new column measures each row's interval against the window, names the
+  fleet that would hold it, and says plainly that it counts the hauled cargo only. A third
+  search goal, "Supply", ranks by the conversion the industry reaches and settles ties by
+  profit, so it finds the cheapest way to keep the destination fed rather than the shortest
+  interval. Where a cargo has several consumers, the destination is picked on the tab; the
+  window, the pool thresholds (16 / 80 for mines and farms, 128 / 640 for ports) and the
+  production bonuses come from the FIRS sources through the pipeline.
+- The optimizer's result table sorts by any column: a click orders by it, a second reverses,
+  a third returns the order the search produced. Sorting is a view over the rows the goal
+  already ranked — it changes neither the set of rows nor their figures.
+
 - The FIRS economy is a game setting now (Settings → NewGRF sets, under the FIRS toggle),
   applied to every tab at once. It decides which cargos exist rather than what they pay, so
   the active cargo set follows it: a game in Steeltown is offered its 62 cargos instead of all

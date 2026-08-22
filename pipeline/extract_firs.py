@@ -2,7 +2,9 @@
 
 Выход: web/src/data/{cargos,industries,economies}.json + web/public/icons/cargo/*.png
 """
+import importlib
 import os
+import re
 from collections import Counter
 
 from PIL import Image
@@ -30,6 +32,98 @@ ACCEPT_MODES = {
     "STR_EXTRA_TEXT_SECONDARY_COMBINATORY_ANY_THREE": "any_3",
     "STR_EXTRA_TEXT_SECONDARY_COMBINATORY_ANY_TWO": "any_2",
 }
+
+# Supply window: how long one delivery keeps an industry supplied. Both halves are read out
+# of the FIRS sources rather than off the "3 months" comment beside them, so a release that
+# retimes the window trips the known-values test instead of silently shifting every verdict.
+SUPPLY_CYCLE_REGISTER_PREFIXES = ("num_supplies_delivered_", "input_cargo_delivered_")
+PRODUCE_CALLBACK_RE = re.compile(r"produce_(\d+)_ticks")
+
+
+def supply_window_cycles():
+    """Production cycles a delivery is remembered for.
+
+    Counted off the perm storage FIRS reserves — one register per remembered cycle.
+    Secondaries keep the same window in a countdown instead of a list: produce_secondary.pynml
+    stores 28 on delivery and takes one off per cycle, "so we get 27 cycles in total", so they
+    contribute no registers here and the count still describes them.
+    """
+    mappings = importlib.import_module("grf.perm_storage_mappings").perm_storage_mappings
+    counts = {
+        sum(1 for name in mapping.storage_items if name.startswith(prefix))
+        for mapping in mappings.values()
+        for prefix in SUPPLY_CYCLE_REGISTER_PREFIXES
+    }
+    counts.discard(0)
+    if len(counts) != 1:
+        raise SystemExit(f"FIRS industry types disagree on the supply window: {sorted(counts)}")
+    return counts.pop()
+
+
+def production_cycle_ticks():
+    """Ticks between production callbacks, taken from the callback the templates hang it on."""
+    templates = os.path.join(FIRS_ROOT, "src", "grf", "templates")
+    ticks = set()
+    for name in sorted(os.listdir(templates)):
+        if name.startswith("industry_") and name.endswith(".pynml"):
+            with open(os.path.join(templates, name)) as f:
+                ticks.update(int(found) for found in PRODUCE_CALLBACK_RE.findall(f.read()))
+    if len(ticks) != 1:
+        raise SystemExit(f"FIRS industry templates disagree on the cycle length: {sorted(ticks)}")
+    return ticks.pop()
+
+
+# Supply pool: primaries and ports convert deliveries into a production bonus by counting what
+# arrived across the window against two thresholds. Both thresholds and both bonuses are NewGRF
+# parameters; the calculator assumes the defaults, and reads them where the defaults are stated.
+SUPPLY_POOL_PARAMS = (
+    ("level1", "primary_level1_requirement", "primary_level1_produced_percent"),
+    ("level2", "primary_level2_requirement", "primary_level2_produced_percent"),
+)
+PARAM_DEF_VALUE_RE = re.compile(r"(\w+)\s*\{[^{}]*?def_value:\s*([^;]+);", re.S)
+TEMPLATE_EXPR_RE = re.compile(r"\$\{([^}]+)\}")
+
+
+def newgrf_param_defaults():
+    """Default value of each NewGRF parameter, by parameter name.
+
+    Read out of the header template, where the defaults are declared, so that a FIRS release
+    retuning them shows up as a data diff. Values are either plain numbers or short arithmetic
+    over global_constants, which is a python module here and can simply be asked.
+    """
+    header = os.path.join(FIRS_ROOT, "src", "grf", "templates", "header.pynml")
+    constants = importlib.import_module("global_constants")
+    with open(header) as f:
+        source = f.read()
+    defaults = {}
+    for name, raw in PARAM_DEF_VALUE_RE.findall(source):
+        expression = TEMPLATE_EXPR_RE.sub(lambda m: m.group(1), raw).strip()
+        try:
+            defaults[name] = int(eval(expression, {"global_constants": constants}))
+        except (SyntaxError, NameError, TypeError, ValueError):
+            continue  # a string or a lookup we have no use for
+    return defaults
+
+
+def supply_pool_payload(industry, param_defaults):
+    """Thresholds and production bonuses for an industry fed by the supply pool.
+
+    None for industries the pool does not drive — secondaries, tertiaries and the primaries
+    FIRS marks as taking no supplies. The industry type carries a multiplier over the shared
+    thresholds (1 for farms and mines, 8 for ports), so the numbers land here already scaled.
+    """
+    requirements = getattr(industry, "supply_requirements", None)
+    if not requirements:
+        return None
+    multiplier = requirements[2]
+    return {
+        level: {
+            "threshold": multiplier * param_defaults[threshold_param],
+            "production_percent": param_defaults[bonus_param],
+        }
+        for level, threshold_param, bonus_param in SUPPLY_POOL_PARAMS
+    }
+
 
 TTD_UNIT_NAMES = {
     "TTD_STR_TONS": "tonnes",
@@ -127,7 +221,7 @@ def industry_economy_payload(industry, economy):
     return {"accepts": accepts, "accept_mode": accept_mode, "produces": produces}
 
 
-def extract_industries(dh, economies):
+def extract_industries(dh, economies, param_defaults):
     items = []
     for industry in firs.industry_manager:
         per_economy = {}
@@ -154,6 +248,9 @@ def extract_industries(dh, economies):
         }
         if name_overrides:
             item["name_by_economy"] = name_overrides
+        supply_pool = supply_pool_payload(industry, param_defaults)
+        if supply_pool:
+            item["supply_pool"] = supply_pool
         items.append(item)
     items.sort(key=lambda i: i["id"])
     return items
@@ -262,12 +359,17 @@ def main():
     }
 
     meta = vendor_meta("firs")
+    param_defaults = newgrf_param_defaults()
     cargos = extract_cargos(dh, economies, spaced)
-    industries = extract_industries(dh, economies)
+    industries = extract_industries(dh, economies, param_defaults)
     economies_payload = extract_economies(dh, economies, industries, cargos)
 
     write_json("cargos.json", {"meta": meta, "items": cargos})
-    write_json("industries.json", {"meta": meta, "items": industries})
+    industries_meta = {
+        **meta,
+        "supply_window_ticks": supply_window_cycles() * production_cycle_ticks(),
+    }
+    write_json("industries.json", {"meta": industries_meta, "items": industries})
     write_json("economies.json", {"meta": meta, "items": economies_payload})
     extract_icons()
 

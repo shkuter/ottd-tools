@@ -19,18 +19,28 @@ import { notifications } from '@mantine/notifications';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useNavigate } from 'react-router';
-import { activeCargos, activeTrains, activeTrainsMeta, economies, economyIdForPayment } from '../../dataset';
+import {
+  activeCargos,
+  activeTrains,
+  activeTrainsMeta,
+  cargoConsumers,
+  economies,
+  economyIdForPayment,
+  supplyTargetFor,
+} from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
-import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
+import { cargoName, cargoUnits, industryName, sortCargos } from '../../i18n/names';
 import { num, percent, speed, speedUnitLabel, speedValue } from '../../components/format';
 import { Money } from '../../components/Money';
 import { optimizeConsists, type OptimizeResult } from '../../engine/optimize';
+import { hasVerdict, supplyFigure, type SupplyTarget } from '../../engine/supply';
 import { createOptimizerCache } from '../../engine/optimizeCache';
 import { cargoPaymentRate } from '../../engine/income';
 import { waitTimeThresholdDays, type StationRating } from '../../engine/rating';
 import { effectiveDayLength } from '../../engine/settings';
 import { introRandomisationActive, type IntroAvailability } from '../../engine/availability';
 import { doubtfulGroups } from './doubtful';
+import { nextSort, sortRows, type SortColumn, type SortState } from './sorting';
 import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
 import { CargoIcon } from '../../components/CargoIcon';
@@ -100,6 +110,120 @@ function IntroNote({ intro }: { intro: IntroAvailability }) {
   );
 }
 
+/**
+ * Header that sorts the rows it heads. Three states in a cycle: ascending, descending, and
+ * back to the order the search returned — the goal decided that order, and a user who sorted
+ * by hand must be able to get it back without re-running anything.
+ */
+function SortableTh({
+  column,
+  sort,
+  onSort,
+  title,
+  colSpan,
+  className,
+  children,
+}: {
+  column: SortColumn;
+  sort: SortState;
+  onSort: (next: SortState) => void;
+  title?: string;
+  colSpan?: number;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const active = sort?.column === column;
+  const next = nextSort(sort, column);
+  return (
+    <Table.Th
+      className={`sortable${active ? ' sorted' : ''}${className ? ` ${className}` : ''}`}
+      title={title}
+      colSpan={colSpan}
+      onClick={() => onSort(next)}
+    >
+      {children}
+      <span className="sort-mark">{active ? (sort.descending ? ' ▾' : ' ▴') : ''}</span>
+    </Table.Th>
+  );
+}
+
+/**
+ * Supply column cell. What it shows follows the receiving industry's own rule: a secondary
+ * converts what it is fed, so the figure is the interval against the window; a primary or port
+ * earns a production bonus by volume across the window, so the figure is that bonus and the
+ * ratio drops to a footnote in the tooltip. Colouring a pool industry by its interval would
+ * answer a question it never asks.
+ *
+ * The figure comes from `supplyFigure`, the same call the sort map makes, so the header can
+ * never order rows by a number this cell does not show.
+ */
+function SupplyCell({ row, target }: { row: OptimizeResult; target: SupplyTarget }) {
+  const supply = row.supply;
+  const figure = supplyFigure(supply);
+  const pool = target.industry.supply_pool;
+  const inputCount = 1 + target.otherRatios.length;
+
+  if (!supply || !hasVerdict(supply.rule)) {
+    return (
+      <Table.Td
+        title={supply?.rule === 'no-supplies' ? t('opt.supplyNoSupplies') : t('opt.supplyRuleUnknown')}
+      >
+        —
+      </Table.Td>
+    );
+  }
+  if (!figure) return <Table.Td title={t('opt.supplyNeedsProduction')}>—</Table.Td>;
+
+  // Both rules name the interval, the window and the fleet that would hold it; the pool adds
+  // its own numbers on top of that rather than in place of it.
+  const common = [
+    t('opt.supplyHintInterval', {
+      interval: num(row.pickupIntervalDays, 1),
+      window: num(supply.windowDays, 1),
+    }),
+    t('opt.supplyHintFleet', { trains: String(supply.trainsForWindow ?? 1) }),
+  ];
+
+  if (figure.kind === 'bonus') {
+    const hint = [
+      t('opt.supplyHintPool', {
+        delivered: num(supply.deliveredPerWindow ?? 0),
+        window: num(supply.windowDays, 1),
+        level1: num(pool?.level1.threshold ?? 0),
+        level2: num(pool?.level2.threshold ?? 0),
+      }),
+      t('opt.supplyHintPoolBonus', {
+        percent1: num(pool?.level1.production_percent ?? 0),
+        percent2: num(pool?.level2.production_percent ?? 0),
+      }),
+      t('opt.supplyHintPoolShare'),
+      ...common,
+    ].join('\n');
+    return (
+      <Table.Td className={figure.value > 100 ? 'supply-holds' : 'supply-misses'} title={hint}>
+        {num(figure.value)}%
+      </Table.Td>
+    );
+  }
+
+  const hint = [
+    ...common,
+    // Only where there really are other inputs: a coke oven takes one cargo, and speaking of
+    // "the other inputs" there would be inventing them.
+    ...(inputCount > 1
+      ? [t('opt.supplyHintOneCargo', { industry: industryName(target.industry) })]
+      : []),
+  ].join('\n');
+  return (
+    <Table.Td className={`supply-${supply.verdict}`} title={hint}>
+      {num(figure.value, 2)}
+      {supply.verdict === 'misses' && (
+        <sup className="intro-warn" title={t('opt.supplyMisses')}>!</sup>
+      )}
+    </Table.Td>
+  );
+}
+
 /** Ранняя и поздняя даты появления машины — подсказка для «?» и для чекбоксов. */
 function introTitle(intro: IntroAvailability): string {
   const lines = [`${t('opt.introFrom')}: ${monthYear(intro.year, intro.month)}`];
@@ -112,11 +236,12 @@ function introTitle(intro: IntroAvailability): string {
 export default function OptimizerPage() {
   const {
     year, cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, goal, maxTrains,
-    allowElectric, excludedIds, setYear, setCargoLabel, setDistanceTiles: setDistance,
+    allowElectric, excludedIds, destinationId, setYear, setCargoLabel, setDistanceTiles: setDistance,
     setStationTiles, setProductionPerMonth, setGoal, setMaxTrains, setAllowElectric,
-    toggleExcluded, clearExcluded,
+    setDestinationId, toggleExcluded, clearExcluded,
   } = useOptimizerStore();
   const [engineFilter, setEngineFilter] = useState('');
+  const [sort, setSort] = useState<SortState>(null);
   const [subsidised, setSubsidised] = useState(false);
   const { game, calc } = useSettingsStore();
   const locale = useLocale();
@@ -148,7 +273,18 @@ export default function OptimizerPage() {
   // screen were computed for the old value, and a goal ahead of them would label columns
   // with numbers that do not belong to the search that produced them.
   const goalAvailable = searchInput.productionPerMonth > 0;
-  const activeGoal = goalAvailable ? goal : 'profit';
+
+  // Industries of the active economy that take this cargo. The chosen one is resolved on
+  // every read, so switching economy cannot leave a consumer from another set standing.
+  const consumers = useMemo(() => cargoConsumers(game, cargoLabel), [game, cargoLabel]);
+  const supplyTarget = useMemo(
+    () => supplyTargetFor(game, cargoLabel, destinationId),
+    [game, cargoLabel, destinationId],
+  );
+  // Nothing takes this cargo — there is nothing to keep supplied, so the goal is not offered.
+  const supplyAvailable = goalAvailable && supplyTarget !== null;
+  const activeGoal =
+    (goal === 'supply' && !supplyAvailable) || !goalAvailable ? 'profit' : goal;
 
   // The rating thresholds are stated in days, and a slowed JGRPP economy stretches them:
   // at factor 5 the first one sits at 262.5 days, not 52.5. Built at render time so the
@@ -175,6 +311,7 @@ export default function OptimizerPage() {
         maxLengthTiles: searchInput.stationTiles,
         productionPerMonth: searchInput.productionPerMonth,
         goal: activeGoal,
+        supplyTarget,
         maxTrains: searchInput.maxTrains,
         allowElectric,
         subsidised,
@@ -186,7 +323,7 @@ export default function OptimizerPage() {
       50,
       searchCache.current,
     );
-  }, [trains, cargo, economyId, searchInput, activeGoal, allowElectric, subsidised, excludedIds, game, calc]);
+  }, [trains, cargo, economyId, searchInput, activeGoal, supplyTarget, allowElectric, subsidised, excludedIds, game, calc]);
 
   // машины, которые в выбранном году могут ещё не появиться, — их можно выключить
   const collator = useMemo(() => new Intl.Collator(intlLocale(locale)), [locale]);
@@ -207,8 +344,12 @@ export default function OptimizerPage() {
   // not on a new row count: a different search of the same size is still a different answer.
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   useEffect(() => setVisibleCount(PAGE_SIZE), [matching]);
-  const shown = matching.slice(0, visibleCount);
-  const hiddenCount = matching.length - shown.length;
+  // Sorting is a view over the rows the search returned, not a second ranking: it reorders
+  // what is on screen and leaves the set and the numbers alone.
+  const ordered = useMemo(() => sortRows(matching, sort, collator), [matching, sort, collator]);
+
+  const shown = ordered.slice(0, visibleCount);
+  const hiddenCount = ordered.length - shown.length;
 
   function applyToConsist(index: number) {
     const r = shown[index];
@@ -271,6 +412,16 @@ export default function OptimizerPage() {
             onChange={(v) => setProductionPerMonth(Math.max(0, Number(v) || 0))}
           />
         </Tooltip>
+        {consumers.length > 1 && (
+          <Select
+            label={t('opt.destination')}
+            searchable
+            allowDeselect={false}
+            value={supplyTarget?.industry.id ?? null}
+            onChange={(v) => v && setDestinationId(v)}
+            data={consumers.map((i) => ({ value: i.id, label: industryName(i) }))}
+          />
+        )}
         <div className="goal-field">
           <Text component="label" size="sm">{t('opt.goal')}</Text>
           <SegmentedControl
@@ -279,6 +430,7 @@ export default function OptimizerPage() {
             data={[
               { value: 'profit', label: t('opt.goalProfit') },
               { value: 'transported', label: t('opt.goalTransported'), disabled: !goalAvailable },
+              { value: 'supply', label: t('opt.goalSupply'), disabled: !supplyAvailable },
             ]}
           />
         </div>
@@ -357,23 +509,65 @@ export default function OptimizerPage() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>#</Table.Th>
-              <Table.Th colSpan={2}>{t('opt.engine')}</Table.Th>
-              <Table.Th colSpan={2}>{t('opt.wagons')}</Table.Th>
-              <Table.Th title={t('opt.cargoTripHint')}>{t('opt.cargoTrip')}</Table.Th>
-              <Table.Th>{t('opt.speedLoadedEmpty')}</Table.Th>
-              <Table.Th>{t('opt.gradeSpeed')}</Table.Th>
-              <Table.Th>{t('opt.dwell')}</Table.Th>
-              <Table.Th>{t('combined.roundTrip')}</Table.Th>
-              <Table.Th>{t('opt.trips')}</Table.Th>
-              <Table.Th title={t('opt.fleetHint')}>{t('opt.fleet')}</Table.Th>
-              <Table.Th title={intervalHint}>{t('opt.interval')}</Table.Th>
-              <Table.Th title={t('opt.ratingHint')}>{t('opt.rating')}</Table.Th>
-              {activeGoal === 'transported' && <Table.Th>{t('opt.hauled')}</Table.Th>}
-              <Table.Th className="cell-money">{t('opt.incomeTrip')}</Table.Th>
-              <Table.Th className="cell-money">{t('table.running')}</Table.Th>
-              <Table.Th className="cell-money">{t('table.cost')}</Table.Th>
-              <Table.Th className="cell-money">{t('opt.profitYear')}</Table.Th>
-              <Table.Th>{t('opt.payback')}</Table.Th>
+              <SortableTh column="engine" sort={sort} onSort={setSort} colSpan={2}>
+                {t('opt.engine')}
+              </SortableTh>
+              <SortableTh column="wagon" sort={sort} onSort={setSort} colSpan={2}>
+                {t('opt.wagons')}
+              </SortableTh>
+              <SortableTh column="cargoTrip" sort={sort} onSort={setSort} title={t('opt.cargoTripHint')}>
+                {t('opt.cargoTrip')}
+              </SortableTh>
+              <SortableTh column="speed" sort={sort} onSort={setSort}>
+                {t('opt.speedLoadedEmpty')}
+              </SortableTh>
+              <SortableTh column="gradeSpeed" sort={sort} onSort={setSort}>
+                {t('opt.gradeSpeed')}
+              </SortableTh>
+              <SortableTh column="dwell" sort={sort} onSort={setSort}>{t('opt.dwell')}</SortableTh>
+              <SortableTh column="roundTrip" sort={sort} onSort={setSort}>
+                {t('combined.roundTrip')}
+              </SortableTh>
+              <SortableTh column="trips" sort={sort} onSort={setSort}>{t('opt.trips')}</SortableTh>
+              <SortableTh column="fleet" sort={sort} onSort={setSort} title={t('opt.fleetHint')}>
+                {t('opt.fleet')}
+              </SortableTh>
+              <SortableTh column="interval" sort={sort} onSort={setSort} title={intervalHint}>
+                {t('opt.interval')}
+              </SortableTh>
+              <SortableTh column="rating" sort={sort} onSort={setSort} title={t('opt.ratingHint')}>
+                {t('opt.rating')}
+              </SortableTh>
+              {supplyTarget && (
+                <SortableTh
+                  column="supply"
+                  sort={sort}
+                  onSort={setSort}
+                  title={
+                    supplyTarget.industry.supply_pool
+                      ? t('opt.supplyHintColumnPool')
+                      : t('opt.supplyHintColumn')
+                  }
+                >
+                  {t('opt.supply')}
+                </SortableTh>
+              )}
+              {activeGoal === 'transported' && (
+                <SortableTh column="hauled" sort={sort} onSort={setSort}>{t('opt.hauled')}</SortableTh>
+              )}
+              <SortableTh column="incomeTrip" sort={sort} onSort={setSort} className="cell-money">
+                {t('opt.incomeTrip')}
+              </SortableTh>
+              <SortableTh column="running" sort={sort} onSort={setSort} className="cell-money">
+                {t('table.running')}
+              </SortableTh>
+              <SortableTh column="cost" sort={sort} onSort={setSort} className="cell-money">
+                {t('table.cost')}
+              </SortableTh>
+              <SortableTh column="profit" sort={sort} onSort={setSort} className="cell-money">
+                {t('opt.profitYear')}
+              </SortableTh>
+              <SortableTh column="payback" sort={sort} onSort={setSort}>{t('opt.payback')}</SortableTh>
               <Table.Th></Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -414,6 +608,7 @@ export default function OptimizerPage() {
                 <Table.Td title={r.stationRating ? ratingBreakdown(r.stationRating) : undefined}>
                   {r.stationRating ? percent(r.stationRating.deliveredShare) : '—'}
                 </Table.Td>
+                {supplyTarget && <SupplyCell row={r} target={supplyTarget} />}
                 {activeGoal === 'transported' && (
                   <Table.Td>{num(r.hauledPerYear)} {cargoUnits(cargo?.units)}</Table.Td>
                 )}

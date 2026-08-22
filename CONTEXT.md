@@ -86,9 +86,17 @@ share is low enough.
 
 ## Search
 
-**Goal** (_цель_) — what the optimizer ranks by: `profit` (yearly profit) or `transported`
-(hauled per year). Without a flow there is no delivered share, so `transported` degrades to
-`profit` inside the engine — the UI only stops the user from picking a dead option.
+**Goal** (_цель_) — what the optimizer ranks by: `profit` (yearly profit), `transported`
+(hauled per year) or `supply` (how well the receiving industry ends up fed). Without a flow
+there is no delivered share, so `transported` degrades to `profit` inside the engine, and
+`supply` does the same without a flow or without a receiving industry — the UI only stops the
+user from picking a dead option. `supply` ranks lexicographically: the conversion the industry
+reaches first, profit among the rows that reach the same one, so it buys the cheapest way to a
+result rather than the shortest interval for its own sake.
+
+**Sort** (_сортировка_) — a view over the rows the search returned, applied after the goal
+ranked them. It reorders what is on screen and changes neither the set nor the numbers; a
+third click on a header returns the search order.
 
 ## Catalogue
 
@@ -134,6 +142,11 @@ the window also shrinks the yield of the inputs that arrived on time.
 **Supply ratio** (_отношение к окну_) — the **pickup interval** measured against the **supply
 window**. At most 1 the receiving industry stays supplied; above 1 it drops out of the window
 between arrivals. This is the fleet-side view of **supplied**.
+
+**Marginal** (_впритык_) — a **supply ratio** above `MARGINAL_RATIO` (0.85) but at most 1: the
+fleet holds the window on paper, but the model spaces it evenly while real consists bunch up,
+so the verdict is not to be trusted at face value. The threshold marks the doubt rather than
+measuring it, and wants checking in a game before it is quoted as fact.
 
 **Trains for window** (`trainsForWindow`) — the smallest fleet whose **supply ratio** reaches 1,
 i.e. that keeps the receiving industry supplied. Not to be confused with **trains needed**,
