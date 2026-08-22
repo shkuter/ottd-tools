@@ -3,6 +3,11 @@
 # and archive each get their own commit. Runs on the Stop hook; does nothing unless
 # the changed paths clearly belong to one stage. Never pushes.
 #
+# A stage is revisited all the time — a review round sends the plan back for an edit and
+# the code after it — so a stage that already has a commit is folded into that commit
+# instead of stacking another one: amended when it is HEAD, fixup + autosquash when later
+# stages sit on top. Only unpushed commits are ever rewritten.
+#
 # Set OPENSPEC_AUTOCOMMIT_DRY_RUN=1 to print the decision instead of committing.
 
 set -uo pipefail
@@ -64,6 +69,26 @@ release_hint() {
   printf ' · накопилось на %s: make release-auto' "$version"
 }
 
+# Where history stops being ours to rewrite. Without an upstream nothing is folded:
+# a rebase could then touch commits that are already published elsewhere.
+upstream_ref() {
+  git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null && return 0
+  git rev-parse --verify --quiet origin/HEAD >/dev/null 2>&1 && printf 'origin/HEAD\n' && return 0
+  return 1
+}
+
+# Newest unpushed commit carrying exactly this message, if any.
+stage_commit() {
+  local message="$1" upstream sha subject
+  upstream=$(upstream_ref) || return 1
+  git log --format='%H%x09%s' "$upstream..HEAD" 2>/dev/null | while IFS="$(printf '\t')" read -r sha subject; do
+    if [ "$subject" = "$message" ]; then
+      printf '%s\n' "$sha"
+      break
+    fi
+  done
+}
+
 commit() {
   local message="$1"
   local hint="${HINT:-}"
@@ -74,6 +99,31 @@ commit() {
   fi
   git add -A "$@" >/dev/null 2>&1 || return 1
   git diff --cached --quiet && return 1
+
+  local target
+  target=$(stage_commit "$message")
+
+  if [ -n "$target" ] && [ "$target" = "$(git rev-parse HEAD)" ]; then
+    git commit -q --amend --no-edit || return 1
+    printf '{"systemMessage":"Автокоммит: %s — дополнен%s"}\n' "$message" "$hint"
+    return 0
+  fi
+
+  if [ -n "$target" ]; then
+    # later stages sit on top, so the edit rides in as a fixup and autosquash puts it
+    # back where it belongs; --autostash because the rest of the tree is usually still
+    # dirty at this point (a half-ticked task list, code waiting for the next stage), and
+    # a rebase that cannot apply cleanly is undone, leaving the fixup rather than the work
+    if git commit -q --fixup="$target" >/dev/null 2>&1 &&
+      GIT_SEQUENCE_EDITOR=: GIT_EDITOR=: git rebase --quiet --autostash --autosquash "$target^" >/dev/null 2>&1; then
+      printf '{"systemMessage":"Автокоммит: %s — сведён в коммит стадии%s"}\n' "$message" "$hint"
+      return 0
+    fi
+    git rebase --abort >/dev/null 2>&1
+    printf '{"systemMessage":"Автокоммит: fixup к «%s» — свести вручную: git rebase --autosquash%s"}\n' "$message" "$hint"
+    return 0
+  fi
+
   git commit -q -m "$message" || return 1
   printf '{"systemMessage":"Автокоммит: %s%s"}\n' "$message" "$hint"
 }
@@ -89,19 +139,24 @@ if only_under openspec/; then
     commit "OpenSpec: archive $name" openspec
     exit 0
   fi
+fi
 
-  # 2. planning: only the change's own artifacts moved. Ticking tasks alone is not a
-  # plan change — that is implementation in progress, so wait for the code to land.
-  planned=$(first_match '^openspec/changes/')
-  if [ -n "$planned" ]; then
-    lines=$(printf '%s\n' "$changed" | grep -c '')
-    case "$changed" in */tasks.md) [ "$lines" -eq 1 ] && exit 0 ;; esac
-    name=${planned#openspec/changes/}
-    name=${name%%/*}
-    commit "OpenSpec: plan $name" openspec
-    exit 0
-  fi
-  exit 0
+# 2. planning: the change's own artifacts other than the task list. They go in first and on
+# their own, even when code is waiting beside them — a plan edit that rode along in the
+# implementation commit could never be folded back into the plan commit afterwards.
+# Ticking tasks alone is not a plan change; that is implementation in progress.
+plan_paths=$(printf '%s\n' "$changed" |
+  grep '^openspec/changes/' |
+  grep -v '^openspec/changes/archive/' |
+  grep -v '/tasks\.md$')
+if [ -n "$plan_paths" ]; then
+  name=${plan_paths%%$'\n'*}
+  name=${name#openspec/changes/}
+  name=${name%%/*}
+  commit "OpenSpec: plan $name" $plan_paths
+  # the tree may still hold code; fall through and let the stage below claim it
+  changed=$(git status --porcelain -uall | sed 's/^...//' | sed 's/.* -> //')
+  [ -n "$changed" ] || exit 0
 fi
 
 # 3. implementation: code changed together with a tasks.md whose tasks are all ticked.
