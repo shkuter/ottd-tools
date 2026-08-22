@@ -23,8 +23,6 @@ export interface SavegameImport {
   /** Game settings the savegame states; anything it does not state is absent. */
   game: Partial<GameSettings>;
   calc: Partial<CalcSettings>;
-  /** FIRS economy the game runs, when a known FIRS set is active. */
-  economyId?: string;
   /** Settings without a model in the calculator, shown for information only. */
   info: InfoValue[];
   /** Inflation the game has accumulated so far, shown for information only. */
@@ -49,12 +47,13 @@ export function buildImport(raw: RawSavegame): SavegameImport {
   if (capacity != null) calc.capacityIndex = capacity;
 
   const economy = paramOf(grfs, (g) => g.economyParam);
+  const economyId = economy == null ? undefined : economyIdByMenuIndex(economy);
+  if (economyId) game.firsEconomy = economyId;
 
   return {
     jgrpp: raw.jgrpp,
     game,
     calc,
-    economyId: economy == null ? undefined : economyIdByMenuIndex(economy),
     info: informationalValues(settings),
     inflation: raw.inflation,
     unreadBaseCostSets: grfs

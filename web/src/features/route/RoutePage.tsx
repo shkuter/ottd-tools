@@ -1,15 +1,7 @@
 import { useMemo } from 'react';
 import { Button, NumberInput, Paper, Select, Switch, Table, Text, Title } from '@mantine/core';
 import { LineChart } from '@mantine/charts';
-import {
-  activeCargoByLabel,
-  activeCargos,
-  cargosOfEconomy,
-  economies,
-  economyById,
-  economyIdForCargo,
-  activeTrainsMeta,
-} from '../../dataset';
+import { activeCargos, economyIdForPayment, activeTrainsMeta } from '../../dataset';
 import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { money, num, percent, speed } from '../../components/format';
@@ -22,6 +14,7 @@ import { cargoPaymentRate, incomeCurve, transportedGoodsIncome } from '../../eng
 import { transitPeriodsFromDays } from '../../engine/units';
 import { consistStats } from '../../engine/consist';
 import { routeWithFlow } from '../../engine/trip';
+import { useActiveCargo } from '../useActiveCargo';
 
 export default function RoutePage() {
   const route = useRouteStore();
@@ -29,20 +22,15 @@ export default function RoutePage() {
   const { game, calc } = useSettingsStore();
   const locale = useLocale();
 
-  const economy = economyById.get(route.economyId) ?? economies[0];
-  const economyCargos = useMemo(
-    () => sortCargos(game.firs ? cargosOfEconomy(economy) : activeCargos(game), locale),
-    [economy, game, locale],
-  );
-  const cargo = activeCargoByLabel(game).get(route.cargoLabel) ?? economyCargos[0];
+  const cargoList = useMemo(() => sortCargos(activeCargos(game), locale), [game, locale]);
+  const cargo = useActiveCargo(cargoList, route.cargoLabel, route.setCargoLabel);
 
   const stats = useMemo(
     () => consistStats(consist.entries, cargo ?? null, calc.capacityIndex, activeTrainsMeta(game), game, calc),
     [consist.entries, cargo, calc, game],
   );
 
-  const paymentEconomyId = cargo ? economyIdForCargo(game, cargo, economy.id) : null;
-  const payment = cargo ? cargoPaymentRate(cargo, paymentEconomyId, game, calc) : 0;
+  const payment = cargo ? cargoPaymentRate(cargo, economyIdForPayment(game), game, calc) : 0;
   const spec = useMemo(
     () => (cargo ? { currentPayment: payment, transitPeriods: cargo.transit_periods } : null),
     [cargo, payment],
@@ -116,21 +104,13 @@ export default function RoutePage() {
         <Title order={2}>{t('route.title')}</Title>
         <Select
           className="field"
-          label={t('route.economy')}
-          allowDeselect={false}
-          value={economy.id}
-          onChange={(v) => v && route.setEconomyId(v)}
-          data={economies.map((eco) => ({ value: eco.id, label: eco.name }))}
-        />
-        <Select
-          className="field"
           label={t('route.cargo')}
           searchable
           allowDeselect={false}
           leftSection={<CargoIcon icon={cargo?.icon ?? ''} />}
           value={cargo?.label ?? null}
           onChange={(v) => v && route.setCargoLabel(v)}
-          data={economyCargos.map((c) => ({ value: c.label, label: cargoName(c) }))}
+          data={cargoList.map((c) => ({ value: c.label, label: cargoName(c) }))}
         />
         <NumberInput
           className="field"

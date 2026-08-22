@@ -91,7 +91,7 @@ describe('сборка предложения импорта', () => {
       basecostTrainRunningElectric: 1,
     });
     expect(proposal.calc).toEqual({ priceYear: 1860, capacityIndex: 2 });
-    expect(proposal.economyId).toBe('STEELTOWN');
+    expect(proposal.game.firsEconomy).toBe('STEELTOWN');
     expect(proposal.inflation).toEqual({ prices: 1, payment: 1 });
   });
 

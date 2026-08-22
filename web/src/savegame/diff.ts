@@ -5,6 +5,7 @@
  * what they see there against what the save says — not raw numbers from the file.
  */
 
+import { economyById } from '../dataset';
 import { t } from '../i18n';
 import type { CalcSettings, GameSettings } from '../engine/settings';
 import type { SavedInflation } from './extract/ecmy';
@@ -34,6 +35,10 @@ const GAME_LABELS: Partial<Record<keyof GameSettings, Described<GameSettings>>> 
   jgrpp: { labelKey: 'settings.jgrpp', format: onOff },
   ironHorse: { labelKey: 'settings.ironHorse', format: onOff },
   firs: { labelKey: 'settings.firs', format: onOff },
+  firsEconomy: {
+    labelKey: 'settings.firsEconomy',
+    format: (v) => economyById.get(v as string)?.name ?? String(v),
+  },
   freightTrains: { labelKey: 'settings.freightTrains' },
   slopeSteepness: { labelKey: 'settings.slopeSteepness' },
   cargoAgingRate: { labelKey: 'settings.cargoAgingRate' },
@@ -82,7 +87,6 @@ const CALC_LABELS: Partial<Record<keyof CalcSettings, Described<CalcSettings>>> 
 export interface ImportDiff {
   game: SettingChange[];
   calc: SettingChange[];
-  economy?: SettingChange;
   info: InfoValue[];
   /** Inflation the game has accumulated, shown next to the informational settings. */
   inflation?: SavedInflation;
@@ -95,28 +99,17 @@ export function diffImport(
   proposal: SavegameImport,
   game: GameSettings,
   calc: CalcSettings,
-  economyId: string,
-  economyName: (id: string) => string,
 ): ImportDiff {
   const gameChanges = changesOf(proposal.game, game, GAME_LABELS);
   const calcChanges = changesOf(proposal.calc, calc, CALC_LABELS);
-  const economy =
-    proposal.economyId && proposal.economyId !== economyId
-      ? {
-          label: t('savegame.economy'),
-          current: economyName(economyId),
-          incoming: economyName(proposal.economyId),
-        }
-      : undefined;
 
   return {
     game: gameChanges,
     calc: calcChanges,
-    economy,
     info: proposal.info,
     inflation: proposal.inflation,
     unreadBaseCostSets: proposal.unreadBaseCostSets,
-    identical: gameChanges.length === 0 && calcChanges.length === 0 && !economy,
+    identical: gameChanges.length === 0 && calcChanges.length === 0,
   };
 }
 

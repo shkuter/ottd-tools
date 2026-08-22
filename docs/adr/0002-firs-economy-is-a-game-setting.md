@@ -24,7 +24,8 @@ and how industries are named and fed.
 
 `GameSettings.firsEconomy` holds it, next to the `firs` toggle it depends on, and the
 settings-effect test grows an assertion that is true of it: switching the setting changes the
-set of **active cargos**. The number-only snapshot stays for every other setting.
+set of **active cargos**. The set joins the snapshot for every setting, not just this one, so a
+dead switch is still caught — it changes neither the numbers nor the set.
 
 The rule the invariant protects — a switch in the UI that no formula reads — still holds; what
 widens is what counts as "changes a calculation". A cargo outside the chosen economy has no
@@ -42,8 +43,14 @@ stronger effect than moving a figure, not a weaker one.
 - The savegame import stops carrying the economy beside the settings
   (`SavegameImport.economyId` and its special branch in `diff.ts` are gone) and applies it
   through `applySettings`, like every other game setting.
-- Unknown ids — a renamed economy in a future FIRS — fall back to `STEELTOWN` in
-  `normaliseGame()`, the same treatment already given to dropped Base Costs multipliers.
+- Unknown ids — a renamed economy in a future FIRS — fall back to `STEELTOWN` in two places.
+  `normaliseGame()` repairs the **stored** value, the same treatment already given to dropped
+  Base Costs multipliers; `activeEconomy()` repairs every **read**, because `applySettings()`
+  and `setGame()` write past the persist `merge` where `normaliseGame()` sits. Neither can
+  actually produce an unknown id today — both take one from the list of economies — so the
+  second point is structural, not a patched hole: nothing that reads the setting may return
+  an empty cargo set or a rate of zero. Reads go through it wherever the id decides the
+  result, the payment rate included.
 
 ## Alternatives considered
 

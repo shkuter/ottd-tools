@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActionIcon,
   Button,
@@ -37,8 +37,13 @@ import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 const PAGE_SIZE = 50;
 
 export default function ConsistPage() {
-  const store = useConsistStore();
+  const entries = useConsistStore((s) => s.entries);
+  const cargoLabel = useConsistStore((s) => s.cargoLabel);
   const addToConsist = useConsistStore((s) => s.add);
+  const removeFromConsist = useConsistStore((s) => s.remove);
+  const setCount = useConsistStore((s) => s.setCount);
+  const clearConsist = useConsistStore((s) => s.clear);
+  const setCargoLabel = useConsistStore((s) => s.setCargoLabel);
   const { game, calc } = useSettingsStore();
   const [kindFilter, setKindFilter] = useState<'all' | 'engine' | 'wagon'>('all');
   const [search, setSearch] = useState('');
@@ -53,6 +58,18 @@ export default function ConsistPage() {
 
   const locale = useLocale();
   const cargoList = useMemo(() => sortCargos(activeCargos(game), locale), [game, locale]);
+  /**
+   * A cargo chosen before the economy changed can fall outside the new set. Unlike the tabs
+   * that need a cargo to compute at all, this one treats "none" as a valid choice, so the
+   * stale label is cleared rather than replaced — the capacity row then reads zero, the way
+   * it does before a cargo is picked, and the catalogue filter stops narrowing by a cargo
+   * the game no longer has.
+   */
+  useEffect(() => {
+    const available = new Set(cargoList.map((c) => c.label));
+    if (cargoLabel && !available.has(cargoLabel)) setCargoLabel(null);
+    if (cargoFilter && !available.has(cargoFilter)) setCargoFilter('');
+  }, [cargoList, cargoFilter, cargoLabel, setCargoLabel]);
   /**
    * Набор держит семейства визуальных вариантов (десяток «Mail Van» с одними числами и
    * разными спрайтами), поэтому каталог показывает пункты списка покупки — то, что игрок
@@ -121,10 +138,10 @@ export default function ConsistPage() {
     [sorted, currentPage],
   );
 
-  const cargo = store.cargoLabel ? (activeCargoByLabel(game).get(store.cargoLabel) ?? null) : null;
+  const cargo = cargoLabel ? (activeCargoByLabel(game).get(cargoLabel) ?? null) : null;
   const stats = useMemo(
-    () => consistStats(store.entries, cargo, calc.capacityIndex, activeTrainsMeta(game), game, calc),
-    [store.entries, cargo, calc, game],
+    () => consistStats(entries, cargo, calc.capacityIndex, activeTrainsMeta(game), game, calc),
+    [entries, cargo, calc, game],
   );
 
   const cargoOptions = cargoList.map((c) => ({ value: c.label, label: cargoName(c) }));
@@ -263,32 +280,32 @@ export default function ConsistPage() {
 
       <Paper component="aside" className="consist-side" p="sm">
         <Title order={2}>{t('consist.panel')}</Title>
-        {store.entries.length === 0 ? (
+        {entries.length === 0 ? (
           <Text className="hint">{t('consist.empty')}</Text>
         ) : (
           <Stack gap={4} className="consist-list">
-            {store.entries.map(({ train, count }) => (
+            {entries.map(({ train, count }) => (
               <Group key={train.id} gap={6} wrap="nowrap">
                 <TrainImage trainId={train.id} />
                 <Text className="consist-name">{train.name}</Text>
                 <NumberInput
                   min={0}
                   value={count}
-                  onChange={(v) => store.setCount(train.id, Number(v) || 0)}
+                  onChange={(v) => setCount(train.id, Number(v) || 0)}
                   w={84}
                 />
-                <ActionIcon aria-label={t('consist.remove')} onClick={() => store.remove(train.id)}>
+                <ActionIcon aria-label={t('consist.remove')} onClick={() => removeFromConsist(train.id)}>
                   ×
                 </ActionIcon>
               </Group>
             ))}
           </Stack>
         )}
-        {store.entries.length > 0 && (
+        {entries.length > 0 && (
           <Button
             className="btn-clear"
             onClick={() => {
-              store.clear();
+              clearConsist();
               notifications.show({ message: t('notify.consistCleared') });
             }}
           >
@@ -300,14 +317,14 @@ export default function ConsistPage() {
           className="field"
           label={t('consist.cargoForCapacity')}
           searchable
-          leftSection={<CargoIcon icon={cargoList.find((c) => c.label === store.cargoLabel)?.icon ?? ''} />}
+          leftSection={<CargoIcon icon={cargoList.find((c) => c.label === cargoLabel)?.icon ?? ''} />}
           placeholder={t('consist.none')}
-          value={store.cargoLabel ?? null}
-          onChange={(v) => store.setCargoLabel(v)}
+          value={cargoLabel ?? null}
+          onChange={(v) => setCargoLabel(v)}
           data={cargoOptions}
         />
 
-        {store.entries.length > 0 && (
+        {entries.length > 0 && (
           <Table className="summary-table" withRowBorders={false}>
             <Table.Tbody>
               <StatRow label={t('consist.stats.power')} value={`${num(stats.powerHp)} ${t('units.hp')}`} />

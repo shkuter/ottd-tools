@@ -28,8 +28,6 @@ import {
   trains,
   trainsMeta,
   cargoByLabel,
-  economyIdForCargo,
-  VANILLA_ECONOMY_ID,
 } from '../../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
@@ -162,20 +160,6 @@ describe('incomeCurve', () => {
   it('диапазон не короче 2.5× текущего времени и 50 дней', () => {
     expect(incomeCurve(1, 1, 400, spec).at(-1)!.days).toBeCloseTo(1000, 6);
     expect(incomeCurve(1, 1, 0, { currentPayment: 1, transitPeriods: [1, 1] }).at(-1)!.days).toBeCloseTo(50, 6);
-  });
-});
-
-describe('economyIdForCargo', () => {
-  const coal = cargoByLabel.get('COAL')!;
-  it('без FIRS — VANILLA', () => {
-    expect(economyIdForCargo({ ...DEFAULT_GAME_SETTINGS, firs: false }, coal)).toBe(VANILLA_ECONOMY_ID);
-  });
-  it('с FIRS — первая экономика с грузом, предпочтение уважается', () => {
-    const first = economyIdForCargo(DEFAULT_GAME_SETTINGS, coal);
-    expect(first).not.toBeNull();
-    expect(coal.initial_payment_by_economy[first!]).toBeDefined();
-    expect(economyIdForCargo(DEFAULT_GAME_SETTINGS, coal, 'STEELTOWN')).toBe('STEELTOWN');
-    expect(economyIdForCargo(DEFAULT_GAME_SETTINGS, coal, 'NOPE')).toBe(first);
   });
 });
 

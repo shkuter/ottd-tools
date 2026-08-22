@@ -12,6 +12,11 @@ export interface GameSettings {
   ironHorse: boolean;
   /** Подключён NewGRF FIRS 5 (иначе — ванильные грузы и индустрии). */
   firs: boolean;
+  /**
+   * FIRS economy the game runs (parameter of the set): it decides which cargos and
+   * industries exist, not what they pay. Read only when `firs` is on.
+   */
+  firsEconomy: string;
   /** vehicle.freight_trains: множитель веса грузов (1..255, def 1). */
   freightTrains: number;
   /** vehicle.train_slope_steepness: крутизна уклона в % (0..10, def 3). */
@@ -76,10 +81,14 @@ export interface GameSettings {
   vehicleIntroRandomisation: boolean;
 }
 
+/** Economy a game runs unless it says otherwise; also the fallback for an id the data lost. */
+export const DEFAULT_FIRS_ECONOMY = 'STEELTOWN';
+
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
   jgrpp: false,
   ironHorse: true,
   firs: true,
+  firsEconomy: DEFAULT_FIRS_ECONOMY,
   freightTrains: 1,
   slopeSteepness: 3,
   cargoAgingRate: 100,

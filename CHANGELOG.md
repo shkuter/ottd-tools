@@ -18,6 +18,28 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- The FIRS economy is a game setting now (Settings → NewGRF sets, under the FIRS toggle),
+  applied to every tab at once. It decides which cargos exist rather than what they pay, so
+  the active cargo set follows it: a game in Steeltown is offered its 62 cargos instead of all
+  96 FIRS states, and a cargo the economy does not have is offered nowhere. An economy id the
+  data no longer has — a future FIRS renaming one — falls back to Steeltown.
+
+### Changed
+
+- **BREAKING** The economy tabs on the FIRS chains tab and the economy select on the route
+  income tab are gone, and with them the two persisted copies of the choice
+  (`routeStore.economyId` and the whole `ottd-tools-firs` key). A saved choice is not migrated:
+  every default was Steeltown already. What can change a figure is the cargo, not the rate —
+  FIRS states the same rate for a cargo in every economy that has it. A cargo the chosen
+  economy lacks gives way to the first one it does have where a tab needs a cargo to compute
+  at all (route income, the optimizer), and is simply cleared where the choice is optional
+  (the consist builder, whose capacity row then reads zero until a cargo is picked again).
+- The payment rate comes from the economy in the settings instead of "the first economy that
+  lists this cargo" (`economyIdForCargo` → `economyIdForPayment`), and a savegame's economy is
+  imported as an ordinary game setting rather than through a path of its own.
+
 ## [0.8.0] - 2026-08-22
 
 ### Added

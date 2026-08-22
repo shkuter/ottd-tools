@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { activeCargos, activeTrains, canCarry, canCarryIn, cargoByLabel, trains, trainsMeta } from '../dataset';
-import { DEFAULT_GAME_SETTINGS } from '../engine/settings';
+import {
+  activeCargos,
+  activeTrains,
+  canCarry,
+  canCarryIn,
+  cargoByLabel,
+  economies,
+  economyIdForPayment,
+  trains,
+  trainsMeta,
+  VANILLA_ECONOMY_ID,
+} from '../dataset';
+import { DEFAULT_FIRS_ECONOMY, DEFAULT_GAME_SETTINGS } from '../engine/settings';
 import type { Cargo, Train } from '../types';
 
 const coal = cargoByLabel.get('COAL')!;
@@ -13,6 +24,64 @@ describe('active dataset', () => {
     const vanilla = { ...DEFAULT_GAME_SETTINGS, ironHorse: false, firs: false };
     expect(activeTrains(vanilla).every((t) => t.id.startsWith('vanilla_'))).toBe(true);
     expect(activeCargos(vanilla).every((c) => c.initial_payment_by_economy.VANILLA != null)).toBe(true);
+  });
+
+  it('active cargos are exactly the ones the chosen economy has', () => {
+    for (const economy of economies) {
+      const game = { ...DEFAULT_GAME_SETTINGS, firsEconomy: economy.id };
+      expect(activeCargos(game).map((c) => c.label), economy.id).toEqual(economy.cargo_labels);
+      expect(activeCargos(game).length, economy.id).toBeGreaterThan(0);
+    }
+    // economies differ by what they hold: Steeltown's set is wider than Temperate Basic's
+    const steeltown = activeCargos({ ...DEFAULT_GAME_SETTINGS, firsEconomy: 'STEELTOWN' });
+    const temperate = activeCargos({ ...DEFAULT_GAME_SETTINGS, firsEconomy: 'BASIC_TEMPERATE' });
+    expect(steeltown.length).toBeGreaterThan(temperate.length);
+    // the dataset index stays complete: a label resolves whatever economy is in force
+    const outsideTemperate = steeltown.find((c) => !temperate.includes(c))!;
+    expect(cargoByLabel.get(outsideTemperate.label)).toBe(outsideTemperate);
+  });
+});
+
+describe('a cargo two economies share', () => {
+  it('pays the same in both: an economy decides the set, not the rate', () => {
+    const shared = economies
+      .flatMap((e) => e.cargo_labels)
+      .filter((label, i, all) => all.indexOf(label) !== i);
+    expect(shared.length).toBeGreaterThan(0);
+    for (const label of new Set(shared)) {
+      const cargo = cargoByLabel.get(label)!;
+      const rates = economies
+        .filter((e) => e.cargo_labels.includes(label))
+        .map((e) => [
+          cargo.initial_payment_by_economy[e.id],
+          cargo.price_factor_by_economy[e.id],
+        ]);
+      // both the payment and the price factor are identical across the economies that list it
+      expect(new Set(rates.map((r) => JSON.stringify(r))).size, label).toBe(1);
+    }
+  });
+});
+
+describe('economyIdForPayment', () => {
+  it('the economy in the settings, or the vanilla key with FIRS off', () => {
+    expect(economyIdForPayment(DEFAULT_GAME_SETTINGS)).toBe('STEELTOWN');
+    expect(economyIdForPayment({ ...DEFAULT_GAME_SETTINGS, firsEconomy: 'BASIC_ARCTIC' })).toBe(
+      'BASIC_ARCTIC',
+    );
+    expect(economyIdForPayment({ ...DEFAULT_GAME_SETTINGS, firs: false })).toBe(
+      VANILLA_ECONOMY_ID,
+    );
+  });
+
+  it('an id the data lost is priced by the default economy, not at zero', () => {
+    const lost = { ...DEFAULT_GAME_SETTINGS, firsEconomy: 'NO_SUCH_ECONOMY' };
+    // the rate is looked up by economy id, so a stray id here would price everything at zero
+    expect(economyIdForPayment(lost)).toBe(DEFAULT_FIRS_ECONOMY);
+    expect(activeCargos(lost).length).toBeGreaterThan(0);
+    const fallbackCoal = activeCargos(lost).find((c) => c.label === 'COAL')!;
+    expect(
+      fallbackCoal.initial_payment_by_economy[economyIdForPayment(lost)],
+    ).toBeGreaterThan(0);
   });
 });
 

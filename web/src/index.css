@@ -426,13 +426,6 @@ td:has(> .train-sprite) {
 
 /* ---------- firs ---------- */
 
-.economy-tabs {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-
 .firs-layout {
   display: grid;
   grid-template-columns: 1fr 340px;

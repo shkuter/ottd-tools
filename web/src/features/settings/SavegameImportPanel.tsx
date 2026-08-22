@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Button, Group, Table, Text } from '@mantine/core';
-import { economies, economyById } from '../../dataset';
 import { t } from '../../i18n';
 import { useSettingsStore } from '../../state/settingsStore';
-import { useFirsStore } from '../../state/firsStore';
 import { diffImport, type ImportDiff } from '../../savegame/diff';
 import type { SavegameImport } from '../../savegame/import';
 
@@ -12,10 +10,6 @@ type State =
   | { phase: 'reading' }
   | { phase: 'error'; message: string }
   | { phase: 'ready'; proposal: SavegameImport; diff: ImportDiff };
-
-function economyName(id: string): string {
-  return economyById.get(id)?.name ?? economies[0]?.name ?? id;
-}
 
 function infoValue(kind: string, value: number, choiceKeys?: readonly string[]): string {
   if (kind === 'flag') return t(value ? 'settings.on' : 'settings.off');
@@ -34,7 +28,6 @@ function infoValue(kind: string, value: number, choiceKeys?: readonly string[]):
 export function SavegameImportPanel() {
   const [state, setState] = useState<State>({ phase: 'idle' });
   const { game, calc } = useSettingsStore();
-  const economyId = useFirsStore((s) => s.economyId);
 
   async function readFile(file: File) {
     setState({ phase: 'reading' });
@@ -42,7 +35,7 @@ export function SavegameImportPanel() {
     const savegame = await import('../../savegame/client');
     try {
       const proposal = await savegame.importSavegame(file);
-      const diff = diffImport(proposal, game, calc, economyId, economyName);
+      const diff = diffImport(proposal, game, calc);
       setState({ phase: 'ready', proposal, diff });
     } catch (error) {
       setState({
@@ -106,7 +99,7 @@ function SavegameDiff({
   onApply: () => void;
   onCancel: () => void;
 }) {
-  const changes = [...diff.game, ...diff.calc, ...(diff.economy ? [diff.economy] : [])];
+  const changes = [...diff.game, ...diff.calc];
   return (
     <div className="savegame-diff">
       {diff.identical ? (

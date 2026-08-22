@@ -70,8 +70,8 @@ data`). Проверено по ним же: ни один из 96 грузов 
 - Данные: `web/src/dataset.ts` (`activeCargos`, `activeCargoByLabel`, `economyIdForCargo` →
   `economyIdForPayment`).
 - Вкладки: `features/firs/FirsPage.tsx`, `features/route/RoutePage.tsx`,
-  `features/optimizer/OptimizerPage.tsx`, `features/settings/SettingsPage.tsx`,
-  `features/settings/SavegameImportPanel.tsx`.
+  `features/optimizer/OptimizerPage.tsx`, `features/consist/ConsistPage.tsx`,
+  `features/settings/SettingsPage.tsx`, `features/settings/SavegameImportPanel.tsx`.
 - Импорт сохранений: `web/src/savegame/import.ts`, `diff.ts`, `apply.ts` и их тесты.
 - Тесты: `engine/__tests__/settings-effect.test.ts`, `state/__tests__/reset.test.ts`,
   `__tests__/dataset.test.ts`, `savegame/__tests__/{diff,apply}.test.ts`.

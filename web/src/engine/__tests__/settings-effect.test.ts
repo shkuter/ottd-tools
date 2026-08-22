@@ -6,7 +6,15 @@ import { describe, expect, it } from 'vitest';
 import { optimizeConsists, type OptimizeParams } from '../optimize';
 import { consistStats } from '../consist';
 import { transportedGoodsIncome } from '../income';
-import { activeTrains, activeTrainsMeta, trains, trainsMeta, cargoByLabel } from '../../dataset';
+import {
+  activeCargos,
+  activeTrains,
+  activeTrainsMeta,
+  economyIdForPayment,
+  trains,
+  trainsMeta,
+  cargoByLabel,
+} from '../../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
@@ -22,7 +30,7 @@ function baseParams(game: GameSettings, calc: CalcSettings): OptimizeParams {
     year: 1950,
     distanceTiles: 200,
     cargo,
-    economyId: 'STEELTOWN',
+    economyId: economyIdForPayment(game),
     maxLengthTiles: 6,
     allowElectric: true,
     game,
@@ -30,7 +38,12 @@ function baseParams(game: GameSettings, calc: CalcSettings): OptimizeParams {
   };
 }
 
-/** Снимок расчёта: топ-результат оптимизатора + статистика состава. */
+/**
+ * Снимок расчёта: топ-результат оптимизатора + статистика состава + активный набор грузов.
+ * The set is part of it because one setting — the FIRS economy — decides what can be
+ * computed at all instead of moving a figure (docs/adr/0002). A dead switch still fails the
+ * test: it changes neither the numbers nor the set.
+ */
 function snapshot(
   gameOverrides: Partial<GameSettings>,
   calcOverrides: Partial<CalcSettings> = {},
@@ -69,6 +82,7 @@ function snapshot(
     statsWeight: stats.loadedWeightT,
     // машина может ещё не появиться в игре: настройки влияют не только на числа
     introCertain: top ? top.engineIntro.certain && top.wagonIntro.certain : null,
+    cargos: activeCargos(game).map((c) => c.label),
   });
 }
 
@@ -91,6 +105,8 @@ const CASES: {
    */
   baseCalc?: Partial<CalcSettings>;
 }[] = [
+  // экономика решает не числа, а состав набора: тот же груз оплачивается в них одинаково
+  { name: 'firsEconomy', game: { firsEconomy: 'BASIC_TEMPERATE' } },
   { name: 'freightTrains', game: { freightTrains: 4 } },
   { name: 'slopeSteepness', game: { slopeSteepness: 8 } },
   { name: 'cargoAgingRate', game: { cargoAgingRate: 400 } },

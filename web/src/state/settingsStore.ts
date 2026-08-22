@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { activeEconomy } from '../dataset';
 import {
   BASECOST_MULTIPLIERS,
   DEFAULT_CALC_SETTINGS,
@@ -39,12 +40,15 @@ interface SettingsState {
 /**
  * A Base Costs multiplier saved before "free (no costs)" was dropped from the list would
  * zero out every price, so anything the list no longer offers falls back to "unchanged".
+ * The same treatment goes to an economy the data no longer has — a FIRS release renaming
+ * one would otherwise leave the calculator with an empty cargo list.
  */
 function normaliseGame(game: GameSettings): GameSettings {
   const known = new Set(BASECOST_MULTIPLIERS.map((m) => m.value));
   const fix = (v: number) => (known.has(v) ? v : 1);
   return {
     ...game,
+    firsEconomy: activeEconomy(game).id,
     basecostLocomotive: fix(game.basecostLocomotive),
     basecostWagon: fix(game.basecostWagon),
     basecostTrainRunningSteam: fix(game.basecostTrainRunningSteam),

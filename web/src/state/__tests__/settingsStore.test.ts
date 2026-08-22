@@ -73,6 +73,23 @@ describe('settingsStore persist', () => {
     expect(s.game.basecostGrf).toBe(true);
   });
 
+  it('экономика FIRS, которой больше нет в данных, откатывается на значение по умолчанию', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { game: { firsEconomy: 'NO_SUCH_ECONOMY' } }, version: 1 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+    const s = useSettingsStore.getState();
+    expect(s.game.firsEconomy).toBe(DEFAULT_GAME_SETTINGS.firsEconomy);
+    // сохранённая, но существующая экономика не трогается
+    const kept = memoryStorage({
+      [KEY]: JSON.stringify({ state: { game: { firsEconomy: 'BASIC_ARCTIC' } }, version: 1 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => kept) });
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().game.firsEconomy).toBe('BASIC_ARCTIC');
+  });
+
   it('старый общий множитель содержания переносится во все три running-класса', async () => {
     const storage = memoryStorage({
       [KEY]: JSON.stringify({

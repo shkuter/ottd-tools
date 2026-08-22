@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface RouteState {
-  economyId: string;
   cargoLabel: string;
   distanceTiles: number;
   amount: number;
@@ -16,7 +15,6 @@ interface RouteState {
   productionPerMonth: number;
   /** Loading branch: the consist waits to be filled (a full-load order in game). */
   waitForFullLoad: boolean;
-  setEconomyId: (id: string) => void;
   setCargoLabel: (label: string) => void;
   setDistanceTiles: (tiles: number) => void;
   setAmount: (amount: number) => void;
@@ -28,14 +26,12 @@ interface RouteState {
 export const useRouteStore = create<RouteState>()(
   persist(
     (set) => ({
-  economyId: 'STEELTOWN',
   cargoLabel: 'COAL',
   distanceTiles: 100,
   amount: 100,
   manualDays: null,
   productionPerMonth: 0,
   waitForFullLoad: false,
-  setEconomyId: (economyId) => set({ economyId }),
   setCargoLabel: (cargoLabel) => set({ cargoLabel }),
   setDistanceTiles: (distanceTiles) => set({ distanceTiles }),
   setAmount: (amount) => set({ amount }),

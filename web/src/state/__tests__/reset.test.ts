@@ -2,7 +2,6 @@ import { createJSONStorage, type PersistStorage, type StateStorage } from 'zusta
 import { describe, expect, it } from 'vitest';
 import { resetPersistedState } from '..';
 import { useConsistStore } from '../consistStore';
-import { useFirsStore } from '../firsStore';
 import { useOptimizerStore } from '../optimizerStore';
 import { useRouteStore } from '../routeStore';
 import { useSettingsStore } from '../settingsStore';
@@ -32,14 +31,12 @@ describe('resetPersistedState', () => {
       bindStorage(useConsistStore, storage),
       bindStorage(useRouteStore, storage),
       bindStorage(useOptimizerStore, storage),
-      bindStorage(useFirsStore, storage),
     ]);
     useSettingsStore.getState().setCurrency('EUR');
     useSettingsStore.getState().setSpeedUnit('imperial');
     useOptimizerStore.getState().setYear(1999);
     useRouteStore.getState().setDistanceTiles(321);
-    useFirsStore.getState().setEconomyId('STEELTOWN');
-    expect(Object.keys(storage.dump()).length).toBeGreaterThanOrEqual(4);
+    expect(Object.keys(storage.dump()).length).toBeGreaterThanOrEqual(3);
     resetPersistedState();
     expect(Object.keys(storage.dump())).toEqual([]);
     expect(useSettingsStore.getState().currency).toBe('GBP');

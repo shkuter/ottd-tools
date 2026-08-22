@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { List, Paper, Tabs, Text, Title } from '@mantine/core';
-import {
-  cargoByLabel,
-  economies,
-  economyById,
-  industryById,
-} from '../../dataset';
+import { List, Paper, Text, Title } from '@mantine/core';
+import { activeEconomy, cargoByLabel, economyById, industryById } from '../../dataset';
 import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, industryName, localiseDot } from '../../i18n/names';
 import { num } from '../../components/format';
@@ -94,8 +89,9 @@ function CargoName({ label }: { label: string }) {
 }
 
 export default function FirsPage() {
-  const { economyId, selectedNode, setEconomyId, setSelectedNode } = useFirsStore();
-  const economy = economyById.get(economyId) ?? economies[0];
+  const { selectedNode, setSelectedNode } = useFirsStore();
+  const game = useSettingsStore((s) => s.game);
+  const economy = activeEconomy(game);
   // node labels are baked into the rendered SVG, so it has to be redrawn on switch
   const locale = useLocale();
   const [svg, setSvg] = useState<string>('');
@@ -112,6 +108,14 @@ export default function FirsPage() {
       cancelled = true;
     };
   }, [economy, locale]);
+
+  // The selected node belongs to the economy it was clicked in: kept across a switch, it
+  // would leave chainNodes() tracing a chain no node of the new graph is part of, dimming
+  // the whole picture. The reset used to ride on the store's own setEconomyId; the setting
+  // knows nothing of the graph, so the tab does it.
+  useEffect(() => {
+    setSelectedNode(null);
+  }, [economy, setSelectedNode]);
 
   const highlight = useMemo(
     () => (selectedNode ? chainNodes(economy, selectedNode) : null),
@@ -160,22 +164,10 @@ export default function FirsPage() {
     <div className="page-firs">
       <section className="firs-controls">
         <Title order={2}>{t('firs.title')}</Title>
-        {/* the graph below belongs to whichever economy is selected, so the tabs
-            carry no panels of their own */}
-        <Tabs
-          className="economy-tabs"
-          value={economy.id}
-          onChange={(value) => value && setEconomyId(value)}
-        >
-          <Tabs.List>
-            {economies.map((eco) => (
-              <Tabs.Tab key={eco.id} value={eco.id}>
-                {eco.name}
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs>
+        {/* the graph belongs to the economy the game runs, which is a setting now — the tab
+            shows which one it is instead of offering a second place to choose it */}
         <Text className="hint">
+          {t('firs.economy')}: <b>{economy.name}</b> ({t('firs.economyHint')}) ·{' '}
           {economy.industry_ids.length} {t('firs.industries')} · {economy.cargo_labels.length}{' '}
           {t('firs.cargos')} · {t('firs.hint')}
         </Text>

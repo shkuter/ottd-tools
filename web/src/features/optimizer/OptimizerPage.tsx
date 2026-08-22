@@ -19,7 +19,7 @@ import { notifications } from '@mantine/notifications';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useNavigate } from 'react-router';
-import { activeCargos, activeTrains, activeTrainsMeta, economies, economyIdForCargo } from '../../dataset';
+import { activeCargos, activeTrains, activeTrainsMeta, economies, economyIdForPayment } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { num, percent, speed, speedUnitLabel, speedValue } from '../../components/format';
@@ -35,6 +35,7 @@ import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
 import { CargoIcon } from '../../components/CargoIcon';
 import { TrainImage } from '../../components/TrainImage';
+import { useActiveCargo } from '../useActiveCargo';
 
 /** Rows drawn before the "show more" button; the search itself still ranks all of them. */
 const PAGE_SIZE = 15;
@@ -129,11 +130,8 @@ export default function OptimizerPage() {
     () => sortCargos(activeCargos(game), locale),
     [game, locale],
   );
-  const cargo = useMemo(
-    () => cargoList.find((c) => c.label === cargoLabel) ?? cargoList[0] ?? null,
-    [cargoLabel, cargoList],
-  );
-  const economyId = cargo ? economyIdForCargo(game, cargo) : null;
+  const cargo = useActiveCargo(cargoList, cargoLabel, setCargoLabel);
+  const economyId = economyIdForPayment(game);
 
   // The search runs synchronously and takes about a second on the worst input (late year,
   // long station, transported goal). Typing a distance would otherwise re-run it per
@@ -166,7 +164,7 @@ export default function OptimizerPage() {
   const searchCache = useRef(createOptimizerCache());
 
   const results = useMemo(() => {
-    if (!cargo || !economyId) return [];
+    if (!cargo) return [];
     return optimizeConsists(
       trains,
       {
@@ -221,7 +219,6 @@ export default function OptimizerPage() {
     consistStore.setCount(r.wagon.id, r.wagonCount);
     consistStore.setCargoLabel(cargoLabel);
     routeStore.setCargoLabel(cargoLabel);
-    if (economyId) routeStore.setEconomyId(economyId);
     // The row was computed for the settled distance, so that is what travels with it:
     // inside the debounce window the field already holds a distance no row was priced at.
     routeStore.setDistanceTiles(searchInput.distance);
@@ -312,7 +309,7 @@ export default function OptimizerPage() {
           onChange={(e) => setEngineFilter(e.currentTarget.value)}
         />
       </Group>
-      {cargo && economyId && (
+      {cargo && (
         <p className="hint">
           {cargoName(cargo)} · {economies.find((e) => e.id === economyId)?.name ?? t('settings.vanilla')} ·{' '}
           {t('route.payment')}: {num(cargoPaymentRate(cargo, economyId, game, calc))} ·{' '}

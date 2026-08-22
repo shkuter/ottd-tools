@@ -2,14 +2,17 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { applyImport } from '../apply';
 import type { SavegameImport } from '../import';
 import { useSettingsStore } from '../../state/settingsStore';
-import { useFirsStore } from '../../state/firsStore';
-import { useRouteStore } from '../../state/routeStore';
 
 const PROPOSAL: SavegameImport = {
   jgrpp: true,
-  game: { jgrpp: true, dayLengthFactor: 5, vehicleCosts: 2, basecostGrf: true },
+  game: {
+    jgrpp: true,
+    dayLengthFactor: 5,
+    vehicleCosts: 2,
+    basecostGrf: true,
+    firsEconomy: 'BASIC_ARCTIC',
+  },
   calc: { priceYear: 1860, capacityIndex: 2 },
-  economyId: 'BASIC_ARCTIC',
   info: [],
   unreadBaseCostSets: [],
 };
@@ -17,14 +20,12 @@ const PROPOSAL: SavegameImport = {
 describe('применение импорта', () => {
   beforeEach(() => {
     useSettingsStore.getState().reset();
-    useFirsStore.getState().setEconomyId('STEELTOWN');
-    useRouteStore.getState().setEconomyId('STEELTOWN');
   });
 
   it('пока подтверждения нет, настройки не меняются', () => {
-    const before = useSettingsStore.getState().game;
-    expect(before.dayLengthFactor).toBe(1);
-    expect(useFirsStore.getState().economyId).toBe('STEELTOWN');
+    const { game } = useSettingsStore.getState();
+    expect(game.dayLengthFactor).toBe(1);
+    expect(game.firsEconomy).toBe('STEELTOWN');
   });
 
   it('подтверждение применяет значения из сейва', () => {
@@ -36,14 +37,14 @@ describe('применение импорта', () => {
     expect(game.freightTrains).toBe(1);
   });
 
-  it('экономика FIRS выставляется в обеих вкладках сразу', () => {
+  it('экономика FIRS приезжает обычной настройкой партии', () => {
     applyImport(PROPOSAL);
-    expect(useFirsStore.getState().economyId).toBe('BASIC_ARCTIC');
-    expect(useRouteStore.getState().economyId).toBe('BASIC_ARCTIC');
+    expect(useSettingsStore.getState().game.firsEconomy).toBe('BASIC_ARCTIC');
   });
 
-  it('без экономики в сейве вкладки не трогаются', () => {
-    applyImport({ ...PROPOSAL, economyId: undefined });
-    expect(useFirsStore.getState().economyId).toBe('STEELTOWN');
+  it('без экономики в сейве настройка не трогается', () => {
+    const { firsEconomy: _dropped, ...game } = PROPOSAL.game;
+    applyImport({ ...PROPOSAL, game });
+    expect(useSettingsStore.getState().game.firsEconomy).toBe('STEELTOWN');
   });
 });

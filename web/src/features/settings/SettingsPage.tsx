@@ -1,5 +1,5 @@
 import { Button, Fieldset, Group, NumberInput, Select, Switch } from '@mantine/core';
-import { trainsMeta } from '../../dataset';
+import { activeEconomy, economies, trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
 import { t } from '../../i18n';
 import {
@@ -158,6 +158,18 @@ export default function SettingsPage() {
             label={game.firs ? t('settings.on') : t('settings.off')}
           />
         </Row>
+        {game.firs && (
+          <Row label={t('settings.firsEconomy')} hint={t('settings.firsEconomyHint')}>
+            <Select
+              allowDeselect={false}
+              // shows what the calculation actually uses: an id the data lost reads back as
+              // the default, and the field would otherwise sit empty while numbers say otherwise
+              value={activeEconomy(game).id}
+              onChange={(v) => v && setGame('firsEconomy', v)}
+              data={economies.map((eco) => ({ value: eco.id, label: eco.name }))}
+            />
+          </Row>
+        )}
       </Fieldset>
 
       <Fieldset

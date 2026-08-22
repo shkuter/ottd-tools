@@ -1,22 +1,16 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 interface FirsState {
-  economyId: string;
   /** Выбранный узел графа: id индустрии или label груза. */
   selectedNode: string | null;
-  setEconomyId: (id: string) => void;
   setSelectedNode: (node: string | null) => void;
 }
 
-export const useFirsStore = create<FirsState>()(
-  persist(
-    (set) => ({
-  economyId: 'STEELTOWN',
+/**
+ * Not persisted: the economy is a game setting now, and the selected node is a click on the
+ * graph, meaningless to restore on the next visit.
+ */
+export const useFirsStore = create<FirsState>()((set) => ({
   selectedNode: null,
-  setEconomyId: (economyId) => set({ economyId, selectedNode: null }),
-      setSelectedNode: (selectedNode) => set({ selectedNode }),
-    }),
-    { name: 'ottd-tools-firs', partialize: (s) => ({ economyId: s.economyId }) },
-  ),
-);
+  setSelectedNode: (selectedNode) => set({ selectedNode }),
+}));
