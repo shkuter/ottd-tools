@@ -170,7 +170,9 @@ interface GoalStrategy {
  *
  * Read off the loading branches rather than off the winning row's load: a row that won in the
  * waiting branch carries a full load by definition and would claim the source keeps up, when
- * in fact it is the wait that makes the branches differ at all.
+ * in fact it is the wait that makes the branches differ at all. `branchesDiffer` *is* this
+ * property: the branches can only differ when what one train gets per trip falls short of the
+ * capacity, which is precisely a source that cannot fill the consist.
  */
 function sourceCannotFillConsist(rows: readonly OptimizeResult[]): boolean {
   const oneTrain = rows[0];
@@ -382,12 +384,14 @@ export function optimizeConsists(
 
       // Both loading branches off the one setup: the expensive half (physics, prices) is
       // already paid for, only the money is done twice — and only when waiting is possible.
+      // `offeredPerYear` is the waiting branch's own flow and only that branch reads it, so
+      // it travels with the call that needs it rather than in the shared half.
       const money = {
         cargo, payment, distanceTiles, game,
-        cargoPerTrip, fleetSize, offeredPerYear: waitingOffered, subsidised: params.subsidised,
+        cargoPerTrip, fleetSize, subsidised: params.subsidised,
       };
       const branches = canWait
-        ? tripBranches(setup, money)
+        ? tripBranches(setup, { ...money, offeredPerYear: waitingOffered })
         : {
             runsWithWhatAccumulated: tripMoney(setup, money),
             waitsForFullLoad: null,

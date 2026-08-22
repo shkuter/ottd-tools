@@ -12,7 +12,7 @@ import {
 } from '../../dataset';
 import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
-import { money, num, speed } from '../../components/format';
+import { money, num, percent, speed } from '../../components/format';
 import { Money } from '../../components/Money';
 import { CargoIcon } from '../../components/CargoIcon';
 import { useRouteStore } from '../../state/routeStore';
@@ -270,7 +270,7 @@ export default function RoutePage() {
                     <Table.Tr>
                       <Table.Td>{t('combined.deliveredShare')}</Table.Td>
                       <Table.Td align="right">
-                        {Math.round(routeTrip.rating.deliveredShare * 100)}%
+                        {percent(routeTrip.rating.deliveredShare)}
                       </Table.Td>
                     </Table.Tr>
                     <Table.Tr>

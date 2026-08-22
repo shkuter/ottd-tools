@@ -1,22 +1,17 @@
 /**
  * The optimizer and the route income tab must settle the same route the same way: one flow
  * model, one delivered share, one interval, one load per trip. The tab has no tests of its
- * own, so this reproduces what it computes — `tripSetup` + `settleBranchFlows` + `tripMoney`
- * on a fleet of one — and holds it against the row the optimizer produced.
+ * own, so this drives `routeWithFlow` — the very function it renders from — and holds the
+ * result against the row the optimizer produced. What is not covered here is the tab's own
+ * wiring: which arguments the page hands that function.
  */
 import { describe, expect, it } from 'vitest';
 import { cargoByLabel, trains, trainsMeta } from '../../dataset';
 import { optimizeConsists } from '../optimize';
 import { routeWithFlow, tripSetup } from '../trip';
 import { cargoPaymentRate } from '../income';
-import { estimateStationRating } from '../rating';
-import { flowPerYearFromMonthly } from '../waiting';
-import {
-  DEFAULT_CALC_SETTINGS,
-  DEFAULT_GAME_SETTINGS,
-  effectiveDayLength,
-  engineDaysPerYear,
-} from '../settings';
+import { flowPerYearFromMonthly, routeStationRating } from '../waiting';
+import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../settings';
 
 const cargo = cargoByLabel.get('COAL')!;
 const game = DEFAULT_GAME_SETTINGS;
@@ -29,16 +24,18 @@ function routeTab(
   entries: { train: (typeof trains)[number]; count: number }[],
   waitForFullLoad: boolean,
   hauled = cargo,
+  settings = game,
+  productionPerMonth = PRODUCTION_PER_MONTH,
 ) {
   return routeWithFlow({
     entries,
     cargo: hauled,
-    payment: cargoPaymentRate(hauled, 'STEELTOWN', game, calc),
+    payment: cargoPaymentRate(hauled, 'STEELTOWN', settings, calc),
     distanceTiles: DISTANCE_TILES,
     meta: trainsMeta,
-    game,
+    game: settings,
     calc,
-    productionPerMonth: PRODUCTION_PER_MONTH,
+    productionPerMonth,
     waitForFullLoad,
   });
 }
@@ -72,6 +69,42 @@ describe('обе вкладки считают маршрут одной мод�
     expect(tab.economics.incomePerTrip).toBe(row!.incomePerTrip);
   });
 
+  it('ветка ожидания: та же строка, те же числа', () => {
+    // The waiting branch only ever wins where JGRPP charges less for a standing consist, so
+    // that is the game the row has to come from.
+    const jgrpp = { ...game, jgrpp: true, costsWhenStopped: 4 };
+    const production = 5;
+    const waitingRows = optimizeConsists(trains, {
+      year: 1960,
+      distanceTiles: DISTANCE_TILES,
+      cargo,
+      economyId: 'STEELTOWN',
+      maxLengthTiles: 5,
+      allowElectric: false,
+      productionPerMonth: production,
+      game: jgrpp,
+      calc,
+    }, trainsMeta, 30);
+
+    const row = waitingRows.find((r) => r.fleetSize === 1 && r.waitForFullLoad);
+    expect(row).toBeDefined();
+    const tab = routeTab(
+      [
+        { train: row!.engine, count: row!.engineCount },
+        { train: row!.wagon, count: row!.wagonCount },
+      ],
+      true,
+      cargo,
+      jgrpp,
+      production,
+    );
+    expect(tab.economics.waitDays).toBeGreaterThan(0);
+    expect(tab.rating!.deliveredShare).toBeCloseTo(row!.stationRating!.deliveredShare, 12);
+    expect(tab.economics.roundTripDays).toBeCloseTo(row!.pickupIntervalDays, 9);
+    expect(tab.economics.cargoPerTrip).toBeCloseTo(row!.cargoPerTrip, 9);
+    expect(tab.economics.incomePerTrip).toBe(row!.incomePerTrip);
+  });
+
   it('рейтинг читается от предельной скорости состава, как в игре', () => {
     // A consist whose speed limit clears the 85-unit speed bonus while what it actually
     // settles at does not: `lark` + 20 bolster cars runs at 62 with a limit of 96. The game
@@ -91,14 +124,9 @@ describe('обе вкладки считают маршрут одной мод�
     expect(setup.loadedPhysics.maxSpeedInternal).toBeGreaterThan(85);
 
     const tab = routeTab(entries, false, steel);
+    const ratingOf = routeStationRating(flowPerYearFromMonthly(PRODUCTION_PER_MONTH), game);
     const ratingAt = (maxSpeedInternal: number) =>
-      estimateStationRating({
-        pickupIntervalDays: tab.economics.roundTripDays,
-        maxSpeedInternal,
-        cargoPerDay: flowPerYearFromMonthly(PRODUCTION_PER_MONTH) / engineDaysPerYear(game),
-        jgrpp: game.jgrpp,
-        dayLengthFactor: effectiveDayLength(game),
-      });
+      ratingOf(tab.economics.roundTripDays, maxSpeedInternal);
     expect(tab.rating!.parts.speed).toBe(ratingAt(setup.loadedPhysics.maxSpeedInternal).parts.speed);
     expect(tab.rating!.parts.speed).toBeGreaterThan(ratingAt(setup.loadedSpeedInternal).parts.speed);
   });

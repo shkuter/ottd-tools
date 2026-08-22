@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { accumulationRoundTrip, settleWaitingBranch } from '../waiting';
+import {
+  SETTLE_PASS_CAP,
+  accumulationRoundTrip,
+  routeStationRating,
+  settleWaitingBranch,
+} from '../waiting';
 import type { StationRating } from '../rating';
 import { DEFAULT_GAME_SETTINGS, daysPerEconomyYear, effectiveDayLength } from '../settings';
 
@@ -107,13 +112,29 @@ describe('settleWaitingBranch', () => {
       // Never repeats itself, so the equality exit is never reached.
       ratingAt: () => ratingOf(200 - ++calls),
     });
-    expect(calls).toBeGreaterThan(1);
-    expect(calls).toBeLessThanOrEqual(16);
+    expect(calls).toBe(SETTLE_PASS_CAP);
     // Whatever it stops at is a real rating with a flow behind it, not NaN or the start value.
     expect(settled.rating.rating).toBeLessThan(200);
     expect(settled.offeredPerYear).toBeCloseTo(
       settleParams.flowPerYear * settled.rating.deliveredShare,
       9,
     );
+  });
+
+  it('на настоящем маршруте выход по совпадению рейтинга, а не по пределу', () => {
+    // The real rating is quantised to 256 steps and waiting only ever lowers it, so the walk
+    // settles in a pass or two; the cap must stay a backstop rather than the exit.
+    const ratingOf = routeStationRating(2000, DEFAULT_GAME_SETTINGS);
+    let calls = 0;
+    settleWaitingBranch({
+      ...settleParams,
+      physicalRating: ratingOf(80, 72),
+      ratingAt: (interval) => {
+        calls++;
+        return ratingOf(interval, 72);
+      },
+    });
+    expect(calls).toBeGreaterThan(0);
+    expect(calls).toBeLessThan(SETTLE_PASS_CAP);
   });
 });

@@ -19,15 +19,9 @@ import { describe, expect, it } from 'vitest';
 import { cargoByLabel, trains, trainsMeta } from '../../dataset';
 import { tripBranches, tripSetup } from '../trip';
 import { consistStats } from '../consist';
-import { estimateStationRating } from '../rating';
-import { flowPerYearFromMonthly, settleBranchFlows } from '../waiting';
+import { flowPerYearFromMonthly, routeStationRating, settleBranchFlows } from '../waiting';
 import { cargoPaymentRate } from '../income';
-import {
-  DEFAULT_CALC_SETTINGS,
-  DEFAULT_GAME_SETTINGS,
-  effectiveDayLength,
-  engineDaysPerYear,
-} from '../settings';
+import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../settings';
 
 /** The player's Advanced Settings for this game. */
 const game = {
@@ -64,18 +58,11 @@ function scenario() {
     entries, cargo: rubber, payment, distanceTiles: DISTANCE_TILES, meta: trainsMeta, game, calc,
   });
   const flowPerYear = flowPerYearFromMonthly(PRODUCTION_PER_MONTH);
-  const cargoPerDay = flowPerYear / engineDaysPerYear(game);
   // The rating reads the consist's speed limit, as the game does: `last_speed` is set from
   // `vcache.cached_max_speed` when a train loads (`economy.cpp`), not from how fast it ran.
+  const ratingOf = routeStationRating(flowPerYear, game, TRAIN_AGE_YEARS);
   const ratingAt = (pickupIntervalDays: number) =>
-    estimateStationRating({
-      pickupIntervalDays,
-      maxSpeedInternal: setup.loadedPhysics.maxSpeedInternal,
-      cargoPerDay,
-      jgrpp: true,
-      dayLengthFactor: effectiveDayLength(game),
-      vehicleAgeYears: TRAIN_AGE_YEARS,
-    });
+    ratingOf(pickupIntervalDays, setup.loadedPhysics.maxSpeedInternal);
   // Both branches settled the way both tabs settle them.
   const flows = settleBranchFlows({
     physicalRoundTripDays: setup.roundTripDays,
@@ -127,7 +114,8 @@ describe('эталон: каучук с причала Nentbourne на заво�
 
   it('доля вывоза близка к рейтингу станции в партии', () => {
     const { physicalRating } = scenario();
-    // The game settled at 147/255 = 57.4 %; the model reads ~4 points of rating higher.
+    // The game settled at 147/255 = 57.4 %; the model reads ~10 rating points higher,
+    // which is ~4 percentage points of the delivered share (`design.md`).
     expect(physicalRating.rating).toBeGreaterThan(147 * 0.95);
     expect(physicalRating.rating).toBeLessThan(147 * 1.10);
     expect(physicalRating.parts.speed).toBe(0); // 72 internal is below the 85 bonus floor

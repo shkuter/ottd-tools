@@ -166,8 +166,8 @@ describe('ветки загрузки', () => {
     const physical = setup.roundTripDays;
     const share = (physical + w.waitDays / 2) / (physical + w.waitDays);
     expect(w.incomePerTrip).toBe(incomeAtAge(setup.daysLoaded + w.waitDays * share));
-    // Half the wait understates it: the part loaded in one go at the start of the stop is
-    // older than that, so pricing by half would pay more than the game does.
+    // Pricing by half the wait would understate the age: the part loaded in one go at the
+    // start of the stop waited longer than that, so half pays more than the game does.
     expect(w.incomePerTrip).toBeLessThan(incomeAtAge(setup.daysLoaded + w.waitDays / 2));
   });
 

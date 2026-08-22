@@ -85,6 +85,9 @@ export interface WaitingSettleParams extends RouteLoad {
   ratingAt: (pickupIntervalDays: number) => StationRating;
 }
 
+/** How many passes the settling walk may spend before it gives up on convergence. */
+export const SETTLE_PASS_CAP = 8;
+
 export interface WaitingSettlement {
   /** Rating the waiting branch settles at: its own interval, not the physical one. */
   rating: StationRating;
@@ -104,9 +107,11 @@ export interface WaitingSettlement {
  * deliveries.
  */
 export function settleWaitingBranch(p: WaitingSettleParams): WaitingSettlement {
+  // Backstop only: the walk exits when the rating stops moving, which it does in a pass or
+  // two. A rating that never repeats itself would otherwise loop forever.
   let rating = p.physicalRating;
   let offeredPerYear = p.flowPerYear * rating.deliveredShare;
-  for (let pass = 0; pass < 8; pass++) {
+  for (let pass = 0; pass < SETTLE_PASS_CAP; pass++) {
     const settled = accumulationRoundTrip({
       physicalRoundTripDays: p.physicalRoundTripDays,
       capacity: p.capacity,
@@ -139,6 +144,8 @@ export function flowPerYearFromMonthly(productionPerMonth: number | undefined): 
 export function routeStationRating(
   flowPerYear: number,
   game: GameSettings,
+  /** Age of the consist in years; the game pays a rating bonus for a young one. */
+  vehicleAgeYears = 0,
 ): (pickupIntervalDays: number, maxSpeedInternal: number) => StationRating {
   const cargoPerDay = flowPerYear / engineDaysPerYear(game);
   return (pickupIntervalDays, maxSpeedInternal) =>
@@ -148,6 +155,7 @@ export function routeStationRating(
       cargoPerDay,
       jgrpp: game.jgrpp,
       dayLengthFactor: effectiveDayLength(game),
+      vehicleAgeYears,
     });
 }
 

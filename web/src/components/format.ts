@@ -34,3 +34,8 @@ export function num(value: number, digits = 0): string {
     maximumFractionDigits: digits,
   });
 }
+
+/** A 0..1 share as whole percent, the way both tabs print the delivered share. */
+export function percent(share: number): string {
+  return `${Math.round(share * 100)}%`;
+}

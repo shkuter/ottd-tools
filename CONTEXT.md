@@ -49,6 +49,12 @@ full-load order: the consist leaves only when it is full, so its round trip carr
 optimizer costs both and keeps the better one for the chosen goal, and the route income tab
 lets the user pick.
 
+**Engine day** (_движковый день_) — the day the trip and the accumulation are counted in:
+`DAY_TICKS = 74` ticks, the unit `daysForDistance` produces. A JGRPP day length factor does not
+change a trip in ticks, but it stretches the economy year, so a year holds
+`daysPerEconomyYear × dayLengthFactor` of them (`engineDaysPerYear`). Not to be confused with
+the **engine** of a consist: "engine" here is the clock, not the locomotive.
+
 **Accumulation wait** (_ожидание накопления_) — the part of a round trip a consist spends
 standing while the source builds the load up: `round trip = max(physical round trip, fleet ×
 capacity ÷ accumulation rate)`, where the rate is what the station is **offered** per day, i.e.

@@ -32,40 +32,15 @@ import {
 } from './settings';
 import { DAY_TICKS } from './units';
 
-export interface TripParams {
+export interface TripParams extends TripMoneyParams {
   entries: readonly ConsistEntry[];
-  cargo: Cargo;
-  /** Payment rate of the cargo in the selected economy. */
-  payment: number;
-  distanceTiles: number;
   meta: TrainsMeta;
-  game?: GameSettings;
   calc?: CalcSettings;
-  /** Cargo is under subsidy: income is multiplied (difficulty.subsidy_multiplier). */
-  subsidised?: boolean;
-  /**
-   * Cargo actually hauled per trip when the source industry cannot fill the train — the
-   * share of what the station hands over falling to one train of the fleet. The delivered
-   * share belongs in this figure, not in a separate income multiplier: a train that finds
-   * a full load waiting earns on all of it (see docs/adr/0001).
-   * Defaults to the consist capacity.
-   */
-  cargoPerTrip?: number;
-  /**
-   * Identical consists running the route. Buy cost, running cost and yearly income are
-   * stated for the whole fleet, so rows with different fleet sizes compare directly.
-   * Defaults to 1.
-   */
-  fleetSize?: number;
   /**
    * Loaded leg duration set by hand (route income tab). The empty leg is scaled by the
    * speed ratio, so a manual figure still gets a faster return run.
    */
   loadedDaysOverride?: number | null;
-  /** Loading branch: the consist leaves only when full. Defaults to false. */
-  waitForFullLoad?: boolean;
-  /** Cargo the station is offered over an economy year; only the waiting branch reads it. */
-  offeredPerYear?: number;
 }
 
 export interface TripEconomics {
@@ -142,6 +117,16 @@ export interface TripSetup {
   running: number;
 }
 
+/**
+ * Trips one consist makes over an economy year. JGRPP: a longer day does not change the trip
+ * in ticks, but the year holds more of them. A round trip that is zero or not finite means
+ * there is no route to count trips on rather than infinitely many.
+ */
+function tripsPerYearOf(roundTripDays: number, game: GameSettings): number {
+  if (!(roundTripDays > 0) || !Number.isFinite(roundTripDays)) return 0;
+  return engineDaysPerYear(game) / roundTripDays;
+}
+
 export function tripSetup(params: TripParams): TripSetup {
   const game = params.game ?? DEFAULT_GAME_SETTINGS;
   const calc = params.calc ?? DEFAULT_CALC_SETTINGS;
@@ -170,11 +155,7 @@ export function tripSetup(params: TripParams): TripSetup {
 
   const loadingDays = tripLoadingDays(entries, cargo, capacityIndex, game);
   const roundTripDays = daysLoaded + daysEmpty + loadingDays;
-  // JGRPP: a longer day does not change the trip in ticks, but the calendar year holds more of them.
-  const tripsPerYear =
-    roundTripDays > 0 && Number.isFinite(roundTripDays)
-      ? engineDaysPerYear(game) / roundTripDays
-      : 0;
+  const tripsPerYear = tripsPerYearOf(roundTripDays, game);
 
   const { buy, running } = consistMoney(entries, meta, game, calc);
 
@@ -211,9 +192,19 @@ export interface TripMoneyParams {
   game?: GameSettings;
   /** Cargo is under subsidy: income is multiplied (difficulty.subsidy_multiplier). */
   subsidised?: boolean;
-  /** Cargo actually hauled per trip; defaults to the consist capacity. */
+  /**
+   * Cargo actually hauled per trip when the source industry cannot fill the train — the
+   * share of what the station hands over falling to one train of the fleet. The delivered
+   * share belongs in this figure, not in a separate income multiplier: a train that finds
+   * a full load waiting earns on all of it (see docs/adr/0001). Defaults to the consist
+   * capacity, and the waiting branch ignores it: that one never leaves part-loaded.
+   */
   cargoPerTrip?: number;
-  /** Identical consists running the route; money is stated for all of them. Defaults to 1. */
+  /**
+   * Identical consists running the route. Buy cost, running cost and yearly income are
+   * stated for the whole fleet, so rows with different fleet sizes compare directly.
+   * Defaults to 1.
+   */
   fleetSize?: number;
   /**
    * Loading branch. `false` (the default) is the plain route: the consist leaves with what
@@ -251,10 +242,7 @@ export function tripMoney(setup: TripSetup, params: TripMoneyParams): TripEconom
     : null;
   const waitDays = accumulation?.waitDays ?? 0;
   const roundTripDays = accumulation?.roundTripDays ?? setup.roundTripDays;
-  const tripsPerYear =
-    waitDays > 0
-      ? engineDaysPerYear(game) / roundTripDays
-      : setup.tripsPerYear;
+  const tripsPerYear = waitDays > 0 ? tripsPerYearOf(roundTripDays, game) : setup.tripsPerYear;
 
   // Waiting for a full load means exactly that: the cap the flow puts on a train that leaves
   // with what accumulated does not apply, because this one does not leave until it is full.

@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router';
 import { activeCargos, activeTrains, activeTrainsMeta, economies, economyIdForCargo } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
-import { num, speed, speedUnitLabel, speedValue } from '../../components/format';
+import { num, percent, speed, speedUnitLabel, speedValue } from '../../components/format';
 import { Money } from '../../components/Money';
 import { optimizeConsists, type OptimizeResult } from '../../engine/optimize';
 import { createOptimizerCache } from '../../engine/optimizeCache';
@@ -415,7 +415,7 @@ export default function OptimizerPage() {
                 </Table.Td>
                 <Table.Td>{num(r.pickupIntervalDays, 1)} {t('combined.days')}</Table.Td>
                 <Table.Td title={r.stationRating ? ratingBreakdown(r.stationRating) : undefined}>
-                  {r.stationRating ? `${Math.round(r.stationRating.deliveredShare * 100)}%` : '—'}
+                  {r.stationRating ? percent(r.stationRating.deliveredShare) : '—'}
                 </Table.Td>
                 {activeGoal === 'transported' && (
                   <Table.Td>{num(r.hauledPerYear)} {cargoUnits(cargo?.units)}</Table.Td>
