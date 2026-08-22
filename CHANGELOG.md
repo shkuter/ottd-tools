@@ -31,6 +31,18 @@ of what users see):
   interval. Where a cargo has several consumers, the destination is picked on the tab; the
   window, the pool thresholds (16 / 80 for mines and farms, 128 / 640 for ports) and the
   production bonuses come from the FIRS sources through the pipeline.
+- Industry supply tab: one industry, every input of it at once. Pick the receiving industry,
+  give each input a distance and the output of its source, and the tab runs the same sweep the
+  Best-train tab runs — once per input — then adds the results up into the industry's own
+  conversion. It names the input to fix first: the fleet that brings it inside the window,
+  against the fleet limit set on the tab, or the fact that nothing in that year's buy menu can
+  haul it at all. Inputs without a route stay visibly unset and the total says it is partial,
+  rather than a figure computed from distances nobody gave. Primaries and ports get their pool
+  instead: the volume the routes on the tab deliver across the window and the production level
+  it earns. The conversion is computed from the real state of every input rather than taken
+  from an optimizer row, which assumes the other inputs are fed by somebody else. Industries
+  the calculator does not model, and industries that accept nothing, say so instead of showing
+  a form. Like the catalogue and the income chart, the tab loads in a chunk of its own.
 - The optimizer's result table sorts by any column: a click orders by it, a second reverses,
   a third returns the order the search produced. Sorting is a view over the rows the goal
   already ranked — it changes neither the set of rows nor their figures.

@@ -3,6 +3,7 @@
  * so a new store only needs to be added here to be covered by "reset all".
  */
 import { useConsistStore } from './consistStore';
+import { useIndustrySupplyStore } from './industrySupplyStore';
 import { useOptimizerStore } from './optimizerStore';
 import { useRouteStore } from './routeStore';
 import { useSettingsStore } from './settingsStore';
@@ -12,6 +13,7 @@ const PERSISTED_STORES = [
   useConsistStore,
   useRouteStore,
   useOptimizerStore,
+  useIndustrySupplyStore,
 ] as const;
 
 /** Wipe every persisted store from localStorage; the caller reloads the page. */

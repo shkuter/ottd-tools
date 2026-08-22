@@ -30,7 +30,9 @@ import {
 } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, industryName, sortCargos } from '../../i18n/names';
-import { num, percent, speed, speedUnitLabel, speedValue } from '../../components/format';
+import {
+  engineLabel, num, percent, speed, speedUnitLabel, speedValue, wagonLabel,
+} from '../../components/format';
 import { Money } from '../../components/Money';
 import { optimizeConsists, type OptimizeResult } from '../../engine/optimize';
 import { hasVerdict, supplyFigure, type SupplyTarget } from '../../engine/supply';
@@ -577,12 +579,12 @@ export default function OptimizerPage() {
                 <Table.Td>{i + 1}</Table.Td>
                 <Table.Td><TrainImage trainId={r.engine.id} /></Table.Td>
                 <Table.Td>
-                  {r.engineCount > 1 ? `${r.engineCount}× ` : ''}{r.engine.name}
+                  {engineLabel(r)}
                   <IntroNote intro={r.engineIntro} />
                   <span className="dim"> ({r.engine.power_hp * r.engineCount} {t('units.hp')})</span>
                 </Table.Td>
                 <Table.Td><TrainImage trainId={r.wagon.id} /></Table.Td>
-                <Table.Td>{r.wagonCount}× {r.wagon.name}<IntroNote intro={r.wagonIntro} /></Table.Td>
+                <Table.Td>{wagonLabel(r)}<IntroNote intro={r.wagonIntro} /></Table.Td>
                 <Table.Td>
                   {num(r.cargoPerTrip)} {cargoUnits(cargo?.units)}
                   {r.cargoPerTrip < r.capacity - 0.5 && (

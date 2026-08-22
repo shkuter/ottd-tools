@@ -205,6 +205,34 @@ export function supplyTargetFor(
   };
 }
 
+/**
+ * Industries the active economy has, in data order. Empty with FIRS off, where there are no
+ * industries at all — which is also when the supply tab has nothing to answer about.
+ *
+ * Read through `activeEconomy` like everything else, so an industry belonging to another
+ * economy is simply not in the list rather than something callers must filter out.
+ */
+export function activeIndustries(game: GameSettings): Industry[] {
+  if (!game.firs) return [];
+  const economyId = activeEconomy(game).id;
+  return industries.filter((industry) => industry.economies[economyId]);
+}
+
+/**
+ * Inputs of one industry in the active economy: the cargo and the input ratio the conversion
+ * sums over. Empty when the economy has no such industry — the same fallback the economy
+ * itself takes (ADR-0002), so a chosen industry the economy lost leaves nothing to compute.
+ */
+export function industrySupplyInputs(
+  game: GameSettings,
+  industryId: string,
+): { cargoLabel: string; ratio: number }[] {
+  if (!game.firs) return [];
+  const industry = industryById.get(industryId);
+  const accepts = industry?.economies[activeEconomy(game).id]?.accepts ?? [];
+  return accepts.map((entry) => ({ cargoLabel: entry.label, ratio: entry.ratio ?? 0 }));
+}
+
 /** Payment-rate key for vanilla cargos: they carry a single rate instead of one per economy. */
 export const VANILLA_ECONOMY_ID = 'VANILLA';
 

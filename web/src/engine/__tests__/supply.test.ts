@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CONVERSION_CEILING,
+  assessIndustrySupply,
   MARGINAL_RATIO,
   assessSupply,
   conversion,
@@ -13,6 +14,8 @@ import {
   supplyWindowDays,
   trainsForWindow,
   verdictFor,
+  type InputOutcome,
+  type SupplyVerdict,
 } from '../supply';
 import { accumulationRoundTrip } from '../waiting';
 import { DEFAULT_GAME_SETTINGS } from '../settings';
@@ -263,5 +266,170 @@ describe('assessSupply', () => {
     expect(result.rule).toBe('pool');
     expect(result.pool).toEqual({ level: 1, productionPercent: 150 });
     expect(result.conversion).toBeNull();
+  });
+});
+
+describe('снабжение предприятия целиком', () => {
+  /** Один вход с маршрутом, который укладывается в окно (или нет). */
+  const routed = (
+    verdict: SupplyVerdict,
+    extra: Partial<InputOutcome> = {},
+  ): InputOutcome => ({
+    verdict,
+    ratio: verdict === 'misses' ? 2 : 0.5,
+    trainsForWindow: 2,
+    unserved: false,
+    deliveredPerWindow: null,
+    ...extra,
+  });
+
+  const inputsOf = (id: string, economy: string, outcomes: (InputOutcome | null)[]) =>
+    (industry(id).economies[economy]?.accepts ?? []).map((entry, i) => ({
+      cargoLabel: entry.label,
+      ratio: entry.ratio ?? 0,
+      outcome: outcomes[i] ?? null,
+    }));
+
+  it('все четыре входа уложены в окно: конверсия единица, узкого места нет', () => {
+    const result = assessIndustrySupply(
+      industry('tyre_plant'),
+      inputsOf('tyre_plant', 'STEELTOWN', Array(4).fill(routed('holds'))),
+    );
+    expect(result.conversion).toBe(1);
+    expect(result.incomplete).toBe(false);
+    expect(result.bottleneck).toBeNull();
+  });
+
+  it('часть входов не задана: итог помечен неполным, состояния различимы', () => {
+    const result = assessIndustrySupply(
+      industry('tyre_plant'),
+      inputsOf('tyre_plant', 'STEELTOWN', [routed('holds'), routed('misses'), null, null]),
+    );
+    expect(result.incomplete).toBe(true);
+    expect(result.states).toEqual(['holds', 'misses', 'unset', 'unset']);
+    // незаданный вход не считается ни поданным, ни выпавшим: в конверсию входит только один
+    expect(result.conversion).toBeCloseTo(2 / CONVERSION_CEILING, 9);
+  });
+
+  it('один вход выпал: конверсия ниже ровно на его ratio', () => {
+    const result = assessIndustrySupply(
+      industry('tyre_plant'),
+      inputsOf('tyre_plant', 'STEELTOWN', [
+        routed('holds'), routed('holds'), routed('holds'), routed('misses'),
+      ]),
+    );
+    expect(result.conversion).toBeCloseTo(6 / CONVERSION_CEILING, 9);
+    expect(result.bottleneck?.kind).toBe('fleet');
+    expect(result.bottleneck?.input.cargoLabel).toBe('TYCO');
+    expect(result.bottleneck).toMatchObject({ trains: 2 });
+  });
+
+  it('выпавший вход при упёршейся в потолок сумме: конверсия не меняется, узкого места нет', () => {
+    // «любые три из пяти»: пять входов ratio 3, трёх поданных уже хватает на потолок
+    const result = assessIndustrySupply(
+      industry('appliance_factory'),
+      inputsOf('appliance_factory', 'STEELTOWN', [
+        routed('holds'), routed('holds'), routed('holds'), routed('misses'), routed('misses'),
+      ]),
+    );
+    expect(result.conversion).toBe(1);
+    expect(result.bottleneck).toBeNull();
+  });
+
+  it('пограничный вход входит в конверсию, но остаётся отличим от уверенного', () => {
+    const result = assessIndustrySupply(
+      industry('tyre_plant'),
+      inputsOf('tyre_plant', 'STEELTOWN', [
+        routed('holds'), routed('holds'), routed('holds'), routed('marginal'),
+      ]),
+    );
+    expect(result.conversion).toBe(1);
+    expect(result.states.at(-1)).toBe('marginal');
+  });
+
+  it('вход, который нечем возить, назван ограничением маршрута, а не парком', () => {
+    const result = assessIndustrySupply(
+      industry('tyre_plant'),
+      inputsOf('tyre_plant', 'STEELTOWN', [
+        routed('holds'), routed('holds'), routed('holds'),
+        // нет состава под этот груз: парк называть нечем
+        routed('misses', { unserved: true, trainsForWindow: null }),
+      ]),
+    );
+    expect(result.bottleneck?.kind).toBe('limit');
+    expect(result.bottleneck?.input.cargoLabel).toBe('TYCO');
+  });
+
+  it('нечем возить несколько входов: назван тот, чьё ratio больше', () => {
+    // у tyre_plant все входы ratio 2, поэтому второму поднимаем ratio руками
+    const inputs = inputsOf('tyre_plant', 'STEELTOWN', [
+      routed('misses', { unserved: true, trainsForWindow: null }),
+      routed('misses', { unserved: true, trainsForWindow: null }),
+      null,
+      null,
+    ]);
+    inputs[1].ratio = 5; // второй вход режет конверсию сильнее
+    const result = assessIndustrySupply(industry('tyre_plant'), inputs);
+    expect(result.bottleneck?.kind).toBe('limit');
+    expect(result.bottleneck?.input).toBe(inputs[1]);
+  });
+
+  it('дешевле всего дотянуть тот вход, которому нужен меньший парк', () => {
+    const result = assessIndustrySupply(
+      industry('tyre_plant'),
+      inputsOf('tyre_plant', 'STEELTOWN', [
+        routed('holds'), routed('holds'),
+        routed('misses', { trainsForWindow: 5 }),
+        routed('misses', { trainsForWindow: 3 }),
+      ]),
+    );
+    expect(result.bottleneck?.kind).toBe('fleet');
+    expect(result.bottleneck?.input.cargoLabel).toBe('TYCO');
+    expect(result.bottleneck).toMatchObject({ trains: 3 });
+  });
+
+  it('вторичное предприятие с одним входом ratio 6 не доходит до единицы', () => {
+    const result = assessIndustrySupply(
+      industry('dairy'),
+      inputsOf('dairy', 'BASIC_TEMPERATE', [routed('holds')]),
+    );
+    expect(result.conversion).toBeCloseTo(6 / CONVERSION_CEILING, 9);
+    // тянуть больше нечего: узкое место называется только по выпавшим входам
+    expect(result.bottleneck).toBeNull();
+  });
+
+  it('порт: пул складывает маршруты, заданные на вкладке, и берёт свои пороги', () => {
+    const result = assessIndustrySupply(
+      industry('port'),
+      inputsOf('port', 'BASIC_TEMPERATE', [
+        routed('holds', { deliveredPerWindow: 300 }),
+        routed('holds', { deliveredPerWindow: 400 }),
+        null,
+      ]),
+    );
+    expect(result.deliveredPerWindow).toBe(700);
+    expect(result.pool).toEqual({ level: 2, productionPercent: 250 });
+    expect(result.conversion).toBeNull();
+    // третий груз никто не возит — ответ по-прежнему про заданные маршруты
+    expect(result.incomplete).toBe(true);
+  });
+
+  it('порт ниже первого порога остаётся на базовом уровне', () => {
+    const result = assessIndustrySupply(
+      industry('port'),
+      inputsOf('port', 'BASIC_TEMPERATE', [routed('holds', { deliveredPerWindow: 100 })]),
+    );
+    expect(result.pool).toEqual({ level: 0, productionPercent: 100 });
+  });
+
+  it('получатель с неизвестным правилом не получает ни конверсии, ни пула', () => {
+    const result = assessIndustrySupply(
+      industry('power_plant'),
+      inputsOf('power_plant', 'STEELTOWN', [routed('holds')]),
+    );
+    expect(result.rule).toBe('unknown');
+    expect(result.conversion).toBeNull();
+    expect(result.pool).toBeNull();
+    expect(result.bottleneck).toBeNull();
   });
 });

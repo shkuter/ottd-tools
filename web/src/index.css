@@ -628,3 +628,18 @@ td:has(> .train-sprite) {
    the plain text colour: it holds, but only just, and the tooltip is where that is explained. */
 .supply-holds { color: var(--profit); }
 .supply-misses { color: var(--loss); }
+
+/* Cargo cell of the supply tab: icon beside the name, as the cargo select shows it. The
+   column is narrow between the input fields, so the pair has to be told not to wrap. */
+.supply-cargo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* Supply tab states. "Barely" holds — it counts as supplied, but the model spaces trains
+   evenly and a real game bunches them, so it does not get the confident colour; "not set"
+   is not a verdict at all and stays quiet next to the ones that are. */
+.supply-marginal { color: var(--profit); opacity: 0.7; }
+.supply-unset { opacity: 0.6; }

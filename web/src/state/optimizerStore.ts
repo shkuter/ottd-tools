@@ -1,18 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { OptimizeGoal } from '../engine/optimize';
+import { DEFAULT_SEARCH_PARAMS, type SearchParams } from './searchParams';
 
-interface OptimizerState {
-  year: number;
+interface OptimizerState extends SearchParams {
   cargoLabel: string;
   distanceTiles: number;
-  stationTiles: number;
   /** Industry output per economy month, 0 = do not limit the load. */
   productionPerMonth: number;
   /** What the search ranks by; 'transported' needs a production flow to mean anything. */
   goal: OptimizeGoal;
-  /** Upper bound on trains per route, used by the transported goal. */
-  maxTrains: number;
   /**
    * Industry the cargo is hauled to, for the supply column and the supply goal. Empty when
    * none was chosen; an id the active economy has no industry for is replaced on read, the
@@ -20,7 +17,6 @@ interface OptimizerState {
    * consumer from another set standing.
    */
   destinationId: string;
-  allowElectric: boolean;
   /**
    * Машины, исключённые из перебора: те, что в выбранном году могут ещё не
    * появиться в игре (engine/availability.ts) и не нужны игроку в выдаче.
@@ -43,15 +39,12 @@ interface OptimizerState {
 export const useOptimizerStore = create<OptimizerState>()(
   persist(
     (set) => ({
-      year: 1938,
+      ...DEFAULT_SEARCH_PARAMS,
       cargoLabel: 'FEAL',
       distanceTiles: 300,
-      stationTiles: 5,
       productionPerMonth: 0,
       goal: 'profit',
-      maxTrains: 4,
       destinationId: '',
-      allowElectric: false,
       excludedIds: [],
       setYear: (year) => set({ year }),
       setCargoLabel: (cargoLabel) => set({ cargoLabel }),

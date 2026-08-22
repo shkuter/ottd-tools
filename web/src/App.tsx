@@ -14,11 +14,15 @@ import { usePageviews } from './analytics';
 // nothing else needs either, so both tabs load with their own chunk
 const ConsistPage = lazy(() => import('./features/consist/ConsistPage'));
 const RoutePage = lazy(() => import('./features/route/RoutePage'));
+// the supply tab drags the optimizer along and runs one sweep per input; it stays out of the
+// main chunk for the same reason the other two do
+const IndustrySupplyPage = lazy(() => import('./features/industry-supply/IndustrySupplyPage'));
 
 const tabs = [
   { path: '/optimizer', label: 'nav.optimizer' },
   { path: '/consist', label: 'nav.consist' },
   { path: '/income', label: 'nav.income' },
+  { path: '/supply', label: 'nav.supply' },
   { path: '/firs', label: 'nav.firs' },
   { path: '/settings', label: 'nav.settings' },
 ];
@@ -46,7 +50,8 @@ export default function App() {
         <Box component="nav">
           <Group gap={4}>
             {tabs
-              .filter((tab) => firs || tab.path !== '/firs')
+              // both tabs answer about FIRS industries, and there are none with FIRS off
+              .filter((tab) => firs || (tab.path !== '/firs' && tab.path !== '/supply'))
               .map((tab) => (
                 <Button key={tab.path} component={NavLink} to={tab.path} size="compact-md">
                   {t(tab.label)}
@@ -68,6 +73,7 @@ export default function App() {
             <Route path="/optimizer" element={<OptimizerPage />} />
             <Route path="/consist" element={<ConsistPage />} />
             <Route path="/income" element={<RoutePage />} />
+            <Route path="/supply" element={<IndustrySupplyPage />} />
             <Route path="/firs" element={<FirsPage />} />
             <Route path="/combined" element={<Navigate to="/income" replace />} />
             <Route path="/settings" element={<SettingsPage />} />

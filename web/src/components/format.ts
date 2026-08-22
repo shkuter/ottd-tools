@@ -39,3 +39,23 @@ export function num(value: number, digits = 0): string {
 export function percent(share: number): string {
   return `${Math.round(share * 100)}%`;
 }
+
+/**
+ * How a consist is written wherever one is shown. Every tab reads from here, so the same train
+ * is never spelled two ways: the count sits in front of the name, and a single engine carries
+ * no count at all.
+ */
+export function engineLabel(row: { engine: { name: string }; engineCount: number }): string {
+  return row.engineCount > 1 ? `${row.engineCount}× ${row.engine.name}` : row.engine.name;
+}
+
+export function wagonLabel(row: { wagon: { name: string }; wagonCount: number }): string {
+  return `${row.wagonCount}× ${row.wagon.name}`;
+}
+
+/** Both halves in one line, for places that name a consist outside a table. */
+export function consistLabel(
+  row: { engine: { name: string }; engineCount: number; wagon: { name: string }; wagonCount: number },
+): string {
+  return row.wagonCount > 0 ? `${engineLabel(row)} + ${wagonLabel(row)}` : engineLabel(row);
+}

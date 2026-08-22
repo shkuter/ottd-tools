@@ -157,6 +157,26 @@ which is about clearing the source industry's output rather than feeding the des
 improved level and a full one. Ports pool every cargo they accept into one count; primaries
 count their one supply cargo.
 
+**Input state** (_состояние входа_) — where one input of an industry stands on the supply tab:
+held (**supplied**), **marginal**, missing the window, or *unset*. Unset is a state of its own,
+not a zero: an input the player has not routed yet must never read as one that misses the
+window, because a figure computed from a distance nobody gave is wrong where it is most
+visible.
+
+**Unserved** (_нечем возить_) — a routed input the buy menu of that year cannot haul at all: no
+consist exists for the cargo on that route. Distinct from an unset input (nothing was asked) and
+from one that merely needs more trains — the advice differs in each case.
+
+**Incomplete** (_неполный итог_) — a **conversion** or **supply pool** figure computed while some
+inputs are still unset. The number answers for part of the industry, so the tab says so instead
+of presenting it as final.
+
+**Bottleneck** (_узкое место_) — the input to fix first: the one whose input ratio still limits
+the **conversion**. Two shapes, because the advice differs — a fleet that brings it inside the
+window (quoted with the consist that fleet belongs to), or the fact that the input is
+**unserved**. There is no bottleneck when the supplied inputs already reach the conversion
+ceiling: fixing anything then buys no output.
+
 ## Cargo sets
 
 **Economy** (_экономика_) — the FIRS variant a game runs: Temperate Basic, Arctic Basic, Tropic

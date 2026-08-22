@@ -248,3 +248,165 @@ export function assessSupply(target: SupplyTarget, route: RouteSupply): SupplyAs
         : null,
   };
 }
+
+/**
+ * How one input of an industry stands. `unset` is its own state, not a zero: an input the
+ * user has not routed yet must not read as one that misses the window — a figure computed
+ * from a distance nobody gave is wrong in the most visible place on the tab.
+ */
+export type InputState = 'holds' | 'marginal' | 'misses' | 'unset';
+
+/** What a route contributes to one input, as the summary layer needs it. */
+export interface InputOutcome {
+  /** Verdict of that route, from `verdictFor` — the marginal band included. */
+  verdict: SupplyVerdict;
+  /** Interval against the window; null when there is no interval. */
+  ratio: number | null;
+  /** Smallest fleet whose ratio reaches 1; null when the round trip is unknown. */
+  trainsForWindow: number | null;
+  /**
+   * Nothing in the buy menu of that year can haul this cargo on this route. It is its own
+   * answer, not a missing number: naming a fleet for a route no consist can run is advice the
+   * player cannot follow.
+   */
+  unserved: boolean;
+  /** What the route puts into the pool over one window; null when unknown. */
+  deliveredPerWindow: number | null;
+}
+
+/** One input of an industry, with the route the user gave it (null while none was given). */
+export interface IndustryInput {
+  cargoLabel: string;
+  /** Input ratio of this cargo at this industry; 0 when the industry states none. */
+  ratio: number;
+  outcome: InputOutcome | null;
+}
+
+/**
+ * The input holding the industry back, and what would move it. `fleet` names the fleet that
+ * reaches the window — the number the player acts on, whether or not it fits the limit they
+ * set. `limit` is for an input no consist can serve at all, where naming a fleet would be
+ * advice they cannot follow.
+ *
+ * It carries the input itself rather than its cargo label: the caller already holds these
+ * objects, and handing back a label only makes it look the same one up again.
+ */
+export type SupplyBottleneck<T extends IndustryInput = IndustryInput> =
+  | { kind: 'fleet'; input: T; trains: number }
+  | { kind: 'limit'; input: T };
+
+export interface IndustrySupply<T extends IndustryInput = IndustryInput> {
+  rule: SupplyRule;
+  /** State of every input, in the order they were passed. */
+  states: InputState[];
+  /** Conversion rule only: share of its output the industry gets from the inputs that hold. */
+  conversion: number | null;
+  /**
+   * At least one input has no route yet, so the figures answer for part of the industry.
+   * The tab says so instead of presenting a partial answer as the final one.
+   */
+  incomplete: boolean;
+  /** The input to fix first; null when fixing any of them would not move the conversion. */
+  bottleneck: SupplyBottleneck<T> | null;
+  /** Pool rule only: what the routes given on the tab add up to across one window. */
+  pool: PoolOutcome | null;
+  /** Pool rule only: that same volume, so the tab can show it against the thresholds. */
+  deliveredPerWindow: number | null;
+}
+
+/** State of one input: no route, or the route's own verdict. */
+export function inputState(outcome: InputOutcome | null): InputState {
+  if (!outcome || outcome.verdict === 'unknown') return 'unset';
+  return outcome.verdict;
+}
+
+/**
+ * Supply of a whole industry: every input at once, which is the question a player actually
+ * has — an input that fell out of the window cuts the output of the deliveries that arrived
+ * on time too, so answering one input at a time cannot say which one to fix.
+ *
+ * The conversion here is computed from the real state of every input, not taken from an
+ * optimizer row: a row assumes the industry's *other* inputs are fed by somebody else
+ * (`assessSupply`), and counting that assumption on top of the states known here would put
+ * the answer above the truth exactly where the tab is meant to help.
+ */
+export function assessIndustrySupply<T extends IndustryInput>(
+  industry: Industry,
+  inputs: T[],
+): IndustrySupply<T> {
+  const rule = supplyRule(industry);
+  const states = inputs.map((input) => inputState(input.outcome));
+  const incomplete = states.includes('unset');
+  const base: IndustrySupply<T> = {
+    rule,
+    states,
+    conversion: null,
+    incomplete,
+    bottleneck: null,
+    pool: null,
+    deliveredPerWindow: null,
+  };
+  if (!hasVerdict(rule)) return base;
+
+  if (rule === 'pool') {
+    // Only the routes the user put on the tab: deliveries by anyone else stay invisible, the
+    // way they are for a single route, so the volume is the total of *these* routes.
+    const routed = inputs.filter((input) => input.outcome?.deliveredPerWindow != null);
+    const delivered = routed.reduce(
+      (total, input) => total + (input.outcome?.deliveredPerWindow ?? 0),
+      0,
+    );
+    if (routed.length === 0) return base;
+    return {
+      ...base,
+      deliveredPerWindow: delivered,
+      pool: industry.supply_pool ? poolOutcome(delivered, industry.supply_pool) : null,
+    };
+  }
+
+  const supplied = inputs.filter(
+    (input) => input.outcome !== null && holdsSupplied(input.outcome.verdict),
+  );
+  const suppliedShare = conversion(supplied.map((input) => input.ratio));
+  return {
+    ...base,
+    conversion: suppliedShare,
+    bottleneck: bottleneckOf(inputs, states, suppliedShare),
+  };
+}
+
+/**
+ * Which missing input to fix first. Only inputs whose ratio would actually raise the
+ * conversion count: with the others already at the ceiling — FIRS's "any three of five" —
+ * hauling a fifth cargo changes nothing, and naming it would send the player after a train
+ * that buys them no output.
+ *
+ * Among those, the one a fleet reaches wins over one that runs into a limit, and the smaller
+ * fleet wins between two of them: that is the cheapest thing the player can do next. When
+ * nothing can serve several inputs at all, the one with the largest ratio is named — it is the
+ * one cutting the conversion hardest, and the order the data happens to list them in says
+ * nothing.
+ */
+function bottleneckOf<T extends IndustryInput>(
+  inputs: T[],
+  states: InputState[],
+  suppliedShare: number,
+): SupplyBottleneck<T> | null {
+  if (suppliedShare >= 1) return null;
+  const missing = inputs
+    .map((input, i) => ({ input, state: states[i] }))
+    .filter(({ state }) => state === 'misses')
+    .filter(({ input }) => input.ratio > 0);
+  if (missing.length === 0) return null;
+
+  const withFleet = missing
+    .map(({ input }) => ({ input, trains: input.outcome?.trainsForWindow }))
+    .filter((entry): entry is { input: T; trains: number } => entry.trains != null)
+    .sort((a, b) => a.trains - b.trains);
+  const cheapest = withFleet[0];
+  if (cheapest) {
+    return { kind: 'fleet', input: cheapest.input, trains: cheapest.trains };
+  }
+  const worst = missing.reduce((a, b) => (b.input.ratio > a.input.ratio ? b : a));
+  return { kind: 'limit', input: worst.input };
+}
