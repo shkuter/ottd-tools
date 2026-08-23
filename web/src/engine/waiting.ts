@@ -81,8 +81,12 @@ export interface WaitingSettleParams extends RouteLoad {
   flowPerYear: number;
   /** Rating the physical interval settles at — where the walk below starts. */
   physicalRating: StationRating;
-  /** Rating a pickup interval settles at; the optimizer hands in a cached one. */
-  ratingAt: (pickupIntervalDays: number) => StationRating;
+  /**
+   * Rating a pickup interval settles at; the optimizer hands in a cached one. The walk below
+   * always asks for a visit that clears the platform, because that is what a full-load order
+   * does — so the second argument is not a knob this branch turns.
+   */
+  ratingAt: (at: VisitLoad) => StationRating;
 }
 
 /** How many passes the settling walk may spend before it gives up on convergence. */
@@ -119,7 +123,16 @@ export function settleWaitingBranch(p: WaitingSettleParams): WaitingSettlement {
       offeredPerYear,
       game: p.game,
     });
-    const next = p.ratingAt(settled.roundTripDays / p.fleetSize);
+    // The visit carries off whatever is standing there, not merely its capacity: a consist
+    // under a full-load order leaves the moment the platform holds a full load, so it never
+    // leaves a pile behind. What balances the flow here is the length of the wait, which the
+    // walk above is already solving for — reading the rating against the capacity as well
+    // would make the estimate explain that same balance a second time, with a backlog, and
+    // the route would be flagged as short of trains for standing still on purpose.
+    const next = p.ratingAt({
+      pickupIntervalDays: settled.roundTripDays / p.fleetSize,
+      visitCapacity: Infinity,
+    });
     if (next.rating === rating.rating) break;
     rating = next;
     offeredPerYear = p.flowPerYear * next.deliveredShare;
@@ -135,24 +148,47 @@ export function flowPerYearFromMonthly(productionPerMonth: number | undefined): 
   return Math.max(0, productionPerMonth ?? 0) * 12;
 }
 
+/** How often a consist calls and how much it takes away — the part a branch varies. */
+export interface VisitLoad {
+  pickupIntervalDays: number;
+  visitCapacity: number;
+}
+
+/** One visit of a consist to the station: `VisitLoad` plus the speed the rating reads. */
+export interface RouteVisit extends VisitLoad {
+  /** Consist top speed, internal units (what the game records as `last_speed`). */
+  maxSpeedInternal: number;
+}
+
 /**
- * Station rating of a route as a function of how often it is served. The parts that do not
- * move between candidates — the flow per day and the game settings — are bound here, so both
- * tabs read the rating from one place instead of assembling the call themselves. The caller
- * still supplies the interval and the consist's speed limit, and may cache on top.
+ * The stated yearly flow as cargo per engine day — the unit every accumulation on a route is
+ * counted in. One helper rather than the division at each call site: the station rating and
+ * the caches built on it have to agree on the flow to the tonne.
+ */
+export function flowPerEngineDay(flowPerYear: number, game: GameSettings): number {
+  return flowPerYear / engineDaysPerYear(game);
+}
+
+/**
+ * Station rating of a route as a function of how often it is served and how much a visit
+ * carries off. The parts that do not move between candidates — the flow per day and the game
+ * settings — are bound here, so both tabs read the rating from one place instead of
+ * assembling the call themselves. The caller still supplies the interval, the consist's speed
+ * limit and its capacity, and may cache on top.
  */
 export function routeStationRating(
   flowPerYear: number,
   game: GameSettings,
   /** Age of the consist in years; the game pays a rating bonus for a young one. */
   vehicleAgeYears = 0,
-): (pickupIntervalDays: number, maxSpeedInternal: number) => StationRating {
-  const cargoPerDay = flowPerYear / engineDaysPerYear(game);
-  return (pickupIntervalDays, maxSpeedInternal) =>
+): (visit: RouteVisit) => StationRating {
+  const cargoPerDay = flowPerEngineDay(flowPerYear, game);
+  return ({ pickupIntervalDays, maxSpeedInternal, visitCapacity }) =>
     estimateStationRating({
       pickupIntervalDays,
       maxSpeedInternal,
       cargoPerDay,
+      visitCapacity,
       jgrpp: game.jgrpp,
       dayLengthFactor: effectiveDayLength(game),
       vehicleAgeYears,
@@ -164,8 +200,12 @@ export interface BranchFlowParams extends RouteLoad {
   tripsPerYear: number;
   /** Full industry output per economy year, before the delivered share. */
   flowPerYear: number;
-  /** Rating a pickup interval settles at; the optimizer hands in a cached one. */
-  ratingAt: (pickupIntervalDays: number) => StationRating;
+  /**
+   * Rating a pickup interval settles at for a visit of that size; the optimizer hands in a
+   * cached one. The capacity travels with the call rather than being bound by the caller so
+   * that the rating is always read for the same visit the flow below is shared out over.
+   */
+  ratingAt: (at: VisitLoad) => StationRating;
 }
 
 /** Where one loading branch settles: the rating it earns and the flow that follows from it. */
@@ -197,7 +237,14 @@ export function settleBranchFlows(p: BranchFlowParams): BranchFlows {
   // How often the station is served decides its rating, and the rating decides how much of
   // the output the industry hands over at all. This is the interval of a consist that leaves
   // with what accumulated: the physical round trip shared by the fleet.
-  const rating = flowPerYear > 0 ? p.ratingAt(p.physicalRoundTripDays / fleetSize) : null;
+  // A visit carries off at most the capacity: what the interval piles up beyond it stays on
+  // the platform and costs the station rating. Below, `cargoPerTrip` takes the other side of
+  // that same `min` — what a visit finds when the fleet is not the limit.
+  const rating =
+    flowPerYear > 0
+      ? p.ratingAt({ pickupIntervalDays: p.physicalRoundTripDays / fleetSize, visitCapacity: capacity })
+      : null;
+
   const offeredPerYear = flowPerYear * (rating?.deliveredShare ?? 1);
 
   // What the station hands over is shared by the fleet: a train beyond what it can fill adds
@@ -210,7 +257,16 @@ export function settleBranchFlows(p: BranchFlowParams): BranchFlows {
   // A source that already fills the consist leaves nothing to wait for, so the branches
   // cannot differ and the settling walk is skipped outright. Worth testing up front: this is
   // the common case, and it is the whole cost of the branch dimension.
-  const canWait = flowPerYear > 0 && rating !== null && cargoPerTrip < capacity - 1e-9;
+  //
+  // A station that never empties is that same case: it is handed exactly what a visit carries
+  // off, so the train leaves full and waiting for a full load buys nothing — the platform
+  // already holds one. Read off the load alone the two look alike, which is why the test is
+  // whether the station empties rather than whether the train filled up.
+  const canWait =
+    flowPerYear > 0 &&
+    rating !== null &&
+    rating.backlog === 0 &&
+    cargoPerTrip < capacity - 1e-9;
   const plain = { rating, offeredPerYear };
   if (!canWait || rating === null) {
     return {

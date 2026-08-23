@@ -70,6 +70,25 @@ without overturning it:
   each branch reads its own share, because a consist that stands for a full load calls less
   often and a station called on less often is handed less.
 
+## Revision (2026-08-23, station backlog)
+
+`fix-station-rating-backlog` dropped the assumption that a visit clears the platform. The share
+now depends on the backlog a fleet leaves behind, which touches this decision in three places
+without overturning it:
+
+- The share still cuts the flow before the fleet divides it, and still not the income
+  afterwards — unchanged. What is new is that the share itself has a second input: how much one
+  visit carries off. Two rows on the same interval and speed no longer share a rating if their
+  fleets differ.
+- "A fleet-limited row's train is in fact full" — the reason income is not cut twice — holds
+  exactly. A station with a backlog is handed what the fleet carries off, so the load per trip
+  is the capacity and the money follows it. The share it is handed at is read off that balance
+  rather than off a rating step: the parts of a rating move in steps, and a step is 1/256 of
+  the output, so pinning the share to one would have had a larger industry hauled less.
+- "The train is not full" nonetheless stopped being the test for whether a full-load order
+  changes anything, because it cannot tell a slow source from a fleet that is behind. Whether
+  the station empties — the backlog — is the test instead.
+
 ## Consequences
 
 - Money on the optimizer tab drops for everyone who states a production figure — flagged

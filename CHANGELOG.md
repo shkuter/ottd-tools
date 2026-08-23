@@ -18,6 +18,44 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING** Station rating now accounts for the cargo a fleet never gets round to. The
+  estimate used to assume every visit cleared the platform and started the pile from zero, so a
+  route whose fleet fell behind its source was rated as if it kept up. It now solves for the
+  backlog the station settles at: a bigger pile costs rating, a lower rating means the industry
+  hands over less, and less handed over is what lets the fleet catch up — the pile stops growing
+  where what arrives between visits equals what one visit carries off, or where the game stops
+  counting it. Rows whose fleet lags behind the flow show a lower delivered share and a lower
+  rating on both the Best train and Route income tabs; routes whose fleet clears the flow are
+  unchanged. Checked against a savegame: a coal mine at 405 t/month served by three 120 t
+  consists reads 69 % transported in game, and the calculator now says 68 % where it used to
+  promise 75 %. While a backlog stands the share is read off that balance — what a visit carries
+  off against what the interval brings in — rather than off the rating step below it: a step is
+  1/256 of the output, so choosing one would have had a larger industry hauled *less* by the
+  same fleet.
+- **BREAKING** The delivered share is now solved for rather than iterated towards. The estimate
+  used to feed its own result back in five times, which converges only while the response stays
+  gentle: on a large industry one penalty step moved the share further than the share moved the
+  pile, so the loop oscillated and landed on the floor of 1/256. A source twice the size then
+  read as hauled *half* as well by the same fleet. The share the loop returns never rises with
+  the share it is given, so the two cross exactly once and that crossing is what the estimate
+  now looks for. The crossing itself is the share, not the penalty step below it — a step is
+  1/256 of the output, so reading the step would still have let a bigger source be hauled less,
+  and would have marked a fleet carrying the whole flow as short of trains. Routes whose loop
+  already converged keep their numbers to within a hundredth of a rating point.
+- The rating breakdown in the optimizer names one more part: the swing across a penalty step.
+  A station balances between two steps rather than on one, so the rating it settles at is the
+  average of the two and the parts listed above it fall short — the line closes that gap, and
+  appears wherever the gap survives rounding.
+- The "fleet limited" flag now follows that backlog. Comparing what a fleet can carry against
+  what the station offers no longer catches a fleet left behind, because the station settles at
+  handing over exactly what the fleet does carry.
+- Whether a route offers a full-load branch at all now follows the backlog too. A station that
+  never empties has a load waiting at every visit, so waiting for a full one buys nothing. The
+  old test — "the train is not leaving full" — could not tell that station from a source too
+  slow to fill the train, and offered the branch on both.
+
 ## [0.9.0] - 2026-08-22
 
 ### Added

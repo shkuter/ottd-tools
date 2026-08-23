@@ -20,7 +20,7 @@ import {
 } from '../units';
 import { optimizeConsists } from '../optimize';
 import { createOptimizerCache } from '../optimizeCache';
-import { estimateStationRating } from '../rating';
+import { estimateStationRating, ratingPeriods, speedRating } from '../rating';
 import { tripEconomics } from '../trip';
 import {
   activeTrains,
@@ -34,6 +34,7 @@ import {
   DEFAULT_GAME_SETTINGS,
   daysPerEconomyYear,
   difficultyPriceFactor,
+  effectiveDayLength,
 } from '../settings';
 
 /** Множители сложности из дефолтов: игра по умолчанию берёт «низкие» цены (×6/8). */
@@ -464,6 +465,8 @@ describe('optimizer', () => {
       maxSpeedInternal: top.loadedSpeedInternal,
       // тот же поток за игровой день, что считает оптимизатор
       cargoPerDay: (productionPerMonth * 12) / (daysPerEconomyYear(game) * dayLengthFactor),
+      // столько увозит один визит той же строки — от этого зависит остаток на станции
+      visitCapacity: top.capacity,
       jgrpp: true,
     };
     expect(top.stationRating).toEqual(estimateStationRating({ ...rated, dayLengthFactor }));
@@ -575,8 +578,12 @@ describe('optimizer', () => {
       1,
     )[0];
     expect(r.fleetLimited).toBe(true);
-    // The train takes everything it can hold: the pile grew bigger than the consist.
+    // The train takes everything it can hold: the pile grew bigger than the consist, and the
+    // station is handed exactly what the fleet carries off. A platform holding a pile at every
+    // visit is also why no full-load branch is offered here — there is nothing to wait for.
     expect(r.cargoPerTrip).toBeCloseTo(r.capacity, 6);
+    expect(r.stationRating!.backlog).toBeGreaterThan(0);
+    expect(r.branchesDiffer).toBe(false);
 
     const full = tripEconomics({
       entries: [
@@ -608,8 +615,9 @@ describe('optimizer', () => {
     const r = optimizeConsists(trains, params, trainsMeta, 1)[0];
     // Fewer trains than the full output would need...
     expect(r.fleetSize).toBeLessThan(r.trainsNeeded);
-    // ...yet they clear everything the station offers.
+    // ...yet they clear everything the station offers: nothing is left standing.
     expect(r.fleetLimited).toBe(false);
+    expect(r.stationRating!.backlog).toBe(0);
     expect(r.hauledPerYear).toBeCloseTo(500 * 12 * r.stationRating!.deliveredShare, 6);
     // And the fleet is minimal: one train less would not have moved it.
     if (r.fleetSize > 1) {
@@ -638,6 +646,60 @@ describe('optimizer', () => {
     );
   });
 
+  // Рейтинг кэшируется между кандидатами, и с остатком он зависит ещё и от того, сколько
+  // увозит визит: ключ обязан ловить вместимость, иначе строка получит чужой рейтинг.
+  it('кэш рейтинга не отдаёт строке рейтинг чужого парка', () => {
+    const rows = optimizeConsists(
+      trains,
+      {
+        ...goalBase,
+        distanceTiles: 300,
+        maxLengthTiles: 6,
+        productionPerMonth: 400,
+        goal: 'transported' as const,
+        maxTrains: 1,
+      },
+      trainsMeta,
+      40,
+    );
+    const dayLength = effectiveDayLength(goalBase.game);
+    // Ключ кэша до этой правки: интервал входил только числом периодов, скорость — бонусом.
+    const key = (r: (typeof rows)[number]) =>
+      `${ratingPeriods(r.pickupIntervalDays, dayLength)}|${speedRating(r.loadedSpeedInternal)}`;
+
+    const groups = new Map<string, typeof rows>();
+    for (const r of rows) {
+      if (!r.stationRating) continue;
+      const group = groups.get(key(r)) ?? [];
+      group.push(r);
+      groups.set(key(r), group);
+    }
+
+    // Группа, в которой прежний ключ склеил бы кандидатов с разными парками.
+    const mixed = [...groups.values()].filter(
+      (group) =>
+        new Set(group.map((r) => r.capacity)).size > 1 &&
+        group.some((r) => r.stationRating!.backlog > 0),
+    );
+    expect(mixed.length).toBeGreaterThan(0);
+
+    for (const group of mixed) {
+      const sorted = [...group].sort((a, b) => a.capacity - b.capacity);
+      // Больший состав увозит больше, оставляет меньше и стоит на станции лучше.
+      for (let i = 1; i < sorted.length; i++) {
+        expect(sorted[i].stationRating!.rating).toBeGreaterThanOrEqual(
+          sorted[i - 1].stationRating!.rating - 1e-9,
+        );
+        expect(sorted[i].stationRating!.backlog).toBeLessThanOrEqual(
+          sorted[i - 1].stationRating!.backlog + 1e-9,
+        );
+      }
+      // И как минимум одна пара в группе действительно различается — иначе проверять нечего.
+      const ratings = new Set(group.map((r) => r.stationRating!.rating));
+      expect(ratings.size).toBeGreaterThan(1);
+    }
+  });
+
   // The fleet limit does not drop a candidate, it shows a capped haul instead.
   it('парка не хватает на поток → вывоз по провозной способности и пометка', () => {
     const r = optimizeConsists(
@@ -656,8 +718,13 @@ describe('optimizer', () => {
     expect(r.trainsNeeded).toBeGreaterThan(1);
     expect(r.fleetSize).toBe(1);
     expect(r.fleetLimited).toBe(true);
+    // Вывоз по провозной способности: поезд уходит полным, потому что станция не пустеет.
     expect(r.hauledPerYear).toBeCloseTo(r.fleetSize * r.tripsPerYear * r.capacity, 6);
-    expect(r.hauledPerYear).toBeLessThan(400 * 12 * r.stationRating!.deliveredShare);
+    // Станция отдаёт ровно то, что парк успевает вывезти: остаток растёт, пока рейтинг не
+    // урежет поток до провозной способности — на этом равновесии вывоз и предложение равны.
+    expect(r.hauledPerYear).toBeCloseTo(400 * 12 * r.stationRating!.deliveredShare, 6);
+    // Парк не вывозит поток — на станции стоит постоянный остаток, и это та же пометка.
+    expect(r.stationRating!.backlog).toBeGreaterThan(0);
   });
 
   // Consist physics is cached between calls: the key has to catch everything it depends on.
@@ -786,6 +853,7 @@ describe('optimizer', () => {
     expect(r.fleetSize * r.tripsPerYear * r.capacity).toBeGreaterThan(offered);
     expect(r.hauledPerYear).toBeCloseTo(offered, 6);
     expect(r.fleetLimited).toBe(false);
+    expect(r.stationRating!.backlog).toBe(0);
   });
 
   // The rating hit its ceiling: a second train hauls no more and costs twice as much.

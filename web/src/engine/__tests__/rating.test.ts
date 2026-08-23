@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MAX_BACKLOG,
+  visitClearsFlow,
   RATING_PERIOD_DAYS,
   effectiveRatingPeriodDays,
   estimateStationRating,
@@ -71,6 +73,7 @@ describe('оценка рейтинга станции', () => {
   const base = {
     maxSpeedInternal: 96, // 60 mph
     cargoPerDay: 2304 / (365 * 5), // 192 ящика в экономический месяц, day length 5
+    visitCapacity: Infinity, // парк вывозит всё накопленное — допущение до этой правки
     jgrpp: true,
     dayLengthFactor: 1,
   };
@@ -129,15 +132,249 @@ describe('оценка рейтинга станции', () => {
   });
 
   it('при множителе 1 числа те же, что и до его появления', () => {
-    // ванильная ветка (jgrpp: false, множитель 1) не должна поехать: значение снято
-    // с версии формулы до правки
+    // Ванильная ветка (jgrpp: false, множитель 1) не должна поехать: значение снято с версии
+    // формулы до правки дня длины. Допуск в сотую единицы рейтинга — с тех пор доля стала
+    // читаться в точке баланса, а не на ступени под ней, и это сдвинуло её на 0,005.
     const r = estimateStationRating({ ...base, pickupIntervalDays: 40, dayLengthFactor: 1 });
-    expect(r.rating).toBeCloseTo(142.1875, 4);
+    expect(r.rating).toBeCloseTo(142.1875, 2);
   });
 
   it('статуя и свежий поезд поднимают рейтинг', () => {
     const plain = estimateStationRating({ ...base, pickupIntervalDays: 30 });
     const withStatue = estimateStationRating({ ...base, pickupIntervalDays: 30, statue: true });
-    expect(withStatue.rating).toBe(plain.rating + 26);
+    // Точность поиска доли, а не равенство до бита: рейтинг выводится из доли, и у двух
+    // маршрутов граница баланса находится с точностью до `SHARE_EPSILON`.
+    expect(withStatue.rating).toBeCloseTo(plain.rating + 26, 1);
+  });
+});
+
+describe('остаток, который парк не вывозит', () => {
+  // Стенд из proposal.md: шахта 405 т/мес, три поезда, круг 199,4 дня, множитель 5.
+  const base = {
+    maxSpeedInternal: 96,
+    cargoPerDay: (405 * 12) / (365 * 5),
+    pickupIntervalDays: 199.4 / 3,
+    jgrpp: true,
+    dayLengthFactor: 5,
+    visitCapacity: Infinity,
+  };
+  /** Сколько приходит на станцию между визитами при посчитанной доле. */
+  const arrives = (r: { deliveredShare: number }) =>
+    base.cargoPerDay * r.deliveredShare * base.pickupIntervalDays;
+
+  it('парк вывозит весь поток — числа те же, что и до правки', () => {
+    const clears = estimateStationRating(base);
+    const enough = estimateStationRating({ ...base, visitCapacity: arrives(clears) + 1 });
+    expect(enough).toEqual(clears);
+    expect(enough.backlog).toBe(0);
+  });
+
+  it('парк отстаёт — на станции стоит остаток, рейтинг ниже', () => {
+    const clears = estimateStationRating(base);
+    const behind = estimateStationRating({ ...base, visitCapacity: arrives(clears) / 2 });
+    expect(behind.backlog).toBeGreaterThan(0);
+    expect(behind.rating).toBeLessThan(clears.rating);
+    // Просаживает именно штраф за ждущий груз: время с погрузки от парка не зависит.
+    expect(behind.parts.waitingCargo).toBeLessThan(clears.parts.waitingCargo);
+    expect(behind.parts.waitTime).toBe(clears.parts.waitTime);
+  });
+
+  it('остаток встаёт там, где приход сравнялся с вывозом', () => {
+    // Это и есть выход равновесия: не «сколько успели насчитать за N проходов», а точка, в
+    // которой станции предлагают ровно столько, сколько парк увозит. Найденный остаток
+    // проверяется с двух сторон — равновесие держится, и лишнего в нём нет: парк, которому
+    // не хватило самой малости, копит меньше того, кому не хватает вдвое. В ноль у границы
+    // остаток не сходит: штраф за ждущий груз меняется ступенями, и равновесие встаёт на
+    // первой ступени, которая его удерживает.
+    const clears = estimateStationRating(base);
+    const full = arrives(clears);
+    const behind = estimateStationRating({ ...base, visitCapacity: full / 2 });
+    expect(arrives(behind)).toBeLessThanOrEqual(full / 2 + 1e-9);
+
+    expect(estimateStationRating({ ...base, visitCapacity: full * 1.001 }).backlog).toBe(0);
+    const barely = estimateStationRating({ ...base, visitCapacity: full * 0.999 });
+    expect(barely.backlog).toBeGreaterThan(0);
+    expect(barely.backlog).toBeLessThan(behind.backlog);
+  });
+
+  it('вдвое меньший парк роняет рейтинг сильнее, но не ниже минимального штрафа', () => {
+    const clears = estimateStationRating(base);
+    const half = estimateStationRating({ ...base, visitCapacity: arrives(clears) / 2 });
+    const quarter = estimateStationRating({ ...base, visitCapacity: arrives(clears) / 4 });
+    const nothing = estimateStationRating({ ...base, visitCapacity: 0 });
+    expect(quarter.rating).toBeLessThan(half.rating);
+    expect(quarter.rating).toBeGreaterThanOrEqual(nothing.rating);
+    // Дальше рейтинг от завала не зависит: штраф уже на полу, остаток упёрся в потолок.
+    expect(nothing.backlog).toBe(MAX_BACKLOG);
+    expect(nothing.parts.waitingCargo).toBe(-90);
+    expect(estimateStationRating({ ...base, visitCapacity: 0.001 }).rating).toBe(nothing.rating);
+  });
+
+  it('равновесие находится на всём диапазоне, а не досчитывается за фиксированные проходы', () => {
+    // Поиск остатка обязан приходить в одну и ту же точку независимо от того, сколько на неё
+    // потрачено проходов: инвариант равновесия — к приезду поезда станции отдали не больше,
+    // чем он увозит. Проверяется на сетке, где сходимость заведомо разной длины: короткий
+    // интервал против длинного (число периодов внутри оценки отличается на два порядка) и
+    // парк от «увозит сотую часть потока» до «увозит вдвое больше».
+    for (const pickupIntervalDays of [12.5, 62.5, 250, 1250]) {
+      const at = (visitCapacity: number) =>
+        estimateStationRating({ ...base, pickupIntervalDays, visitCapacity });
+      const full = base.cargoPerDay * at(Infinity).deliveredShare * pickupIntervalDays;
+      for (const share of [0.01, 0.1, 0.5, 0.9, 0.99, 1.01, 2]) {
+        const visitCapacity = full * share;
+        const r = at(visitCapacity);
+        const arrives = base.cargoPerDay * r.deliveredShare * pickupIntervalDays;
+        // Либо парк справляется и остатка нет, либо остаток встал там, где приход перестал
+        // обгонять вывоз, либо он упёрся в потолок, за которым игра его уже не считает.
+        if (r.backlog === 0) {
+          expect(arrives).toBeLessThanOrEqual(visitCapacity + 1e-9);
+        } else if (r.backlog >= MAX_BACKLOG) {
+          // Потолок: штраф на полу, дальше станцию не опустить, и приход обгоняет вывоз
+          // сколько угодно — куча просто растёт.
+          expect(r.parts.waitingCargo).toBe(-90);
+        } else if (r.rating === 0) {
+          // Пол доли: 1/256 выпуска игра отдаёт даже при нулевом рейтинге, и если парку мало
+          // даже этого, равновесия тоже нет.
+          expect(r.deliveredShare).toBeCloseTo(1 / 256, 12);
+        } else {
+          expect(arrives).toBeLessThanOrEqual(visitCapacity + 0.5);
+        }
+        // И результат не зависит от того, в каком порядке его спросили.
+        expect(at(visitCapacity)).toEqual(r);
+      }
+    }
+  });
+
+  it('больший источник не уменьшает вывоз', () => {
+    // Слагаемые рейтинга ступенчаты, а шаг доли — 1/256 выпуска: на крупном предприятии одна
+    // ступень стоит десятков тонн. Если брать ступень, а не равновесие, тот же парк начинает
+    // вывозить тем меньше, чем больше источник, — в игре такого не бывает.
+    const interval = 100;
+    const visitCapacity = 50;
+    const perVisit = (cargoPerDay: number) => {
+      const r = estimateStationRating({
+        ...base,
+        cargoPerDay,
+        pickupIntervalDays: interval,
+        dayLengthFactor: 1,
+        visitCapacity,
+      });
+      return { hauled: cargoPerDay * r.deliveredShare * interval, backlog: r.backlog };
+    };
+
+    let previous = 0;
+    // Сетка густая и доходит до потоков, на которых прежняя оценка — итерация в пять проходов
+    // — раскачивалась и садилась на 1/256: там вывоз падал вдвое против вдвое меньшего
+    // источника. Редкая сетка такое пропускает: точка баланса стоит на границе ступени штрафа,
+    // и просадка видна только у самого перехода.
+    for (let perYear = 400; perYear <= 500000; perYear *= 1.05) {
+      const { hauled, backlog } = perVisit(perYear / 365);
+      // Больше вместимости визит не увезёт, а меньше — только если источник мельче. На
+      // переходе через ступень допускается просадка в пределах процента: убрать её вовсе
+      // может лишь симуляция колебания рейтинга по тикам, которой в оценке нет.
+      const moved = Math.min(hauled, visitCapacity);
+      expect(moved).toBeGreaterThanOrEqual(Math.min(previous, visitCapacity) * 0.99);
+      // Переполненная станция отдаёт ровно то, что увозит визит: поезд уходит полным.
+      if (backlog > 0 && hauled <= visitCapacity) expect(hauled).toBeCloseTo(visitCapacity, 9);
+      previous = hauled;
+    }
+  });
+
+  it('доля наружу — та же, по которой решается судьба остатка', () => {
+    // Оптимизатор кэширует рейтинг двумя ярусами: дешёвый ключ отдаётся, если по показанной
+    // доле визит увозит весь приход. Ярусы сходятся ровно потому, что доля, отданная наружу,
+    // совпадает с той, по которой оценка решала, копиться ли остатку. Стоит рейтингу начать
+    // округляться — и они разъедутся молча, поэтому равенство проверяется здесь.
+    for (const dayLengthFactor of [1, 5]) {
+      for (const pickupIntervalDays of [8, 40, 200]) {
+        for (const perYear of [3000, 60000, 400000]) {
+          const cargoPerDay = perYear / (365 * dayLengthFactor);
+          for (const share of [0.2, 0.9, 1, 1.5]) {
+            const free = estimateStationRating({
+              ...base, cargoPerDay, pickupIntervalDays, dayLengthFactor, visitCapacity: Infinity,
+            });
+            const visitCapacity = cargoPerDay * free.deliveredShare * pickupIntervalDays * share;
+            const r = estimateStationRating({
+              ...base, cargoPerDay, pickupIntervalDays, dayLengthFactor, visitCapacity,
+            });
+            // Первый ярус кэша — рейтинг без ограничения по вместимости; он отдаётся строке,
+            // если по нему визит увозит весь приход. Значит именно этот вердикт обязан
+            // совпадать с тем, нашла ли оценка остаток.
+            expect(
+              visitClearsFlow({
+                cargoPerDay,
+                deliveredShare: free.deliveredShare,
+                pickupIntervalDays,
+                visitCapacity,
+              }),
+            ).toBe(r.backlog === 0);
+            // А доля, отданная наружу, при остатке ровно упирается во вместимость визита —
+            // пока равновесие вообще достижимо: не на полу доли и не на потолке остатка.
+            if (r.backlog > 0 && r.backlog < MAX_BACKLOG && r.rating > 0) {
+              expect(cargoPerDay * r.deliveredShare * pickupIntervalDays).toBeCloseTo(
+                visitCapacity,
+                6,
+              );
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('слагаемые вместе с поправкой дают показанный рейтинг', () => {
+    // Подсказка в колонке рейтинга перечисляет слагаемые и итог: если они не сходятся,
+    // пользователь видит арифметику, которая не сходится.
+    for (const share of [2, 1, 0.5, 0.2, 0.05, 0.001]) {
+      const clears = estimateStationRating({ ...base, visitCapacity: Infinity });
+      const full = arrives(clears);
+      const r = estimateStationRating({ ...base, visitCapacity: full * share });
+      const { speed, waitTime, waitingCargo, age, statue, swing } = r.parts;
+      expect(speed + waitTime + waitingCargo + age + statue + swing).toBeCloseTo(
+        r.rating,
+        9,
+      );
+    }
+  });
+
+  it('эталон партии: шахта 405 т/мес и три состава по 120 т', () => {
+    // Сейв «Nonnville Transport, 1955-02-26» (JGRPP, множитель длины дня 5, Steeltown):
+    // шахта 405 т/мес, три состава Athena + 6 Coal Wagon по 20 т, круг 199,4 дня. В самом
+    // сейве у станции rating 175 (то есть 69 %, как показывает игра), max_waiting_cargo 318
+    // — при ручном распределении это половина платформы, то есть около 636 т ждущего груза,
+    // last_speed 96, поездам по 4 года.
+    const bench = { ...base, visitCapacity: 6 * 20, vehicleAgeYears: 4 };
+    const GAME_SHARE = (175 + 1) / 256;
+    const r = estimateStationRating(bench);
+
+    // Допуск, а не точное совпадение: игра сохраняет мгновенный рейтинг (на снимке — сразу
+    // после погрузки, в лучшей точке цикла), а оценка даёт равновесное среднее по кругу.
+    // Промах — около процентного пункта, то есть меньше трёх рейтинговых единиц из 255.
+    expect(Math.abs(r.deliveredShare - GAME_SHARE)).toBeLessThan(0.015);
+    // Остаток того же порядка, что стоял на платформе в партии.
+    expect(r.backlog).toBeGreaterThan(400);
+    expect(r.backlog).toBeLessThan(900);
+
+    // Ради этого правка и делалась: оценка, считающая, что состав увозит всё накопленное,
+    // промахивается мимо игры дальше — и в другую сторону.
+    const ignoringFleet = estimateStationRating({ ...bench, visitCapacity: Infinity });
+    expect(ignoringFleet.deliveredShare - GAME_SHARE).toBeGreaterThan(0.06);
+    expect(Math.abs(ignoringFleet.deliveredShare - GAME_SHARE)).toBeGreaterThan(
+      Math.abs(r.deliveredShare - GAME_SHARE),
+    );
+  });
+
+  it('рейтинг растёт с вместимостью визита монотонно', () => {
+    const clears = estimateStationRating(base);
+    const full = arrives(clears);
+    let previous = -1;
+    for (const share of [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1, 1.5]) {
+      const r = estimateStationRating({ ...base, visitCapacity: full * share });
+      // Допуск: доля ищется делением отрезка, поэтому соседние вместимости сходятся к одному
+      // рейтингу с точностью до последнего бита, а не побитово одинаково.
+      expect(r.rating).toBeGreaterThanOrEqual(previous - 1e-9);
+      previous = r.rating;
+    }
+    expect(previous).toBe(clears.rating);
   });
 });

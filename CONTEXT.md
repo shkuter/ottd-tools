@@ -16,9 +16,31 @@ everything below.
 
 **Delivered share** (_доля вывоза_) — the fraction of the flow the game actually hands to the
 station, `(station rating + 1) / 256` (`MoveGoodsToStation` + `UpdateStationWaiting`). Computed
-by `engine/rating.ts` from the pickup interval; it is the percentage the game shows as
-"transported". It cuts the **flow**, before the fleet shares it — not the income afterwards
-(ADR-0001).
+by `engine/rating.ts` from the pickup interval and the **backlog**; it is the percentage the game
+shows as "transported". It cuts the **flow**, before the fleet shares it — not the income
+afterwards (ADR-0001). While a backlog stands, the share is read off the balance instead —
+what one visit carries off, over what the interval would bring in at full rating — and the
+rating follows from it: the parts of a rating move in steps, and a station that never empties
+swings across a step rather than sitting on it.
+
+**Balance share** (_равновесная доля_) — the share a station settles at: the point where the
+share it hands over stops outrunning itself, and, when the fleet cannot keep up, no more than
+what one visit carries off. Every **delivered share** the estimate reports is one of these. Read
+off the balance rather than off the penalty step below it, because a step is 1/256 of the output:
+pinning the share to one would have a larger industry hauled less by the same fleet, and would
+leave the share a backlog is decided by different from the share shown.
+
+**Rating swing** (`parts.swing`) — a different quantity: how far the rating implied by the
+balance share sits from what the parts of a rating add up to. The parts move in steps and a
+station balances between two of them, so this is normally non-zero — on a station that empties
+as much as on one that does not. Listed in the UI beside the parts so they still come to the
+total shown.
+
+**Backlog** (_остаток_) — cargo standing on the platform at every visit because the fleet never
+gets round to it. `0` for a fleet that clears the flow; otherwise the pile the station settles
+at, where what arrives between visits has fallen to what one visit carries off — or where the
+game stops counting it (`MAX_BACKLOG`, past which the waiting-cargo penalty is at its floor).
+The rating estimate solves for it, so it is an output of `engine/rating.ts`, not an input.
 
 **Offered per year** (_отдаваемое_) — what the station actually receives, `flow × delivered
 share`. This is the amount the fleet divides between its trains and earns on.
@@ -80,9 +102,10 @@ the station forwards part of the output. Both goals sweep the fleet from one tra
 goes to the user's limit.
 
 **Fleet limited** (`fleetLimited`) — the fleet, not the station, is the binding constraint:
-`fleet × tripsPerYear × capacity < offered`. Measured against what the station offers, not
-against `trainsNeeded` — a fleet below `trainsNeeded` still clears everything waiting when the
-share is low enough.
+the route carries a **backlog**. Not measured against `trainsNeeded` — a fleet below it still
+clears everything waiting when the share is low enough — and not by comparing flows either: a
+station whose fleet lags settles at handing over exactly what that fleet carries off, so the two
+flows meet and only the pile on the platform tells them apart.
 
 ## Search
 

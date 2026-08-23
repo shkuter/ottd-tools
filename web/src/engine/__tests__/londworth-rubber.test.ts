@@ -18,6 +18,7 @@
 import { describe, expect, it } from 'vitest';
 import { cargoByLabel, trains, trainsMeta } from '../../dataset';
 import { tripBranches, tripSetup } from '../trip';
+import type { VisitLoad } from '../waiting';
 import { consistStats } from '../consist';
 import { flowPerYearFromMonthly, routeStationRating, settleBranchFlows } from '../waiting';
 import { cargoPaymentRate } from '../income';
@@ -60,9 +61,9 @@ function scenario() {
   const flowPerYear = flowPerYearFromMonthly(PRODUCTION_PER_MONTH);
   // The rating reads the consist's speed limit, as the game does: `last_speed` is set from
   // `vcache.cached_max_speed` when a train loads (`economy.cpp`), not from how fast it ran.
-  const ratingOf = routeStationRating(flowPerYear, game, TRAIN_AGE_YEARS);
-  const ratingAt = (pickupIntervalDays: number) =>
-    ratingOf(pickupIntervalDays, setup.loadedPhysics.maxSpeedInternal);
+  const rateRoute = routeStationRating(flowPerYear, game, TRAIN_AGE_YEARS);
+  const ratingAt = (at: VisitLoad) =>
+    rateRoute({ ...at, maxSpeedInternal: setup.loadedPhysics.maxSpeedInternal });
   // Both branches settled the way both tabs settle them.
   const flows = settleBranchFlows({
     physicalRoundTripDays: setup.roundTripDays,

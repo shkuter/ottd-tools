@@ -7,11 +7,16 @@ import type { Cargo, ConsistEntry, Train, TrainsMeta } from '../types';
 import { canCarryIn } from '../dataset';
 import { balancingSpeed } from './physics';
 import { cargoPaymentRate } from './income';
-import { ratingPeriods, speedRating, type StationRating } from './rating';
+import { ratingPeriods, speedRating, visitClearsFlow, type StationRating } from './rating';
 import { introAvailability, type IntroAvailability } from './availability';
 import { preferTrain } from './purchase';
 import { tripBranches, tripMoney, tripSetup, type TripEconomics } from './trip';
-import { flowPerYearFromMonthly, routeStationRating, settleBranchFlows } from './waiting';
+import {
+  flowPerEngineDay,
+  flowPerYearFromMonthly,
+  routeStationRating,
+  settleBranchFlows,
+} from './waiting';
 import {
   type SupplyAssessment,
   type SupplyTarget,
@@ -376,18 +381,49 @@ export function optimizeConsists(
   };
   // The rating settles by iterating over every period of the interval, which is the most
   // expensive step of an evaluation — and thousands of candidates share the same answer:
-  // the interval only enters as its period count and the speed only as its speed bonus,
-  // so the key is built from those two functions rather than from a copy of their bodies.
-  const ratingOf = routeStationRating(flowPerYear, game);
+  // for a fleet that clears the flow the interval only enters as its period count and the
+  // speed only as its speed bonus, so the key is built from those two functions rather than
+  // from a copy of their bodies.
+  //
+  // A fleet that does *not* clear the flow settles lower, and how much lower depends on the
+  // capacity of a visit and on the interval itself, not just on the periods it rounds to. So
+  // the cheap key is tried first — a rating computed for an unlimited visit is the answer for
+  // every capacity that carries off at least what the interval brings in — and only a fleet
+  // left behind by it pays for the second, fully-keyed entry. Without the capacity in that
+  // key, two rows on the same interval and speed but different fleets would share one answer.
+  const rateRoute = routeStationRating(flowPerYear, game);
+  const cargoPerDay = flowPerEngineDay(flowPerYear, game);
   const ratingCache = new Map<string, StationRating>();
-  const ratingFor = (pickupIntervalDays: number, maxSpeedInternal: number): StationRating => {
-    const key = `${ratingPeriods(pickupIntervalDays, effectiveDayLength(game))}|${speedRating(maxSpeedInternal)}`;
-    let cached = ratingCache.get(key);
-    if (!cached) {
-      cached = ratingOf(pickupIntervalDays, maxSpeedInternal);
-      ratingCache.set(key, cached);
+  const ratingKeptAt = (key: string, compute: () => StationRating): StationRating => {
+    let kept = ratingCache.get(key);
+    if (!kept) {
+      kept = compute();
+      ratingCache.set(key, kept);
     }
-    return cached;
+    return kept;
+  };
+  const ratingFor = (
+    pickupIntervalDays: number,
+    maxSpeedInternal: number,
+    visitCapacity: number,
+  ): StationRating => {
+    const periods = ratingPeriods(pickupIntervalDays, effectiveDayLength(game));
+    const speed = speedRating(maxSpeedInternal);
+    const clears = ratingKeptAt(`${periods}|${speed}`, () =>
+      rateRoute({ pickupIntervalDays, maxSpeedInternal, visitCapacity: Infinity }),
+    );
+    // A visit that carries off everything the interval brings in leaves nothing standing, so
+    // the rating that ignores the fleet is this row's rating too — and the cheap key holds.
+    const clearsFlow = visitClearsFlow({
+      cargoPerDay,
+      deliveredShare: clears.deliveredShare,
+      pickupIntervalDays,
+      visitCapacity,
+    });
+    if (clearsFlow) return clears;
+    return ratingKeptAt(`${periods}|${speed}|${pickupIntervalDays}|${visitCapacity}`, () =>
+      rateRoute({ pickupIntervalDays, maxSpeedInternal, visitCapacity }),
+    );
   };
 
   /**
@@ -441,7 +477,8 @@ export function optimizeConsists(
         fleetSize,
         flowPerYear,
         game,
-        ratingAt: (interval) => ratingFor(interval, loadedPhysics.maxSpeedInternal),
+        ratingAt: ({ pickupIntervalDays, visitCapacity }) =>
+          ratingFor(pickupIntervalDays, loadedPhysics.maxSpeedInternal, visitCapacity),
       });
       const { cargoPerTrip, canWait } = flows;
       const { rating: stationRating, offeredPerYear } = flows.runsWithWhatAccumulated;
@@ -489,7 +526,13 @@ export function optimizeConsists(
           // actually offers. `trainsNeeded` measures the full output, but a station handing
           // over 64 % of it needs proportionally fewer trains — flagging by that would call
           // a fleet short while it still clears everything waiting.
-          fleetLimited: flowPerYear > 0 && fleetCapacityPerYear < offered - 1e-6,
+          //
+          // What a fleet left behind leaves behind is a pile that never clears, and the
+          // station settles at handing over exactly what that fleet carries off — so comparing
+          // the two flows finds them equal and catches nothing. The pile is what tells them
+          // apart, at every depth: a station too far behind to be penalised further keeps its
+          // pile at the ceiling rather than losing it.
+          fleetLimited: flowPerYear > 0 && (rating?.backlog ?? 0) > 0,
           // The waiting branch spaces the visits out by exactly the wait it adds.
           pickupIntervalDays: trip.roundTripDays / fleetSize,
           stationRating: rating,

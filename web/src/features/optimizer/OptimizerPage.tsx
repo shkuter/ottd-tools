@@ -54,13 +54,23 @@ const PAGE_SIZE = 15;
 
 /** Tooltip listing what the estimated station rating is made of. */
 function ratingBreakdown(r: StationRating): string {
-  const signed = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v))}`;
+  const signed = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v)}`;
+  const total = Math.round(r.rating);
+  // Every part is shown rounded, so rounding each on its own would let the column add up to
+  // one off the total. The swing — the gap between the rating and the parts it is made of —
+  // absorbs that: it is whatever is left after the others, which is also what it means.
+  const parts = [r.parts.speed, r.parts.waitTime, r.parts.waitingCargo, r.parts.age].map(Math.round);
+  const swing = total - parts.reduce((sum, part) => sum + part, 0);
   return [
-    `${t('opt.ratingSpeed')}: ${signed(r.parts.speed)}`,
-    `${t('opt.ratingWait')}: ${signed(r.parts.waitTime)}`,
-    `${t('opt.ratingCargo')}: ${signed(r.parts.waitingCargo)}`,
-    `${t('opt.ratingAge')}: ${signed(r.parts.age)}`,
-    `${t('opt.ratingTotal')}: ${Math.round(r.rating)} / 255`,
+    `${t('opt.ratingSpeed')}: ${signed(parts[0])}`,
+    `${t('opt.ratingWait')}: ${signed(parts[1])}`,
+    `${t('opt.ratingCargo')}: ${signed(parts[2])}`,
+    `${t('opt.ratingAge')}: ${signed(parts[3])}`,
+    // A station balances between two penalty steps rather than on one, so the rating is the
+    // average of the two and the parts above fall short of it. Shown only where the gap is
+    // visible at all, or the line would read "+0".
+    ...(swing === 0 ? [] : [`${t('opt.ratingSwing')}: ${signed(swing)}`]),
+    `${t('opt.ratingTotal')}: ${total} / 255`,
   ].join('\n');
 }
 

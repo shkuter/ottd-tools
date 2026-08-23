@@ -351,7 +351,7 @@ export function routeWithFlow(params: RouteWithFlowParams): RouteWithFlow {
 
   // One consist, so the interval is the round trip itself. The rating reads the consist's
   // speed limit, as the game does (`economy.cpp` stores `vcache.cached_max_speed`).
-  const ratingOf = routeStationRating(flowPerYear, game);
+  const rateRoute = routeStationRating(flowPerYear, game);
   const flows = settleBranchFlows({
     physicalRoundTripDays: setup.roundTripDays,
     tripsPerYear: setup.tripsPerYear,
@@ -359,7 +359,12 @@ export function routeWithFlow(params: RouteWithFlowParams): RouteWithFlow {
     fleetSize: 1,
     flowPerYear,
     game,
-    ratingAt: (interval) => ratingOf(interval, setup.loadedPhysics.maxSpeedInternal),
+    ratingAt: ({ pickupIntervalDays, visitCapacity }) =>
+      rateRoute({
+        pickupIntervalDays,
+        maxSpeedInternal: setup.loadedPhysics.maxSpeedInternal,
+        visitCapacity,
+      }),
   });
   const branch = params.waitForFullLoad ? flows.waitsForFullLoad : flows.runsWithWhatAccumulated;
   return {

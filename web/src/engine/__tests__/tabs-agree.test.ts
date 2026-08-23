@@ -105,6 +105,41 @@ describe('обе вкладки считают маршрут одной мод�
     expect(tab.economics.incomePerTrip).toBe(row!.incomePerTrip);
   });
 
+  it('парк отстаёт от потока: обе вкладки видят один остаток', () => {
+    // Поток, который один состав не вывозит: на станции остаётся хвост, и рейтинг просаживает
+    // именно он. Обе вкладки обязаны просесть одинаково — иначе вкладка дохода покажет одну
+    // долю вывоза, а строка оптимизатора для того же состава другую.
+    const production = 800;
+    const busy = optimizeConsists(trains, {
+      year: 1960,
+      distanceTiles: DISTANCE_TILES,
+      cargo,
+      economyId: 'STEELTOWN',
+      maxLengthTiles: 5,
+      allowElectric: false,
+      productionPerMonth: production,
+      maxTrains: 1,
+      game,
+      calc,
+    }, trainsMeta, 30);
+
+    const row = busy.find((r) => r.fleetSize === 1 && (r.stationRating?.backlog ?? 0) > 0);
+    expect(row).toBeDefined();
+    const tab = routeTab(
+      [
+        { train: row!.engine, count: row!.engineCount },
+        { train: row!.wagon, count: row!.wagonCount },
+      ],
+      row!.waitForFullLoad,
+      cargo,
+      game,
+      production,
+    );
+    expect(tab.rating!.backlog).toBeCloseTo(row!.stationRating!.backlog, 9);
+    expect(tab.rating!.deliveredShare).toBeCloseTo(row!.stationRating!.deliveredShare, 12);
+    expect(tab.economics.cargoPerTrip).toBeCloseTo(row!.cargoPerTrip, 9);
+  });
+
   it('рейтинг читается от предельной скорости состава, как в игре', () => {
     // A consist whose speed limit clears the 85-unit speed bonus while what it actually
     // settles at does not: `lark` + 20 bolster cars runs at 62 with a limit of 96. The game
@@ -124,9 +159,13 @@ describe('обе вкладки считают маршрут одной мод�
     expect(setup.loadedPhysics.maxSpeedInternal).toBeGreaterThan(85);
 
     const tab = routeTab(entries, false, steel);
-    const ratingOf = routeStationRating(flowPerYearFromMonthly(PRODUCTION_PER_MONTH), game);
+    const rateRoute = routeStationRating(flowPerYearFromMonthly(PRODUCTION_PER_MONTH), game);
     const ratingAt = (maxSpeedInternal: number) =>
-      ratingOf(tab.economics.roundTripDays, maxSpeedInternal);
+      rateRoute({
+        pickupIntervalDays: tab.economics.roundTripDays,
+        maxSpeedInternal,
+        visitCapacity: setup.capacity,
+      });
     expect(tab.rating!.parts.speed).toBe(ratingAt(setup.loadedPhysics.maxSpeedInternal).parts.speed);
     expect(tab.rating!.parts.speed).toBeGreaterThan(ratingAt(setup.loadedSpeedInternal).parts.speed);
   });
