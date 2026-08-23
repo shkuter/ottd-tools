@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-23
+
 ### Changed
 
 - **BREAKING** Station rating now accounts for the cargo a fleet never gets round to. The
