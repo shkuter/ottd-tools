@@ -16,7 +16,6 @@ import { cssVariablesResolver, theme } from './theme';
 
 // base-set colours become CSS custom properties before the first paint
 applyPalette();
-document.documentElement.dataset.skin = 'pixel';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

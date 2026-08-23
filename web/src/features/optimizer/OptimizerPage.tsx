@@ -627,7 +627,7 @@ export default function OptimizerPage() {
                 <Table.Td className="cell-money"><Money value={r.incomePerTrip} /></Table.Td>
                 <Table.Td className="cell-money"><Money value={r.runningCostPerYear} /></Table.Td>
                 <Table.Td className="cell-money"><Money value={r.buyCostTotal} /></Table.Td>
-                <Table.Td className={"cell-money " + (r.profitPerYear >= 0 ? "profit" : "money-neg")}><strong><Money value={r.profitPerYear} /></strong></Table.Td>
+                <Table.Td className={"cell-money " + (r.profitPerYear >= 0 ? "profit" : "money-neg")}><Money value={r.profitPerYear} /></Table.Td>
                 <Table.Td>{r.paybackYears ? `${num(r.paybackYears, 1)} ${t('combined.years')}` : '—'}</Table.Td>
                 <Table.Td>
                   <ActionIcon

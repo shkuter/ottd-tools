@@ -74,3 +74,6 @@ Derived material and its sources:
   [OpenGFX2 Classic](https://github.com/OpenTTD/OpenGFX2) 0.8.1, © the OpenGFX2 authors.
 - Russian FIRS translation — [firs-ru](https://github.com/ChronosXYZ/firs-ru), a fork of
   FIRS 5.2.0.
+- Tab icon — the [OpenTTD](https://github.com/OpenTTD/OpenTTD) logo (the diamond and its
+  "OPEN TTD" banners), © the OpenTTD team; the locomotive silhouette in place of the dollar
+  sign is AI-generated and the `tools` wordmark is set in OpenTTD's own interface font.

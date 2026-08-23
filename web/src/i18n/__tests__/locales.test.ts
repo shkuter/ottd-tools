@@ -28,6 +28,8 @@ const KEPT_IN_ENGLISH = new Set([
   // JGRPP-специфичная строка без русского перевода в самой игре
   // (vendor/openttd-patches/src/lang/extra/*): в русской игре она тоже английская
   'settings.introRandomisation',
+  // имя машины как образец значения в поле: имена машин в игре не переводятся
+  'kit.sampleValue',
   // названия самих наборов NewGRF: в игре они тоже английские
   'savegame.grf.ironHorse',
   'savegame.grf.firs',

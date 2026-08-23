@@ -1,33 +1,17 @@
 @layer app {
-:root {
-  --bg: #14181d;
-  --bg-panel: #1c2229;
-  --bg-hover: #232b34;
-  --border: #2e3842;
-  --text: #d8dee6;
-  --muted: #8a97a5;
-  --accent: #58a6ff;
-  --profit: #4caf7d;
-  --loss: #e5646b;
-  color-scheme: dark;
-}
-
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--skin-desktop);
+  color: var(--skin-text);
 }
 
 .app {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
 }
 
 .app-header {
@@ -37,18 +21,17 @@ body {
   gap: 16px;
   flex-wrap: wrap;
   padding: 14px 20px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--skin-edge-lo);
 }
 
 .app-header h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--skin-font-large);
 }
 
 .subtitle {
   margin: 2px 0 10px;
-  color: var(--muted);
-  font-size: 12px;
+  color: var(--skin-muted);
 }
 
 
@@ -58,46 +41,41 @@ nav {
 }
 
 /*
- * The shell is exactly one viewport tall, so pages taller than that scroll
- * inside main while the header and footer stay put. Pages that fill the
- * viewport (the optimizer) become flex columns and hand the leftover height
- * to their scroll area instead of guessing it with a calc().
+ * Everything scrolls with the document: the page is as tall as its content, and
+ * the one scrollbar belongs to the window. Panels that used to carry a scroll
+ * area of their own — the lists, the FIRS chart, the side panels — keep only
+ * their horizontal one, where the content really is wider than the column.
  */
 main {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
   padding: 16px 20px;
 }
 
 .app-footer {
   padding: 10px 20px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 12px;
+  border-top: 1px solid var(--skin-edge-lo);
+  color: var(--skin-muted);
+  font-size: var(--skin-font-small);
 }
 
 h2 {
   margin: 0 0 12px;
-  font-size: 16px;
+  font-size: var(--skin-font-heading);
 }
 
 h3 {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--skin-font);
 }
 
 h4 {
   margin: 10px 0 4px;
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--skin-font-small);
+  color: var(--skin-muted);
   text-transform: uppercase;
 }
 
 .hint {
-  color: var(--muted);
+  color: var(--skin-muted);
 }
 
 /* ---------- consist ---------- */
@@ -132,75 +110,51 @@ h4 {
 .filters .goal-hint {
   max-width: 260px;
   margin: 0;
-  font-size: 12px;
 }
 
 .filters label {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--muted);
-}
-
-input,
-select {
-  background: var(--bg-panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 5px 8px;
-  font-size: 13px;
-}
-
-input[type='number'] {
-  width: 80px;
-}
-
-button {
-  background: var(--bg-panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 5px 10px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-button:hover {
-  background: var(--bg-hover);
+  color: var(--skin-muted);
 }
 
 .table-wrap {
-  overflow: auto;
-  max-height: calc(100vh - 240px);
-  border: 1px solid var(--border);
+  /* the catalogue is wider than the column; its height is the page's business */
+  overflow-x: auto;
+  border: 1px solid var(--skin-edge-lo);
   border-radius: 6px;
 }
 
-table {
+/*
+ * Every list on the pages is a Mantine Table (mantine-datatable builds on it
+ * too), so these address the component's own classes. A rule on the bare tag
+ * would also apply to the library's internals and, sitting in the same layer,
+ * outrank the class rules that are meant to shape them.
+ */
+.mantine-Table-table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 13px;
 }
 
-th,
-td {
+.mantine-Table-th,
+.mantine-Table-td {
   padding: 5px 10px;
   text-align: left;
   white-space: nowrap;
 }
 
-thead th {
+.mantine-Table-thead .mantine-Table-th {
   position: sticky;
   top: 0;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
+  background: var(--skin-window);
+  border-bottom: 1px solid var(--skin-edge-lo);
   cursor: pointer;
   user-select: none;
 }
 
-tbody tr:hover {
-  background: var(--bg-hover);
+.mantine-Table-tbody .mantine-Table-tr:hover {
+  background: var(--skin-window-hover);
 }
 
 .train-sprite {
@@ -213,7 +167,7 @@ tbody tr:hover {
   flex-shrink: 0;
 }
 
-td:has(> .train-sprite) {
+.mantine-Table-td:has(> .train-sprite) {
   padding-top: 2px;
   padding-bottom: 2px;
   line-height: 0;
@@ -226,7 +180,7 @@ td:has(> .train-sprite) {
 }
 
 
-.dim { color: var(--muted); font-size: 12px; }
+.dim { color: var(--skin-muted); }
 
 /* машины «под вопросом»: чекбоксом их можно выкинуть из подбора */
 .intro-toggles {
@@ -235,19 +189,18 @@ td:has(> .train-sprite) {
   align-items: center;
   gap: 2px 14px;
   margin: -6px 0 10px;
-  font-size: 13px;
+  font-size: var(--skin-font);
 }
 
 
 .intro-toggles .intro-reset {
   padding: 1px 8px;
-  font-size: 12px;
+  font-size: var(--skin-font-small);
 }
 
 /* «?» у машины, которая в выбранном году может ещё не появиться в игре */
 .intro-warn {
-  color: var(--accent);
-  font-weight: bold;
+  color: var(--skin-link);
   cursor: help;
   padding-left: 2px;
 }
@@ -257,44 +210,24 @@ td:has(> .train-sprite) {
 .branch-mark {
   cursor: help;
   padding-left: 3px;
-  font-weight: bold;
-  color: var(--accent);
+  color: var(--skin-link);
 }
 
 .branch-mark--off {
-  color: var(--muted);
+  color: var(--skin-muted);
   font-weight: normal;
   text-decoration: line-through;
   opacity: 0.75;
 }
 
-.page-optimizer {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-/* only the table gives up height when the window is short */
-.page-optimizer > :not(.table-wrap) {
-  flex: none;
-}
-
-.page-optimizer .table-wrap {
-  flex: 1;
-  min-height: 160px;
-  max-height: none;
-}
-
 .btn-add {
   padding: 1px 9px;
-  font-weight: bold;
-  color: var(--accent);
+  color: var(--skin-link);
 }
 
 .consist-side {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
+  background: var(--skin-window);
+  border: 1px solid var(--skin-edge-lo);
   border-radius: 8px;
   padding: 14px;
   position: sticky;
@@ -332,8 +265,7 @@ td:has(> .train-sprite) {
   flex-direction: column;
   gap: 4px;
   margin: 10px 0;
-  color: var(--muted);
-  font-size: 12px;
+  color: var(--skin-muted);
 }
 
 /* сводки: таблица «подпись — значение», подписи переносятся */
@@ -341,38 +273,37 @@ td:has(> .train-sprite) {
   table-layout: fixed;
   width: 100%;
   margin-top: 14px;
-  font-size: 13px;
+  font-size: var(--skin-font);
 }
 
-.summary-table td {
+.summary-table .mantine-Table-td {
   /* Mantine keeps table cells on one line; the labels here are long */
   white-space: normal;
   overflow-wrap: break-word;
   vertical-align: top;
 }
 
-.summary-table td:first-child {
+.summary-table .mantine-Table-td:first-child {
   /* the labels are the long half of the row; give them the room */
   width: 62%;
-  color: var(--muted);
+  color: var(--skin-muted);
 }
 
-.summary-table td:last-child {
+.summary-table .mantine-Table-td:last-child {
   font-variant-numeric: tabular-nums;
 }
 
 .stats-wide {
   max-width: 460px;
-  font-size: 14px;
+  font-size: var(--skin-font);
 }
 
 .big {
-  font-size: 17px;
-  font-weight: 600;
+  font-size: var(--skin-font);
 }
 
 .profit {
-  color: var(--profit);
+  color: var(--skin-profit);
 }
 
 .cell-money {
@@ -381,11 +312,11 @@ td:has(> .train-sprite) {
 }
 
 .money-neg {
-  color: var(--loss);
+  color: var(--skin-loss);
 }
 
 .loss {
-  color: var(--loss);
+  color: var(--skin-loss);
 }
 
 /* ---------- route ---------- */
@@ -398,16 +329,15 @@ td:has(> .train-sprite) {
 }
 
 .route-controls {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
+  background: var(--skin-window);
+  border: 1px solid var(--skin-edge-lo);
   border-radius: 8px;
   padding: 14px;
   /* контролы держат обе строки, чтобы прибыльность встала сразу под графиком */
   grid-row: 1 / span 2;
 }
 
-.route-controls input,
-.route-controls select {
+.route-controls .mantine-InputWrapper-root {
   width: 100%;
 }
 
@@ -419,7 +349,7 @@ td:has(> .train-sprite) {
 .btn-link {
   border: none;
   background: none;
-  color: var(--accent);
+  color: var(--skin-link);
   padding: 0;
   text-align: left;
 }
@@ -434,11 +364,10 @@ td:has(> .train-sprite) {
 }
 
 .graph-container {
-  overflow: auto;
-  border: 1px solid var(--border);
+  overflow-x: auto;
+  border: 1px solid var(--skin-edge-lo);
   border-radius: 8px;
   background: #fff;
-  max-height: calc(100vh - 230px);
 }
 
 .graph-container svg {
@@ -450,14 +379,12 @@ td:has(> .train-sprite) {
 }
 
 .firs-side {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
+  background: var(--skin-window);
+  border: 1px solid var(--skin-edge-lo);
   border-radius: 8px;
   padding: 14px;
   position: sticky;
   top: 12px;
-  max-height: calc(100vh - 230px);
-  overflow: auto;
 }
 
 .node-card ul {
@@ -494,6 +421,23 @@ td:has(> .train-sprite) {
   }
 }
 
+/* ---------- kit ---------- */
+
+/*
+ * The interface-elements page: one specimen of the set per window colour, each
+ * on its own surface so the colour under the controls is the one being shown.
+ */
+.page-kit {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.kit-window {
+  background: var(--skin-window);
+  padding: 12px;
+}
+
 /* ---------- settings ---------- */
 
 .page-settings {
@@ -501,8 +445,8 @@ td:has(> .train-sprite) {
 }
 
 .settings-group {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
+  background: var(--skin-window);
+  border: 1px solid var(--skin-edge-lo);
   border-radius: 8px;
   padding: 14px 16px;
   margin-bottom: 16px;
@@ -510,7 +454,7 @@ td:has(> .train-sprite) {
 
 .settings-group h3 {
   margin-bottom: 12px;
-  color: var(--accent);
+  color: var(--skin-link);
 }
 
 .setting-row {
@@ -519,7 +463,7 @@ td:has(> .train-sprite) {
   gap: 12px;
   align-items: start;
   padding: 8px 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--skin-edge-lo);
 }
 
 .setting-row:first-of-type {
@@ -533,22 +477,21 @@ td:has(> .train-sprite) {
 }
 
 .setting-hint {
-  font-size: 12px;
+  font-size: var(--skin-font);
 }
 
-.setting-control select,
-.setting-control input[type='number'] {
+.setting-control .mantine-InputWrapper-root {
   width: 100%;
 }
 
 .btn-danger {
-  border-color: var(--loss);
-  color: var(--loss);
+  border-color: var(--skin-loss);
+  color: var(--skin-loss);
 }
 
 .btn-danger:hover {
-  background: var(--loss);
-  color: var(--bg);
+  background: var(--skin-loss);
+  color: var(--skin-desktop);
 }
 
 @media (max-width: 700px) {
@@ -565,8 +508,8 @@ td:has(> .train-sprite) {
 }
 
 .group-toggle {
-  color: var(--text);
-  font-size: 13px;
+  color: var(--skin-text);
+  font-size: var(--skin-font);
   font-weight: normal;
 }
 
@@ -577,11 +520,11 @@ td:has(> .train-sprite) {
   align-items: flex-start;
   margin: 10px 0 14px;
   padding: 10px 12px;
-  border: 1px solid var(--loss);
+  border: 1px solid var(--skin-loss);
   border-left-width: 3px;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--loss) 12%, var(--bg-panel));
-  font-size: 13px;
+  background: color-mix(in srgb, var(--skin-loss) 12%, var(--skin-window));
+  font-size: var(--skin-font);
 }
 
 .warning p {
@@ -589,45 +532,45 @@ td:has(> .train-sprite) {
 }
 
 .warning a {
-  color: var(--accent);
+  color: var(--skin-link);
 }
 
 .warning-icon {
-  color: var(--loss);
-  font-size: 15px;
+  color: var(--skin-loss);
+  font-size: var(--skin-font);
   line-height: 1.2;
 }
 
 .grf-error {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: var(--loss);
+  color: var(--skin-loss);
 }
 
 }
 
 /* Sortable result headers: the whole cell is the control, so it needs to read as one. */
-.table-wrap th.sortable {
+.table-wrap .mantine-Table-th.sortable {
   cursor: pointer;
   user-select: none;
 }
 
-.table-wrap th.sortable:hover {
-  background: var(--bg-hover);
+.table-wrap .mantine-Table-th.sortable:hover {
+  background: var(--skin-window-hover);
 }
 
-.table-wrap th.sorted {
-  color: var(--accent);
+.table-wrap .mantine-Table-th.sorted {
+  color: var(--skin-link);
 }
 
 .sort-mark {
-  font-size: 11px;
+  font-size: var(--skin-font-small);
 }
 
 /* Supply column: the figure carries the verdict, so the colour only reinforces it — green
    where the fleet holds the window, red where it misses. A ratio close to 1 deliberately keeps
    the plain text colour: it holds, but only just, and the tooltip is where that is explained. */
-.supply-holds { color: var(--profit); }
-.supply-misses { color: var(--loss); }
+.supply-holds { color: var(--skin-profit); }
+.supply-misses { color: var(--skin-loss); }
 
 /* Cargo cell of the supply tab: icon beside the name, as the cargo select shows it. The
    column is narrow between the input fields, so the pair has to be told not to wrap. */
@@ -641,5 +584,5 @@ td:has(> .train-sprite) {
 /* Supply tab states. "Barely" holds — it counts as supplied, but the model spaces trains
    evenly and a real game bunches them, so it does not get the confident colour; "not set"
    is not a verdict at all and stays quiet next to the ones that are. */
-.supply-marginal { color: var(--profit); opacity: 0.7; }
+.supply-marginal { color: var(--skin-profit); opacity: 0.7; }
 .supply-unset { opacity: 0.6; }

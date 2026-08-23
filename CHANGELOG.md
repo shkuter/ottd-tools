@@ -18,6 +18,93 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- The tab icon is the OpenTTD logo with the dollar sign traded for a steam locomotive and a
+  `tools` wordmark set in the game's own interface font — the calculator is about trains, not
+  about money. The SVG itself goes to browsers that take one, with 16, 32 and 180 pixel
+  renderings cropped to the diamond, since the "OPEN TTD" banners turn to mush at that size.
+- Interface-elements page at `/kit`, showing every control the skin styles in every window
+  colour of the shell. It is not a tab and does not load with the rest: it exists so a change to
+  the look can be checked on the whole set at once instead of one tab at a time.
+- Window colours follow the tab, the way a window of the game is painted in the colour group of
+  its kind: the settings tab is the game's mauve options window, the rest the grey
+  vehicle-purchase window, with brown and dark green defined for the industry lists to come. The
+  colour covers the whole page, header and footer included — the calculator is one window, and
+  its tabs swap what is inside it rather than opening a window of another kind.
+- Test that reads the stylesheets and fails on a colour outside the base set's palette, so a hex
+  typed into a rule cannot quietly become a colour OpenTTD does not have.
+
+### Changed
+
+- Every interface colour is now the palette colour the game takes for the same job — down to the
+  ones no stylesheet was setting. The library's own black and white went to switches and
+  checkboxes as a text colour, and the native controls stacked under Mantine's artwork were left
+  to the browser, which paints them pure white under color-scheme: dark. Neither white nor black
+  is a colour the game has (TC_WHITE is #fcfcfc, TC_BLACK #101010). Sweeping the rendered page
+  now turns up no colour outside the palette but one: the white sheet graphviz draws the FIRS
+  chart on. Recharts' own #ccc grid and the SVG default black it hands to its groups are covered
+  too, and the places that dimmed a palette colour with `opacity` — which mixes it with whatever
+  is behind — now name a colour instead.
+- The hatch that marks a control unavailable reaches the number field's stepper arrows and the
+  catalogue's pager, which the library had been dimming rather than hatching. Text follows
+  the game's own roles (`_string_colourmap`) with the black shadow that keeps a pale colour
+  legible on a grey window; the interior of a sunken widget is lighter than the surface around
+  it, as `DrawFrameRect` paints it; an edit box is the game's black plate with a yellow value; the
+  selected item of a dropdown is a black plate with white lettering; a tooltip is pale yellow in
+  a black frame; and an unavailable control is hatched with a checkerboard rather than just
+  dimmed.
+- The list header is no longer sticky. Sticking needs a scroll port to stick to, and with the
+  page scrolling as one document the wrapper does not scroll vertically — while scrolling
+  sideways still makes it a scroll container on both axes, so the header was anchored to a box
+  that never moves. Sideways scrolling for wide tables is what that trade buys.
+- The page is as long as its content and scrolls as one document. The shell no longer holds
+  itself to one viewport with the header and footer pinned, and the lists, the FIRS chart and
+  the side panels no longer carry scroll areas of their own — so there is one vertical scrollbar
+  instead of two or three nested ones. Sideways scrolling stays where the content really is
+  wider than its column.
+- One interface scale for the whole skin: fonts, control heights, bevels and widget padding are
+  the game's own unscaled metrics times a single factor (1.5), instead of sizes that answered to
+  three different scales at once.
+- The calculator's name is lettering on the window rather than a caption plate: the game fills a
+  caption with the company colour, and there is no company here to take a colour from.
+- Dimmed text is now a colour rather than a smaller size, matching how the game separates an
+  explanation from a value.
+- One font weight throughout, as the game has: its font ships a single face, so a bold heading,
+  button or label was a browser-synthesised one, which smears a font whose pixels are meant to
+  line up. Emphasis is carried by colour and size instead — the title of a warning takes the
+  heading colour, and a figure that carries a verdict keeps its own.
+- The text shadow follows the colour rather than the role, as the game does: everything but
+  black and the dimmed grey gets one, so light body text on a dark window is shaded too. A tab
+  is a link with `aria-current`, so the rule for links had also been shading buttons whose text
+  is TC_BLACK.
+- A hovered button is one shade darker instead of one lighter: lighter is the pressed fill, and
+  the two states were telling apart only by the direction of the bevel. The game has no hover
+  state to copy.
+- The catalogue obeys the skin: `mantine-datatable` declares a cascade layer of its own, which
+  was landing after ours and winning on layer order.
+- Rules on bare `button`, `input`, `select` and `table` tags are gone; the skin styles components
+  by their own classes. The number field's stepper arrows are visible again — the padding meant
+  for buttons had been squeezing them to nothing.
+
+### Fixed
+
+- The selected item of a dropdown is the game's black plate again. The rule named a class that
+  does not exist (`Select` renders `mantine-Select-option`) and an attribute Mantine never
+  writes, so neither the plate nor the hover highlight was reaching the list; options are now
+  addressed by `data-combobox-option`, and the chosen one by `data-checked`.
+- The hatch that marks a control unavailable reaches disabled tabs, checkboxes and radios,
+  which had been dimmed but not hatched, and it finally takes the colour of the widget it
+  covers: the pattern lived in a variable, so it carried the colour of wherever that variable
+  was declared and every override was dead.
+- A dropdown item takes the padding the game gives it — horizontal only, so the black plate
+  under the selected one covers the row's full height instead of sitting inside an asymmetric
+  box. The tooltip and the segmented button take theirs from the right metric too.
+- The text shadow no longer leaks onto black or dimmed lettering inherited from the window
+  theme: buttons, tabs, dropdown fields, tooltips and field descriptions switch it back off.
+- `make data-opengfx2` parses the GUI colour enum of OpenTTD 15.3 again; it expected the shape
+  the master branch has, so it could not run against the pinned release.
+
 ## [0.10.0] - 2026-08-23
 
 ### Changed

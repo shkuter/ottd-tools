@@ -7,5 +7,10 @@
  * Mantine component with a plain one-class rule — no !important, no counting
  * specificity. Rules outside any layer still beat both; index.css is there
  * until its pages have moved over.
+ *
+ * mantine-datatable declares a layer of its own. A layer that is not named
+ * here is appended after the ones that are, so without this line the library
+ * would sit after `app` and win over the skin by layer order — which is
+ * exactly what no amount of specificity can undo.
  */
-@layer mantine, app;
+@layer mantine, mantine-datatable, app;

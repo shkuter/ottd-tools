@@ -4,6 +4,7 @@ Three things are pulled out of the base set:
   * vehicle sprites -> web/public/icons/vanilla_trains/vanilla_<n>.png
   * cargo icons     -> web/public/icons/vanilla_cargo/<id>.png
   * GUI gradients   -> web/src/data/opengfx2_palette.json
+  * named GUI colours (the TC_*/PC_* the game addresses by palette index)
 
 Sprite numbers come from vanilla_*.json (extract_vanilla.py computes them from
 the game's own tables), so all that is left here is fetching the pixels.
@@ -28,6 +29,8 @@ TRAIN_DIR = os.path.join(REPO_ROOT, "web", "public", "icons", "vanilla_trains")
 CARGO_DIR = os.path.join(REPO_ROOT, "web", "public", "icons", "vanilla_cargo")
 PALETTES_H = os.path.join(VENDOR, "openttd", "src", "table", "palettes.h")
 GFX_TYPE_H = os.path.join(VENDOR, "openttd", "src", "gfx_type.h")
+STRING_COLOURS_H = os.path.join(VENDOR, "openttd", "src", "table", "string_colours.h")
+PALETTE_FUNC_H = os.path.join(VENDOR, "openttd", "src", "palette_func.h")
 
 # where to look for the set: placed by hand, downloaded by the game, Steam copy
 BASE_SET_GLOBS = [
@@ -66,17 +69,80 @@ def find_base_set():
     )
 
 
+def camel(name):
+    """COLOUR_DARK_BLUE and TC_LIGHT_BLUE alike become darkBlue / tcLightBlue."""
+    head, *rest = name.lower().split("_")
+    return head + "".join(word.title() for word in rest)
+
+
 def colour_names():
-    """GUI colour names in enum Colours order (gfx_type.h:283)."""
+    """GUI colour names in enum Colours order (gfx_type.h:282)."""
     text = open(GFX_TYPE_H).read()
-    start = text.index("enum class Colours")
+    start = re.search(r"enum (?:class )?Colours\b", text).start()
     block = text[start : text.index("};", start)]
     names = []
     for line in block.splitlines():
-        m = re.match(r"\s*(\w+)(?:\s*=\s*Colours::Begin)?,\s*///<", line)
-        if m and m.group(1) not in ("Begin", "End", "Invalid"):
-            names.append(m.group(1))
+        m = re.match(r"\s*COLOUR_(\w+)\s*(?:=[^,]*)?,", line)
+        if m and m.group(1) not in ("BEGIN", "END"):
+            names.append(camel(m.group(1)))
+    if len(names) != 16:
+        raise GrfError(f"{len(names)} GUI colours instead of 16")
     return names
+
+
+def text_colour_indices():
+    """TC_* -> palette index, in the order _string_colourmap lists them.
+
+    The enum in gfx_type.h numbers the text colours; string_colours.h maps each
+    number onto the palette. Both are needed: the map is a bare array, so it is
+    the enum that says which line is which colour.
+    """
+    text = open(GFX_TYPE_H).read()
+    start = text.index("enum TextColour")
+    # everything past TC_END is flags (TC_IS_PALETTE_COLOUR and on), not colours
+    block = text[start : text.index("TC_END", start)]
+    names = {}
+    for line in block.splitlines():
+        m = re.match(r"\s*(TC_\w+)\s*=\s*0x([0-9A-Fa-f]+),", line)
+        # TC_BEGIN and TC_FROMSTRING are aliases of the colour that follows them
+        if m and m.group(1) not in ("TC_BEGIN", "TC_FROMSTRING"):
+            names[int(m.group(2), 16)] = m.group(1)
+
+    text = open(STRING_COLOURS_H).read()
+    start = text.index("_string_colourmap")
+    block = text[start : text.index("\n};", start)]
+    indices = [int(m.group(1)) for m in re.finditer(r"PixelColour\{\s*(\d+)\s*\}", block)]
+    if len(indices) != len(names):
+        raise GrfError(f"{len(indices)} string colours against {len(names)} enum entries")
+    return {names[i]: index for i, index in enumerate(indices)}
+
+
+def palette_constants():
+    """PC_* -> palette index, as palette_func.h spells them out."""
+    text = open(PALETTE_FUNC_H).read()
+    constants = {}
+    for m in re.finditer(
+        r"PixelColour\s+(PC_\w+)\s*\{\s*(?:GREY_SCALE\()?\s*(0x[0-9A-Fa-f]+|\d+)", text
+    ):
+        constants[m.group(1)] = int(m.group(2), 0)
+    if not constants:
+        raise GrfError("no PC_* constants found in palette_func.h")
+    return constants
+
+
+def render_named(palette):
+    """Colours the game names outright, rather than reaching for a gradient.
+
+    Text roles (TC_*) and the fixed GUI colours (PC_*) are palette indices, so
+    unlike the gradients they do not depend on the base set at all — but they
+    belong in the same file, because that file is what the interface may use.
+    """
+    named = {}
+    for name, index in {**text_colour_indices(), **palette_constants()}.items():
+        r, g, b = palette[index * 3 : index * 3 + 3]
+        # TC_LIGHT_BLUE -> tcLightBlue, matching the spelling of the gradients
+        named[camel(name)] = f"#{r:02x}{g:02x}{b:02x}"
+    return named
 
 
 def draw_parts(parts, palette):
@@ -163,7 +229,7 @@ def render_palette(grf, palette):
             colour_index = table[GRADIENT_OFFSET + shade]
             r, g, b = palette[colour_index * 3 : colour_index * 3 + 3]
             shades.append(f"#{r:02x}{g:02x}{b:02x}")
-        gradients[name[0].lower() + name[1:]] = shades
+        gradients[name] = shades
     return gradients
 
 
@@ -187,8 +253,13 @@ def main():
     drawn, missing_trains = render_trains(grf, palette, trains)
     icons, missing_cargos = render_cargos(grf, palette, cargos)
     write_json("opengfx2_palette.json", {
+        # the file name says where the set came from, the checksum says which
+        # release it was: copies of the same set are named differently depending
+        # on whether the game downloaded them or they were unpacked by hand
         "source": os.path.basename(path),
+        "md5": grf.md5,
         "gradients": render_palette(grf, palette),
+        "named": render_named(palette),
     })
 
     print(f"opengfx2: {drawn} vehicles, {icons} cargo icons")

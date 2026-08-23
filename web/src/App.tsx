@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router';
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router';
 import { Anchor, Box, Button, Group, Text, Title } from '@mantine/core';
 import OptimizerPage from './features/optimizer/OptimizerPage';
 import SettingsPage from './features/settings/SettingsPage';
@@ -9,6 +9,8 @@ import { t, useLocale } from './i18n';
 import { useSettingsStore } from './state/settingsStore';
 import { Warning } from './components/Warning';
 import { usePageviews } from './analytics';
+import type { WindowColour } from './skin';
+import { useKitWindowStore } from './state/kitWindowStore';
 
 // the catalogue pulls in mantine-datatable and the income tab pulls in recharts;
 // nothing else needs either, so both tabs load with their own chunk
@@ -17,14 +19,23 @@ const RoutePage = lazy(() => import('./features/route/RoutePage'));
 // the supply tab drags the optimizer along and runs one sweep per input; it stays out of the
 // main chunk for the same reason the other two do
 const IndustrySupplyPage = lazy(() => import('./features/industry-supply/IndustrySupplyPage'));
+// the interface-elements page is for working on the skin, not for using the
+// calculator: no tab of its own, and no weight in the main chunk
+const KitPage = lazy(() => import('./features/kit/KitPage'));
 
-const tabs = [
+/*
+ * The tabs, each with the colour group of the game window it stands in for
+ * (the groups themselves are WINDOW_COLOURS in skin.ts). A tab without one is
+ * the vehicle-purchase window, grey — which is what the shell is painted in, so
+ * nothing has to be said for it.
+ */
+const tabs: { path: string; label: string; windowColour?: WindowColour }[] = [
   { path: '/optimizer', label: 'nav.optimizer' },
   { path: '/consist', label: 'nav.consist' },
   { path: '/income', label: 'nav.income' },
   { path: '/supply', label: 'nav.supply' },
   { path: '/firs', label: 'nav.firs' },
-  { path: '/settings', label: 'nav.settings' },
+  { path: '/settings', label: 'nav.settings', windowColour: 'mauve' },
 ];
 
 export default function App() {
@@ -32,11 +43,29 @@ export default function App() {
   const firs = useSettingsStore((s) => s.game.firs);
   // t() reads the locale outside React, so the whole tree re-renders from here
   const locale = useLocale();
+  const { pathname } = useLocation();
   usePageviews();
 
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  /*
+   * The window colour goes on <html> rather than on the page: dropdowns,
+   * tooltips and notifications are rendered into a portal under <body>, and a
+   * theme set on the page would not reach them.
+   *
+   * This is the only writer of the attribute. The interface-elements page needs
+   * to change it too, and it does so through a store rather than by writing the
+   * attribute itself: with two writers the winner would be decided by effect
+   * order, and a child's effect runs before its parent's.
+   */
+  const kitWindow = useKitWindowStore((s) => s.colour);
+  useEffect(() => {
+    const colour = pathname === '/kit' ? kitWindow : tabs.find((tab) => tab.path === pathname)?.windowColour;
+    if (colour) document.documentElement.dataset.window = colour;
+    else delete document.documentElement.dataset.window;
+  }, [pathname, kitWindow]);
 
   return (
     <div className="app">
@@ -77,6 +106,7 @@ export default function App() {
             <Route path="/firs" element={<FirsPage />} />
             <Route path="/combined" element={<Navigate to="/income" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/kit" element={<KitPage />} />
           </Routes>
         </Suspense>
       </Box>

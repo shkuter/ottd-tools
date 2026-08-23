@@ -17,8 +17,8 @@
  * light-blue, green, dark-green, blue, cream, mauve, purple, orange, brown,
  * grey and white.
  *
- * The skin is always on (data-skin="pixel", set in main.tsx): game font,
- * bevels of --bevel pixels, no rounding.
+ * The skin is always on — there is no second one to switch to, so no attribute
+ * gates it: game font, bevels of --bevel pixels, no rounding.
  */
 
 @font-face {
@@ -38,211 +38,361 @@
 }
 
 /* ==========================================================================
-   TOKENS — the only place to change colours
-   Mid-grey backgrounds with black text, Yellow buttons, Orange headings and
-   Green/Yellow switches, as in the game's own windows.
+   TOKENS — the only place to change colours and metrics
+
+   Every colour is a colour of the game's palette, taken for the same job the
+   game takes it for: the gradient shades of a window's colour group for the
+   surfaces (GetColourGradient + DrawFrameRect, widget.cpp), the named text
+   roles for the lettering (_string_colourmap, table/string_colours.h) and the
+   fixed GUI colours where the game hardcodes one (PC_*, palette_func.h).
    ========================================================================== */
 
-:root[data-skin='pixel'] {
-  /* every background is the same mid grey; depth comes from the bevels.
-     Hover is one shade up, otherwise row highlighting would be invisible. */
-  --skin-desktop: #858583;
-  --skin-window: #858583;
-  --skin-window-hover: var(--ottd-grey-lighter);
-  --skin-window-sunken: #858583;
+:root {
+  /* ---------- geometry ----------
+     The game's metrics (WidgetDimensions::unscaled, window_gui.h) are written
+     for interface scale 1x, and everything below is that number times the
+     scale — including the font, whose 1x height is DEFAULT_FONT_HEIGHT
+     (fontcache.cpp:24). One scale, so nothing can drift out of step with the
+     rest the way a hand-picked size does. */
+  --skin-scale: 1.5;
+  --bevel: round(calc(1px * var(--skin-scale)), 1px);
+  --skin-radius: 0;
+
+  /* FS_NORMAL 10, FS_SMALL 6, FS_LARGE 18; the heading step between the last
+     two is interpolated, the game has no size there */
+  --skin-font: round(calc(10px * var(--skin-scale)), 1px);
+  --skin-font-small: round(calc(6px * var(--skin-scale)), 1px);
+  --skin-font-heading: round(calc(14px * var(--skin-scale)), 1px);
+  --skin-font-large: round(calc(18px * var(--skin-scale)), 1px);
+
+  /* Padding, each from the metric the game uses for that kind of widget:
+     frametext 6 around a framed block, framerect 2/1 inside a plate, matrix
+     2/3/2/1 in a list row (asymmetric on purpose — the game's rows are), and
+     dropdowntext for a dropdown item, which the game applies HORIZONTALLY ONLY
+     (`full.Shrink(dropdowntext, RectPadding::zero)`, dropdown.cpp:289) so that
+     its black plate covers the row's full height. */
+  --skin-pad-frametext: round(calc(6px * var(--skin-scale)), 1px);
+  --skin-pad-frame: round(calc(1px * var(--skin-scale)), 1px)
+    round(calc(2px * var(--skin-scale)), 1px);
+  --skin-pad-row: round(calc(3px * var(--skin-scale)), 1px)
+    round(calc(2px * var(--skin-scale)), 1px) round(calc(1px * var(--skin-scale)), 1px);
+  --skin-pad-dropdown: 0 round(calc(2px * var(--skin-scale)), 1px);
+  /* hsep_wide 6: the gap the game leaves between widgets that are not neighbours */
+  --skin-hsep-wide: round(calc(6px * var(--skin-scale)), 1px);
+
+}
+
+/* ---------- window theme: grey ----------
+   The colour group of the game's vehicle-purchase window, and the base every
+   other window colour is a variation of. A [data-window] block redefines
+   exactly the tokens in this section and nothing else. This one is written
+   against [data-window='grey'] as well, so that a part of the page can ask for
+   the base theme by name the way it asks for any other — which is what the
+   specimens on /kit do.
+
+   The shades are the ones DrawFrameRect reaches for: SHADE_LIGHT fills a
+   raised widget, SHADE_LIGHTER the interior of a lowered one — which is why a
+   sunken field reads lighter than the window around it, not darker —
+   SHADE_LIGHTEST is the light edge and SHADE_DARK the dark one. */
+:root,
+[data-window='grey'] {
+  --skin-window: var(--ottd-grey-light);
+  --skin-window-sunken: var(--ottd-grey-lighter);
   --skin-edge-hi: var(--ottd-grey-lightest);
-  --skin-edge-lo: var(--ottd-grey-darkest);
+  --skin-edge-lo: var(--ottd-grey-dark);
+  /* the checkerboard the game hatches an unavailable widget with: single
+     pixels of the widget's own SHADE_DARKER (widget.cpp:2359) */
+  --skin-hatch: var(--ottd-grey-darker);
 
-  /* caption: the game fills it with the company colour */
-  --skin-caption: var(--ottd-dark-blue-normal);
-  --skin-caption-text: #fff;
-  --skin-caption-edge-hi: var(--ottd-dark-blue-lightest);
-  --skin-caption-edge-lo: var(--ottd-dark-blue-dark);
+  /* text roles. The main text is the one colour the game never shades
+     (SetColourRemap, gfx.cpp:481); the dimmed one is the darkest shade of the
+     window's own group, so it stays quieter than the main text without
+     turning into the grey the game keeps for unavailable things. */
+  --skin-text: var(--ottd-tc-black);
+  --skin-label: var(--ottd-tc-black);
+  --skin-value: var(--ottd-tc-black);
+  --skin-muted: var(--ottd-grey-darkest);
+  --skin-disabled: var(--ottd-tc-grey);
+  /* this window's text is TC_BLACK, the one colour the game never shades */
+  --skin-text-shadow-body: none;
+}
 
-  /* buttons, tabs and dropdowns */
+/* ---------- roles that do not follow the window ---------- */
+:root {
+  /* the game underlays coloured text with black rather than trusting contrast
+     (gfx.cpp:603) — see the TEXT COLOURS section for who gets it */
+  --skin-text-shadow: 1px 1px 0 var(--ottd-pc-black);
+  --skin-heading: var(--ottd-tc-gold);
+  --skin-link: var(--ottd-tc-orange);
+
+  /* the site's name: lettering only, no company-coloured plate under it */
+  --skin-caption-text: var(--ottd-tc-yellow);
+
+  /* Buttons, tabs and dropdowns are yellow in every window the game paints them
+     in. Raised is SHADE_LIGHT and pressed is SHADE_LIGHTER, as DrawFrameRect
+     fills them. The game has no hover state at all, so ours goes the other way
+     down the ramp (SHADE_NORMAL): a lighter hover would read as a press. */
   --skin-button: var(--ottd-yellow-light);
-  --skin-button-hover: var(--ottd-yellow-lighter);
-  --skin-button-active: var(--ottd-yellow-lightest);
-  --skin-button-text: #000;
+  --skin-button-hover: var(--ottd-yellow-normal);
+  --skin-button-active: var(--ottd-yellow-lighter);
+  --skin-button-text: var(--ottd-tc-black);
   --skin-button-edge-hi: var(--ottd-yellow-lightest);
   --skin-button-edge-lo: var(--ottd-yellow-dark);
+  --skin-button-hatch: var(--ottd-yellow-darker);
+  --skin-edges-button-raised: var(--skin-button-edge-hi) var(--skin-button-edge-lo)
+    var(--skin-button-edge-lo) var(--skin-button-edge-hi);
+  --skin-edges-button-lowered: var(--skin-button-edge-lo) var(--skin-button-edge-hi)
+    var(--skin-button-edge-hi) var(--skin-button-edge-lo);
 
-  /* text: black, the way the game draws it on grey windows */
-  --skin-text: #000;
-  --skin-label: #000;
-  --skin-value: #000;
-  --skin-heading: var(--ottd-orange-dark);
-  --skin-text-desktop: #000;
-  --skin-text-shadow: none;
-  --skin-link: var(--ottd-dark-blue-dark);
+  /* lists: the window's own surface, with the game's black plate under the
+     selected row (dropdown.cpp:287, dropdown_type.h:49) */
+  --skin-list-selected-bg: var(--ottd-pc-black);
+  --skin-list-selected-text: var(--ottd-tc-white);
 
-  /* lists and tables */
-  --skin-list-bg: #858583;
-  --skin-list-text: #000;
-  --skin-list-hover: var(--ottd-grey-lighter);
-  --skin-list-head-bg: #858583;
-  --skin-list-head-text: #000;
+  /* an edit box is a black plate with the value in yellow (DrawEditBox,
+     misc_gui.cpp:755-775) */
+  --skin-field-bg: var(--ottd-pc-black);
+  --skin-field-text: var(--ottd-tc-yellow);
 
-  /* input fields */
-  --skin-field-bg: #858583;
-  --skin-field-text: #000;
+  /* a tooltip is a pale yellow plate in a black frame (misc_gui.cpp:657) */
+  --skin-tooltip-bg: var(--ottd-pc-light-yellow);
+  --skin-tooltip-border: var(--ottd-pc-black);
+  --skin-tooltip-text: var(--ottd-tc-black);
 
-  /* switches: narrow yellow thumb on a sunken track, green fill when on */
+  /* a setting toggle: the window's surface behind a green fill when on, with
+     a raised yellow button at one end (DrawBoolButton, settings_gui.cpp) */
   --skin-switch-on: var(--ottd-green-lighter);
   --skin-switch-off: var(--ottd-yellow-light);
-  --skin-switch-track: var(--skin-window-sunken);
-  --skin-switch-thumb-width: 0.5em;
 
-  /* money and warnings */
-  --skin-profit: var(--ottd-green-darker);
-  --skin-loss: var(--ottd-red-dark);
+  /* the checkerboard's cell: one game pixel, so it follows the interface scale */
+  --skin-hatch-cell: round(calc(1px * var(--skin-scale)), 1px);
 
-  /* metrics */
-  --skin-radius: 0;
-  /* the game draws a 1px bevel scaled by the interface scale (window_gui.h:98,
-     DrawFrameRect); 3px is what it looks like at 3x */
-  --bevel: 3px;
+  /* money; the dim green is for a figure that holds, but only just */
+  --skin-profit: var(--ottd-tc-green);
+  --skin-profit-dim: var(--ottd-green-light);
+  --skin-loss: var(--ottd-tc-red);
 
-  /* bridge to the base theme tokens so existing rules keep working */
-  --bg: var(--skin-desktop);
-  --bg-panel: var(--skin-window);
-  --bg-hover: var(--skin-window-hover);
-  --border: var(--skin-edge-lo);
-  --text: var(--skin-text);
-  --muted: var(--skin-label);
-  --accent: var(--skin-link);
-  --profit: var(--skin-profit);
-  --loss: var(--skin-loss);
   color-scheme: dark;
+}
+
+/*
+ * Tokens derived from the window theme, declared against the same elements the
+ * themes are. A var() inside a custom property is substituted where the
+ * property is DECLARED, not where it is used, so a --skin-list-bg written once
+ * in :root would hold the base theme's grey on every tab — including the ones
+ * painted otherwise. Written here, each theme carrier computes its own.
+ *
+ * The Mantine variables are in the same boat: the theme resolver writes them on
+ * <html>, which is right for the tab colour (the attribute goes there too) but
+ * never reaches a themed element further down, such as a specimen on /kit.
+ */
+:root,
+[data-window] {
+  /* the two shapes DrawFrameRect draws: light edges top/left for a raised
+     widget, the same pair swapped for a lowered one */
+  /* a lit row is the lowered interior, the same SHADE_LIGHTER the game fills a
+     sunken widget with */
+  --skin-window-hover: var(--skin-window-sunken);
+
+  --skin-edges-raised: var(--skin-edge-hi) var(--skin-edge-lo) var(--skin-edge-lo)
+    var(--skin-edge-hi);
+  --skin-edges-lowered: var(--skin-edge-lo) var(--skin-edge-hi) var(--skin-edge-hi)
+    var(--skin-edge-lo);
+
+  --skin-list-bg: var(--skin-window);
+  --skin-list-text: var(--skin-text);
+  --skin-list-hover: var(--skin-window-hover);
+  --skin-list-head-bg: var(--skin-window);
+  --skin-list-head-text: var(--skin-text);
+  --skin-switch-track: var(--skin-window);
+  --skin-hatch-colour: var(--skin-hatch);
+
+  --mantine-color-body: var(--skin-window);
+  --mantine-color-text: var(--skin-text);
+  --mantine-color-bright: var(--skin-text);
+  --mantine-color-dimmed: var(--skin-muted);
+  --mantine-color-placeholder: var(--skin-muted);
+  --mantine-color-default: var(--skin-field-bg);
+  --mantine-color-default-hover: var(--skin-window-hover);
+  --mantine-color-default-color: var(--skin-field-text);
+  --mantine-color-default-border: var(--skin-edge-lo);
+  --mantine-color-disabled: var(--skin-window);
+  --mantine-color-disabled-color: var(--skin-disabled);
+  --mantine-color-disabled-border: var(--skin-edge-lo);
+}
+
+/* ==========================================================================
+   WINDOW THEMES
+   A window of the game is painted in the colour group of its kind, and so is
+   a tab here (see the route table in App.tsx). Each block redefines the
+   window-theme tokens and nothing else: buttons stay yellow in every one of
+   them, exactly as they do in the game.
+   ========================================================================== */
+
+/* the game's settings window (GAME_OPTIONS_BACKGROUND, settings_gui.cpp:195).
+   Its surface is dark enough that black text stops working, so the roles swap
+   to the light end: TC_WHITE reads on it, and TC_GREY — the game's own dimmed
+   colour — does not, which is why the quiet text is TC_SILVER instead. */
+[data-window='mauve'] {
+  --skin-window: var(--ottd-mauve-light);
+  --skin-window-sunken: var(--ottd-mauve-lighter);
+  --skin-edge-hi: var(--ottd-mauve-lightest);
+  --skin-edge-lo: var(--ottd-mauve-dark);
+  --skin-hatch: var(--ottd-mauve-darker);
+
+  --skin-text: var(--ottd-tc-white);
+  --skin-label: var(--ottd-tc-light-blue);
+  --skin-value: var(--ottd-tc-white);
+  --skin-muted: var(--ottd-tc-silver);
+  --skin-disabled: var(--ottd-tc-grey);
+  /* the body text here is TC_WHITE, and the game shades every colour but black */
+  --skin-text-shadow-body: var(--skin-text-shadow);
+}
+
+/* the industry windows, for when there is a tab that replaces one */
+[data-window='brown'] {
+  --skin-window: var(--ottd-brown-light);
+  --skin-window-sunken: var(--ottd-brown-lighter);
+  --skin-edge-hi: var(--ottd-brown-lightest);
+  --skin-edge-lo: var(--ottd-brown-dark);
+  --skin-hatch: var(--ottd-brown-darker);
+
+  --skin-text: var(--ottd-tc-black);
+  --skin-label: var(--ottd-tc-black);
+  --skin-value: var(--ottd-tc-black);
+  --skin-muted: var(--ottd-brown-darkest);
+  --skin-disabled: var(--ottd-tc-grey);
+  --skin-text-shadow-body: none;
+}
+
+[data-window='dark-green'] {
+  --skin-window: var(--ottd-dark-green-light);
+  --skin-window-sunken: var(--ottd-dark-green-lighter);
+  --skin-edge-hi: var(--ottd-dark-green-lightest);
+  --skin-edge-lo: var(--ottd-dark-green-dark);
+  --skin-hatch: var(--ottd-dark-green-darker);
+
+  --skin-text: var(--ottd-tc-white);
+  --skin-label: var(--ottd-tc-white);
+  --skin-value: var(--ottd-tc-white);
+  --skin-muted: var(--ottd-tc-silver);
+  --skin-disabled: var(--ottd-tc-grey);
+  /* light text on a dark window, so it is shaded like the game shades it */
+  --skin-text-shadow-body: var(--skin-text-shadow);
 }
 
 /* ==========================================================================
    RAISED AND LOWERED WIDGETS
    ========================================================================== */
 
-:root[data-skin] body {
-  background: var(--skin-desktop);
-  color: var(--skin-text);
-}
-
-/* panels, tables and charts are raised frames */
-:root[data-skin] .consist-side,
-:root[data-skin] .route-controls,
-:root[data-skin] .firs-side,
-:root[data-skin] .settings-group,
-:root[data-skin] .table-wrap,
-:root[data-skin] .graph-container,
-:root[data-skin] .warning {
-  border-radius: var(--skin-radius);
-  border-style: solid;
-  border-width: var(--bevel);
-  border-color: var(--skin-edge-hi) var(--skin-edge-lo) var(--skin-edge-lo) var(--skin-edge-hi);
+body {
   background: var(--skin-window);
 }
 
-:root[data-skin] button,
-:root[data-skin] select {
+/*
+ * Text colour is set on the theme carrier rather than on body: a part of the
+ * page painted in another window colour (the specimens on /kit) has to hand its
+ * own colour down, and anything that inherits — most of Mantine's typography
+ * does — would otherwise take body's.
+ */
+:root,
+[data-window] {
+  color: var(--skin-text);
+  text-shadow: var(--skin-text-shadow-body);
+}
+
+/* panels, tables and charts are raised frames */
+.consist-side,
+.route-controls,
+.firs-side,
+.settings-group,
+.table-wrap,
+.graph-container,
+.warning {
   border-radius: var(--skin-radius);
   border-style: solid;
   border-width: var(--bevel);
-  border-color: var(--skin-button-edge-hi) var(--skin-button-edge-lo) var(--skin-button-edge-lo)
-    var(--skin-button-edge-hi);
-  background: var(--skin-button);
-  color: var(--skin-button-text);
+  border-color: var(--skin-edges-raised);
+  background: var(--skin-window);
 }
 
-:root[data-skin] button:hover,
-:root[data-skin] select:hover {
-  background: var(--skin-button-hover);
-}
+/* buttons, dropdowns and fields are Mantine components — see skin-mantine.css */
 
-/* pressed and current states are lowered, as in the game */
-:root[data-skin] button:active {
-  border-color: var(--skin-button-edge-lo) var(--skin-button-edge-hi) var(--skin-button-edge-hi)
-    var(--skin-button-edge-lo);
-  background: var(--skin-button-active);
-  color: var(--skin-button-text);
-}
-
-/* text fields are sunken */
-:root[data-skin] input {
-  border-radius: var(--skin-radius);
-  border-style: solid;
-  border-width: var(--bevel);
-  border-color: var(--skin-edge-lo) var(--skin-edge-hi) var(--skin-edge-hi) var(--skin-edge-lo);
-  background: var(--skin-field-bg);
-  color: var(--skin-field-text);
-}
-
-:root[data-skin] .app-header,
-:root[data-skin] .app-footer {
+.app-header,
+.app-footer {
   background: var(--skin-window);
   border-color: var(--skin-edge-lo);
   border-width: var(--bevel);
 }
 
-:root[data-skin] .app-header {
+.app-header {
   border-style: none none solid;
 }
 
-:root[data-skin] .app-footer {
+.app-footer {
   border-style: solid none none;
-  color: var(--skin-label);
+  color: var(--skin-muted);
 }
 
-/*
- * Window caption. The game fills it with the company colour and sinks the
- * border (DrawCaption in widget.cpp), so the title sits in its own plate.
- */
-:root[data-skin] .app-header h1 {
-  display: inline-block;
-  padding: 1px 10px;
-  background: var(--skin-caption);
+/* the site's name is lettering on the window, not a plate of its own */
+.app-header h1 {
   color: var(--skin-caption-text);
   text-shadow: var(--skin-text-shadow);
-  border: var(--bevel) solid;
-  border-color: var(--skin-caption-edge-lo) var(--skin-caption-edge-hi) var(--skin-caption-edge-hi)
-    var(--skin-caption-edge-lo);
 }
 
 /* ==========================================================================
-   TEXT COLOURS — blue labels, orange values, as in the game's windows
+   TEXT COLOURS
+   Roles as _string_colourmap assigns them, and the shadow with them: the game
+   draws every colour but TC_BLACK over a black copy of itself one pixel down
+   and to the right (gfx.cpp:603), which is what keeps a pale colour legible on
+   a mid-grey window. The main and the dimmed text are the two that go without
+   it — one is the black, the other is the game's unshaded grey.
    ========================================================================== */
 
-:root[data-skin] .setting-label > span:first-child,
-:root[data-skin] .filters label,
-:root[data-skin] .field,
-:root[data-skin] .hint,
-:root[data-skin] .dim,
-:root[data-skin] .subtitle {
+.setting-label > span:first-child,
+.filters label,
+.field {
   color: var(--skin-label);
 }
 
-:root[data-skin] .group-toggle,
-:root[data-skin] .big {
+.hint,
+.dim,
+.subtitle,
+.setting-hint {
+  color: var(--skin-muted);
+  text-shadow: none;
+}
+
+.group-toggle,
+.big {
   color: var(--skin-value);
 }
 
-:root[data-skin] h2,
-:root[data-skin] h3,
-:root[data-skin] h4,
-:root[data-skin] .settings-group h3 {
+h2,
+h3,
+h4,
+.settings-group h3 {
   color: var(--skin-heading);
-}
-
-/* text lying straight on the desktop gets the game's map-label treatment */
-:root[data-skin] main h2,
-:root[data-skin] main > * > .hint {
-  color: var(--skin-text-desktop);
   text-shadow: var(--skin-text-shadow);
 }
 
-:root[data-skin] a,
-:root[data-skin] .btn-link {
+a:not(.mantine-Button-root):not(.mantine-ActionIcon-root),
+.btn-link {
   color: var(--skin-link);
+  text-shadow: var(--skin-text-shadow);
 }
 
-:root[data-skin] .setting-row {
+/* a figure that carries a verdict is coloured, so it is shaded too */
+.profit,
+.loss,
+.money-neg,
+.supply-holds,
+.supply-misses,
+.supply-marginal {
+  text-shadow: var(--skin-text-shadow);
+}
+
+.setting-row {
   border-top-color: var(--skin-edge-lo);
 }
 
@@ -252,22 +402,23 @@
  * breaks its own border. The heading keeps its own background so the frame
  * appears interrupted underneath it.
  */
-:root[data-skin] .settings-group {
+.settings-group {
   position: relative;
   margin-top: 1.6em;
   padding-top: 1.4em;
 }
 
-:root[data-skin] .settings-group > h3 {
+.settings-group > h3 {
   position: absolute;
   top: calc(-0.8em - var(--bevel));
-  left: 10px;
+  /* frametext, hsep_wide and framerect — the metrics the game frames text with */
+  left: var(--skin-pad-frametext);
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--skin-hsep-wide);
   width: auto;
   margin: 0;
-  padding: 0 6px;
+  padding: 0 round(calc(2px * var(--skin-scale)), 1px);
   background: var(--skin-window);
   color: var(--skin-heading);
 }
@@ -276,122 +427,145 @@
    LISTS
    ========================================================================== */
 
-:root[data-skin] table {
-  background: var(--skin-list-bg);
-  color: var(--skin-list-text);
-}
-
-:root[data-skin] thead th {
-  background: var(--skin-list-head-bg);
-  color: var(--skin-list-head-text);
-  border-bottom: var(--bevel) solid var(--skin-edge-lo);
-}
-
-:root[data-skin] tbody tr:hover {
-  background: var(--skin-list-hover);
-}
+/* lists are Mantine tables — coloured in skin-mantine.css */
 
 /* ==========================================================================
    ODDS AND ENDS
    ========================================================================== */
 
-:root[data-skin] .btn-danger {
-  border-color: var(--skin-button-edge-hi) var(--skin-button-edge-lo) var(--skin-button-edge-lo)
-    var(--skin-button-edge-hi);
+.btn-danger {
+  border-color: var(--skin-edges-button-raised);
   color: var(--ottd-red-darkest);
 }
 
-:root[data-skin] .btn-danger:hover {
+.btn-danger:hover {
   background: var(--ottd-red-light);
-  color: #000;
+  color: var(--ottd-tc-black);
 }
 
-:root[data-skin] .grf-error {
+.grf-error {
   color: var(--skin-loss);
 }
 
-/* the FIRS graph is rendered light by graphviz, so keep its own background */
-:root[data-skin] .graph-container {
+/* the FIRS graph is drawn by graphviz on white, so the panel keeps that white
+   rather than a colour of the palette */
+.graph-container {
   background: #fff;
 }
 
 /* scrollbars: a sunken track with a raised thumb, like the game's */
-:root[data-skin] * {
+* {
   scrollbar-color: var(--skin-window) var(--skin-window-sunken);
 }
 
-/* the document's own scrollbar is not a descendant, hence the second selector */
-:root[data-skin] ::-webkit-scrollbar,
-:root[data-skin]::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+/* a bare ::-webkit-scrollbar already matches every element, the root included */
+::-webkit-scrollbar {
+  /* NWidgetScrollbar's dimension: an arrow sprite plus hscrollbar padding */
+  width: round(calc(12px * var(--skin-scale)), 1px);
+  height: round(calc(12px * var(--skin-scale)), 1px);
 }
 
-:root[data-skin]::-webkit-scrollbar-track,
-:root[data-skin] ::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: var(--skin-window-sunken);
   border: var(--bevel) solid;
-  border-color: var(--skin-edge-lo) var(--skin-edge-hi) var(--skin-edge-hi) var(--skin-edge-lo);
+  border-color: var(--skin-edges-lowered);
 }
 
-:root[data-skin]::-webkit-scrollbar-thumb,
-:root[data-skin] ::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: var(--skin-window);
   border: var(--bevel) solid;
-  border-color: var(--skin-edge-hi) var(--skin-edge-lo) var(--skin-edge-lo) var(--skin-edge-hi);
+  border-color: var(--skin-edges-raised);
 }
 
-:root[data-skin] ::-webkit-scrollbar-corner {
+::-webkit-scrollbar-corner {
   background: var(--skin-window-sunken);
 }
 
 /* ==========================================================================
-   PIXEL VARIANT — match the game as closely as a browser can
+   TYPE — match the game as closely as a browser can
    ========================================================================== */
 
-:root[data-skin='pixel'] body {
+body {
   font-family: 'OpenTTD Sans', 'Segoe UI', system-ui, sans-serif;
-  font-size: 14px;
+  font-size: var(--skin-font);
   -webkit-font-smoothing: none;
   font-smooth: never;
 }
 
-:root[data-skin='pixel'] input,
-:root[data-skin='pixel'] select,
-:root[data-skin='pixel'] button,
-:root[data-skin='pixel'] table {
-  font-family: inherit;
-  font-size: 14px;
+/* the caption of a window is drawn at FS_NORMAL like everything else; it is
+   the plate under it that sets it apart, so only the two headings above the
+   body size are the game's FS_LARGE */
+.app-header h1 {
+  font-size: var(--skin-font-large);
 }
 
-:root[data-skin='pixel'] .app-header h1 {
-  font-size: 24px;
+h2 {
+  font-size: var(--skin-font-heading);
 }
 
-:root[data-skin='pixel'] h2 {
-  font-size: 18px;
+h3,
+.big {
+  font-size: var(--skin-font);
 }
 
-:root[data-skin='pixel'] h3,
-:root[data-skin='pixel'] .big {
-  font-size: 16px;
+/*
+ * FS_SMALL is what the game uses for labels on the map and on graphs, not for
+ * explanatory text — the description under a setting is drawn at FS_NORMAL,
+ * and so is a dimmed hint here. What separates it from the main text is its
+ * colour, the way it is in the game.
+ */
+h4,
+.app-header .subtitle {
+  font-size: var(--skin-font-small);
 }
 
-:root[data-skin='pixel'] h4,
-:root[data-skin='pixel'] .subtitle,
-:root[data-skin='pixel'] .dim,
-:root[data-skin='pixel'] .setting-hint {
-  font-size: 12px;
-}
-
-:root[data-skin='pixel'] .grf-error {
+.grf-error {
   font-family: 'OpenTTD Mono', ui-monospace, monospace;
 }
 
-/* the game keeps its rows tight */
-:root[data-skin='pixel'] th,
-:root[data-skin='pixel'] td {
-  padding: 2px 8px;
+/*
+ * One weight, the way the game has one. The font ships in a single face, so
+ * anything asking for bold gets a synthesised one — smeared glyphs on a font
+ * whose whole point is that its pixels line up. What the game emphasises, it
+ * emphasises by colour (TC_GOLD for a heading) or by size (FS_LARGE).
+ */
+b,
+strong,
+h1,
+h2,
+h3,
+h4,
+th {
+  font-weight: 400;
 }
+
+/*
+ * With one weight everywhere, emphasis has to be carried by colour. A <b> or a
+ * <strong> inside quiet text takes the window's own text colour, which is what
+ * sets it apart from the dimmed prose around it; the title of a warning takes
+ * the heading colour.
+ */
+b,
+strong {
+  color: var(--skin-value);
+}
+
+.warning strong {
+  color: var(--skin-heading);
+  text-shadow: var(--skin-text-shadow);
+}
+
+/* a figure that already carries a colour keeps it */
+.profit b,
+.profit strong,
+.loss b,
+.loss strong,
+.money-neg b,
+.money-neg strong,
+.cell-money b,
+.cell-money strong {
+  color: inherit;
+}
+
 
 }

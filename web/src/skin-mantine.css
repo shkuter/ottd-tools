@@ -2,10 +2,8 @@
  * The skin, applied to Mantine's components.
  *
  * Mantine ships its styles inside @layer mantine (see layers.css), so anything
- * here wins on layer order alone — no !important anywhere. The selectors still
- * carry the :root[data-skin] prefix because the rules further up in skin.css
- * target bare tags (button, input, select) and would otherwise be more specific
- * than a lone component class.
+ * here wins on layer order alone — no !important anywhere, and no prefix to
+ * out-specify a rule on a bare tag: nothing in the skin styles bare controls.
  *
  * Two shapes repeat, and they are the two the game draws (DrawFrameRect,
  * widget.cpp): RAISED has light edges top/left and dark ones bottom/right,
@@ -18,56 +16,140 @@
      BUTTONS — raised yellow plates, lowered while pressed
      ========================================================================== */
 
-  :root[data-skin] .mantine-Button-root,
-  :root[data-skin] .mantine-ActionIcon-root,
-  :root[data-skin] .mantine-NumberInput-control,
-  :root[data-skin] .mantine-Pagination-control {
+  .mantine-Button-root,
+  .mantine-ActionIcon-root,
+  .mantine-NumberInput-control,
+  .mantine-Pagination-control {
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
-    border-color: var(--skin-button-edge-hi) var(--skin-button-edge-lo) var(--skin-button-edge-lo)
-      var(--skin-button-edge-hi);
+    border-color: var(--skin-edges-button-raised);
     background: var(--skin-button);
     color: var(--skin-button-text);
   }
 
-  :root[data-skin] .mantine-Button-root:hover,
-  :root[data-skin] .mantine-ActionIcon-root:hover,
-  :root[data-skin] .mantine-NumberInput-control:hover,
-  :root[data-skin] .mantine-Pagination-control:hover {
+  .mantine-Button-root:hover,
+  .mantine-ActionIcon-root:hover,
+  .mantine-NumberInput-control:hover,
+  .mantine-Pagination-control:hover {
     background: var(--skin-button-hover);
   }
 
-  :root[data-skin] .mantine-Button-root:active,
-  :root[data-skin] .mantine-ActionIcon-root:active,
-  :root[data-skin] .mantine-Pagination-control[data-active] {
-    border-color: var(--skin-button-edge-lo) var(--skin-button-edge-hi) var(--skin-button-edge-hi)
-      var(--skin-button-edge-lo);
+  .mantine-Button-root:active,
+  .mantine-ActionIcon-root:active,
+  .mantine-Pagination-control[data-active] {
+    border-color: var(--skin-edges-button-lowered);
     background: var(--skin-button-active);
     color: var(--skin-button-text);
   }
 
   /* a subtle button is a link with a hit area, not a plate */
-  :root[data-skin] .mantine-Button-root[data-variant='subtle'],
-  :root[data-skin] .mantine-ActionIcon-root[data-variant='subtle'] {
+  .mantine-Button-root[data-variant='subtle'],
+  .mantine-ActionIcon-root[data-variant='subtle'] {
     border-color: transparent;
     background: transparent;
     color: var(--skin-link);
   }
 
-  :root[data-skin] .mantine-Button-root[data-variant='subtle']:hover,
-  :root[data-skin] .mantine-ActionIcon-root[data-variant='subtle']:hover {
+  .mantine-Button-root[data-variant='subtle']:hover,
+  .mantine-ActionIcon-root[data-variant='subtle']:hover {
     background: var(--skin-window-hover);
   }
 
-  /* the game greys a button out rather than dimming its plate */
-  :root[data-skin] .mantine-Button-root:disabled,
-  :root[data-skin] .mantine-Button-root[data-disabled],
-  :root[data-skin] .mantine-ActionIcon-root:disabled,
-  :root[data-skin] .mantine-ActionIcon-root[data-disabled] {
-    border-color: var(--skin-edge-hi) var(--skin-edge-lo) var(--skin-edge-lo) var(--skin-edge-hi);
-    background: var(--skin-window);
-    color: var(--skin-label);
+  /*
+   * An unavailable widget keeps its plate in the game and gets a checkerboard
+   * of its own darker shade laid over it (widget.cpp:2359), so it is told apart
+   * by pattern and not by brightness alone. Its lettering is TC_GREY with
+   * TC_NO_SHADE (dropdown_type.h:48) — the one colour that is dim on purpose,
+   * hence no shadow under it.
+   */
+  .mantine-Button-root:disabled,
+  .mantine-Button-root[data-disabled],
+  .mantine-ActionIcon-root:disabled,
+  .mantine-ActionIcon-root[data-disabled],
+  .mantine-Input-input:disabled,
+  .mantine-Input-input[data-disabled],
+  .mantine-Switch-input:disabled + .mantine-Switch-track,
+  .mantine-Checkbox-input:disabled,
+  .mantine-Radio-radio:disabled,
+  .mantine-Tabs-tab[data-disabled],
+  .mantine-NumberInput-control:disabled,
+  .mantine-datatable-pagination-active[disabled],
+  .mantine-Pagination-control[data-disabled] {
+    /* the gradient is spelled out here rather than kept in a token: a var()
+       inside a custom property is substituted where that property is declared,
+       so a ready-made pattern would carry whatever colour the declaring element
+       had — and the point is to take the colour of the widget being hatched */
+    background-image: repeating-conic-gradient(
+      var(--skin-hatch-colour) 0% 25%,
+      transparent 0% 50%
+    );
+    background-size: calc(2 * var(--skin-hatch-cell)) calc(2 * var(--skin-hatch-cell));
+    color: var(--skin-disabled);
+    text-shadow: none;
+    opacity: 1;
+  }
+
+  /* a tab is one of the game's buttons, so its hatch is the button's shade */
+  .mantine-Button-root:disabled,
+  .mantine-Button-root[data-disabled],
+  .mantine-ActionIcon-root:disabled,
+  .mantine-ActionIcon-root[data-disabled],
+  .mantine-Tabs-tab[data-disabled],
+  .mantine-NumberInput-control:disabled,
+  .mantine-datatable-pagination-active[disabled],
+  .mantine-Pagination-control[data-disabled],
+  .mantine-SegmentedControl-label[data-disabled] {
+    --skin-hatch-colour: var(--skin-button-hatch);
+    background-color: var(--skin-button);
+  }
+
+  .mantine-Input-input:disabled,
+  .mantine-Input-input[data-disabled],
+  .mantine-Switch-input:disabled + .mantine-Switch-track,
+  .mantine-Checkbox-input:disabled,
+  .mantine-Radio-radio:disabled {
+    --skin-hatch-colour: var(--skin-hatch);
+  }
+
+  /* Mantine dims a disabled label and description; the game does not */
+  .mantine-InputWrapper-label[data-disabled],
+  .mantine-Checkbox-label[data-disabled],
+  .mantine-Switch-label[data-disabled] {
+    color: var(--skin-disabled);
+    opacity: 1;
+  }
+
+  /* the library asks for 600 on a button and 700 on a heading; the game has
+     neither (see the single-weight rule in skin.css) */
+  .mantine-Button-label,
+  .mantine-InputWrapper-label,
+  .mantine-Fieldset-legend,
+  .mantine-Title-root,
+  .mantine-Table-th,
+  .mantine-SegmentedControl-label,
+  .mantine-Tabs-tab,
+  .mantine-Alert-title,
+  .mantine-Notification-title {
+    font-weight: 400;
+  }
+
+  /*
+   * Text drawn in TC_BLACK or in the dimmed colour goes without the shadow
+   * (gfx.cpp:481), and both are inherited from the theme carrier, so the widgets
+   * that hold such text have to switch it back off. Their own colour is fixed
+   * by the plate underneath — a button is black-on-yellow whatever the window
+   * is — which is why they can say this once here.
+   */
+  .mantine-Button-root,
+  .mantine-ActionIcon-root,
+  .mantine-Tabs-tab,
+  .mantine-SegmentedControl-label,
+  .mantine-Select-input,
+  .mantine-NativeSelect-input,
+  .mantine-Tooltip-tooltip,
+  .mantine-InputWrapper-description {
+    text-shadow: none;
   }
 
   /* ==========================================================================
@@ -75,19 +157,17 @@
      ========================================================================== */
 
   /*
-   * index.css still styles bare `input`/`select` tags, and that rule sits in
-   * the same @layer app — it would override the library's own padding and let
-   * the sections (cargo icon on the left, dropdown chevron or number stepper on
-   * the right) draw on top of the text. Restating the padding here, from
-   * Mantine's own variables, hands the reserved space back. The vertical one
-   * needs the fallback: Mantine only defines --input-padding-y for the unstyled
-   * variant, the field's height comes from --input-size.
+   * The padding is restated from Mantine's own variables so the sections keep
+   * the room they reserve — the cargo icon on the left, the chevron or the
+   * number stepper on the right — rather than having the value draw over them.
+   * The vertical one needs the fallback: Mantine defines --input-padding-y only
+   * for the unstyled variant, and otherwise the height comes from --input-size.
    */
-  :root[data-skin] .mantine-Input-input {
+  .mantine-Input-input {
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
-    border-color: var(--skin-edge-lo) var(--skin-edge-hi) var(--skin-edge-hi) var(--skin-edge-lo);
+    border-color: var(--skin-edges-lowered);
     background: var(--skin-field-bg);
     color: var(--skin-field-text);
     padding-block: var(--input-padding-y, 0);
@@ -96,61 +176,144 @@
   }
 
   /*
-   * Sections default to the field's height less 2px — 34px — which dwarfs both
-   * the 10px cargo icon on the left and the 18px chevron on the right, and eats
-   * room the value needs.
+   * Sections default to the field's height less 2px, which dwarfs both the cargo
+   * icon on the left and the chevron on the right and eats room the value needs.
+   * These two are sizes of the artwork they hold — a cargo icon is a 10px sprite
+   * that does not scale with the interface — rather than metrics of the game, so
+   * they are not derived from --skin-scale.
    */
-  :root[data-skin] .mantine-Input-wrapper {
+  .mantine-Input-wrapper {
     --input-left-section-width: 20px;
   }
 
-  :root[data-skin] .mantine-Select-wrapper {
+  .mantine-Select-wrapper {
     --input-right-section-width: 24px;
   }
 
-  :root[data-skin] .mantine-InputWrapper-label {
+  .mantine-InputWrapper-label {
     color: var(--skin-label);
+  }
+
+  /*
+   * A group of settings is the game's frame widget (DrawFrame, widget.cpp): a
+   * sunken hairline around the block with the heading sitting on it, and the
+   * window showing through — not a panel of its own colour. Mantine fills it
+   * with a shade of the `dark` palette, which is grey whatever the window is.
+   */
+  .mantine-Fieldset-root {
+    border-radius: var(--skin-radius);
+    border-style: solid;
+    border-width: var(--bevel);
+    border-color: var(--skin-edges-lowered);
+    background: transparent;
+    padding: var(--skin-pad-frametext);
   }
 
   /* a fieldset legend stands in for the section heading it replaced */
-  :root[data-skin] .mantine-Fieldset-legend {
+  .mantine-Fieldset-legend {
+    background: var(--skin-window);
     color: var(--skin-heading);
-    font-size: 16px;
+    font-size: var(--skin-font-heading);
+    text-shadow: var(--skin-text-shadow);
   }
 
-  :root[data-skin] .mantine-InputWrapper-description {
-    color: var(--skin-label);
+  .mantine-InputWrapper-description {
+    color: var(--skin-muted);
   }
 
   /*
    * A dropdown is a button in OpenTTD, not a sunken field: same yellow plate,
    * same raised edges. Only the text fields stay sunken.
    */
-  :root[data-skin] .mantine-Select-input,
-  :root[data-skin] .mantine-NativeSelect-input {
-    border-color: var(--skin-button-edge-hi) var(--skin-button-edge-lo) var(--skin-button-edge-lo)
-      var(--skin-button-edge-hi);
+  .mantine-Select-input,
+  .mantine-NativeSelect-input {
+    border-color: var(--skin-edges-button-raised);
     background: var(--skin-button);
     color: var(--skin-button-text);
   }
 
-  :root[data-skin] .mantine-Select-input:hover,
-  :root[data-skin] .mantine-NativeSelect-input:hover {
+  .mantine-Select-input:hover,
+  .mantine-NativeSelect-input:hover {
     background: var(--skin-button-hover);
   }
 
-  :root[data-skin] .mantine-Input-section {
+  /* a hint inside a field is TC_GREY, the colour the game keeps for text that
+     is there but not a value */
+  .mantine-Input-input::placeholder {
+    color: var(--skin-disabled);
+  }
+
+  /* a dropdown with nothing chosen yet still sits on the yellow plate, so its
+     placeholder is the plate's lettering rather than the window's quiet grey */
+  .mantine-Select-input::placeholder {
+    color: var(--skin-button-text);
+  }
+
+  .mantine-Input-section {
     color: var(--skin-field-text);
   }
 
   /* the arrow belongs to the plate it sits on */
-  :root[data-skin] .mantine-Select-section,
-  :root[data-skin] .mantine-NativeSelect-section {
+  .mantine-Select-section,
+  .mantine-NativeSelect-section {
     color: var(--skin-button-text);
   }
 
-  :root[data-skin] .mantine-NumberInput-controls {
+  .mantine-NumberInput-controls {
     border: none;
+  }
+
+  /*
+   * A row of choices is a row of the game's buttons, the chosen one pressed in
+   * — there is no sliding indicator in OpenTTD, so Mantine's is hidden and the
+   * state is drawn on the buttons themselves.
+   */
+  .mantine-SegmentedControl-root {
+    background: transparent;
+    gap: var(--bevel);
+    padding: 0;
+  }
+
+  .mantine-SegmentedControl-indicator {
+    display: none;
+  }
+
+  .mantine-SegmentedControl-control {
+    border: none;
+  }
+
+  .mantine-SegmentedControl-label {
+    border-radius: var(--skin-radius);
+    border-style: solid;
+    border-width: var(--bevel);
+    border-color: var(--skin-edges-button-raised);
+    background: var(--skin-button);
+    color: var(--skin-button-text);
+    padding: var(--skin-pad-frame);
+  }
+
+  .mantine-SegmentedControl-label[data-active] {
+    border-color: var(--skin-edges-button-lowered);
+    background: var(--skin-button-active);
+    color: var(--skin-button-text);
+  }
+
+
+
+  /*
+   * The native controls Mantine stacks under its own artwork. No stylesheet
+   * gives them a colour, so Chrome's own does — and with color-scheme: dark
+   * that is pure white, which the game's palette does not have (TC_WHITE is
+   * #fcfcfc). They paint nothing, being transparent or drawn over, but the
+   * colour is theirs all the same, so it comes from the palette like the rest.
+   */
+  .mantine-Switch-input,
+  .mantine-Checkbox-input,
+  .mantine-Radio-radio,
+  .mantine-SegmentedControl-input,
+  input[type='file'],
+  input[type='hidden'] {
+    color: var(--skin-text);
   }
 
   /* ==========================================================================
@@ -166,31 +329,31 @@
    * Mantine derives the thumb's travel from --switch-thumb-size, so the width
    * belongs there rather than on the thumb.
    */
-  :root[data-skin] .mantine-Switch-track {
-    --switch-height: 20px;
-    --switch-width: 38px;
-    /* SETTING_BUTTON_WIDTH / 3, rounded to a whole pixel */
-    --switch-thumb-size: 13px;
+  .mantine-Switch-track {
+    /* SETTING_BUTTON_HEIGHT is one scrollbar button, the width two of them
+       (settings_gui.h:17), and the raised button is a third of that width */
+    --switch-height: round(calc(12px * var(--skin-scale)), 1px);
+    --switch-width: round(calc(24px * var(--skin-scale)), 1px);
+    --switch-thumb-size: round(calc(8px * var(--skin-scale)), 1px);
     --switch-track-label-padding: calc(-1 * var(--bevel));
     /* the button reaches over the bevel, which Mantine's overflow would clip */
     overflow: visible;
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
-    border-color: var(--skin-edge-lo) var(--skin-edge-hi) var(--skin-edge-hi) var(--skin-edge-lo);
-    background: var(--skin-switch-track);
+    border-color: var(--skin-edges-lowered);
+    background-color: var(--skin-switch-track);
   }
 
-  :root[data-skin] .mantine-Switch-input:checked + .mantine-Switch-track {
-    background: var(--skin-switch-on);
+  .mantine-Switch-input:checked + .mantine-Switch-track {
+    background-color: var(--skin-switch-on);
   }
 
-  :root[data-skin] .mantine-Switch-thumb {
+  .mantine-Switch-thumb {
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
-    border-color: var(--skin-button-edge-hi) var(--skin-button-edge-lo) var(--skin-button-edge-lo)
-      var(--skin-button-edge-hi);
+    border-color: var(--skin-edges-button-raised);
     background: var(--skin-switch-off);
     /* the button covers the track's bevel on every side rather than sitting
        inside it, which is what makes it read as tall as the whole track */
@@ -200,25 +363,25 @@
   }
 
   /* the game's button is a plain plate — no dot in the middle of it */
-  :root[data-skin] .mantine-Switch-thumb::before {
+  .mantine-Switch-thumb::before {
     content: none;
   }
 
-  :root[data-skin] input.mantine-Checkbox-input,
-  :root[data-skin] .mantine-Radio-radio {
+  input.mantine-Checkbox-input,
+  .mantine-Radio-radio {
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
-    border-color: var(--skin-edge-lo) var(--skin-edge-hi) var(--skin-edge-hi) var(--skin-edge-lo);
+    border-color: var(--skin-edges-lowered);
     background: var(--skin-field-bg);
   }
 
-  :root[data-skin] input.mantine-Checkbox-input:checked {
+  input.mantine-Checkbox-input:checked {
     background: var(--skin-field-bg);
   }
 
   /* the tick has to read on the grey plate, so it is the darker green */
-  :root[data-skin] .mantine-Checkbox-icon {
+  .mantine-Checkbox-icon {
     color: var(--skin-profit);
   }
 
@@ -226,57 +389,107 @@
      SURFACES — panels, tables, dropdowns and toasts are all raised windows
      ========================================================================== */
 
-  :root[data-skin] .mantine-Paper-root,
-  :root[data-skin] .mantine-Popover-dropdown,
-  :root[data-skin] .mantine-Menu-dropdown,
-  :root[data-skin] .mantine-Combobox-dropdown,
-  :root[data-skin] .mantine-Notification-root,
-  :root[data-skin] .mantine-Alert-root {
+  .mantine-Paper-root,
+  .mantine-Popover-dropdown,
+  .mantine-Menu-dropdown,
+  .mantine-Combobox-dropdown,
+  .mantine-Notification-root,
+  .mantine-Alert-root {
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
-    border-color: var(--skin-edge-hi) var(--skin-edge-lo) var(--skin-edge-lo) var(--skin-edge-hi);
+    border-color: var(--skin-edges-raised);
     background: var(--skin-window);
     color: var(--skin-text);
     box-shadow: none;
   }
 
-  :root[data-skin] .mantine-Alert-title,
-  :root[data-skin] .mantine-Notification-title {
+  .mantine-Alert-title,
+  .mantine-Notification-title {
     color: var(--skin-heading);
   }
 
-  :root[data-skin] .mantine-Alert-message,
-  :root[data-skin] .mantine-Notification-description {
+  .mantine-Alert-message,
+  .mantine-Notification-description {
     color: var(--skin-text);
   }
 
-  /* an option list is the game's list: flat rows, the current one highlighted */
-  :root[data-skin] .mantine-Combobox-option,
-  :root[data-skin] .mantine-Menu-item {
+  /*
+   * An option list is the game's list: flat rows, the row under the cursor
+   * lit — and the selected one on a black plate with white lettering
+   * (dropdown.cpp:287, dropdown_type.h:49), which is what tells it apart from
+   * the row the cursor happens to be over.
+   */
+  /*
+   * An option is addressed by the attribute rather than by a class: the class
+   * carries the name of the component that opened the list
+   * (mantine-Select-option, mantine-MultiSelect-option and so on), while
+   * data-combobox-option is on every one of them.
+   */
+  [data-combobox-option],
+  .mantine-Menu-item {
     border-radius: var(--skin-radius);
     color: var(--skin-list-text);
+    padding: var(--skin-pad-dropdown);
   }
 
-  :root[data-skin] .mantine-Combobox-option[data-combobox-selected],
-  :root[data-skin] .mantine-Combobox-option:hover,
-  :root[data-skin] .mantine-Menu-item:hover {
+  [data-combobox-option]:hover,
+  .mantine-Menu-item:hover {
     background: var(--skin-list-hover);
   }
 
-  :root[data-skin] .mantine-Table-table {
+  /* the chosen option carries data-checked (and data-combobox-active, which
+     Mantine derives from it); data-combobox-selected is the keyboard cursor and
+     is not what the game's black plate follows */
+  [data-combobox-option][data-checked],
+  [data-combobox-option][data-checked]:hover {
+    background: var(--skin-list-selected-bg);
+    color: var(--skin-list-selected-text);
+    text-shadow: var(--skin-text-shadow);
+  }
+
+  /* the plate is what marks the choice in the game, so the library's tick in
+     front of it is one mark too many — and it indents that row past the others */
+  [data-combobox-option] > svg {
+    display: none;
+  }
+
+  .mantine-Table-table {
     background: var(--skin-list-bg);
     color: var(--skin-list-text);
   }
 
-  :root[data-skin] .mantine-Table-thead .mantine-Table-th {
+  .mantine-Table-th,
+  .mantine-Table-td {
+    padding: var(--skin-pad-row);
+  }
+
+  .mantine-Table-thead .mantine-Table-th {
     background: var(--skin-list-head-bg);
     color: var(--skin-list-head-text);
     border-bottom: var(--bevel) solid var(--skin-edge-lo);
   }
 
-  :root[data-skin] .mantine-Table-tbody .mantine-Table-tr:hover {
+  .mantine-Table-tbody .mantine-Table-tr:hover {
     background: var(--skin-list-hover);
+  }
+
+  /* ==========================================================================
+     CHARTS
+     Recharts draws the chart, and its defaults are its own: a #ccc grid and the
+     SVG default black on every group it nests. Neither is a colour of the game,
+     so both are pointed at the palette — the groups paint nothing themselves,
+     but they hand their fill down to anything that does not set one.
+     ========================================================================== */
+
+  .mantine-LineChart-grid,
+  .mantine-AreaChart-grid,
+  .mantine-BarChart-grid {
+    stroke: var(--skin-edge-lo);
+  }
+
+  .mantine-Chart-root svg {
+    fill: var(--skin-text);
   }
 
   /* ==========================================================================
@@ -284,61 +497,61 @@
      ========================================================================== */
 
   /* the game's tabs are the same plates as its buttons; the current one is sunk */
-  :root[data-skin] .mantine-Tabs-list {
+  .mantine-Tabs-list {
     border: none;
-    gap: 2px;
+    /* hsep_normal, the game's gap between neighbouring widgets */
+    gap: round(calc(2px * var(--skin-scale)), 1px);
   }
 
-  :root[data-skin] .mantine-Tabs-tab {
+  .mantine-Tabs-tab {
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
-    border-color: var(--skin-button-edge-hi) var(--skin-button-edge-lo) var(--skin-button-edge-lo)
-      var(--skin-button-edge-hi);
+    border-color: var(--skin-edges-button-raised);
     background: var(--skin-button);
     color: var(--skin-button-text);
   }
 
-  :root[data-skin] .mantine-Tabs-tab:hover {
+  .mantine-Tabs-tab:hover {
     background: var(--skin-button-hover);
   }
 
-  :root[data-skin] .mantine-Tabs-tab[data-active] {
-    border-color: var(--skin-button-edge-lo) var(--skin-button-edge-hi) var(--skin-button-edge-hi)
-      var(--skin-button-edge-lo);
+  .mantine-Tabs-tab[data-active] {
+    border-color: var(--skin-edges-button-lowered);
     background: var(--skin-button-active);
   }
 
-  :root[data-skin] .mantine-Badge-root {
+  .mantine-Badge-root {
     border-radius: var(--skin-radius);
   }
 
-  /* OpenTTD's own tooltips are a pale plate with a hairline border */
-  :root[data-skin] .mantine-Tooltip-tooltip {
+  /* a tooltip of the game is a pale yellow plate inside a black frame, the
+     frame one bevel thick (misc_gui.cpp:657) */
+  .mantine-Tooltip-tooltip {
     border-radius: var(--skin-radius);
-    border: 1px solid var(--skin-edge-lo);
-    background: var(--ottd-cream-lighterest);
-    color: #000;
+    border: var(--bevel) solid var(--skin-tooltip-border);
+    background: var(--skin-tooltip-bg);
+    color: var(--skin-tooltip-text);
+    padding: var(--skin-pad-frame);
   }
 
-  :root[data-skin] .mantine-Divider-root {
+  .mantine-Divider-root {
     border-color: var(--skin-edge-lo);
   }
 
   /* the current page's tab is pressed in, the way the game marks a selection */
-  :root[data-skin] .mantine-Button-root[aria-current='page'] {
-    border-color: var(--skin-button-edge-lo) var(--skin-button-edge-hi) var(--skin-button-edge-hi)
-      var(--skin-button-edge-lo);
+  .mantine-Button-root[aria-current='page'] {
+    border-color: var(--skin-edges-button-lowered);
     background: var(--skin-button-active);
   }
 
   /* Mantine's own scroll area draws a rounded thumb; square it like the rest */
-  :root[data-skin] .mantine-ScrollArea-thumb {
+  .mantine-ScrollArea-thumb {
     border-radius: var(--skin-radius);
     background: var(--skin-window);
   }
 
-  :root[data-skin] .mantine-ScrollArea-scrollbar {
+  .mantine-ScrollArea-scrollbar {
     background: var(--skin-window-sunken);
   }
 }
