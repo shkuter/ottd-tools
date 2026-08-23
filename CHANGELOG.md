@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-23
+
 ### Added
 
 - The tab icon is the OpenTTD logo with the dollar sign traded for a steam locomotive and a
