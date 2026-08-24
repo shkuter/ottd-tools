@@ -5,6 +5,7 @@ import {
   Group,
   NumberInput,
   Paper,
+  Pagination,
   Select,
   Stack,
   Table,
@@ -13,7 +14,10 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { DataTable, type DataTableSortStatus } from 'mantine-datatable';
+import { SortableTh } from '../../components/table/SortableTh';
+import { TableFrame } from '../../components/table/TableFrame';
+import { sortRows, type SortState } from '../../components/table/sorting';
+import { catalogueSortValues, DEFAULT_SORT, type CatalogueColumn } from './sorting';
 import {
   activeCargoByLabel,
   activeCargos,
@@ -21,7 +25,6 @@ import {
   activeTrainsMeta,
   canCarryIn,
 } from '../../dataset';
-import type { Train } from '../../types';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { money, num, speed } from '../../components/format';
@@ -50,10 +53,13 @@ export default function ConsistPage() {
   const [year, setYear] = useState(1950);
   const [track, setTrack] = useState<'all' | 'RAIL' | 'NG' | 'METRO'>('RAIL');
   const [cargoFilter, setCargoFilter] = useState('');
-  const [sortStatus, setSortStatus] = useState<DataTableSortStatus<Train>>({
-    columnAccessor: 'intro_year',
-    direction: 'asc',
-  });
+  /**
+   * The catalogue's default order is itself a sorted column, so `null` is never held: a third
+   * click comes back to DEFAULT_SORT instead. Otherwise the list would be sorted with no header
+   * marked, and the first click on "Year" would change nothing but the caret.
+   */
+  const [sort, setSort] = useState<SortState<CatalogueColumn>>(DEFAULT_SORT);
+  const setSortOrDefault = (next: SortState<CatalogueColumn>) => setSort(next ?? DEFAULT_SORT);
   const [page, setPage] = useState(1);
 
   const locale = useLocale();
@@ -97,38 +103,12 @@ export default function ConsistPage() {
     });
   }, [catalogue, kindFilter, search, year, track, cargoFilter, game]);
 
-  /**
-   * DataTable reports which column to sort by and leaves the sorting to us, so
-   * every sortable column needs the value it sorts on — including the ones that
-   * are computed rather than stored (price, running cost, capacity).
-   */
-  const sortValue: Record<string, (train: Train) => number | string> = useMemo(
-    () => ({
-      name: (train) => train.name,
-      intro_year: (train) => train.intro_year,
-      power_hp: (train) => train.power_hp ?? 0,
-      speed: (train) => train.speed_mph ?? 0,
-      weight_t: (train) => train.weight_t,
-      capacity: (train) => train.capacities[calc.capacityIndex] ?? 0,
-      cost: (train) => trainBuyCost(train, activeTrainsMeta(game), game, calc),
-      running: (train) => trainRunningCostPerYear(train, activeTrainsMeta(game), game, calc),
-    }),
-    [game, calc],
-  );
+  const sortValue = useMemo(() => catalogueSortValues(game, calc), [game, calc]);
 
   const sorted = useMemo(() => {
-    const value = sortValue[sortStatus.columnAccessor as string];
-    if (!value) return filtered;
     const collator = new Intl.Collator(intlLocale(locale), { numeric: true });
-    const rows = [...filtered].sort((a, b) => {
-      const left = value(a);
-      const right = value(b);
-      return typeof left === 'string' && typeof right === 'string'
-        ? collator.compare(left, right)
-        : Number(left) - Number(right);
-    });
-    return sortStatus.direction === 'desc' ? rows.reverse() : rows;
-  }, [filtered, sortStatus, sortValue, locale]);
+    return sortRows(filtered, sort, sortValue, collator);
+  }, [filtered, sort, sortValue, locale]);
 
   // a narrower filter can leave the current page beyond the end of the results
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -194,76 +174,62 @@ export default function ConsistPage() {
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
         </Group>
-        <div className="table-wrap">
-          <DataTable
-            idAccessor="id"
-            records={records}
-            sortStatus={sortStatus}
-            onSortStatusChange={setSortStatus}
-            totalRecords={sorted.length}
-            recordsPerPage={PAGE_SIZE}
-            page={currentPage}
-            onPageChange={setPage}
-            pinFirstColumn
-            pinLastColumn
-            noRecordsText={t('table.noRecords')}
-            paginationText={({ from, to, totalRecords }) =>
-              `${from}–${to} ${t('table.of')} ${totalRecords}`
-            }
-            columns={[
-              {
-                accessor: 'image',
-                title: '',
-                render: (train) => <TrainImage trainId={train.id} />,
-              },
-              { accessor: 'name', title: t('table.name'), sortable: true },
-              { accessor: 'intro_year', title: t('table.year'), sortable: true },
-              {
-                accessor: 'power_hp',
-                title: t('table.power'),
-                sortable: true,
-                render: (train) => (train.power_hp ? `${num(train.power_hp)} ${t('units.hp')}` : '—'),
-              },
-              {
-                accessor: 'speed',
-                title: t('table.speed'),
-                sortable: true,
-                render: (train) => (train.speed_internal ? speed(train.speed_internal) : '—'),
-              },
-              {
-                accessor: 'weight_t',
-                title: t('table.weight'),
-                sortable: true,
-                render: (train) => `${num(train.weight_t)} ${t('units.t')}`,
-              },
-              {
-                accessor: 'capacity',
-                title: t('table.capacity'),
-                sortable: true,
-                render: (train) => {
-                  const capacity = train.capacities[calc.capacityIndex] ?? 0;
-                  return capacity ? num(capacity) : '—';
-                },
-              },
-              {
-                accessor: 'cost',
-                title: t('table.cost'),
-                sortable: true,
-                textAlign: 'right',
-                render: (train) => money(trainBuyCost(train, activeTrainsMeta(game), game, calc)),
-              },
-              {
-                accessor: 'running',
-                title: t('table.running'),
-                sortable: true,
-                textAlign: 'right',
-                render: (train) =>
-                  money(trainRunningCostPerYear(train, activeTrainsMeta(game), game, calc)),
-              },
-              {
-                accessor: 'add',
-                title: '',
-                render: (train) => (
+        <TableFrame pinEdges rowCount={records.length} emptyMessage={t('table.noRecords')}>
+          <Table.Thead>
+            <Table.Tr>
+              <SortableTh column="name" sort={sort} onSort={setSortOrDefault}>
+                {t('table.name')}
+              </SortableTh>
+              <SortableTh column="intro_year" sort={sort} onSort={setSortOrDefault}>
+                {t('table.year')}
+              </SortableTh>
+              <SortableTh column="power_hp" sort={sort} onSort={setSortOrDefault}>
+                {t('table.power')}
+              </SortableTh>
+              <SortableTh column="speed" sort={sort} onSort={setSortOrDefault}>
+                {t('table.speed')}
+              </SortableTh>
+              <SortableTh column="weight_t" sort={sort} onSort={setSortOrDefault}>
+                {t('table.weight')}
+              </SortableTh>
+              <SortableTh column="capacity" sort={sort} onSort={setSortOrDefault}>
+                {t('table.capacity')}
+              </SortableTh>
+              <SortableTh column="cost" sort={sort} onSort={setSortOrDefault} className="cell-money">
+                {t('table.cost')}
+              </SortableTh>
+              <SortableTh column="running" sort={sort} onSort={setSortOrDefault} className="cell-money">
+                {t('table.running')}
+              </SortableTh>
+              <Table.Th></Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {records.map((train) => (
+              <Table.Tr key={train.id}>
+                {/* one cell, the way a line of the game's purchase list is: the sprite and the
+                    name identify the row together, and the pinned first column keeps both */}
+                <Table.Td className="cell-vehicle">
+                  <TrainImage trainId={train.id} /> {train.name}
+                </Table.Td>
+                <Table.Td>{train.intro_year}</Table.Td>
+                <Table.Td>
+                  {train.power_hp ? `${num(train.power_hp)} ${t('units.hp')}` : '—'}
+                </Table.Td>
+                <Table.Td>{train.speed_internal ? speed(train.speed_internal) : '—'}</Table.Td>
+                <Table.Td>{num(train.weight_t)} {t('units.t')}</Table.Td>
+                <Table.Td>
+                  {train.capacities[calc.capacityIndex]
+                    ? num(train.capacities[calc.capacityIndex])
+                    : '—'}
+                </Table.Td>
+                <Table.Td className="cell-money">
+                  {money(trainBuyCost(train, activeTrainsMeta(game), game, calc))}
+                </Table.Td>
+                <Table.Td className="cell-money">
+                  {money(trainRunningCostPerYear(train, activeTrainsMeta(game), game, calc))}
+                </Table.Td>
+                <Table.Td>
                   <ActionIcon
                     className="btn-add"
                     aria-label={t('consist.add')}
@@ -271,11 +237,23 @@ export default function ConsistPage() {
                   >
                     +
                   </ActionIcon>
-                ),
-              },
-            ]}
-          />
-        </div>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </TableFrame>
+        {sorted.length > 0 && (
+          <Group className="table-more" gap="xs" align="center">
+            <Pagination total={pageCount} value={currentPage} onChange={setPage} />
+            <Text className="hint">
+              {t('table.range', {
+                from: num((currentPage - 1) * PAGE_SIZE + 1),
+                to: num((currentPage - 1) * PAGE_SIZE + records.length),
+                total: num(sorted.length),
+              })}
+            </Text>
+          </Group>
+        )}
       </section>
 
       <Paper component="aside" className="consist-side" p="sm">

@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { Button, Group, NumberInput, Paper, Select, Switch, Table, Text, Title } from '@mantine/core';
+import { TableFrame } from '../../components/table/TableFrame';
 import { useDebouncedValue } from '@mantine/hooks';
 import { activeIndustries, industriesMeta, industrySupplyInputs } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
@@ -157,7 +158,7 @@ export default function IndustrySupplyPage() {
             </Button>
           </Group>
 
-          <Table className="supply-inputs">
+          <TableFrame rowCount={runs.length} emptyMessage={t('supply.noInputs')}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>{t('route.cargo')}</Table.Th>
@@ -237,7 +238,7 @@ export default function IndustrySupplyPage() {
                 );
               })}
             </Table.Tbody>
-          </Table>
+          </TableFrame>
 
           <Paper component="section" className="supply-summary" p="sm">
             {summaryLines({ summary, maxTrains: store.maxTrains, windowDays }).map((line) =>

@@ -427,9 +427,41 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root),
 
 /* ==========================================================================
    LISTS
+   The frame, the caret and the empty-state line are our own markup — a div, a
+   span and a p from TableFrame and SortableTh — and nothing in the table's own
+   cascade argues with them, so they are shaped here. Two kinds of rule live in
+   skin-mantine.css instead: those naming a component class (.mantine-Table-*),
+   pinned columns and the sortable header among them, and the cell modifiers
+   (.cell-money, .cell-sprite), which override the row rule and therefore have
+   to stand after it in the same file.
    ========================================================================== */
 
-/* lists are Mantine tables — coloured in skin-mantine.css */
+/*
+ * The frame a list stands in: it scrolls sideways when the table is wider than the column
+ * it sits in, and that is the only scrolling of its own it does — the page keeps the single
+ * vertical scrollbar, so there is no header held at the top of the screen either. The border
+ * and the background come from the raised-frame rule above.
+ */
+.table-wrap {
+  overflow-x: auto;
+}
+
+.sort-mark {
+  font-size: var(--skin-font-small);
+}
+
+/* the catalogue names a vehicle beside its sprite in one cell, and Mantine's Image is a block,
+   which would stack the two */
+.cell-vehicle .train-sprite {
+  display: inline-block;
+}
+
+/* Nothing to list: the frame says why instead of standing empty. */
+.table-empty {
+  margin: 0;
+  padding: var(--skin-pad-row);
+  color: var(--skin-muted);
+}
 
 /* ==========================================================================
    ODDS AND ENDS

@@ -42,7 +42,10 @@ import { waitTimeThresholdDays, type StationRating } from '../../engine/rating';
 import { effectiveDayLength } from '../../engine/settings';
 import { introRandomisationActive, type IntroAvailability } from '../../engine/availability';
 import { doubtfulGroups } from './doubtful';
-import { nextSort, sortRows, type SortColumn, type SortState } from './sorting';
+import { SORT_VALUES, type OptimizerSort } from './sorting';
+import { sortRows } from '../../components/table/sorting';
+import { SortableTh } from '../../components/table/SortableTh';
+import { TableFrame } from '../../components/table/TableFrame';
 import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
 import { CargoIcon } from '../../components/CargoIcon';
@@ -119,43 +122,6 @@ function IntroNote({ intro }: { intro: IntroAvailability }) {
     <sup className="intro-warn" title={introTitle(intro)}>
       ?
     </sup>
-  );
-}
-
-/**
- * Header that sorts the rows it heads. Three states in a cycle: ascending, descending, and
- * back to the order the search returned — the goal decided that order, and a user who sorted
- * by hand must be able to get it back without re-running anything.
- */
-function SortableTh({
-  column,
-  sort,
-  onSort,
-  title,
-  colSpan,
-  className,
-  children,
-}: {
-  column: SortColumn;
-  sort: SortState;
-  onSort: (next: SortState) => void;
-  title?: string;
-  colSpan?: number;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const active = sort?.column === column;
-  const next = nextSort(sort, column);
-  return (
-    <Table.Th
-      className={`sortable${active ? ' sorted' : ''}${className ? ` ${className}` : ''}`}
-      title={title}
-      colSpan={colSpan}
-      onClick={() => onSort(next)}
-    >
-      {children}
-      <span className="sort-mark">{active ? (sort.descending ? ' ▾' : ' ▴') : ''}</span>
-    </Table.Th>
   );
 }
 
@@ -253,7 +219,7 @@ export default function OptimizerPage() {
     setDestinationId, toggleExcluded, clearExcluded,
   } = useOptimizerStore();
   const [engineFilter, setEngineFilter] = useState('');
-  const [sort, setSort] = useState<SortState>(null);
+  const [sort, setSort] = useState<OptimizerSort>(null);
   const [subsidised, setSubsidised] = useState(false);
   const { game, calc } = useSettingsStore();
   const locale = useLocale();
@@ -358,7 +324,7 @@ export default function OptimizerPage() {
   useEffect(() => setVisibleCount(PAGE_SIZE), [matching]);
   // Sorting is a view over the rows the search returned, not a second ranking: it reorders
   // what is on screen and leaves the set and the numbers alone.
-  const ordered = useMemo(() => sortRows(matching, sort, collator), [matching, sort, collator]);
+  const ordered = useMemo(() => sortRows(matching, sort, SORT_VALUES, collator), [matching, sort, collator]);
 
   const shown = ordered.slice(0, visibleCount);
   const hiddenCount = ordered.length - shown.length;
@@ -516,134 +482,132 @@ export default function OptimizerPage() {
           </Group>
         </>
       )}
-      <div className="table-wrap">
-        <Table>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>#</Table.Th>
-              <SortableTh column="engine" sort={sort} onSort={setSort} colSpan={2}>
-                {t('opt.engine')}
+      <TableFrame pinEdges rowCount={shown.length} emptyMessage={t('opt.noResults')}>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>#</Table.Th>
+            <SortableTh column="engine" sort={sort} onSort={setSort} colSpan={2}>
+              {t('opt.engine')}
+            </SortableTh>
+            <SortableTh column="wagon" sort={sort} onSort={setSort} colSpan={2}>
+              {t('opt.wagons')}
+            </SortableTh>
+            <SortableTh column="cargoTrip" sort={sort} onSort={setSort} title={t('opt.cargoTripHint')}>
+              {t('opt.cargoTrip')}
+            </SortableTh>
+            <SortableTh column="speed" sort={sort} onSort={setSort}>
+              {t('opt.speedLoadedEmpty')}
+            </SortableTh>
+            <SortableTh column="gradeSpeed" sort={sort} onSort={setSort}>
+              {t('opt.gradeSpeed')}
+            </SortableTh>
+            <SortableTh column="dwell" sort={sort} onSort={setSort}>{t('opt.dwell')}</SortableTh>
+            <SortableTh column="roundTrip" sort={sort} onSort={setSort}>
+              {t('combined.roundTrip')}
+            </SortableTh>
+            <SortableTh column="trips" sort={sort} onSort={setSort}>{t('opt.trips')}</SortableTh>
+            <SortableTh column="fleet" sort={sort} onSort={setSort} title={t('opt.fleetHint')}>
+              {t('opt.fleet')}
+            </SortableTh>
+            <SortableTh column="interval" sort={sort} onSort={setSort} title={intervalHint}>
+              {t('opt.interval')}
+            </SortableTh>
+            <SortableTh column="rating" sort={sort} onSort={setSort} title={t('opt.ratingHint')}>
+              {t('opt.rating')}
+            </SortableTh>
+            {supplyTarget && (
+              <SortableTh
+                column="supply"
+                sort={sort}
+                onSort={setSort}
+                title={
+                  supplyTarget.industry.supply_pool
+                    ? t('opt.supplyHintColumnPool')
+                    : t('opt.supplyHintColumn')
+                }
+              >
+                {t('opt.supply')}
               </SortableTh>
-              <SortableTh column="wagon" sort={sort} onSort={setSort} colSpan={2}>
-                {t('opt.wagons')}
-              </SortableTh>
-              <SortableTh column="cargoTrip" sort={sort} onSort={setSort} title={t('opt.cargoTripHint')}>
-                {t('opt.cargoTrip')}
-              </SortableTh>
-              <SortableTh column="speed" sort={sort} onSort={setSort}>
-                {t('opt.speedLoadedEmpty')}
-              </SortableTh>
-              <SortableTh column="gradeSpeed" sort={sort} onSort={setSort}>
-                {t('opt.gradeSpeed')}
-              </SortableTh>
-              <SortableTh column="dwell" sort={sort} onSort={setSort}>{t('opt.dwell')}</SortableTh>
-              <SortableTh column="roundTrip" sort={sort} onSort={setSort}>
-                {t('combined.roundTrip')}
-              </SortableTh>
-              <SortableTh column="trips" sort={sort} onSort={setSort}>{t('opt.trips')}</SortableTh>
-              <SortableTh column="fleet" sort={sort} onSort={setSort} title={t('opt.fleetHint')}>
-                {t('opt.fleet')}
-              </SortableTh>
-              <SortableTh column="interval" sort={sort} onSort={setSort} title={intervalHint}>
-                {t('opt.interval')}
-              </SortableTh>
-              <SortableTh column="rating" sort={sort} onSort={setSort} title={t('opt.ratingHint')}>
-                {t('opt.rating')}
-              </SortableTh>
-              {supplyTarget && (
-                <SortableTh
-                  column="supply"
-                  sort={sort}
-                  onSort={setSort}
-                  title={
-                    supplyTarget.industry.supply_pool
-                      ? t('opt.supplyHintColumnPool')
-                      : t('opt.supplyHintColumn')
-                  }
-                >
-                  {t('opt.supply')}
-                </SortableTh>
-              )}
-              {activeGoal === 'transported' && (
-                <SortableTh column="hauled" sort={sort} onSort={setSort}>{t('opt.hauled')}</SortableTh>
-              )}
-              <SortableTh column="incomeTrip" sort={sort} onSort={setSort} className="cell-money">
-                {t('opt.incomeTrip')}
-              </SortableTh>
-              <SortableTh column="running" sort={sort} onSort={setSort} className="cell-money">
-                {t('table.running')}
-              </SortableTh>
-              <SortableTh column="cost" sort={sort} onSort={setSort} className="cell-money">
-                {t('table.cost')}
-              </SortableTh>
-              <SortableTh column="profit" sort={sort} onSort={setSort} className="cell-money">
-                {t('opt.profitYear')}
-              </SortableTh>
-              <SortableTh column="payback" sort={sort} onSort={setSort}>{t('opt.payback')}</SortableTh>
-              <Table.Th></Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {shown.map((r, i) => (
-              <Table.Tr key={`${r.engine.id}-${r.engineCount}-${r.wagon.id}`}>
-                <Table.Td>{i + 1}</Table.Td>
-                <Table.Td><TrainImage trainId={r.engine.id} /></Table.Td>
-                <Table.Td>
-                  {engineLabel(r)}
-                  <IntroNote intro={r.engineIntro} />
-                  <span className="dim"> ({r.engine.power_hp * r.engineCount} {t('units.hp')})</span>
-                </Table.Td>
-                <Table.Td><TrainImage trainId={r.wagon.id} /></Table.Td>
-                <Table.Td>{wagonLabel(r)}<IntroNote intro={r.wagonIntro} /></Table.Td>
-                <Table.Td>
-                  {num(r.cargoPerTrip)} {cargoUnits(cargo?.units)}
-                  {r.cargoPerTrip < r.capacity - 0.5 && (
-                    <span className="dim"> / {num(r.capacity)}</span>
-                  )}
-                  <LoadingBranchMark row={r} />
-                </Table.Td>
-                <Table.Td>
-                  {speedValue(r.loadedSpeedInternal)} / {speedValue(r.emptySpeedInternal)}{' '}
-                  {speedUnitLabel()}
-                </Table.Td>
-                <Table.Td>{speed(r.gradeSpeedInternal)}</Table.Td>
-                <Table.Td>{num(r.loadingDays, 1)} {t('combined.days')}</Table.Td>
-                <Table.Td>{num(r.roundTripDays, 1)} {t('combined.days')}</Table.Td>
-                <Table.Td>{num(r.tripsPerYear, 1)}</Table.Td>
-                <Table.Td>
-                  {r.fleetSize}
-                  {r.fleetLimited && (
-                    <sup className="intro-warn" title={t('opt.fleetLimited')}>!</sup>
-                  )}
-                </Table.Td>
-                <Table.Td>{num(r.pickupIntervalDays, 1)} {t('combined.days')}</Table.Td>
-                <Table.Td title={r.stationRating ? ratingBreakdown(r.stationRating) : undefined}>
-                  {r.stationRating ? percent(r.stationRating.deliveredShare) : '—'}
-                </Table.Td>
-                {supplyTarget && <SupplyCell row={r} target={supplyTarget} />}
-                {activeGoal === 'transported' && (
-                  <Table.Td>{num(r.hauledPerYear)} {cargoUnits(cargo?.units)}</Table.Td>
+            )}
+            {activeGoal === 'transported' && (
+              <SortableTh column="hauled" sort={sort} onSort={setSort}>{t('opt.hauled')}</SortableTh>
+            )}
+            <SortableTh column="incomeTrip" sort={sort} onSort={setSort} className="cell-money">
+              {t('opt.incomeTrip')}
+            </SortableTh>
+            <SortableTh column="running" sort={sort} onSort={setSort} className="cell-money">
+              {t('table.running')}
+            </SortableTh>
+            <SortableTh column="cost" sort={sort} onSort={setSort} className="cell-money">
+              {t('table.cost')}
+            </SortableTh>
+            <SortableTh column="profit" sort={sort} onSort={setSort} className="cell-money">
+              {t('opt.profitYear')}
+            </SortableTh>
+            <SortableTh column="payback" sort={sort} onSort={setSort}>{t('opt.payback')}</SortableTh>
+            <Table.Th></Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {shown.map((r, i) => (
+            <Table.Tr key={`${r.engine.id}-${r.engineCount}-${r.wagon.id}`}>
+              <Table.Td>{i + 1}</Table.Td>
+              <Table.Td className="cell-sprite"><TrainImage trainId={r.engine.id} /></Table.Td>
+              <Table.Td>
+                {engineLabel(r)}
+                <IntroNote intro={r.engineIntro} />
+                <span className="dim"> ({r.engine.power_hp * r.engineCount} {t('units.hp')})</span>
+              </Table.Td>
+              <Table.Td className="cell-sprite"><TrainImage trainId={r.wagon.id} /></Table.Td>
+              <Table.Td>{wagonLabel(r)}<IntroNote intro={r.wagonIntro} /></Table.Td>
+              <Table.Td>
+                {num(r.cargoPerTrip)} {cargoUnits(cargo?.units)}
+                {r.cargoPerTrip < r.capacity - 0.5 && (
+                  <span className="dim"> / {num(r.capacity)}</span>
                 )}
-                <Table.Td className="cell-money"><Money value={r.incomePerTrip} /></Table.Td>
-                <Table.Td className="cell-money"><Money value={r.runningCostPerYear} /></Table.Td>
-                <Table.Td className="cell-money"><Money value={r.buyCostTotal} /></Table.Td>
-                <Table.Td className={"cell-money " + (r.profitPerYear >= 0 ? "profit" : "money-neg")}><Money value={r.profitPerYear} /></Table.Td>
-                <Table.Td>{r.paybackYears ? `${num(r.paybackYears, 1)} ${t('combined.years')}` : '—'}</Table.Td>
-                <Table.Td>
-                  <ActionIcon
-                    className="btn-add"
-                    onClick={() => applyToConsist(i)}
-                    title={t('opt.apply')}
-                    aria-label={t('opt.apply')}
-                  >
-                    →
-                  </ActionIcon>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </div>
+                <LoadingBranchMark row={r} />
+              </Table.Td>
+              <Table.Td>
+                {speedValue(r.loadedSpeedInternal)} / {speedValue(r.emptySpeedInternal)}{' '}
+                {speedUnitLabel()}
+              </Table.Td>
+              <Table.Td>{speed(r.gradeSpeedInternal)}</Table.Td>
+              <Table.Td>{num(r.loadingDays, 1)} {t('combined.days')}</Table.Td>
+              <Table.Td>{num(r.roundTripDays, 1)} {t('combined.days')}</Table.Td>
+              <Table.Td>{num(r.tripsPerYear, 1)}</Table.Td>
+              <Table.Td>
+                {r.fleetSize}
+                {r.fleetLimited && (
+                  <sup className="intro-warn" title={t('opt.fleetLimited')}>!</sup>
+                )}
+              </Table.Td>
+              <Table.Td>{num(r.pickupIntervalDays, 1)} {t('combined.days')}</Table.Td>
+              <Table.Td title={r.stationRating ? ratingBreakdown(r.stationRating) : undefined}>
+                {r.stationRating ? percent(r.stationRating.deliveredShare) : '—'}
+              </Table.Td>
+              {supplyTarget && <SupplyCell row={r} target={supplyTarget} />}
+              {activeGoal === 'transported' && (
+                <Table.Td>{num(r.hauledPerYear)} {cargoUnits(cargo?.units)}</Table.Td>
+              )}
+              <Table.Td className="cell-money"><Money value={r.incomePerTrip} /></Table.Td>
+              <Table.Td className="cell-money"><Money value={r.runningCostPerYear} /></Table.Td>
+              <Table.Td className="cell-money"><Money value={r.buyCostTotal} /></Table.Td>
+              <Table.Td className={"cell-money " + (r.profitPerYear >= 0 ? "profit" : "money-neg")}><Money value={r.profitPerYear} /></Table.Td>
+              <Table.Td>{r.paybackYears ? `${num(r.paybackYears, 1)} ${t('combined.years')}` : '—'}</Table.Td>
+              <Table.Td>
+                <ActionIcon
+                  className="btn-add"
+                  onClick={() => applyToConsist(i)}
+                  title={t('opt.apply')}
+                  aria-label={t('opt.apply')}
+                >
+                  →
+                </ActionIcon>
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </TableFrame>
       {hiddenCount > 0 && (
         <Group className="table-more" gap="xs" align="center">
           <Button variant="subtle" onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}>

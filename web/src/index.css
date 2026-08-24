@@ -119,44 +119,6 @@ h4 {
   color: var(--skin-muted);
 }
 
-.table-wrap {
-  /* the catalogue is wider than the column; its height is the page's business */
-  overflow-x: auto;
-  border: 1px solid var(--skin-edge-lo);
-  border-radius: 6px;
-}
-
-/*
- * Every list on the pages is a Mantine Table (mantine-datatable builds on it
- * too), so these address the component's own classes. A rule on the bare tag
- * would also apply to the library's internals and, sitting in the same layer,
- * outrank the class rules that are meant to shape them.
- */
-.mantine-Table-table {
-  border-collapse: collapse;
-  width: 100%;
-}
-
-.mantine-Table-th,
-.mantine-Table-td {
-  padding: 5px 10px;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.mantine-Table-thead .mantine-Table-th {
-  position: sticky;
-  top: 0;
-  background: var(--skin-window);
-  border-bottom: 1px solid var(--skin-edge-lo);
-  cursor: pointer;
-  user-select: none;
-}
-
-.mantine-Table-tbody .mantine-Table-tr:hover {
-  background: var(--skin-window-hover);
-}
-
 .train-sprite {
   /* исходник 4x (64px) — показываем в 1x логического размера, чтобы пиксели делились нацело */
   height: 16px;
@@ -165,12 +127,6 @@ h4 {
   image-rendering: pixelated;
   vertical-align: middle;
   flex-shrink: 0;
-}
-
-.mantine-Table-td:has(> .train-sprite) {
-  padding-top: 2px;
-  padding-bottom: 2px;
-  line-height: 0;
 }
 
 .cargo-icon {
@@ -304,11 +260,6 @@ h4 {
 
 .profit {
   color: var(--skin-profit);
-}
-
-.cell-money {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 .money-neg {
@@ -546,24 +497,6 @@ h4 {
   color: var(--skin-loss);
 }
 
-}
-
-/* Sortable result headers: the whole cell is the control, so it needs to read as one. */
-.table-wrap .mantine-Table-th.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.table-wrap .mantine-Table-th.sortable:hover {
-  background: var(--skin-window-hover);
-}
-
-.table-wrap .mantine-Table-th.sorted {
-  color: var(--skin-link);
-}
-
-.sort-mark {
-  font-size: var(--skin-font-small);
 }
 
 /* Supply column: the figure carries the verdict, so the colour only reinforces it — green

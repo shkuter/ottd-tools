@@ -12,7 +12,7 @@ import { usePageviews } from './analytics';
 import { useKitWindowStore } from './state/kitWindowStore';
 import { TABS } from './tabs';
 
-// the catalogue pulls in mantine-datatable and the income tab pulls in recharts;
+// the income tab pulls in recharts and the catalogue is a page of its own;
 // nothing else needs either, so both tabs load with their own chunk
 const ConsistPage = lazy(() => import('./features/consist/ConsistPage'));
 const RoutePage = lazy(() => import('./features/route/RoutePage'));

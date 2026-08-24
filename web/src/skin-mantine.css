@@ -76,7 +76,6 @@
   .mantine-Radio-radio:disabled,
   .mantine-Tabs-tab[data-disabled],
   .mantine-NumberInput-control:disabled,
-  .mantine-datatable-pagination-active[disabled],
   .mantine-Pagination-control[data-disabled] {
     /* the gradient is spelled out here rather than kept in a token: a var()
        inside a custom property is substituted where that property is declared,
@@ -99,7 +98,6 @@
   .mantine-ActionIcon-root[data-disabled],
   .mantine-Tabs-tab[data-disabled],
   .mantine-NumberInput-control:disabled,
-  .mantine-datatable-pagination-active[disabled],
   .mantine-Pagination-control[data-disabled],
   .mantine-SegmentedControl-label[data-disabled] {
     --skin-hatch-colour: var(--skin-button-hatch);
@@ -302,8 +300,6 @@
     color: var(--skin-button-text);
   }
 
-
-
   /*
    * The native controls Mantine stacks under its own artwork. No stylesheet
    * gives them a colour, so Chrome's own does — and with color-scheme: dark
@@ -414,13 +410,6 @@
     text-shadow: var(--skin-text-shadow);
   }
 
-  /* mantine-datatable fades the edges of its scroll area with a translucent
-     black gradient. The game has nothing of the kind — a list ends at its
-     frame — and the colour is not one of the palette's. */
-  .mantine-datatable-scroll-area-shadow {
-    background-image: none;
-  }
-
   .mantine-Alert-message,
   .mantine-Notification-description {
     color: var(--skin-text);
@@ -466,7 +455,13 @@
     display: none;
   }
 
+  /*
+   * Every list on the pages is a Mantine Table, so these address the component's own classes:
+   * a rule on the bare tag would also catch tables nested inside other components.
+   */
   .mantine-Table-table {
+    border-collapse: collapse;
+    width: 100%;
     background: var(--skin-list-bg);
     color: var(--skin-list-text);
   }
@@ -474,6 +469,8 @@
   .mantine-Table-th,
   .mantine-Table-td {
     padding: var(--skin-pad-row);
+    text-align: left;
+    white-space: nowrap;
   }
 
   .mantine-Table-thead .mantine-Table-th {
@@ -483,6 +480,79 @@
   }
 
   .mantine-Table-tbody .mantine-Table-tr:hover {
+    background: var(--skin-list-hover);
+  }
+
+  /*
+   * Modifiers of a single cell. They override the row rule above, so they stand after it:
+   * same file, same weight, later line. Keeping them in index.css or skin.css instead would
+   * put them in a file imported earlier, where an equally specific rule loses — which is how
+   * the money columns quietly lost their right alignment once.
+   */
+  .cell-money {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* a cell holding nothing but a sprite needs no line box around it. Marked by a class rather
+     than found by :has(> .train-sprite:only-child): a name beside the sprite is a text node,
+     and :only-child counts elements, so that selector would flatten the line height of the
+     very cell the name stands in. It sits below the row padding above, which is all it takes
+     to win — same file, same weight, later line. */
+  .cell-sprite {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    line-height: 0;
+  }
+
+  /* Sortable headers: the whole cell is the control, so it has to read as one. */
+  .table-wrap .mantine-Table-th.sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .table-wrap .mantine-Table-th.sorted {
+    color: var(--skin-link);
+  }
+
+  /*
+   * Pinned edge columns. A cell that stays put while the row scrolls under it needs a
+   * background of its own — a transparent one would show the moving text through — and a stack
+   * order above the cells it covers. The hover shade has to be repeated for the same reason:
+   * it is painted on the row, and the row is what scrolls away underneath.
+   */
+  .table-wrap.pin-edges .mantine-Table-th:first-child,
+  .table-wrap.pin-edges .mantine-Table-td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+
+  .table-wrap.pin-edges .mantine-Table-th:last-child,
+  .table-wrap.pin-edges .mantine-Table-td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+  }
+
+  .table-wrap.pin-edges .mantine-Table-td:first-child,
+  .table-wrap.pin-edges .mantine-Table-td:last-child {
+    background: var(--skin-list-bg);
+  }
+
+  .table-wrap.pin-edges .mantine-Table-th:first-child,
+  .table-wrap.pin-edges .mantine-Table-th:last-child {
+    background: var(--skin-list-head-bg);
+  }
+
+  .table-wrap.pin-edges .mantine-Table-tbody .mantine-Table-tr:hover .mantine-Table-td:first-child,
+  .table-wrap.pin-edges .mantine-Table-tbody .mantine-Table-tr:hover .mantine-Table-td:last-child {
+    background: var(--skin-list-hover);
+  }
+
+  /* Last, because a pinned header paints its own background and this has the same weight: the
+     shade under the cursor is what tells a sortable header from a plain one, so it wins. */
+  .table-wrap .mantine-Table-th.sortable:hover {
     background: var(--skin-list-hover);
   }
 

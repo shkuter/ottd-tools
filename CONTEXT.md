@@ -117,9 +117,11 @@ user from picking a dead option. `supply` ranks lexicographically: the conversio
 reaches first, profit among the rows that reach the same one, so it buys the cheapest way to a
 result rather than the shortest interval for its own sake.
 
-**Sort** (_сортировка_) — a view over the rows the search returned, applied after the goal
-ranked them. It reorders what is on screen and changes neither the set nor the numbers; a
-third click on a header returns the search order.
+**Sort** (_сортировка_) — a view over the rows a tab lists, applied after that tab put them in
+its own order. It reorders what is on screen and changes neither the set nor the numbers; a
+third click on a header returns that order, whatever it is for the tab: the search order in the
+optimizer, which the goal decided, the year in the catalogue. One mechanism, a default of its
+own per tab.
 
 ## Catalogue
 

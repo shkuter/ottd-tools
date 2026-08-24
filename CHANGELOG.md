@@ -36,6 +36,16 @@ of what users see):
   with it. Not part of `pages.yml`: publishing the site stays Node-only, and the browser is
   installed once by `npx playwright install chromium` rather than by `npm install`.
 
+- The three lists — the optimizer's results, the vehicle catalogue and an industry's inputs —
+  now behave alike: one sorting mechanism (three clicks per header, the third back to the tab's
+  own order), one frame, one message where a filter left nothing, and pinned edge columns on the
+  lists wide enough to scroll sideways. `mantine-datatable` is gone with them: the catalogue's
+  chunk falls from 94.7 kB to 14.9 kB, the library's cascade layer leaves `layers.css`, and the
+  skin no longer carries rules written for its markup. The catalogue keeps its pages of 50 and
+  the optimizer its "show 15 more" — 50 ranked rows have nothing to page through, 167 filtered
+  vehicles do — and the catalogue's sorting gains the third click and marks only the column it
+  sorted by, the way the game marks its own list.
+
 ### Fixed
 
 - The lettering of a subtle button and the title of an alert or a notification went unshaded
@@ -44,6 +54,11 @@ of what users see):
   checks, which read the shadow off the rendered text rather than off the rule.
 - `mantine-datatable` faded the edges of the catalogue's scroll area with a translucent black
   gradient — a colour the palette does not have, and an effect the game has no equivalent for.
+- No list ever had the sticky header its stylesheet described. `overflow-x: auto` on the frame
+  makes the browser compute `overflow-y: auto` as well, so the header stuck to a container that
+  never scrolls vertically and moved away with the page. The rules are removed rather than
+  repaired: keeping a header in view needs a list of fixed height with a scrollbar of its own,
+  which the shell's "one document, one scrollbar" rule rules out.
 
 ## [0.11.0] - 2026-08-23
 

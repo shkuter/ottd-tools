@@ -7,7 +7,6 @@ import App from './App.tsx';
 import './layers.css';
 import '@mantine/core/styles.layer.css';
 import '@mantine/notifications/styles.layer.css';
-import 'mantine-datatable/styles.layer.css';
 import './index.css';
 import './skin.css';
 import './skin-mantine.css';

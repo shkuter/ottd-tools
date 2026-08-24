@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { nextSort, sortRows } from '../sorting';
+import { sortRows } from '../../../components/table/sorting';
+import { SORT_VALUES } from '../sorting';
 import { cargoByLabel, industriesMeta, industryById, trains, trainsMeta } from '../../../dataset';
 import { optimizeConsists } from '../../../engine/optimize';
 import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../../engine/settings';
+
+/**
+ * What the optimizer's columns compare by, on rows the optimizer really produced. The mechanism
+ * itself is checked in components/table/__tests__; here the question is whether a column sorts
+ * by the figure its cell shows.
+ */
 
 const collator = new Intl.Collator('ru');
 
@@ -31,18 +38,14 @@ const rows = optimizeConsists(
   20,
 );
 
-describe('сортировка выдачи', () => {
+describe('колонки выдачи оптимизатора', () => {
   it('есть что сортировать', () => {
     expect(rows.length).toBeGreaterThan(2);
   });
 
-  it('без сортировки — порядок поиска', () => {
-    expect(sortRows(rows, null, collator)).toEqual([...rows]);
-  });
-
-  it('по числовой колонке: по возрастанию и по убыванию', () => {
-    const up = sortRows(rows, { column: 'profit', descending: false }, collator);
-    const down = sortRows(rows, { column: 'profit', descending: true }, collator);
+  it('прибыль — по возрастанию и по убыванию', () => {
+    const up = sortRows(rows, { column: 'profit', descending: false }, SORT_VALUES, collator);
+    const down = sortRows(rows, { column: 'profit', descending: true }, SORT_VALUES, collator);
     for (let i = 1; i < up.length; i++) {
       expect(up[i].profitPerYear).toBeGreaterThanOrEqual(up[i - 1].profitPerYear);
     }
@@ -51,8 +54,8 @@ describe('сортировка выдачи', () => {
     );
   });
 
-  it('по текстовой колонке — по названию, а не по порядку данных', () => {
-    const byName = sortRows(rows, { column: 'engine', descending: false }, collator);
+  it('движок — по названию, а не по порядку данных', () => {
+    const byName = sortRows(rows, { column: 'engine', descending: false }, SORT_VALUES, collator);
     const names = byName.map((r) => r.engine.name);
     expect(names).toEqual([...names].sort(collator.compare));
   });
@@ -66,7 +69,7 @@ describe('сортировка выдачи', () => {
     expect(rated).toBeLessThan(mixed.length);
 
     for (const descending of [false, true]) {
-      const sorted = sortRows(mixed, { column: 'supply', descending }, collator);
+      const sorted = sortRows(mixed, { column: 'supply', descending }, SORT_VALUES, collator);
       const tail = sorted.slice(rated);
       expect(sorted).toHaveLength(mixed.length);
       expect(tail.every((r) => r.supply === null)).toBe(true);
@@ -78,8 +81,22 @@ describe('сортировка выдачи', () => {
     const mixed = rows.map((r, i) => (i % 2 === 0 ? r : { ...r, paybackYears: null }));
     const rated = mixed.filter((r) => r.paybackYears !== null).length;
     for (const descending of [false, true]) {
-      const sorted = sortRows(mixed, { column: 'payback', descending }, collator);
+      const sorted = sortRows(mixed, { column: 'payback', descending }, SORT_VALUES, collator);
       expect(sorted.slice(rated).every((r) => r.paybackYears === null)).toBe(true);
+    }
+  });
+
+  it('строки без рейтинга станции уходят вниз, а не выдаются за худший рейтинг', () => {
+    // Ячейка «доли вывоза» при отсутствии рейтинга рисует «—»: значения нет, поэтому строка
+    // покидает сортировку. Заглушка -1 всплывала бы наверх при развороте направления.
+    const mixed = rows.map((r, i) => (i % 2 === 0 ? r : { ...r, stationRating: null }));
+    const rated = mixed.filter((r) => r.stationRating !== null).length;
+    expect(rated).toBeGreaterThan(0);
+    expect(rated).toBeLessThan(mixed.length);
+
+    for (const descending of [false, true]) {
+      const sorted = sortRows(mixed, { column: 'rating', descending }, SORT_VALUES, collator);
+      expect(sorted.slice(rated).every((r) => r.stationRating === null)).toBe(true);
     }
   });
 
@@ -94,38 +111,9 @@ describe('сортировка выдачи', () => {
         pool: { level: (i % 3) as 0 | 1 | 2, productionPercent: [100, 150, 250][i % 3] },
       },
     }));
-    const sorted = sortRows(pooled, { column: 'supply', descending: false }, collator);
+    const sorted = sortRows(pooled, { column: 'supply', descending: false }, SORT_VALUES, collator);
     const percents = sorted.map((r) => r.supply!.pool!.productionPercent);
     expect(percents).toEqual([...percents].sort((a, b) => a - b));
     expect(percents[0]).toBe(100);
-  });
-
-  it('состав и числа строк не меняются — сортировка только переставляет', () => {
-    const sorted = sortRows(rows, { column: 'interval', descending: true }, collator);
-    expect(sorted).toHaveLength(rows.length);
-    // тот же набор объектов, ничего не подменено и не пересчитано
-    expect(new Set(sorted)).toEqual(new Set(rows));
-    for (const row of rows) expect(sorted).toContain(row);
-  });
-
-  it('исходный массив не мутируется', () => {
-    const before = [...rows];
-    sortRows(rows, { column: 'cost', descending: true }, collator);
-    expect(rows).toEqual(before);
-  });
-});
-
-describe('цикл щелчков по заголовку', () => {
-  it('возрастание → убывание → порядок поиска', () => {
-    const first = nextSort(null, 'profit');
-    expect(first).toEqual({ column: 'profit', descending: false });
-    const second = nextSort(first, 'profit');
-    expect(second).toEqual({ column: 'profit', descending: true });
-    expect(nextSort(second, 'profit')).toBeNull();
-  });
-
-  it('щелчок по другой колонке начинает с возрастания', () => {
-    const onProfit = { column: 'profit' as const, descending: true };
-    expect(nextSort(onProfit, 'interval')).toEqual({ column: 'interval', descending: false });
   });
 });
