@@ -215,3 +215,19 @@ speaks of that one economy.
 **Active cargos** (_активные грузы_) — the cargos a calculation may use: the current
 **economy**'s cargos with FIRS on, the vanilla set with it off. A cargo outside the active set
 is not offered anywhere; it has no payment rate to compute with.
+
+## Savegame
+
+**Snapshot** (_снапшот партии_) — the calculator's stored copy of one saved game: its trains,
+routes, stations, towns, industries, train groups and companies. One snapshot exists at a time; the next import replaces
+it. Carries a schema version so an outdated copy asks for the file again instead of misreading.
+
+**Route** (_маршрут_) — a shared orders list together with the trains running it; a train with
+a private orders list is a route of one train. The game has no route entity — this is the
+calculator's reading of shared orders. Where its consists are identical, a route's trains are
+the **fleet** of the optimizer.
+_Avoid_: line, service
+
+**Savegame tab** (_вкладка «Партия»_) — the tab presenting the **snapshot**, titled with the
+savegame's file name. It states the game's own figures beside what the calculator computes for
+the same thing — fact next to forecast, with no promise they match.
