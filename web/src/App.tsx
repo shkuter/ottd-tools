@@ -9,8 +9,8 @@ import { t, useLocale } from './i18n';
 import { useSettingsStore } from './state/settingsStore';
 import { Warning } from './components/Warning';
 import { usePageviews } from './analytics';
-import type { WindowColour } from './skin';
 import { useKitWindowStore } from './state/kitWindowStore';
+import { TABS } from './tabs';
 
 // the catalogue pulls in mantine-datatable and the income tab pulls in recharts;
 // nothing else needs either, so both tabs load with their own chunk
@@ -22,21 +22,6 @@ const IndustrySupplyPage = lazy(() => import('./features/industry-supply/Industr
 // the interface-elements page is for working on the skin, not for using the
 // calculator: no tab of its own, and no weight in the main chunk
 const KitPage = lazy(() => import('./features/kit/KitPage'));
-
-/*
- * The tabs, each with the colour group of the game window it stands in for
- * (the groups themselves are WINDOW_COLOURS in skin.ts). A tab without one is
- * the vehicle-purchase window, grey — which is what the shell is painted in, so
- * nothing has to be said for it.
- */
-const tabs: { path: string; label: string; windowColour?: WindowColour }[] = [
-  { path: '/optimizer', label: 'nav.optimizer' },
-  { path: '/consist', label: 'nav.consist' },
-  { path: '/income', label: 'nav.income' },
-  { path: '/supply', label: 'nav.supply' },
-  { path: '/firs', label: 'nav.firs' },
-  { path: '/settings', label: 'nav.settings', windowColour: 'mauve' },
-];
 
 export default function App() {
   const inflation = useSettingsStore((s) => s.game.inflation);
@@ -62,7 +47,7 @@ export default function App() {
    */
   const kitWindow = useKitWindowStore((s) => s.colour);
   useEffect(() => {
-    const colour = pathname === '/kit' ? kitWindow : tabs.find((tab) => tab.path === pathname)?.windowColour;
+    const colour = pathname === '/kit' ? kitWindow : TABS.find((tab) => tab.path === pathname)?.windowColour;
     if (colour) document.documentElement.dataset.window = colour;
     else delete document.documentElement.dataset.window;
   }, [pathname, kitWindow]);
@@ -78,7 +63,7 @@ export default function App() {
             which is what the skin presses in */}
         <Box component="nav">
           <Group gap={4}>
-            {tabs
+            {TABS
               // both tabs answer about FIRS industries, and there are none with FIRS off
               .filter((tab) => firs || (tab.path !== '/firs' && tab.path !== '/supply'))
               .map((tab) => (

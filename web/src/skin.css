@@ -331,7 +331,9 @@ body {
 
 .app-footer {
   border-style: solid none none;
+  /* the dimmed colour is the game's unshaded one, here as everywhere else */
   color: var(--skin-muted);
+  text-shadow: none;
 }
 
 /* the site's name is lettering on the window, not a plate of its own */

@@ -78,6 +78,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make data-opengfx2` — графика ванильного режима из OpenGFX2 Classic (спрайты машин,
   иконки грузов, палитра интерфейса); `make fetch-opengfx2` — только если набора нет локально
 - `make test` — регрессионные тесты пайплайна (`unittest`) + тесты формул (`vitest`)
+- `make check-visual` — проверка вида в браузере (собирает `web/dist`, открывает его в
+  Chromium от Playwright и утверждает о вычисленных стилях); входит в `make verify`, в CI
+  не идёт. Браузер ставится один раз: `cd web && npx playwright install chromium`
 - Один тест: `pipeline/.venv/bin/python -m unittest pipeline.tests.test_known_values -k coal`;
   `cd web && npx vitest run -t "timeFactor"`
 - `make dev` / `make build` / `make verify`
@@ -237,6 +240,20 @@ JGRPP-специфика (флаг `jgrpp` раскрывает эти наст�
   выигрывает у библиотеки без `!important`. Слой, не перечисленный там, встаёт последним и
   выигрывает у скина — так было с `mantine-datatable`. Сторонний CSS без слоёв заворачивать
   через `@import … layer(mantine)`, иначе он перебьёт скин.
+- Вид проверяется дважды, разными способами. `__tests__/skin-palette.test.ts` читает CSS как
+  текст и ловит hex, вписанный в правило руками. Всё остальное видно только на отрисованной
+  странице — `__tests__/visual/*.visual.test.ts`, `make check-visual`: правило, которое ни с чем
+  не совпало; токен, застывший на базовой теме; тень, унаследованную от носителя; цвет, которого
+  в нашем CSS нет вовсе (UA-стиль Chrome, градиент из `mantine-datatable`). Проверки поднимают
+  **прод-сборку** (`preview()` из vite) в Chromium Playwright: пакет браузеры при `npm install`
+  не качает, они ставятся явной командой (`npx playwright install chromium`), а `CHROME_PATH`
+  переводит проверку на другой браузер. Живут отдельным конфигом `vitest.visual.config.ts` — в
+  `npx vitest run` не попадают (`test.exclude` в `vite.config.ts`), потому что на раннере Pages
+  браузера нет. Ожидаемый цвет берётся из токенов темы у её носителя, а множество
+  допустимых цветов — из `opengfx2_palette.json`, поэтому перекраска темы и обновление базового
+  набора проверку не ломают. Цвет, который рисует не скин, а сторонний отрисовщик по своим
+  данным (graphviz в графе цепочек), заносится в `visual/exemptions.ts` — «поддерево + цвет +
+  причина»; цвет, который рисует скин, чинится.
 - Компоненты Mantine адресовать по классу того компонента, который реально в DOM: у пунктов
   выпадающего списка класс зависит от открывшего его компонента (`mantine-Select-option`,
   `mantine-MultiSelect-option`), общий у них только атрибут `data-combobox-option`, а выбранный

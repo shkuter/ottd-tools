@@ -18,6 +18,33 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- The skin is now checked in a browser as well as in the stylesheets: rendered-page checks run by
+  `make check-visual` (part of `make verify`). They serve the built bundle, open it in
+  Playwright's Chromium and assert about computed styles, which is the only way to catch the class
+  of defect a stylesheet read as text cannot show: a rule whose selector matches nothing, a token
+  frozen on the base theme, a shadow inherited from the theme carrier, or a colour that appears in
+  no rule of ours at all. Covered so far: no colour outside the base set's palette, on `/kit` in
+  every window colour group — dropdown, tooltip and notification included — and on every tab; the
+  shadow on every colour but black and dimmed; the chosen dropdown option as a full-height black
+  plate; an unavailable widget hatched in the shade of its own window; scrollbars painted from the
+  palette, read off the pseudo-elements the skin colours them through; one vertical scrollbar per
+  tab with sideways scrolling only where the spec allows it; and the window colour following the
+  tab. Expected colours are read off the theme tokens and the allowed set from
+  `opengfx2_palette.json`, so repainting a theme or re-extracting the base set moves the checks
+  with it. Not part of `pages.yml`: publishing the site stays Node-only, and the browser is
+  installed once by `npx playwright install chromium` rather than by `npm install`.
+
+### Fixed
+
+- The lettering of a subtle button and the title of an alert or a notification went unshaded
+  although both are drawn in a colour the game shades, while a disabled label and the footer
+  carried a shadow although theirs are the two colours the game draws flat. Found by the new
+  checks, which read the shadow off the rendered text rather than off the rule.
+- `mantine-datatable` faded the edges of the catalogue's scroll area with a translucent black
+  gradient — a colour the palette does not have, and an effect the game has no equivalent for.
+
 ## [0.11.0] - 2026-08-23
 
 ### Added

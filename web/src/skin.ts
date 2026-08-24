@@ -32,6 +32,16 @@ export const SHADES = [
   'lighterest',
 ] as const;
 
+/**
+ * Every colour the base set has, gradients and named ones together — the set an
+ * interface colour has to belong to. Built here so the rule has one definition:
+ * both the stylesheet check and the rendered-page checks ask the same question.
+ */
+export const PALETTE: ReadonlySet<string> = new Set([
+  ...Object.values(gradients).flat(),
+  ...Object.values(named),
+]);
+
 /** camelCase of the palette data to the kebab-case CSS custom properties use. */
 export const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 

@@ -38,8 +38,10 @@ make data    # regenerate JSON from vendor sources + validate
 make data-images  # render Iron Horse spritesheets + cut per-vehicle sprites (slow-ish)
 make dev     # vite dev server
 make test    # pipeline regression tests + vitest formula tests
+make check-visual  # open the built bundle in a browser and check how the skin renders
+                   # (needs `cd web && npx playwright install chromium` once)
 make build   # production build
-make verify  # data + test + build
+make verify  # data + i18n check + test + rendered-page check (which builds)
 make deploy  # republish the site from the current branch (a v* tag deploys on its own)
 ```
 

@@ -81,7 +81,10 @@ function Specimen({ showTooltip }: { showTooltip: boolean }) {
           checked={checked}
           onChange={(event) => setChecked(event.currentTarget.checked)}
         />
-        <Button onClick={() => notifications.show({ message: t('kit.notificationText') })}>
+        <Button
+          data-testid="kit-notify"
+          onClick={() => notifications.show({ message: t('kit.notificationText') })}
+        >
           {t('kit.notification')}
         </Button>
       </Group>
@@ -133,7 +136,7 @@ function Specimen({ showTooltip }: { showTooltip: boolean }) {
             floats over whatever is beside it, and four at once would bury the
             controls this page exists to show */}
         <Tooltip label={t('kit.tooltipText')} opened={showTooltip || undefined} position="bottom">
-          <Text>{t('kit.tooltip')}</Text>
+          <Text data-testid="kit-tooltip">{t('kit.tooltip')}</Text>
         </Tooltip>
       </Stack>
     </Stack>

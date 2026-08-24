@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -36,5 +36,10 @@ export default defineConfig({
   },
   test: {
     setupFiles: ['src/test/setup.ts'],
+    // The rendered-page checks need a browser and a built bundle, which the Pages
+    // runner has neither of — they run from vitest.visual.config.ts instead, so this
+    // command stays the Node-only one it is in `make test` and in pages.yml. The
+    // defaults are spread back in: replacing `exclude` drops node_modules with it.
+    exclude: [...configDefaults.exclude, '**/*.visual.test.ts'],
   },
 })

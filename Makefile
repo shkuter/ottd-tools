@@ -9,7 +9,7 @@ FIRS_RU_REF ?= 61a0f0973cce43c41e156f7809782e7567279330
 VENV = pipeline/.venv
 PY = $(VENV)/bin/python
 
-.PHONY: fetch fetch-firs-ru fetch-opengfx2 venv data check-i18n data-images data-opengfx2 dev build test verify release release-auto deploy
+.PHONY: fetch fetch-firs-ru fetch-opengfx2 venv data check-i18n data-images data-opengfx2 dev build test check-visual verify release release-auto deploy
 
 # Shallow-клоны исходников в vendor/ (iron-horse и firs пинуются релизными тегами)
 fetch:
@@ -72,7 +72,17 @@ test:
 	$(PY) -m unittest discover -s pipeline/tests
 	cd web && npx vitest run
 
-verify: data check-i18n test build
+# Does the skin still look like a window of the game? Opens the built bundle in a real
+# browser and asks about the computed styles — the class of defect a stylesheet read as
+# text cannot show (a rule that matches nothing, a colour the browser itself supplies).
+# The browser is Playwright's Chromium, installed once with `npx playwright install chromium`
+# (npm install brings no browser); CHROME_PATH points at another build. Not in pages.yml:
+# publishing the site stays Node-only.
+check-visual: build
+	cd web && npm run test:visual
+
+# build is reached through check-visual, so the bundle is built once
+verify: data check-i18n test check-visual
 
 # Релиз по semver: закрывает Unreleased в CHANGELOG.md, бампает web/package.json,
 # коммитит и ставит тег vX.Y.Z. Пример: make release VERSION=0.2.0

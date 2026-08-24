@@ -43,12 +43,14 @@
     color: var(--skin-button-text);
   }
 
-  /* a subtle button is a link with a hit area, not a plate */
+  /* a subtle button is a link with a hit area, not a plate — so it is shaded
+     like a link, not left flat like the lettering on a plate below */
   .mantine-Button-root[data-variant='subtle'],
   .mantine-ActionIcon-root[data-variant='subtle'] {
     border-color: transparent;
     background: transparent;
     color: var(--skin-link);
+    text-shadow: var(--skin-text-shadow);
   }
 
   .mantine-Button-root[data-variant='subtle']:hover,
@@ -112,11 +114,13 @@
     --skin-hatch-colour: var(--skin-hatch);
   }
 
-  /* Mantine dims a disabled label and description; the game does not */
+  /* Mantine dims a disabled label and description; the game does not. TC_GREY
+     carries TC_NO_SHADE, so the shadow inherited from the theme carrier goes. */
   .mantine-InputWrapper-label[data-disabled],
   .mantine-Checkbox-label[data-disabled],
   .mantine-Switch-label[data-disabled] {
     color: var(--skin-disabled);
+    text-shadow: none;
     opacity: 1;
   }
 
@@ -407,6 +411,14 @@
   .mantine-Alert-title,
   .mantine-Notification-title {
     color: var(--skin-heading);
+    text-shadow: var(--skin-text-shadow);
+  }
+
+  /* mantine-datatable fades the edges of its scroll area with a translucent
+     black gradient. The game has nothing of the kind — a list ends at its
+     frame — and the colour is not one of the palette's. */
+  .mantine-datatable-scroll-area-shadow {
+    background-image: none;
   }
 
   .mantine-Alert-message,

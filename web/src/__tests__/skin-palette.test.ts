@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { SHADES, WINDOW_COLOURS, gradients, kebab, named } from '../skin';
+import { PALETTE, SHADES, WINDOW_COLOURS, gradients, kebab, named } from '../skin';
 
 /**
  * Guards the rule the skin is built on the way settings-effect.test.ts guards
@@ -17,8 +17,6 @@ const ALLOWED = new Map([
   // the FIRS graph is rendered by graphviz on a white sheet
   ['#fff', 'graphviz draws the FIRS chart on white'],
 ]);
-
-const palette = new Set([...Object.values(gradients).flat(), ...Object.values(named)]);
 
 /** Hex literals, and the --ottd-* variables that stand for palette entries. */
 const HEX = /#[0-9a-f]{3,8}\b/gi;
@@ -61,7 +59,7 @@ describe('skin palette', () => {
     for (const hex of css.match(HEX) ?? []) {
       const colour = hex.toLowerCase();
       if (ALLOWED.has(colour)) continue;
-      expect(palette.has(colour), `${file}: ${hex} is not a colour of the palette`).toBe(true);
+      expect(PALETTE.has(colour), `${file}: ${hex} is not a colour of the palette`).toBe(true);
     }
   });
 
