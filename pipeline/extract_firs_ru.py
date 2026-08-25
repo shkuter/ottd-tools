@@ -16,7 +16,7 @@ import tomllib
 import argparse
 import sys
 
-from common import I18N_DIR, VENDOR, bootstrap_firs, load_json
+from common import I18N_DIR, VENDOR, bootstrap_firs, load_json, write_dictionary
 
 fx = bootstrap_firs()
 firs = fx.firs
@@ -221,30 +221,6 @@ def vanilla_cargo_names(game_lang, fixes=None):
     }
 
 
-def render(payload):
-    return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-
-
-def write_i18n(filename, payload, check=False):
-    """Write the dictionary, or in check mode report how the committed file drifted."""
-    path = os.path.join(I18N_DIR, filename)
-    rendered = render(payload)
-    if not check:
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(rendered)
-        print(f"{filename}: {os.path.getsize(path)} bytes")
-        return True
-    committed = None
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as f:
-            committed = f.read()
-    if committed == rendered:
-        print(f"{filename}: up to date")
-        return True
-    print(f"{filename}: DRIFTED from the sources — run make data", file=sys.stderr)
-    return False
-
-
 def units_payload(cargos_data):
     """Units used by the data, checked so a new one cannot slip through untranslated."""
     used = {c["units"] for c in cargos_data if c.get("units")}
@@ -299,11 +275,11 @@ def main(check=False):
             f"no Russian name for {missing} — the translation is behind the data sources"
         )
     cargos_data = load_json("cargos.json")["items"]
-    ok = write_i18n("cargos.ru.json", {
+    ok = write_dictionary(os.path.join(I18N_DIR, "cargos.ru.json"), {
         "names": {id_: name for id_, name in cargos.items() if name},
         "units": units_payload(cargos_data),
     }, check)
-    ok &= write_i18n("industries.ru.json", {
+    ok &= write_dictionary(os.path.join(I18N_DIR, "industries.ru.json"), {
         id_: name for id_, name in industries.items() if name
     }, check)
     print(f"cargos: {len(cargos)}, industries: {len(industries)}")

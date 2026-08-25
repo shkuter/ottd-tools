@@ -82,6 +82,30 @@ def firs_ru_ref():
         return f.read().strip()
 
 
+def write_dictionary(path, payload, check=False):
+    """Write a generated dictionary, or in check mode report how the committed file drifted.
+
+    Shared by the extractors that keep files under web/src/i18n/ in step with their
+    sources, so `make check-i18n` reports the same way for all of them.
+    """
+    rendered = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    name = os.path.basename(path)
+    if not check:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(rendered)
+        print(f"{name}: {os.path.getsize(path)} bytes")
+        return True
+    committed = None
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            committed = f.read()
+    if committed == rendered:
+        print(f"{name}: up to date")
+        return True
+    print(f"{name}: DRIFTED from the sources — run make data", file=sys.stderr)
+    return False
+
+
 def write_json(filename, payload):
     os.makedirs(DATA_DIR, exist_ok=True)
     path = os.path.join(DATA_DIR, filename)

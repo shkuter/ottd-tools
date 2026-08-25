@@ -27,6 +27,8 @@ const SLE_FILE_TYPE_MASK = 0xf;
 export interface TableField {
   name: string;
   type: number;
+  /** Sub-fields of a struct field; their headers follow the parent list in order. */
+  children?: TableField[];
 }
 
 export interface ChunkRecord {
@@ -122,19 +124,24 @@ function readRecords(reader: ByteReader, chunk: Chunk, keep: boolean): void {
   }
 }
 
-/** Field list of a table chunk: pairs of type and name, closed by a zero type. */
+/**
+ * Field list of a table chunk: pairs of type and name, closed by a zero type. The headers
+ * of struct fields follow the parent list, in declaration order, recursively
+ * (SlTableHeader, saveload.cpp:1899).
+ */
 export function readTableHeader(reader: ByteReader): TableField[] {
   const fields: TableField[] = [];
   for (;;) {
     const type = reader.u8();
-    if (type === SLE_FILE_END) return fields;
-    const name = reader.string();
-    if ((type & SLE_FILE_TYPE_MASK) === SLE_FILE_STRUCT) {
-      // nested structs carry their own header after this list; none of the chunks we read use them
-      throw new SavegameFormatError(`field "${name}" is a struct, which is not supported`);
-    }
-    fields.push({ name, type });
+    if (type === SLE_FILE_END) break;
+    fields.push({ name: reader.string(), type });
   }
+  for (const field of fields) {
+    if ((field.type & SLE_FILE_TYPE_MASK) === SLE_FILE_STRUCT) {
+      field.children = readTableHeader(reader);
+    }
+  }
+  return fields;
 }
 
 function chunkId(value: number): string {

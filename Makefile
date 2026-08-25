@@ -38,12 +38,15 @@ data: fetch-firs-ru
 	$(PY) pipeline/extract_iron_horse.py
 	$(PY) pipeline/extract_firs.py
 	$(PY) pipeline/extract_vanilla.py
+	$(PY) pipeline/extract_town_names.py
+	$(PY) pipeline/extract_station_names.py
 	$(PY) pipeline/extract_firs_ru.py
 	$(PY) pipeline/validate.py
 
 # Do the committed Russian name dictionaries still match the sources they came from?
 check-i18n:
 	$(PY) pipeline/extract_firs_ru.py --check
+	$(PY) pipeline/extract_station_names.py --check
 
 # OpenGFX2 Classic base set. Usually already downloaded by the game itself —
 # the extractor finds it on its own; this target is for machines without it.

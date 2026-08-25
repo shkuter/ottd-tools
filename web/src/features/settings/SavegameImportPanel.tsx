@@ -1,15 +1,27 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Button, Group, Table, Text } from '@mantine/core';
 import { t } from '../../i18n';
 import { useSettingsStore } from '../../state/settingsStore';
 import { diffImport, type ImportDiff } from '../../savegame/diff';
-import type { SavegameImport } from '../../savegame/import';
+import type { ConfirmedImport } from '../../savegame/apply';
+import { getSnapshotState, subscribeSnapshot } from '../../savegame/snapshotStore';
+import type { Snapshot } from '../../savegame/snapshot';
 
 type State =
   | { phase: 'idle' }
   | { phase: 'reading' }
   | { phase: 'error'; message: string }
-  | { phase: 'ready'; proposal: SavegameImport; diff: ImportDiff };
+  | { phase: 'ready'; result: ConfirmedImport; diff: ImportDiff }
+  | { phase: 'saved'; snapshot: Snapshot };
+
+/** "92 trains, 55 routes, 100 stations" — what the panel says about a snapshot. */
+function snapshotSummary(snapshot: Snapshot): string {
+  return t('savegame.snapshotSummary', {
+    trains: snapshot.trains.length,
+    routes: snapshot.routes.length,
+    stations: snapshot.stations.filter((s) => !s.isWaypoint).length,
+  });
+}
 
 function infoValue(kind: string, value: number, choiceKeys?: readonly string[]): string {
   if (kind === 'flag') return t(value ? 'settings.on' : 'settings.off');
@@ -34,9 +46,9 @@ export function SavegameImportPanel() {
     // the reader, the xz decoder and the chunk walker all live behind this import
     const savegame = await import('../../savegame/client');
     try {
-      const proposal = await savegame.importSavegame(file);
-      const diff = diffImport(proposal, game, calc);
-      setState({ phase: 'ready', proposal, diff });
+      const result = await savegame.importSavegame(file);
+      const diff = diffImport(result.proposal, game, calc);
+      setState({ phase: 'ready', result, diff });
     } catch (error) {
       setState({
         phase: 'error',
@@ -48,11 +60,13 @@ export function SavegameImportPanel() {
     }
   }
 
-  async function apply(proposal: SavegameImport) {
+  async function apply(result: ConfirmedImport) {
     const { applyImport } = await import('../../savegame/apply');
-    applyImport(proposal);
-    setState({ phase: 'idle' });
+    await applyImport(result, Date.now());
+    setState({ phase: 'saved', snapshot: result.snapshot });
   }
+
+  const stored = useSyncExternalStore(subscribeSnapshot, getSnapshotState);
 
   return (
     <div className="savegame-import">
@@ -82,9 +96,20 @@ export function SavegameImportPanel() {
       {state.phase === 'ready' && (
         <SavegameDiff
           diff={state.diff}
-          onApply={() => void apply(state.proposal)}
+          summary={snapshotSummary(state.result.snapshot)}
+          onApply={() => void apply(state.result)}
           onCancel={() => setState({ phase: 'idle' })}
         />
+      )}
+
+      {state.phase === 'saved' && (
+        <Text className="savegame-saved">
+          {t('savegame.snapshotSaved', { summary: snapshotSummary(state.snapshot) })}
+        </Text>
+      )}
+
+      {state.phase === 'idle' && stored.droppedOutdated && (
+        <Text className="savegame-error">{t('savegame.snapshotOutdated')}</Text>
       )}
     </div>
   );
@@ -92,10 +117,12 @@ export function SavegameImportPanel() {
 
 function SavegameDiff({
   diff,
+  summary,
   onApply,
   onCancel,
 }: {
   diff: ImportDiff;
+  summary: string;
   onApply: () => void;
   onCancel: () => void;
 }) {
@@ -164,10 +191,15 @@ function SavegameDiff({
         </div>
       )}
 
+      <p className="hint">{summary}</p>
+
       <Group gap="xs">
-        {!diff.identical && <Button onClick={onApply}>{t('savegame.apply')}</Button>}
+        {/* the confirmation stores the snapshot even when the settings already match */}
+        <Button onClick={onApply}>
+          {diff.identical ? t('savegame.applySnapshotOnly') : t('savegame.apply')}
+        </Button>
         <Button variant="default" onClick={onCancel}>
-          {diff.identical ? t('savegame.close') : t('savegame.cancel')}
+          {t('savegame.cancel')}
         </Button>
       </Group>
     </div>

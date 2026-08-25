@@ -28,6 +28,16 @@ class IronHorseKnownValues(unittest.TestCase):
         self.assertEqual(t["weight_t"], 99)
         self.assertEqual(t["base_track_type"], "RAIL")
         self.assertEqual(t["kind"], "engine")
+        # engine ids for savegame matching: base_numeric_id=30080 in
+        # vendor/iron-horse/src/vehicles/pony/abernant.py, one id per unit/livery
+        self.assertEqual(t["numeric_ids"][0], 30080)
+
+    def test_numeric_ids_are_unique_across_catalogue(self):
+        seen = {}
+        for t in self.by_id.values():
+            for nid in t["numeric_ids"]:
+                self.assertNotIn(nid, seen, f"{t['id']} shares id {nid} with {seen.get(nid)}")
+                seen[nid] = t["id"]
 
     def test_lark(self):
         t = self.by_id["lark"]

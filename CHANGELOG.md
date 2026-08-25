@@ -18,6 +18,20 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- Savegame import now extracts the whole game network, not just the settings: trains with
+  their consists (matched to the vehicle catalogue through the save's engine id mapping),
+  routes as shared order lists, stations with waiting cargo and ratings, industries with
+  their monthly production, towns, groups and companies. The snapshot is stored in the
+  browser (IndexedDB, one record, schema-versioned) and survives a reload; one confirmation
+  applies the settings and stores the snapshot. The file is read in a worker, which hands
+  back a network already reduced — the savegame itself never reaches the page. Town names are regenerated from their saved
+  seeds (English Original generator ported from the game), station names follow the UI
+  language through the game's and FIRS's own suffix strings ("Londworth Furnace" /
+  "Londworth Печь"). Nothing is shown for it yet beyond the import summary — the savegame
+  tab arrives in a follow-up change.
+
 ### Changed
 
 - The skin is now checked in a browser as well as in the stylesheets: rendered-page checks run by

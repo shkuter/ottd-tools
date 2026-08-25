@@ -8,6 +8,8 @@ import type { Cargo, Train } from './types';
 
 interface VanillaTrainRaw {
   id: string;
+  /** The game's own EngineID: what a savegame's engine pool maps to for the base set. */
+  engine_id: number;
   name: string;
   kind: 'engine' | 'wagon';
   dual_headed: boolean;
@@ -74,6 +76,8 @@ function toTrain(raw: VanillaTrainRaw): Train {
   const capacity = raw.capacity * (raw.dual_headed ? 2 : 1);
   return {
     id: raw.id,
+    // the base set's engine ids are the game's table indexes, one per vehicle
+    numeric_ids: [raw.engine_id],
     name: raw.name,
     kind: raw.kind,
     gen: 0,
@@ -132,6 +136,11 @@ function toCargo(raw: VanillaCargoRaw): Cargo {
 export const vanillaTrains: Train[] = (
   (vanillaTrainsJson as { items: unknown }).items as VanillaTrainRaw[]
 ).map(toTrain);
+
+/** Cargo labels in slot order per climate (cargo_const.h `_default_climate_cargo`). */
+export const vanillaClimateSlots = (
+  vanillaCargosJson as { climate_slots: Record<string, (string | null)[]> }
+).climate_slots;
 
 export const vanillaCargos: Cargo[] = (
   (vanillaCargosJson as { items: unknown }).items as VanillaCargoRaw[]

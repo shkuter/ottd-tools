@@ -24,7 +24,9 @@ export function readNewGrfs(chunk: Chunk | undefined): SavedGrf[] {
     const params = values.get('param');
     // pre-JGRPP saves cap the list with a separate count; later ones store it already trimmed
     const declared = asNumber(values.get('num_params'));
-    const all = Array.isArray(params) ? params : [];
+    const all = Array.isArray(params)
+      ? (params as unknown[]).filter((v): v is number => typeof v === 'number')
+      : [];
     out.push({
       grfid: asNumber(values.get('ident.grfid')) ?? 0,
       name: String(values.get('grf_name') ?? ''),

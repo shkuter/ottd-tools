@@ -103,6 +103,11 @@ def catalogue_payload(catalogue, dh):
         "length": mv.length,
         "dual_headed": bool(mv.dual_headed),
         "units": [unit_payload(u) for u in units],
+        # engine ids as the game knows them (savegame EIDS internal ids): every
+        # unit of every livery entry of this catalogue, sorted for stable JSON
+        "numeric_ids": sorted(
+            {nid for entry in catalogue for nid in entry.unit_numeric_ids}
+        ),
         "cost_factor": mv.buy_cost,
         "running_cost_factor": mv.running_cost,
         "running_cost_base": units[0].running_cost_base,
@@ -131,6 +136,20 @@ def main():
         if not c.clone_quacker.quack
     ]
     items.sort(key=lambda i: (i["kind"], i["intro_year"], i["id"]))
+
+    # True clones are hidden from the catalogue, but their engine ids appear in
+    # savegames; graft each clone's ids onto the model it was cloned from so a
+    # saved train matches the visible entry.
+    by_id = {item["id"]: item for item in items}
+    for c in roster.catalogues:
+        cloned_from = c.model_def.cloned_from_model_def
+        if cloned_from is None or cloned_from.model_id not in by_id:
+            continue
+        target = by_id[cloned_from.model_id]
+        target["numeric_ids"] = sorted(
+            set(target["numeric_ids"])
+            | {nid for entry in c for nid in entry.unit_numeric_ids}
+        )
 
     # Группы refit-классов polar_fox: группа -> allowed/disallowed CC_* —
     # SPA пересекает их с cargo_classes грузов FIRS

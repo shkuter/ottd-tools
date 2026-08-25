@@ -97,6 +97,14 @@ def main():
     else:
         warnings.append("vanilla: OpenGFX2 graphics not built, see make data-opengfx2")
 
+    # --- town name tables (savegame snapshot regenerates town names from seeds) ---
+    town_tables = load_json("town_names.json")["english_original"]
+    check(sorted(town_tables) == ["1", "2", "3", "4", "5", "6"],
+          "town_names: english_original must hold tables 1..6")
+    # "" is a legitimate word: table 4 in townname.h holds an empty segment
+    check(all(tbl and all(isinstance(w, str) for w in tbl) for tbl in town_tables.values()),
+          "town_names: empty table or non-string word")
+
     # --- economies ---
     check(len(economies["items"]) == 5, f"economies: {len(economies['items'])} != 5")
     industry_ids = {i["id"] for i in industries["items"]}

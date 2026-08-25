@@ -4,6 +4,7 @@
  */
 
 import { economies } from '../dataset';
+import type { Economy } from '../types';
 import type { CalcSettings, GameSettings } from '../engine/settings';
 import type { SavedInflation } from './extract/ecmy';
 import type { SavedGrf } from './extract/ngrf';
@@ -46,9 +47,8 @@ export function buildImport(raw: RawSavegame): SavegameImport {
   const capacity = paramOf(grfs, (g) => g.capacityParam);
   if (capacity != null) calc.capacityIndex = capacity;
 
-  const economy = paramOf(grfs, (g) => g.economyParam);
-  const economyId = economy == null ? undefined : economyIdByMenuIndex(economy);
-  if (economyId) game.firsEconomy = economyId;
+  const economy = economyFromGrfs(grfs);
+  if (economy) game.firsEconomy = economy.id;
 
   return {
     jgrpp: raw.jgrpp,
@@ -118,12 +118,16 @@ function paramOf(
 }
 
 /**
+ * The economy a savegame's GRF parameters select, or undefined when no set states one.
+ * Shared with the snapshot so both read the same parameter of the same set.
+ *
  * FIRS numbers its economies by their position in the parameter menu, not by their internal
- * id (src/grf/templates/parameters.pynml remaps one to the other). The dataset lists them in
+ * id (src/grf/templates/parameters.pynml remaps one to the other); the dataset lists them in
  * that same menu order, so the parameter indexes straight into it.
  */
-function economyIdByMenuIndex(index: number): string | undefined {
-  return economies[index]?.id;
+export function economyFromGrfs(grfs: readonly SavedGrf[]): Economy | undefined {
+  const index = paramOf(grfs, (g) => g.economyParam);
+  return index === undefined ? undefined : economies[index];
 }
 
 function informationalValues(saved: ReadonlyMap<string, FieldValue>): InfoValue[] {

@@ -13,6 +13,8 @@ export type TrackType = 'RAIL' | 'NG' | 'METRO' | 'MONO' | 'MAGLEV';
 
 export interface Train {
   id: string;
+  /** Engine ids the game knows this model by — one per unit of every livery (EIDS). */
+  numeric_ids: number[];
   name: string;
   kind: 'engine' | 'wagon';
   gen: number;
@@ -120,12 +122,16 @@ export interface SupplyPool {
 
 export interface Industry {
   id: string;
+  /** The industry's grf-local id, which a savegame's IIDS mapping resolves to. */
+  numeric_id: number;
   name: string;
   type: string;
   map_colour: string | null;
   economies: Record<string, IndustryEconomyData>;
   name_by_economy?: Record<string, string>;
   supply_pool?: SupplyPool;
+  /** Key of the suffix a station named after this industry gets (station_names.json). */
+  station_name_key?: string;
 }
 
 export interface IndustriesMeta {
@@ -147,6 +153,8 @@ export interface Economy {
   numeric_id: number;
   name: string;
   cargo_labels: string[];
+  /** Cargo labels in slot order: a savegame's cargo index resolves against this. */
+  cargo_slots: (string | null)[];
   industry_ids: string[];
   graph: {
     excluded_labels: string[];

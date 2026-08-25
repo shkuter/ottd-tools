@@ -17,7 +17,11 @@ import { SavegameFormatError } from './reader';
 export const MIN_SAVEGAME_VERSION = 295;
 
 /** Chunks the calculator reads; everything else is walked past. */
-export const WANTED_CHUNKS = ['PATS', 'NGRF', 'ECMY', 'DATE'] as const;
+export const WANTED_CHUNKS = [
+  'PATS', 'NGRF', 'ECMY', 'DATE',
+  // network of the game, for the snapshot
+  'EIDS', 'IIDS', 'VEHS', 'ORDL', 'ORDR', 'STNN', 'CAPA', 'INDY', 'CITY', 'GRPS', 'PLYR',
+] as const;
 
 export interface ParsedSavegame {
   header: SavegameHeader;

@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { loadSnapshot } from './savegame/snapshotStore';
 import { BrowserRouter } from 'react-router';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
@@ -15,6 +16,9 @@ import { cssVariablesResolver, theme } from './theme';
 
 // base-set colours become CSS custom properties before the first paint
 applyPalette();
+
+// the stored snapshot is read once at startup; nothing waits on it
+void loadSnapshot();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -190,6 +190,9 @@ def build_trains():
         intro = ORIGINAL_BASE_DATE + datetime.timedelta(days=info["intro_days"])
         items.append({
             "id": f"vanilla_{idx}",
+            # the game's own EngineID: row number in _orig_rail_vehicle_info,
+            # which is what a savegame's engine pool maps to for the base set
+            "engine_id": idx,
             "name": name,
             "kind": "wagon" if is_wagon else "engine",
             "dual_headed": rvi["type"] == "multihead",
@@ -269,6 +272,31 @@ def build_cargos():
     return items
 
 
+def build_climate_slots():
+    """CargoID -> CargoLabel per climate, from _default_climate_cargo (cargo_const.h).
+
+    A vanilla savegame's cargo indexes resolve against the climate's slot table.
+    Slots given as a plain number in the table have no default cargo (NewGRF-only)
+    and come out as None.
+    """
+    text = read(CARGO_H)
+    labels = parse_cargo_labels()
+    start = text.index("_default_climate_cargo")
+    block = text[start : text.index("\n};", start)]
+    climates = []
+    for row in re.finditer(r"\{([^{}]*)\},", block):
+        slots = []
+        for token in row.group(1).split(","):
+            token = token.strip()
+            if not token:
+                continue
+            slots.append(labels[token] if token.startswith("CT_") else None)
+        climates.append(slots)
+    if len(climates) != 4:
+        raise SystemExit(f"_default_climate_cargo: expected 4 climates, got {len(climates)}")
+    return dict(zip(["temperate", "arctic", "tropic", "toyland"], climates))
+
+
 def main():
     trains = build_trains()
     cargos = build_cargos()
@@ -277,7 +305,11 @@ def main():
     cargos = [c for c in cargos if not (c["label"] in seen or seen.add(c["label"]))]
     meta = vendor_meta("openttd")
     write_json("vanilla_trains.json", {"meta": meta, "items": trains})
-    write_json("vanilla_cargos.json", {"meta": meta, "items": cargos})
+    write_json("vanilla_cargos.json", {
+        "meta": meta,
+        "climate_slots": build_climate_slots(),
+        "items": cargos,
+    })
     print(f"vanilla: {len(trains)} trains, {len(cargos)} cargos")
     if not trains or not cargos:
         sys.exit("не удалось распарсить ванильные таблицы")

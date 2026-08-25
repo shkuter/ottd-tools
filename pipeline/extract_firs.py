@@ -241,6 +241,9 @@ def extract_industries(dh, economies, param_defaults):
         name_overrides = {k: v for k, v in names.items() if v != base_name}
         item = {
             "id": industry.id,
+            # the industry's grf-local item id: what a savegame's industry type
+            # mapping (IIDS chunk) resolves to for FIRS industries
+            "numeric_id": industry.numeric_id,
             "name": base_name,
             "type": type(industry).__name__,
             "map_colour": industry.get_property("map_colour", None),
@@ -248,6 +251,15 @@ def extract_industries(dh, economies, param_defaults):
         }
         if name_overrides:
             item["name_by_economy"] = name_overrides
+        # 'string(STR_STATION_FURNACE)' -> STR_STATION_FURNACE: the key of the
+        # nearby-station suffix in station_names.json / stations.ru.json
+        # (a few industries reuse their own name string, e.g. STR_IND_PEATLANDS)
+        nearby = industry.default_industry_properties.nearby_station_name
+        if nearby:
+            m = re.fullmatch(r"string\((STR_\w+)\)", nearby)
+            if m is None:
+                raise SystemExit(f"{industry.id}: unexpected nearby_station_name {nearby!r}")
+            item["station_name_key"] = m.group(1)
         supply_pool = supply_pool_payload(industry, param_defaults)
         if supply_pool:
             item["supply_pool"] = supply_pool
@@ -308,6 +320,7 @@ def economy_dot(economy, dh, edges, cargo_names_by_label):
 
 def extract_economies(dh, economies, industries_payload, cargos_payload):
     cargo_names_by_label = {c["label"]: c["name"] for c in cargos_payload}
+    label_by_id = {c["id"]: c["label"] for c in cargos_payload}
     items = []
     for economy in economies:
         edges = economy_graph(economy, industries_payload)
@@ -316,6 +329,11 @@ def extract_economies(dh, economies, industries_payload, cargos_payload):
             "numeric_id": economy.numeric_id,
             "name": dh.get_economy_name(economy),
             "cargo_labels": [c.cargo_label for c in economy.cargos],
+            # game cargo slots: CargoID = position in economy.cargo_ids (cargo.py:49);
+            # a savegame's cargo indexes resolve against this order
+            "cargo_slots": [
+                label_by_id[cargo_id] for cargo_id in economy.cargo_ids
+            ],
             "industry_ids": [
                 i["id"] for i in industries_payload if economy.id in i["economies"]
             ],

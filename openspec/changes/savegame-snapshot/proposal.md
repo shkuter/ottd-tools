@@ -8,9 +8,9 @@ Route income / оптимизатор — следующие изменения 
 
 ## What Changes
 
-- Пайплайн экспортирует `numeric_id` машин Iron Horse в `trains.json` (и внутренние id
-  ванильных машин) — без них поезд из сейва не сопоставить каталогу: сейв ссылается на
-  машины через пул движков (GRFID + внутренний id).
+- Пайплайн экспортирует внутренние id машин Iron Horse в `trains.json` (и id ванильных
+  машин) — без них поезд из сейва не сопоставить каталогу: сейв ссылается на машины через
+  пул движков (GRFID + внутренний id).
 - Парсер сейва читает сеть партии: машины и составы, приказы (включая общие), станции с
   ожидающим грузом и рейтингами, индустрии, города, группы, компании и служебные таблицы
   для сопоставления машин и подсчёта груза — для JGRPP и ванили. Список чанков — в
@@ -40,8 +40,8 @@ Route income / оптимизатор — следующие изменения 
 
 ## Impact
 
-- `pipeline/extract_iron_horse.py`, `extract_vanilla.py` → `trains.json`, `vanilla.json`
-  (+ `validate.py`, эталоны в `pipeline/tests/`): поле `numeric_id` / внутренний id.
+- `pipeline/extract_iron_horse.py`, `extract_vanilla.py` → `trains.json`, `vanilla_trains.json`
+  (+ `validate.py`, эталоны в `pipeline/tests/`): поля `numeric_ids` / `engine_id`.
 - `web/src/savegame/`: новые экстракторы чанков (`extract/*`), сборка снапшота, хранилище
   IndexedDB, расширение `read.ts` / `parse.ts` / `import.ts` / `apply.ts`.
 - Новый модуль генерации имён городов + извлечение суффиксов станций в словари i18n

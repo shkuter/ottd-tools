@@ -8,6 +8,8 @@ import vanillaCargos from '../../data/vanilla_cargos.json';
 import economies from '../../data/economies.json';
 import cargosRu from '../cargos.ru.json';
 import industriesRu from '../industries.ru.json';
+import stationNames from '../../data/station_names.json';
+import stationsRu from '../stations.ru.json';
 import en from '../en.json';
 import ru from '../ru.json';
 
@@ -148,6 +150,31 @@ describe('cargo names', () => {
       const order = sortCargos(list, locale).map((c) => c.id);
       // pinned first in a fixed order, everything else alphabetical
       expect(order).toEqual(['passengers', 'mail', 'acid', 'coal']);
+    }
+  });
+});
+
+describe('station name suffixes', () => {
+  // Snapshot station names are assembled from these dictionaries; a key with no
+  // Russian counterpart would surface as an English suffix in the Russian UI.
+  it('russian dictionary mirrors the english key set', () => {
+    expect(Object.keys(stationsRu.game).sort()).toEqual(Object.keys(stationNames.game).sort());
+    expect(Object.keys(stationsRu.firs).sort()).toEqual(Object.keys(stationNames.firs).sort());
+  });
+
+  it('covers every industry station suffix in the data', () => {
+    const missing = industries.items
+      .filter((i) => 'station_name_key' in i)
+      .map((i) => (i as { station_name_key: string }).station_name_key)
+      .filter((key) => !(key in stationNames.firs) || !(key in stationsRu.firs));
+    expect(missing).toEqual([]);
+  });
+
+  it('town placeholder survives in both languages', () => {
+    for (const dict of [stationNames.game, stationsRu.game] as Record<string, string>[]) {
+      for (const [key, template] of Object.entries(dict)) {
+        expect(template, key).toContain('{TOWN}');
+      }
     }
   });
 });

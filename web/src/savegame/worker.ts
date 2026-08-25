@@ -14,6 +14,8 @@ export type WorkerResponse =
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   try {
+    // the file itself never leaves this thread: what crosses back is the network already
+    // reduced — cargo packets summed, unknown chunks dropped — not the map or the pools
     const savegame = await readSavegame(new Uint8Array(event.data.bytes));
     self.postMessage({ ok: true, savegame } satisfies WorkerResponse);
   } catch (error) {
