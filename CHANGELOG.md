@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-25
+
 ### Added
 
 - Bridges from the game tab into the calculating ones: a route carries its consist, cargo,
