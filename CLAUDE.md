@@ -16,9 +16,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `web/` — React 19 + Vite + TypeScript SPA на Mantine 9. Игровые формулы — чистые TS-модули в
   `web/src/engine/` (income/physics/costs/inflation/units/optimize/consist/settings),
   UI-фичи в `web/src/features/`, zustand-сторы (persist в localStorage) в `web/src/state/`.
-  i18n: все UI-строки через `t()` из `web/src/i18n/`. Каталог машин — `mantine-datatable`,
-  график дохода — `@mantine/charts`; обе вкладки грузятся лениво, чтобы их библиотеки не
-  лежали в основном чанке.
+  i18n: все UI-строки через `t()` из `web/src/i18n/`. Списки на всех вкладках — свой набор
+  `web/src/components/table/` (`TableFrame` — рамка, боковая прокрутка, залипающие крайние
+  колонки, пустое состояние; `SortableTh` + `sorting.ts` — сортировка в три такта), а не
+  табличная библиотека: почему так — `docs/adr/0003-tables-are-ours-not-a-library.md`.
+  График дохода — `@mantine/charts`; вкладки дохода, каталога и снабжения грузятся лениво,
+  чтобы recharts и вес самих страниц не лежали в основном чанке.
 
 ## Локализация
 
@@ -237,16 +240,16 @@ JGRPP-специфика (флаг `jgrpp` раскрывает эти наст�
   `DEFAULT_FONT_HEIGHT`) умножаются на него, отсюда шрифты, высоты контролов, бевель и отступы.
   Начертание одно (у шрифта игры нет bold — браузер синтезировал бы его), акцент делается
   цветом и кеглем.
-- Каскад держится на слоях (`layers.css`: `@layer mantine, mantine-datatable, app;`): стили
+- Каскад держится на слоях (`layers.css`: `@layer mantine, app;`): стили
   Mantine импортируются как `styles.layer.css`, наши — в `@layer app`, поэтому правило скина
   выигрывает у библиотеки без `!important`. Слой, не перечисленный там, встаёт последним и
-  выигрывает у скина — так было с `mantine-datatable`. Сторонний CSS без слоёв заворачивать
-  через `@import … layer(mantine)`, иначе он перебьёт скин.
+  выигрывает у скина — на этом обожглись с `mantine-datatable`, пока он был в зависимостях.
+  Сторонний CSS без слоёв заворачивать через `@import … layer(mantine)`, иначе он перебьёт скин.
 - Вид проверяется дважды, разными способами. `__tests__/skin-palette.test.ts` читает CSS как
   текст и ловит hex, вписанный в правило руками. Всё остальное видно только на отрисованной
   странице — `__tests__/visual/*.visual.test.ts`, `make check-visual`: правило, которое ни с чем
   не совпало; токен, застывший на базовой теме; тень, унаследованную от носителя; цвет, которого
-  в нашем CSS нет вовсе (UA-стиль Chrome, градиент из `mantine-datatable`). Проверки поднимают
+  в нашем CSS нет вовсе (UA-стиль Chrome, заливка стороннего отрисовщика). Проверки поднимают
   **прод-сборку** (`preview()` из vite) в Chromium Playwright: пакет браузеры при `npm install`
   не качает, они ставятся явной командой (`npx playwright install chromium`), а `CHROME_PATH`
   переводит проверку на другой браузер. Живут отдельным конфигом `vitest.visual.config.ts` — в
