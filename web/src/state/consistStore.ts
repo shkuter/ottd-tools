@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ConsistEntry } from '../types';
-import { trainById } from '../dataset';
+import { trainByAnyId } from '../dataset';
 
 interface ConsistState {
   entries: ConsistEntry[];
@@ -12,6 +12,8 @@ interface ConsistState {
   add: (trainId: string) => void;
   remove: (trainId: string) => void;
   setCount: (trainId: string, count: number) => void;
+  /** Replace the whole consist with entries the caller already resolved to catalogue rows. */
+  setEntries: (entries: ConsistEntry[]) => void;
   clear: () => void;
   setCapacityIndex: (index: number) => void;
   setCargoLabel: (label: string | null) => void;
@@ -40,7 +42,7 @@ export const useConsistStore = create<ConsistState>()(
               ),
             };
           }
-          const train = trainById.get(trainId);
+          const train = trainByAnyId.get(trainId);
           if (!train) return state;
           return { entries: [...state.entries, { train, count: 1 }] };
         }),
@@ -53,6 +55,7 @@ export const useConsistStore = create<ConsistState>()(
               ? state.entries.filter((e) => e.train.id !== trainId)
               : state.entries.map((e) => (e.train.id === trainId ? { ...e, count } : e)),
         })),
+      setEntries: (entries) => set({ entries }),
       clear: () => set({ entries: [] }),
       setCapacityIndex: (capacityIndex) => set({ capacityIndex }),
       setCargoLabel: (cargoLabel) => set({ cargoLabel }),
@@ -68,7 +71,7 @@ export const useConsistStore = create<ConsistState>()(
         const p = (persisted ?? {}) as PersistedConsist;
         const entries = (p.items ?? [])
           .map(({ id, count }) => {
-            const train = trainById.get(id);
+            const train = trainByAnyId.get(id);
             return train ? { train, count } : null;
           })
           .filter((e): e is ConsistEntry => e !== null);

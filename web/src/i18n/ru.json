@@ -455,5 +455,9 @@
   "game.stopCount": "остановок: {count}",
   "game.noFinishedYear": "полного года ещё не было",
   "game.mixedConsists": "составы разные",
-  "game.factThisYear": "В игре, текущий год"
+  "game.factThisYear": "В игре, текущий год",
+  "game.toIncome": "Доход рейса",
+  "game.toOptimizerCargo": "Подобрать лучший поезд под этот груз",
+  "prefill.fromRoute": "Значения из маршрута {label} импортированной партии.",
+  "prefill.fromIndustry": "Значения из «{label}» импортированной партии."
 }

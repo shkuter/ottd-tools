@@ -455,5 +455,9 @@
   "game.stopCount": "{count} stops",
   "game.noFinishedYear": "no finished year yet",
   "game.mixedConsists": "differing consists",
-  "game.factThisYear": "The game, this year"
+  "game.factThisYear": "The game, this year",
+  "game.toIncome": "Route income",
+  "game.toOptimizerCargo": "Find the best train for this cargo",
+  "prefill.fromRoute": "Values from route {label} of the imported game.",
+  "prefill.fromIndustry": "Values from {label} of the imported game."
 }

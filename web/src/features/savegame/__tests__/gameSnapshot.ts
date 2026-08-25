@@ -45,6 +45,8 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
           // a cargo the game shows no rating for: the column stays empty here too
           { label: 'GRVL', slot: 1, rating: null, waiting: 0 },
         ],
+        // the works next door: what this station's lime is loaded from
+        supplierIds: [1],
       },
       {
         id: 1,
@@ -55,6 +57,7 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
         nameNumber: 1,
         isWaypoint: false,
         goods: [{ label: 'QLME', slot: 34, rating: 92, waiting: 60 }],
+        supplierIds: [],
       },
       // an oil rig stands on water and belongs to nobody, as in the game
       {
@@ -66,6 +69,7 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
         nameNumber: 2,
         isWaypoint: false,
         goods: [],
+        supplierIds: [],
       },
       // a waypoint is no station: nothing waits on it and the game rates nothing there
       {
@@ -77,6 +81,7 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
         nameNumber: 3,
         isWaypoint: true,
         goods: [],
+        supplierIds: [],
       },
       // the AI's own station: it belongs in the AI's list, not in this company's
       {
@@ -88,6 +93,7 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
         nameNumber: 4,
         isWaypoint: false,
         goods: [{ label: 'GRVL', slot: 1, rating: 40, waiting: 10 }],
+        supplierIds: [],
       },
     ],
     routes: [

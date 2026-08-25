@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Table, Tooltip } from '@mantine/core';
+import { ActionIcon, Table, Tooltip } from '@mantine/core';
+import { useNavigate } from 'react-router';
 import { SortableTh } from '../../components/table/SortableTh';
 import { TableFrame } from '../../components/table/TableFrame';
 import { sortRows, type SortState, type SortValues } from '../../components/table/sorting';
@@ -11,9 +12,12 @@ import { stationName } from '../../savegame/display';
 import type { Snapshot } from '../../savegame/snapshot';
 import type { SnapshotSettings } from '../../savegame/snapshotStore';
 import { routeRows, stationStops, type RouteRow } from './routeRows';
+import { routeToIncome, routeToOptimizer } from './bridge';
+import { applyIncomeBridge } from './applyBridge';
 import { hasFinishedYear } from './game';
 import { consistText, trainLabel, townsById } from './labels';
 import { CargoLabel } from './CargoLabel';
+import { CargoBridgeLink } from './CargoBridgeLink';
 
 type Column = 'stops' | 'cargo' | 'fleet' | 'distance' | 'fact' | 'forecast';
 
@@ -103,6 +107,8 @@ export function RoutesTab({
               <span>{t('game.forecast')}</span>
             </Tooltip>
           </SortableTh>
+          {/* the row's own action, unlabelled as in the optimizer's own table */}
+          <Table.Th></Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -114,6 +120,7 @@ export function RoutesTab({
             expanded={expanded === row.id}
             onToggle={() => setExpanded(expanded === row.id ? null : row.id)}
             comparable={comparable}
+            snapshot={snapshot}
           />
         ))}
       </Table.Tbody>
@@ -127,6 +134,7 @@ function RouteRows({
   expanded,
   onToggle,
   comparable,
+  snapshot,
 }: {
   row: RouteRow;
   names: string[];
@@ -134,14 +142,30 @@ function RouteRows({
   onToggle: () => void;
   /** Whether the game has a finished year to state as the fact. */
   comparable: boolean;
+  snapshot: Snapshot;
 }) {
+  const title = routeTitle(names);
   return (
     <>
       <Table.Tr className="route-row" onClick={onToggle}>
         <Table.Td>
-          <span className="expand-mark">{expanded ? '▾' : '▸'}</span> {routeTitle(names)}
+          <span className="expand-mark">{expanded ? '▾' : '▸'}</span> {title}
         </Table.Td>
-        <Table.Td>{row.cargo ? <CargoLabel cargo={row.cargo} /> : '—'}</Table.Td>
+        {/* the cargo is a value of this row, and a value leads where the same value leads on
+            the industries tab: to the search for the best train for it */}
+        <Table.Td>
+          {row.cargo ? (
+            <CargoBridgeLink
+              cargo={row.cargo}
+              values={routeToOptimizer(row, snapshot).values}
+              source="route"
+              label={title}
+            />
+          ) : (
+            // the one case that shuts this bridge, stated rather than left as a bare dash
+            <span title={t('game.blocker.noCargo')}>—</span>
+          )}
+        </Table.Td>
         {/* the count, with what they are made of on hover: a consist of twenty wagons spelled
             out in the row pushes the fact and the forecast — the point of the table — off the
             page, and wrapping it makes every row four lines tall. The full consist is one
@@ -181,10 +205,13 @@ function RouteRows({
             <span className="hint">{t(`game.blocker.${row.blocker!}`)}</span>
           )}
         </Table.Td>
+        <Table.Td className="route-bridge-cell">
+          <RouteBridge row={row} title={title} snapshot={snapshot} />
+        </Table.Td>
       </Table.Tr>
       {expanded && (
         <Table.Tr className="route-detail">
-          <Table.Td colSpan={6}>
+          <Table.Td colSpan={7}>
             <RouteDetail row={row} names={names} comparable={comparable} />
           </Table.Td>
         </Table.Tr>
@@ -250,6 +277,41 @@ function RouteDetail({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The route's own action: price this very trip on the income tab. An arrow in the last
+ * column, the way the optimizer's table already carries a row over to another tab.
+ *
+ * A bridge that cannot be taken stays in place and says what stops it. It is marked disabled
+ * rather than made disabled: a truly disabled button drops out of the tab order, and the
+ * reason would then be reachable by mouse alone.
+ */
+function RouteBridge({ row, title, snapshot }: { row: RouteRow; title: string; snapshot: Snapshot }) {
+  const navigate = useNavigate();
+  const { values, blocker } = routeToIncome(row, snapshot);
+  const name = blocker
+    ? `${t('game.toIncome')} — ${t(`game.blocker.${blocker}`)}`
+    : t('game.toIncome');
+
+  return (
+    <ActionIcon
+      className="btn-add"
+      data-disabled={values === undefined || undefined}
+      aria-disabled={values === undefined || undefined}
+      title={name}
+      aria-label={name}
+      onClick={(event) => {
+        // the row underneath opens on click; taking a bridge is not opening a row
+        event.stopPropagation();
+        if (values === undefined) return;
+        applyIncomeBridge(values, title);
+        void navigate('/income');
+      }}
+    >
+      →
+    </ActionIcon>
   );
 }
 

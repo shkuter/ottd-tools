@@ -10,7 +10,8 @@ import { industryById } from '../../dataset';
 import { vanillaIndustryById } from '../../vanilla';
 import { townName } from '../../savegame/display';
 import { cargoLookup, townsById } from './labels';
-import { CargoLabel } from './CargoLabel';
+import { industryToOptimizer } from './bridge';
+import { CargoBridgeLink } from './CargoBridgeLink';
 import { GoodsCell } from './GoodsCell';
 import type { Snapshot, SnapshotIndustry } from '../../savegame/snapshot';
 import type { SnapshotSettings } from '../../savegame/snapshotStore';
@@ -45,6 +46,11 @@ export function IndustriesTab({
   const placeName = (industry: SnapshotIndustry): string => {
     const town = industry.townId === null ? undefined : towns.get(industry.townId);
     return town ? townName(town) : '—';
+  };
+  /** How the row itself names this industry: its type, and the town that tells two apart. */
+  const industryLabel = (industry: SnapshotIndustry): string => {
+    const place = placeName(industry);
+    return place === '—' ? typeName(industry) : `${typeName(industry)} (${place})`;
   };
   const totals = (industry: SnapshotIndustry) => {
     let produced = 0;
@@ -89,11 +95,16 @@ export function IndustriesTab({
             <Table.Td>{typeName(industry)}</Table.Td>
             <Table.Td>{placeName(industry)}</Table.Td>
             <Table.Td>
+              {/* the bridge belongs to this column only: GoodsCell also renders the
+                  transported one, and a link drawn inside it would appear in both */}
               <GoodsCell entries={stated(industry)}>
                 {(entry) => (
-                  <CargoLabel
+                  <CargoBridgeLink
                     cargo={cargoOf(entry.label)}
                     after={num(entry.lastMonthProduction)}
+                    values={industryToOptimizer(entry).values}
+                    source="industry"
+                    label={industryLabel(industry)}
                   />
                 )}
               </GoodsCell>

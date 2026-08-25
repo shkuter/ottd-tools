@@ -20,6 +20,20 @@ of what users see):
 
 ### Added
 
+- Bridges from the game tab into the calculating ones: a route carries its consist, cargo,
+  leg, load and source flow into Route income, or its cargo, leg and flow into Best train,
+  and an industry carries one of its produced cargoes with last month's output. A bridge is
+  offered only where the carry would be honest — an unmatched vehicle or a fleet built two
+  different ways shuts the income bridge and says which, while the optimizer still takes the
+  route because it picks a consist itself. The receiving tab notes where its figures came
+  from until they are edited. All of it follows one rule the optimizer's table already set:
+  a whole row travels by the arrow at its end, a single value travels by clicking the value
+  — so a cargo is a link to "best train for it" wherever a cargo is listed.
+- The snapshot now records which industries lie in a station's catchment, measured off the
+  railway platforms the save stores (`train_station`) grown by the game's radius — the
+  station's full extent is NOSAVE and never reaches the file. This is what the source flow of
+  a bridge is summed from. **BREAKING**: it raises the snapshot schema version, so a game
+  imported before this has to be imported once more.
 - Savegame import now extracts the whole game network, not just the settings: trains with
   their consists (matched to the vehicle catalogue through the save's engine id mapping),
   routes as shared order lists, stations with waiting cargo and ratings, industries with
@@ -89,6 +103,9 @@ of what users see):
 
 ### Fixed
 
+- The consist builder could not hold vanilla vehicles at all: the store looked ids up in the
+  Iron Horse catalogue alone, so with Iron Horse switched off adding a vehicle did nothing
+  and a saved consist came back empty after a reload.
 - The lettering of a subtle button and the title of an alert or a notification went unshaded
   although both are drawn in a colour the game shades, while a disabled label and the footer
   carried a shadow although theirs are the two colours the game draws flat. Found by the new

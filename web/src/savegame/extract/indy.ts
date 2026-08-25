@@ -10,6 +10,7 @@
 
 import type { Chunk } from '../chunks';
 import { asNumber, asPoolRef, readTable, type FieldValue, type RecordValues } from '../values';
+import { readTileArea, type TileArea } from './area';
 
 export interface SavedProduced {
   cargoIndex: number;
@@ -24,6 +25,8 @@ export interface SavedIndustry {
   typeId: number;
   /** Town pool index; null when the save states none. */
   town: number | null;
+  /** The plot the industry stands on (industry_sl.cpp:152-155). */
+  location: TileArea | null;
   produced: SavedProduced[];
 }
 
@@ -32,6 +35,7 @@ export function readIndustries(chunk: Chunk | undefined): Map<number, SavedIndus
     index,
     typeId: asNumber(values.get('type')) ?? 0,
     town: asPoolRef(values.get('town')),
+    location: readTileArea(values, 'location'),
     produced: readProduced(values),
   }));
 }

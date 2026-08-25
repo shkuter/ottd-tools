@@ -23,6 +23,7 @@ import {
 } from './extract/ordl';
 import { isRearDualheaded, TS_ARTICULATED_PART, TS_FRONT } from './extract/vehs';
 import { isBaseSet } from './extract/ids';
+import { areasTouch } from './extract/area';
 import stationNamesJson from '../data/station_names.json';
 import { TOWNNAME_ENGLISH_ORIGINAL } from './extract/city';
 import { englishOriginalTownName } from './names';
@@ -66,6 +67,15 @@ export interface SnapshotStation {
   nameNumber: number;
   isWaypoint: boolean;
   goods: SnapshotGoods[];
+  /**
+   * Industries of the snapshot whose plot falls in this station's catchment — where the
+   * cargo it loads comes from. Measured off the station's railway platforms, since that is
+   * the part a train route is about, and grown by the game's catchment radius.
+   *
+   * Empty where the question cannot be answered: a station with no railway part, a save
+   * that never said how wide the map is, or one whose layout states no plots at all.
+   */
+  supplierIds: number[];
 }
 
 export interface SnapshotStop {
@@ -387,11 +397,49 @@ function cargoLoads(
   return [...bySlot.values()].sort((a, b) => a.slot - b.slot);
 }
 
+/**
+ * Catchment radius used for the railway part of a station, in tiles. Both of the game's
+ * settings land on the same number for trains — CA_TRAIN with "modified catchment" on,
+ * CA_UNMODIFIED with it off (station_type.h:117 and :120) — so only JGRPP's extra widening
+ * moves it.
+ *
+ * The game itself takes the largest radius among everything a station is made of
+ * (`Station::GetCatchmentRadius`, station.cpp:343), so a station that is also a dock reaches
+ * one tile further than this. Undercounting a mixed station's suppliers is the honest way to
+ * be wrong here: the alternative credits a train route with cargo that arrives by ship.
+ */
+function catchmentRadius(raw: RawSavegame): number {
+  const CA_TRAIN = 4;
+  return CA_TRAIN + (Number(raw.settings.get('station.catchment_increase')) || 0);
+}
+
+/**
+ * Industries in the catchment of each station, by station index. Computed here for the same
+ * reason distances are: the answer is a small list, while the tiles it takes to work it out
+ * are the bulk of a savegame and have no other use.
+ */
+function suppliersByStation(raw: RawSavegame): Map<number, number[]> {
+  const out = new Map<number, number[]>();
+  const width = raw.network.mapSize?.width;
+  if (!width) return out;
+  const radius = catchmentRadius(raw);
+  const plots = [...raw.network.industries.values()].filter((industry) => industry.location);
+  for (const station of raw.network.stations.values()) {
+    if (station.kind !== 'station' || station.trainStation === null) continue;
+    const suppliers = plots
+      .filter((industry) => areasTouch(station.trainStation!, industry.location!, width, radius))
+      .map((industry) => industry.index);
+    if (suppliers.length > 0) out.set(station.index, suppliers);
+  }
+  return out;
+}
+
 function buildStations(
   raw: RawSavegame,
   label: (slot: number) => string | null,
   byType: ReadonlyMap<number, Industry>,
 ): SnapshotStation[] {
+  const suppliers = suppliersByStation(raw);
   const out: SnapshotStation[] = [];
   for (const station of raw.network.stations.values()) {
     if (station.kind === 'waypoint') {
@@ -409,6 +457,7 @@ function buildStations(
         nameNumber: station.townCn + 1,
         isWaypoint: true,
         goods: [],
+        supplierIds: [],
       });
       continue;
     }
@@ -428,6 +477,7 @@ function buildStations(
           rating: g.rating,
           waiting: g.waiting,
         })),
+      supplierIds: suppliers.get(station.index) ?? [],
     });
   }
   return out.sort((a, b) => a.id - b.id);

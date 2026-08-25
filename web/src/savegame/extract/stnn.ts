@@ -15,6 +15,7 @@ import {
   type FieldValue,
   type RecordValues,
 } from '../values';
+import { readTileArea, type TileArea } from './area';
 
 /** GoodsEntry::State::Rating (station_base.h:184): the cargo has a rating at all. */
 const GES_RATING = 1 << 1;
@@ -50,6 +51,14 @@ export interface SavedStation extends SavedStationBase {
   kind: 'station';
   /** Industry type the station is named after; 0xff (IT_INVALID) for none. */
   indtype: number;
+  /**
+   * The station's railway platforms (`SlStationNormal`, station_sl.cpp:591-595), null
+   * where it has none.
+   * The station's full extent is not saved at all — `StationRect` is NOSAVE
+   * (base_station_base.h:84) and the game rebuilds it on load — and the railway part is
+   * what a train route is about anyway.
+   */
+  trainStation: TileArea | null;
   goods: SavedGoods[];
 }
 
@@ -79,6 +88,7 @@ export function readStations(chunk: Chunk | undefined): Map<number, SavedStation
           ...shared,
           kind: 'station' as const,
           indtype: asNumber(normal.get('indtype')) ?? 0xff,
+          trainStation: readTileArea(normal, 'train_station'),
           goods: readGoods(normal.get('goods')),
         }
       : { ...shared, kind: 'waypoint' as const, townCn: asNumber(body.get('town_cn')) ?? 0 };

@@ -23,6 +23,14 @@ export const datasetMeta = metaJson as {
 };
 
 export const trainById = new Map(trains.map((t) => [t.id, t]));
+/**
+ * Any catalogue row by id, whichever set defined it. For readers that hold an id but not the
+ * settings that say which set is active — the consist store rehydrating what it saved, or a
+ * game imported from a save played without Iron Horse.
+ */
+export const trainByAnyId = new Map<string, Train>(
+  [...vanillaTrains, ...trains].map((t) => [t.id, t]),
+);
 export const cargoByLabel = new Map(cargos.map((c) => [c.label, c]));
 export const industryById = new Map(industries.map((i) => [i.id, i]));
 export const economyById = new Map(economies.map((e) => [e.id, e]));
@@ -30,6 +38,27 @@ export const economyById = new Map(economies.map((e) => [e.id, e]));
 /** Активный набор машин: Iron Horse или ванильные поезда. */
 export function activeTrains(game: GameSettings): Train[] {
   return game.ironHorse ? trains : vanillaTrains;
+}
+
+/**
+ * Стоит ли эта машина в списке покупки при текущих настройках. Состав хранится по id и
+ * переживает смену набора, а машина чужого набора в расчёте — это её характеристики с
+ * чужими basecost-шифтами (`activeTrainsMeta`), то есть неверные деньги. Такие записи
+ * отбрасываются при чтении — так же, как экономика поступает с грузом, которого в ней нет
+ * (ADR-0002).
+ */
+export function inActiveSet(train: Pick<Train, 'id'>, game: GameSettings): boolean {
+  return (game.ironHorse ? trainById : vanillaTrainById).has(train.id);
+}
+
+const vanillaTrainById = new Map(vanillaTrains.map((t) => [t.id, t]));
+
+/** Состав, каким его считает текущая партия: без машин, которых в её наборе нет. */
+export function activeEntries<E extends { train: Pick<Train, 'id'> }>(
+  entries: readonly E[],
+  game: GameSettings,
+): E[] {
+  return entries.filter((entry) => inActiveSet(entry.train, game));
 }
 
 /**

@@ -20,7 +20,7 @@
   производство за месяц.
 - **Перенос — только честный**: полный мост в «Доход рейса» требует того же, что и прогноз
   карточки, и говорит теми же словами о причинах. Состав с машиной чужого набора или
-  разнородный парк полный мост не переносит — кнопка неактивна, причина названа. Частичного
+  разнородный парк полный мост не переносит — переход неактивен, причина названа. Частичного
   переноса «без чужой машины» нет: посчитанный так поезд — другой поезд. Число остановок
   при этом причиной недоступности не бывает: оно решает, сколько мост переносит, а не
   переносит ли вообще.
@@ -43,6 +43,9 @@
 
 ### Modified Capabilities
 
+- `vanilla-dataset`: правило «без шифтов Iron Horse» дополняется его следствием для
+  сохранённого состава — машина чужого набора выпадает из расчёта, а не считается по чужим
+  шифтам (всплыло при переносе состава ванильной партии).
 - `savegame-snapshot`: модель снапшота дополняется привязкой станции к
   индустриям-поставщикам в зоне охвата (из неё считается поток станции погрузки); версия
   схемы снапшота поднимается, старый снапшот дропается штатным механизмом.
@@ -67,19 +70,23 @@
   версии дропается, вкладка просит файл заново), localStorage не сбрасывается.
 - **Источник истины** (сверено, не предположение): радиус охвата —
   `vendor/openttd/src/station_type.h:117` (`CA_TRAIN = 4`, равен `CA_UNMODIFIED` :120);
-  ж/д площадка станции в сейве — `train_station.tile/.w/.h`
-  (`vendor/openttd/src/saveload/station_sl.cpp:459-465`, JGRPP — там же :593-595); площадка
+  ж/д площадка станции в сейве — `train_station.tile/.w/.h` (`SlStationNormal`,
+  `vendor/openttd/src/saveload/station_sl.cpp:591-595`); площадка
   индустрии — `location.tile/.w/.h` (`saveload/industry_sl.cpp:152-155`); JGRPP-добавка к
   охвату — `station.catchment_increase` (`settings_type.h`). Важно: полный прямоугольник
   станции (`StationRect rect`) в сейве **не хранится** — он помечен `NOSAVE`
   (`base_station_base.h:84`) и пересобирается игрой при загрузке, поэтому привязка считается
   по ж/д площадке.
 - Код: `web/src/savegame/extract/stnn.ts` (ж/д площадка станции), `extract/indy.ts`
-  (тайл и размер индустрии), `snapshot.ts` (привязка), `snapshotStore.ts`
-  (`SNAPSHOT_SCHEMA_VERSION` → 3), `features/savegame/RoutesTab.tsx` и `IndustriesTab.tsx`
-  (кнопки), модуль моста в `features/savegame/`, сторы-приёмники `state/routeStore.ts`,
-  `state/optimizerStore.ts`, `state/consistStore.ts` (заполнение + пометка происхождения;
-  оживление состава сейчас идёт через `trainById` — только Iron Horse, ванильную партию
-  придётся учесть), i18n `en.json`/`ru.json`, тесты (`web/src/savegame/__tests__` —
-  по-русски, как весь каталог; `state`/`features` — по языку соседей).
+  (тайл и размер индустрии), новый `extract/area.ts` (площадки и их пересечение),
+  `snapshot.ts` (привязка), `snapshotStore.ts` (`SNAPSHOT_SCHEMA_VERSION` → 3),
+  `features/savegame/RoutesTab.tsx` и `IndustriesTab.tsx` (переходы), новые
+  `features/savegame/bridge.ts`, `applyBridge.ts` и `CargoBridgeLink.tsx` (груз-ссылка,
+  одна на оба списка), `components/PrefillNote.tsx`,
+  `state/prefill.ts`, сторы-приёмники `state/routeStore.ts`, `state/optimizerStore.ts`,
+  `state/consistStore.ts` (заполнение + пометка происхождения), `dataset.ts` и
+  `features/consist/ConsistPage.tsx` (сосуществование наборов машин: состав оживляется по
+  обоим каталогам, а в расчёт идут только машины активного набора), `skin.css` (вид
+  переходов), i18n `en.json`/`ru.json`, тесты (`web/src/savegame/__tests__` — по-русски, как
+  весь каталог; `state`/`features` — по языку соседей).
 - `CHANGELOG.md` — секция `[Unreleased]` → `### Added`.

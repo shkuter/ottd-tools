@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { OptimizeGoal } from '../engine/optimize';
 import { DEFAULT_SEARCH_PARAMS, type SearchParams } from './searchParams';
+import type { PrefillOrigin } from './prefill';
+
+/** The inputs a bridge from the game tab fills in; the consist is not one of them. */
+export interface OptimizerPrefill {
+  cargoLabel: string;
+  distanceTiles: number;
+  productionPerMonth: number;
+}
 
 interface OptimizerState extends SearchParams {
   cargoLabel: string;
@@ -22,6 +30,8 @@ interface OptimizerState extends SearchParams {
    * появиться в игре (engine/availability.ts) и не нужны игроку в выдаче.
    */
   excludedIds: string[];
+  /** Set when a bridge filled these inputs in; null when they were typed by hand. */
+  prefillOrigin: PrefillOrigin<OptimizerPrefill> | null;
   setYear: (year: number) => void;
   setCargoLabel: (label: string) => void;
   setDistanceTiles: (tiles: number) => void;
@@ -34,6 +44,7 @@ interface OptimizerState extends SearchParams {
   /** Выключить/вернуть пункт списка покупки целиком: у него бывает несколько моделей. */
   toggleExcluded: (ids: string[]) => void;
   clearExcluded: () => void;
+  setPrefillOrigin: (origin: PrefillOrigin<OptimizerPrefill> | null) => void;
 }
 
 export const useOptimizerStore = create<OptimizerState>()(
@@ -46,6 +57,7 @@ export const useOptimizerStore = create<OptimizerState>()(
       goal: 'profit',
       destinationId: '',
       excludedIds: [],
+      prefillOrigin: null,
       setYear: (year) => set({ year }),
       setCargoLabel: (cargoLabel) => set({ cargoLabel }),
       setDistanceTiles: (distanceTiles) => set({ distanceTiles }),
@@ -62,6 +74,7 @@ export const useOptimizerStore = create<OptimizerState>()(
             : [...s.excludedIds, ...ids.filter((id) => !s.excludedIds.includes(id))],
         })),
       clearExcluded: () => set({ excludedIds: [] }),
+      setPrefillOrigin: (prefillOrigin) => set({ prefillOrigin }),
     }),
     { name: 'ottd-tools-optimizer' },
   ),

@@ -21,6 +21,7 @@ import { catalogueSortValues, DEFAULT_SORT, type CatalogueColumn } from './sorti
 import {
   activeCargoByLabel,
   activeCargos,
+  activeEntries,
   activeTrains,
   activeTrainsMeta,
   canCarryIn,
@@ -40,7 +41,7 @@ import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 const PAGE_SIZE = 50;
 
 export default function ConsistPage() {
-  const entries = useConsistStore((s) => s.entries);
+  const stored = useConsistStore((s) => s.entries);
   const cargoLabel = useConsistStore((s) => s.cargoLabel);
   const addToConsist = useConsistStore((s) => s.add);
   const removeFromConsist = useConsistStore((s) => s.remove);
@@ -48,6 +49,7 @@ export default function ConsistPage() {
   const clearConsist = useConsistStore((s) => s.clear);
   const setCargoLabel = useConsistStore((s) => s.setCargoLabel);
   const { game, calc } = useSettingsStore();
+  const entries = useMemo(() => activeEntries(stored, game), [stored, game]);
   const [kindFilter, setKindFilter] = useState<'all' | 'engine' | 'wagon'>('all');
   const [search, setSearch] = useState('');
   const [year, setYear] = useState(1950);

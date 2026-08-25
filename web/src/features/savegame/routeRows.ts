@@ -70,6 +70,12 @@ export interface RouteRow {
    * prices, and what the list states beside the number of trains.
    */
   consist: SnapshotConsistEntry[] | null;
+  /**
+   * The same consist as catalogue entries — what the engine and the bridges take. Null as
+   * soon as the fleet is not uniform or one vehicle is unmatched, which is exactly when
+   * there is no single consist to price or to carry anywhere.
+   */
+  entries: ConsistEntry[] | null;
   cargo: Cargo | null;
   /** Profit of the whole fleet over the last finished year — the figure a forecast meets. */
   profitLastYear: number;
@@ -107,6 +113,7 @@ export function routeRows(
         stops: route.stops,
         trains,
         consist,
+        entries: consist === null ? null : consistEntries(consist, catalogue),
         cargo,
         profitLastYear: trains.reduce((sum, train) => sum + train.profitLastYear, 0),
         profitThisYear: trains.reduce((sum, train) => sum + train.profitThisYear, 0),
@@ -115,12 +122,11 @@ export function routeRows(
         blocker: null,
       };
 
-      const entries = consist === null ? null : consistEntries(consist, catalogue);
-      const blocker = forecastBlocker(row, entries);
+      const blocker = forecastBlocker(row);
       if (blocker !== null) return { ...row, blocker };
 
       const forecast = tripEconomics({
-        entries: entries!,
+        entries: row.entries!,
         meta,
         cargo: cargo!,
         payment: cargoPaymentRate(cargo!, economyId, settings.game, settings.calc),
@@ -137,17 +143,35 @@ export function routeRows(
     });
 }
 
-/** What stops the model, in the order the tab would explain it. */
-function forecastBlocker(row: RouteRow, entries: ConsistEntry[] | null): ForecastBlocker | null {
+/**
+ * What stops a route from being priced as one consist over one leg, regardless of the order
+ * a caller cares about it in. The forecast asks about the round trip and so weighs the shape
+ * of the route first; a bridge carrying the consist elsewhere weighs the consist first. Both
+ * read the same answers from here rather than each deciding what "unusable" means.
+ */
+export interface RouteObstacles {
+  shape: Extract<ForecastBlocker, 'oneStop' | 'multiStop'> | null;
+  distance: Extract<ForecastBlocker, 'noDistance'> | null;
+  cargo: Extract<ForecastBlocker, 'noCargo'> | null;
+  consist: Extract<ForecastBlocker, 'mixedFleet' | 'unmatchedVehicle'> | null;
+}
+
+export function routeObstacles(row: RouteRow): RouteObstacles {
   const stations = stationStops(row.stops);
-  if (stations.length < 2) return 'oneStop';
-  if (stations.length > 2) return 'multiStop';
-  if (row.distanceTiles === null) return 'noDistance';
-  if (row.cargo === null) return 'noCargo';
-  if (row.consist === null) return 'mixedFleet';
-  // one unmatched vehicle is enough: its capacity and its costs are both missing
-  if (entries === null) return 'unmatchedVehicle';
-  return null;
+  return {
+    shape: stations.length < 2 ? 'oneStop' : stations.length > 2 ? 'multiStop' : null,
+    distance: row.distanceTiles === null ? 'noDistance' : null,
+    cargo: row.cargo === null ? 'noCargo' : null,
+    // one unmatched vehicle is enough: its capacity and its costs are both missing
+    consist:
+      row.consist === null ? 'mixedFleet' : row.entries === null ? 'unmatchedVehicle' : null,
+  };
+}
+
+/** What stops the model, in the order the tab would explain it. */
+function forecastBlocker(row: RouteRow): ForecastBlocker | null {
+  const obstacles = routeObstacles(row);
+  return obstacles.shape ?? obstacles.distance ?? obstacles.cargo ?? obstacles.consist;
 }
 
 /**

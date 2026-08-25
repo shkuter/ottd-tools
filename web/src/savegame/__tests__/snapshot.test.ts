@@ -110,6 +110,7 @@ describe('снапшот партии Londworth', () => {
       index: 9000,
       typeId: 250,
       town: 1,
+      location: null,
       produced: [41, 43, 44, 49].map((cargoIndex) => ({ cargoIndex })),
     });
     const snapshot = buildSnapshot({ ...base, network: { ...base.network, industries } });

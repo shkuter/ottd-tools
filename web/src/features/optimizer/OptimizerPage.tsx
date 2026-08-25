@@ -51,6 +51,7 @@ import { useRouteStore } from '../../state/routeStore';
 import { CargoIcon } from '../../components/CargoIcon';
 import { TrainImage } from '../../components/TrainImage';
 import { useActiveCargo } from '../useActiveCargo';
+import { PrefillNote } from '../../components/PrefillNote';
 
 /** Rows drawn before the "show more" button; the search itself still ranks all of them. */
 const PAGE_SIZE = 15;
@@ -214,7 +215,8 @@ function introTitle(intro: IntroAvailability): string {
 export default function OptimizerPage() {
   const {
     year, cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, goal, maxTrains,
-    allowElectric, excludedIds, destinationId, setYear, setCargoLabel, setDistanceTiles: setDistance,
+    allowElectric, excludedIds, destinationId, prefillOrigin,
+    setYear, setCargoLabel, setDistanceTiles: setDistance,
     setStationTiles, setProductionPerMonth, setGoal, setMaxTrains, setAllowElectric,
     setDestinationId, toggleExcluded, clearExcluded,
   } = useOptimizerStore();
@@ -439,6 +441,10 @@ export default function OptimizerPage() {
           onChange={(e) => setEngineFilter(e.currentTarget.value)}
         />
       </Group>
+      <PrefillNote
+        origin={prefillOrigin}
+        current={{ cargoLabel, distanceTiles: distance, productionPerMonth }}
+      />
       {cargo && (
         <p className="hint">
           {cargoName(cargo)} · {economies.find((e) => e.id === economyId)?.name ?? t('settings.vanilla')} ·{' '}

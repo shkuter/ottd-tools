@@ -1,13 +1,15 @@
 import { useMemo } from 'react';
 import { Button, NumberInput, Paper, Select, Switch, Table, Text, Title } from '@mantine/core';
 import { LineChart } from '@mantine/charts';
-import { activeCargos, economyIdForPayment, activeTrainsMeta } from '../../dataset';
+import { activeCargos, activeEntries, economyIdForPayment, activeTrainsMeta } from '../../dataset';
 import { t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { money, num, percent, speed } from '../../components/format';
 import { Money } from '../../components/Money';
 import { CargoIcon } from '../../components/CargoIcon';
 import { useRouteStore } from '../../state/routeStore';
+import { PrefillNote } from '../../components/PrefillNote';
+import { routePrefillState } from '../savegame/applyBridge';
 import { useSettingsStore } from '../../state/settingsStore';
 import { useConsistStore } from '../../state/consistStore';
 import { cargoPaymentRate, incomeCurve, transportedGoodsIncome } from '../../engine/income';
@@ -25,9 +27,16 @@ export default function RoutePage() {
   const cargoList = useMemo(() => sortCargos(activeCargos(game), locale), [game, locale]);
   const cargo = useActiveCargo(cargoList, route.cargoLabel, route.setCargoLabel);
 
+  /*
+   * Only what the current game could actually buy. A consist survives a change of vehicle set
+   * in localStorage, and pricing a vanilla wagon with Iron Horse's basecost shifts (or the
+   * other way round) states money no game charges.
+   */
+  const entries = useMemo(() => activeEntries(consist.entries, game), [consist.entries, game]);
+
   const stats = useMemo(
-    () => consistStats(consist.entries, cargo ?? null, calc.capacityIndex, activeTrainsMeta(game), game, calc),
-    [consist.entries, cargo, calc, game],
+    () => consistStats(entries, cargo ?? null, calc.capacityIndex, activeTrainsMeta(game), game, calc),
+    [entries, cargo, calc, game],
   );
 
   const payment = cargo ? cargoPaymentRate(cargo, economyIdForPayment(game), game, calc) : 0;
@@ -41,9 +50,9 @@ export default function RoutePage() {
   // optimizer picks the loading branch by its goal; this tab has no goal, so the branch is
   // the user's to set, and with it the source output the waiting branch accumulates from.
   const routeTrip = useMemo(() => {
-    if (consist.entries.length === 0 || !cargo) return null;
+    if (entries.length === 0 || !cargo) return null;
     return routeWithFlow({
-      entries: consist.entries,
+      entries,
       cargo,
       payment,
       distanceTiles: route.distanceTiles,
@@ -55,7 +64,7 @@ export default function RoutePage() {
       waitForFullLoad: route.waitForFullLoad,
     });
   }, [
-    consist.entries, cargo, payment, route.distanceTiles, route.manualDays,
+    entries, cargo, payment, route.distanceTiles, route.manualDays,
     route.productionPerMonth, route.waitForFullLoad, game, calc,
   ]);
   const consistDays =
@@ -102,6 +111,7 @@ export default function RoutePage() {
     <div className="page-route">
       <Paper component="section" className="route-controls" p="sm">
         <Title order={2}>{t('route.title')}</Title>
+        <PrefillNote origin={route.prefillOrigin} current={routePrefillState(game)} />
         <Select
           className="field"
           label={t('route.cargo')}

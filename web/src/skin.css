@@ -636,6 +636,16 @@ strong {
   padding-left: calc(var(--skin-scale) * 14px);
 }
 
+/* The route's own action, at the end of its row. */
+.route-bridge-cell {
+  white-space: nowrap;
+}
+
+/* Where the figures on a calculating tab came from; sits under the tab's own title. */
+.prefill-note {
+  margin: calc(var(--skin-scale) * -2px) 0 calc(var(--skin-scale) * 6px);
+}
+
 /*
  * A cargo as the rest of the calculator shows one: icon, then name. The icon and the name are
  * one element and never come apart; a figure appended after them ("Limestone 12,345") may
@@ -667,6 +677,20 @@ strong {
 .goods-list {
   display: flex;
   flex-direction: column;
+}
+
+/*
+ * A produced cargo that leads somewhere: the line itself is the link, so there is no separate
+ * control squeezed into the row. It underlines on hover the way a link does, and it is left
+ * inline — a flex row here would break the neighbouring column's text into separate items.
+ */
+.cargo-bridge {
+  display: inline;
+  font: inherit;
+}
+
+.cargo-bridge:hover {
+  text-decoration: underline;
 }
 
 .game-drift {
