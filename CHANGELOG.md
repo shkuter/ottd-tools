@@ -34,6 +34,12 @@ of what users see):
 
 ### Changed
 
+- The savegame reader is now covered by a real vanilla game as well as the JGRPP ones: the
+  base-set path (no NewGRF at all, the old order pool, climate cargo slots) is asserted
+  against a played savegame instead of a synthetic one. The import panel has component
+  tests too, so "confirm applies and stores", "cancel writes nothing" and "settings already
+  match" are checked rather than clicked through by hand.
+
 - The skin is now checked in a browser as well as in the stylesheets: rendered-page checks run by
   `make check-visual` (part of `make verify`). They serve the built bundle, open it in
   Playwright's Chromium and assert about computed styles, which is the only way to catch the class

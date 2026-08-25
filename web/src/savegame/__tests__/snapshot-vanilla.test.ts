@@ -268,3 +268,68 @@ describe('синтетический ванильный сейв', () => {
     expect(snapshot.towns.map((t) => t.name)).toContain('Londworth');
   });
 });
+
+describe('настоящая ванильная партия (vanilla-1951)', () => {
+  async function snapshot() {
+    return buildSnapshot(await readSavegame(fixture('vanilla-1951')));
+  }
+
+  it('парк из четырёх одинаковых составов, как в окне поездов игры', async () => {
+    const snap = await snapshot();
+    expect(snap.trains).toHaveLength(4);
+    for (const train of snap.trains) {
+      // Ginzu 'A4' и три угольные платформы: id каталога ванильных машин
+      expect(train.consist).toEqual([
+        { catalogueId: 'vanilla_9', count: 1 },
+        { catalogueId: 'vanilla_29', count: 3 },
+      ]);
+      expect(train.cargo).toEqual([
+        expect.objectContaining({ label: 'COAL', capacity: 90 }),
+      ]);
+    }
+  });
+
+  it('четыре поезда ходят по одному списку приказов', async () => {
+    const snap = await snapshot();
+    expect(snap.routes).toHaveLength(1);
+    expect(snap.routes[0].trainIds).toEqual(snap.trains.map((t) => t.id).sort((a, b) => a - b));
+    expect(snap.routes[0].stops.map((s) => s.kind)).toEqual(['station', 'station']);
+  });
+
+  it('имена городов и станций собираются как в игре', async () => {
+    const snap = await snapshot();
+    const towns = new Map(snap.towns.map((t) => [t.id, t.name ?? '']));
+    const names = snap.stations.map((s) => stationDisplayName(s, towns.get(s.townId!) ?? '', 'en'));
+    expect(names).toContain('Kenningstone-on-sea Mines');
+    // тот же суффикс по-русски приходит из локали игры
+    const mines = snap.stations.find((s) => s.suffixKey === 'STR_SV_STNAME_MINES')!;
+    expect(stationDisplayName(mines, towns.get(mines.townId!) ?? '', 'ru')).toMatch(/^Шахты /);
+    expect(snap.towns.every((t) => t.name !== null)).toBe(true);
+  });
+
+  it('станция угольной шахты знает рейтинг и ожидающий груз', async () => {
+    const snap = await snapshot();
+    const mines = snap.stations.find((s) => s.suffixKey === 'STR_SV_STNAME_MINES')!;
+    expect(mines.goods).toEqual([
+      expect.objectContaining({ label: 'COAL', rating: expect.any(Number) }),
+    ]);
+    expect(mines.goods[0].rating).toBeGreaterThan(0);
+  });
+
+  it('прибыль поездов приходит в деньгах игры', async () => {
+    const snap = await snapshot();
+    // партия сыграна год: прошлогодняя прибыль у всех положительная
+    for (const train of snap.trains) expect(train.profitLastYear).toBeGreaterThan(0);
+    expect(snap.companies).toEqual([{ id: 0, name: '', isAi: false }]);
+  });
+
+  it('ванильные индустрии читаются, но каталога для них в калькуляторе нет', async () => {
+    const snap = await snapshot();
+    expect(snap.industries.length).toBeGreaterThan(0);
+    // данные калькулятора описывают только предприятия FIRS, поэтому тип не опознаётся,
+    // а производство и грузы читаются
+    expect(snap.industries.every((i) => i.catalogueId === null)).toBe(true);
+    const coal = snap.industries.filter((i) => i.produced.some((p) => p.label === 'COAL'));
+    expect(coal.length).toBeGreaterThan(0);
+  });
+});

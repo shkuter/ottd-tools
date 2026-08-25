@@ -19,3 +19,31 @@ Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable
 if (typeof window === 'undefined') {
   Object.defineProperty(globalThis, 'window', { value: globalThis, configurable: true });
 }
+
+/**
+ * Component tests run under jsdom, which implements neither `matchMedia` (Mantine asks it
+ * for the colour scheme) nor `ResizeObserver` (its overlays observe their target). Both are
+ * stubbed here rather than in each test file.
+ */
+if (typeof window !== 'undefined' && window.matchMedia === undefined) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
