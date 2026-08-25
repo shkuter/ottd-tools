@@ -84,5 +84,32 @@ class NameCollisions(unittest.TestCase):
         self.assertEqual(ru.collisions({"a": None, "b": None}, {}), {})
 
 
+class GameNamesMerge(unittest.TestCase):
+    """The base game names objects FIRS also names; the dictionary is keyed by id."""
+
+    def test_game_name_fills_an_id_firs_does_not_have(self):
+        names = {"logs": "Брёвна"}
+        ru.merge_game_names(names, {"wood": "Древесина"}, "cargo")
+        self.assertEqual(names, {"logs": "Брёвна", "wood": "Древесина"})
+
+    def test_same_name_from_both_sources_is_no_conflict(self):
+        names = {"coal_mine": "Угольная шахта"}
+        ru.merge_game_names(names, {"coal_mine": "Угольная шахта"}, "industry")
+        self.assertEqual(names["coal_mine"], "Угольная шахта")
+
+    def test_disagreeing_names_stop_the_build(self):
+        # last-write-wins would drop the FIRS name and any override written for it
+        with self.assertRaises(SystemExit) as cm:
+            ru.merge_game_names({"coal_mine": "Шахта"}, {"coal_mine": "Угольная шахта"},
+                                "industry")
+        self.assertIn("cannot hold both", str(cm.exception))
+        self.assertIn("industry coal_mine", str(cm.exception))
+
+    def test_untranslated_game_name_leaves_the_firs_one(self):
+        names = {"coal_mine": "Угольная шахта"}
+        ru.merge_game_names(names, {"coal_mine": None}, "industry")
+        self.assertEqual(names["coal_mine"], "Угольная шахта")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -47,3 +47,8 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
     disconnect() {}
   } as unknown as typeof ResizeObserver;
 }
+// jsdom lays nothing out, so it implements no scrolling; Mantine's dropdowns keep the
+// highlighted option in view and would otherwise throw past the end of a test
+if (typeof Element !== 'undefined' && Element.prototype.scrollIntoView === undefined) {
+  Element.prototype.scrollIntoView = () => {};
+}

@@ -1,13 +1,16 @@
-"""Экспорт ванильных данных OpenTTD (поезда и грузы) в web/src/data/vanilla_*.json.
+"""Экспорт ванильных данных OpenTTD (поезда, грузы, предприятия) в web/src/data/vanilla_*.json.
 
 Нужны, когда игрок отключает Iron Horse и/или FIRS: расчёт тогда идёт по
-дефолтным машинам и грузам игры.
+дефолтным машинам и грузам игры, а импортированная партия называет свои
+предприятия строками самой игры, а не набора индустрий.
 
 Источники (парсятся текстом, без сборки игры):
-  vendor/openttd/src/table/engines.h      — _orig_engine_info (MT/MM/MW) + _orig_rail_vehicle_info
-  vendor/openttd/src/table/cargo_const.h  — базовые грузы
-  vendor/openttd/src/cargo_type.h         — настоящие метки грузов (CT_OIL -> "OIL_")
-  vendor/openttd/src/lang/english.txt     — имена машин и грузов
+  vendor/openttd/src/table/engines.h        — _orig_engine_info (MT/MM/MW) + _orig_rail_vehicle_info
+  vendor/openttd/src/table/cargo_const.h    — базовые грузы
+  vendor/openttd/src/cargo_type.h           — настоящие метки грузов (CT_OIL -> "OIL_")
+  vendor/openttd/src/table/build_industry.h — _origin_industry_specs, порядок задаёт тип
+                                              предприятия в сейве
+  vendor/openttd/src/lang/english.txt       — имена машин, грузов и предприятий
 """
 import datetime
 import functools
@@ -22,6 +25,8 @@ ENGINES_H = os.path.join(OTTD, "src", "table", "engines.h")
 CARGO_H = os.path.join(OTTD, "src", "table", "cargo_const.h")
 CARGO_TYPE_H = os.path.join(OTTD, "src", "cargo_type.h")
 LANG = os.path.join(OTTD, "src", "lang", "english.txt")
+INDUSTRY_H = os.path.join(OTTD, "src", "table", "build_industry.h")
+INDUSTRY_TYPE_H = os.path.join(OTTD, "src", "industry_type.h")
 TRAIN_SPRITES_H = os.path.join(OTTD, "src", "table", "train_sprites.h")
 SPRITES_H = os.path.join(OTTD, "src", "table", "sprites.h")
 
@@ -272,6 +277,52 @@ def build_cargos():
     return items
 
 
+def new_industry_offset():
+    """Сколько типов предприятий объявляет сама игра (industry_type.h)."""
+    match = re.search(r"NEW_INDUSTRYOFFSET\s*=\s*(\d+)", read(INDUSTRY_TYPE_H))
+    if not match:
+        sys.exit(f"не найден NEW_INDUSTRYOFFSET в {INDUSTRY_TYPE_H}")
+    return int(match.group(1))
+
+
+def build_industries():
+    """Предприятия базовой игры: индекс в _origin_industry_specs — это тип из сейва.
+
+    Сама игра адресует их так же: сохранение хранит IndustryType, а IIDS в ванильной
+    партии нет вовсе, поэтому номер типа читается прямо по этой таблице.
+
+    Разбор идёт текстом, поэтому лишнее вхождение STR_INDUSTRY_NAME_* внутри блока сдвинуло
+    бы все типы разом и переименовало партию молча. Единственное, с чем этот сдвиг можно
+    сверить, — число типов, которое игра объявляет сама: расхождение с ним останавливает
+    сборку здесь, у источника, а не через два файла проверок.
+    """
+    text = read(INDUSTRY_H)
+    start = text.index("_origin_industry_specs[NEW_INDUSTRYOFFSET] = {")
+    block = text[start : text.index("\n};", start)]
+    keys = re.findall(r"STR_INDUSTRY_NAME_\w+", block)
+    declared = new_industry_offset()
+    if len(keys) != declared:
+        sys.exit(
+            f"предприятий разобрано {len(keys)}, а игра объявляет {declared} "
+            f"(NEW_INDUSTRYOFFSET) — разбор таблицы сдвинулся, типы поедут"
+        )
+    names = parse_lang_names("STR_INDUSTRY_NAME_")
+    items = []
+    for type_id, key in enumerate(keys):
+        name = names.get(key)
+        if name is None:
+            sys.exit(f"нет строки {key} в {LANG}")
+        # id из строки игры, как у ванильных грузов: там, где предприятие есть и в FIRS,
+        # оба набора приходят к одному id и к одному имени (проверяется в extract_firs_ru)
+        items.append({
+            "id": key.removeprefix("STR_INDUSTRY_NAME_").lower(),
+            "type": type_id,
+            "string_key": key,
+            "name": name,
+        })
+    return items
+
+
 def build_climate_slots():
     """CargoID -> CargoLabel per climate, from _default_climate_cargo (cargo_const.h).
 
@@ -300,6 +351,7 @@ def build_climate_slots():
 def main():
     trains = build_trains()
     cargos = build_cargos()
+    industries = build_industries()
     # один и тот же груз объявлен для нескольких климатов — оставляем первый
     seen = set()
     cargos = [c for c in cargos if not (c["label"] in seen or seen.add(c["label"]))]
@@ -310,8 +362,12 @@ def main():
         "climate_slots": build_climate_slots(),
         "items": cargos,
     })
-    print(f"vanilla: {len(trains)} trains, {len(cargos)} cargos")
-    if not trains or not cargos:
+    write_json("vanilla_industries.json", {"meta": meta, "items": industries})
+    print(
+        f"vanilla: {len(trains)} trains, {len(cargos)} cargos, "
+        f"{len(industries)} industries"
+    )
+    if not trains or not cargos or not industries:
         sys.exit("не удалось распарсить ванильные таблицы")
 
 

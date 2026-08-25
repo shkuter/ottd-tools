@@ -3,6 +3,8 @@ import { afterAll, beforeAll } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { preview, type PreviewServer } from 'vite';
 import { chromium, type Browser, type Page } from 'playwright';
+import { GAME_SNAPSHOT } from '../../features/savegame/__tests__/gameSnapshot';
+import { SNAPSHOT_DB } from '../../savegame/snapshotStore';
 
 /**
  * Serves the built bundle and opens it in a real browser.
@@ -98,6 +100,41 @@ async function openHarness(): Promise<Harness> {
     });
     return page;
   };
+
+  /*
+   * The game tab is only offered once a savegame has been imported, so the checks import
+   * one. Written on the page rather than through an init script: the app reads the database
+   * as it starts, and a write racing that read would sometimes lose. Opening the app once,
+   * writing, then letting every later goto() reload is race-free — the record persists in
+   * the context.
+   */
+  await goto('/optimizer');
+  // the names of the database come from the store itself: this code runs inside the page,
+  // where it cannot import them, so they are handed over as an argument instead of copied
+  await page.evaluate(
+    async ({ record, db: names }) => {
+      await new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open(names.name, names.version);
+        open.onupgradeneeded = () => {
+          if (!open.result.objectStoreNames.contains(names.store)) {
+            open.result.createObjectStore(names.store);
+          }
+        };
+        open.onsuccess = () => {
+          const db = open.result;
+          const tx = db.transaction(names.store, 'readwrite');
+          tx.objectStore(names.store).put(record, names.key);
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+        open.onerror = () => reject(open.error);
+      });
+    },
+    { record: GAME_SNAPSHOT, db: SNAPSHOT_DB },
+  );
 
   return {
     goto,

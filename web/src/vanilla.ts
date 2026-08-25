@@ -2,6 +2,7 @@
  * Ванильные машины и грузы OpenTTD — используются, когда игрок отключил
  * Iron Horse и/или FIRS. Приводятся к тем же типам, что и данные NewGRF.
  */
+import vanillaIndustriesJson from './data/vanilla_industries.json';
 import vanillaTrainsJson from './data/vanilla_trains.json';
 import vanillaCargosJson from './data/vanilla_cargos.json';
 import type { Cargo, Train } from './types';
@@ -150,3 +151,29 @@ export const vanillaCargos: Cargo[] = (
 export function vanillaCanCarry(train: Train, cargo: Cargo): boolean {
   return train.default_cargos.includes(cargo.label);
 }
+
+/**
+ * Предприятие базовой игры: имя и номер типа, которым его называет сохранение.
+ *
+ * Не `Industry` из данных FIRS: у базовой игры нет ни экономик, ни цепочек, ни пулов
+ * снабжения — есть название, которым игра подписывает предприятие в своём списке.
+ */
+export interface VanillaIndustry {
+  id: string;
+  /** Индекс в `_origin_industry_specs` — то, что лежит в сейве как IndustryType. */
+  type: number;
+  name: string;
+}
+
+const vanillaIndustries: VanillaIndustry[] = (
+  vanillaIndustriesJson as { items: VanillaIndustry[] }
+).items;
+
+/** Тип из сейва → предприятие базовой игры. */
+export const vanillaIndustryByType = new Map(
+  vanillaIndustries.map((industry) => [industry.type, industry]),
+);
+
+export const vanillaIndustryById = new Map(
+  vanillaIndustries.map((industry) => [industry.id, industry]),
+);

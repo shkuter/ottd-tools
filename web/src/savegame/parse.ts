@@ -19,8 +19,9 @@ export const MIN_SAVEGAME_VERSION = 295;
 /** Chunks the calculator reads; everything else is walked past. */
 export const WANTED_CHUNKS = [
   'PATS', 'NGRF', 'ECMY', 'DATE',
-  // network of the game, for the snapshot
-  'EIDS', 'IIDS', 'VEHS', 'ORDL', 'ORDR', 'STNN', 'CAPA', 'INDY', 'CITY', 'GRPS', 'PLYR',
+  // network of the game, for the snapshot; MAPS states how wide the map is, which is what
+  // turns a station's stored tile into coordinates
+  'MAPS', 'EIDS', 'IIDS', 'VEHS', 'ORDL', 'ORDR', 'STNN', 'CAPA', 'INDY', 'CITY', 'GRPS', 'PLYR',
 ] as const;
 
 export interface ParsedSavegame {

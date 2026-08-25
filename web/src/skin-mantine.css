@@ -540,6 +540,14 @@
     background: var(--skin-list-bg);
   }
 
+  /*
+   * A row opened in place is one cell spanning the table, so it is both the first and the
+   * last of its row and would be pinned to both edges at once. It scrolls with the rest.
+   */
+  .table-wrap.pin-edges .route-detail .mantine-Table-td {
+    position: static;
+  }
+
   .table-wrap.pin-edges .mantine-Table-th:first-child,
   .table-wrap.pin-edges .mantine-Table-th:last-child {
     background: var(--skin-list-head-bg);

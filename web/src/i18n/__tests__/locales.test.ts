@@ -5,6 +5,7 @@ import { useLocaleStore } from '../../state/localeStore';
 import firsCargos from '../../data/cargos.json';
 import industries from '../../data/industries.json';
 import vanillaCargos from '../../data/vanilla_cargos.json';
+import vanillaIndustries from '../../data/vanilla_industries.json';
 import economies from '../../data/economies.json';
 import cargosRu from '../cargos.ru.json';
 import industriesRu from '../industries.ru.json';
@@ -181,7 +182,11 @@ describe('station name suffixes', () => {
 
 describe('industry names', () => {
   it('covers every industry in the data', () => {
-    const missing = industries.items
+    // the vanilla set alongside FIRS, the way the cargo check reads both: a game played
+    // without FIRS names its industries from these, and an untranslated one would quietly
+    // fall back to English
+    const all = [...industries.items, ...vanillaIndustries.items];
+    const missing = all
       .filter((i) => !(i.id in industriesRu))
       .map((i) => `${i.id} (${i.name})`);
     expect(missing).toEqual([]);

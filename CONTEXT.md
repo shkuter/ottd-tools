@@ -222,6 +222,14 @@ is not offered anywhere; it has no payment rate to compute with.
 routes, stations, towns, industries, train groups and companies. One snapshot exists at a time; the next import replaces
 it. Carries a schema version so an outdated copy asks for the file again instead of misreading.
 
+**Snapshot settings** (_настройки партии_, `SnapshotSettings`) — the settings the imported
+game was played with, stored beside the **snapshot** and complete: what the savegame stated,
+filled out with the calculator's defaults where it stated nothing, never with what the user
+has configured. The **savegame tab** computes its forecasts from these, so a route's figures
+describe the game the file came from and do not move when the calculator's own settings are
+edited afterwards.
+_Avoid_: snapshot of the settings (the snapshot is the network; these are its settings)
+
 **Route** (_маршрут_) — a shared orders list together with the trains running it; a train with
 a private orders list is a route of one train. The game has no route entity — this is the
 calculator's reading of shared orders. Where its consists are identical, a route's trains are

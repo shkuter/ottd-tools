@@ -90,4 +90,29 @@ describe('применение импорта', () => {
     await applyImport({ ...CONFIRMED, proposal: { ...PROPOSAL, game } }, 1);
     expect(useSettingsStore.getState().game.firsEconomy).toBe('STEELTOWN');
   });
+
+  it('в записи лежат настройки партии, а не то, что настроено в калькуляторе', async () => {
+    // до импорта пользователь крутил свои настройки: они не должны попасть в запись
+    useSettingsStore.getState().applySettings({ dayLengthFactor: 9, freightTrains: 4 }, {});
+
+    await applyImport(CONFIRMED, 1);
+    resetSnapshotStateForTests();
+    const record = (await loadSnapshot()).record!;
+
+    // значения сейва — из сейва
+    expect(record.settings.game).toMatchObject({ dayLengthFactor: 5, vehicleCosts: 2 });
+    expect(record.settings.calc).toMatchObject({ priceYear: 1860, capacityIndex: 2 });
+    // то, чего сейв не называл, — значение по умолчанию, а не 4 из стора
+    expect(record.settings.game.freightTrains).toBe(1);
+  });
+
+  it('правки настроек после импорта запись не трогают', async () => {
+    await applyImport(CONFIRMED, 1);
+    useSettingsStore.getState().applySettings({ dayLengthFactor: 9 }, { priceYear: 2000 });
+
+    resetSnapshotStateForTests();
+    const record = (await loadSnapshot()).record!;
+    expect(record.settings.game.dayLengthFactor).toBe(5);
+    expect(record.settings.calc.priceYear).toBe(1860);
+  });
 });

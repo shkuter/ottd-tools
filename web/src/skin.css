@@ -602,4 +602,75 @@ strong {
 }
 
 
+
+/*
+ * The game tab. Its route list opens a row in place instead of leading anywhere, so the row
+ * has to look answerable: the pointer changes over it and the mark turns as it opens.
+ */
+.route-row {
+  cursor: pointer;
+}
+
+.route-row:hover {
+  background: var(--skin-list-hover);
+}
+
+.expand-mark {
+  color: var(--skin-muted);
+}
+
+.route-detail-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--skin-scale) * 12px);
+  padding: calc(var(--skin-scale) * 4px) 0;
+}
+
+.route-detail-body > div {
+  min-width: calc(var(--skin-scale) * 150px);
+}
+
+.route-detail-body ul,
+.route-detail-body ol {
+  margin: calc(var(--skin-scale) * 2px) 0 0;
+  padding-left: calc(var(--skin-scale) * 14px);
+}
+
+/*
+ * A cargo as the rest of the calculator shows one: icon, then name. The icon and the name are
+ * one element and never come apart; a figure appended after them ("Limestone 12,345") may
+ * wrap, or a long name would push the column instead.
+ */
+.cargo-label {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: calc(var(--skin-scale) * 3px);
+}
+
+.cargo-label .cargo-name {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--skin-scale) * 3px);
+  white-space: nowrap;
+}
+
+/* A note under the figure it qualifies, where the two on one line outgrow their column. */
+.second-line {
+  display: block;
+}
+
+/*
+ * Several cargoes in one cell: each on its own line, because a station holding four of them
+ * would otherwise run the row far wider than the column.
+ */
+.goods-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.game-drift {
+  margin-bottom: calc(var(--skin-scale) * 6px);
+}
+
 }

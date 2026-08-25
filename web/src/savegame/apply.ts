@@ -7,7 +7,7 @@
 import { useSettingsStore } from '../state/settingsStore';
 import type { SavegameImport } from './import';
 import type { Snapshot } from './snapshot';
-import { saveSnapshot } from './snapshotStore';
+import { saveSnapshot, snapshotSettings } from './snapshotStore';
 
 export interface ConfirmedImport {
   proposal: SavegameImport;
@@ -18,5 +18,7 @@ export interface ConfirmedImport {
 export async function applyImport(confirmed: ConfirmedImport, savedAt: number): Promise<void> {
   const { proposal, snapshot, fileName } = confirmed;
   useSettingsStore.getState().applySettings(proposal.game, proposal.calc);
-  await saveSnapshot(fileName, snapshot, savedAt);
+  // the snapshot keeps what the file said, completed with defaults — not what the store
+  // ends up with: the tab computes over the game, not over the settings edited since
+  await saveSnapshot(fileName, snapshot, savedAt, snapshotSettings(proposal.game, proposal.calc));
 }

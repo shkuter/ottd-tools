@@ -7,20 +7,55 @@
  * state says so, so the UI can ask for the file again instead of misreading old data.
  */
 
+import {
+  DEFAULT_CALC_SETTINGS,
+  DEFAULT_GAME_SETTINGS,
+  type CalcSettings,
+  type GameSettings,
+} from '../engine/settings';
 import type { Snapshot } from './snapshot';
 
 /** Bump when the Snapshot shape changes; an old record is dropped, not migrated. */
-export const SNAPSHOT_SCHEMA_VERSION = 1;
+export const SNAPSHOT_SCHEMA_VERSION = 2;
 
-const DB_NAME = 'ottd-tools';
-const STORE = 'snapshot';
-const KEY = 'current';
+/**
+ * The settings of the game the snapshot was taken from — what the savegame itself stated,
+ * completed with the calculator's defaults where it stated nothing.
+ *
+ * Complete on purpose, and never filled from the settings store: the tab computes its
+ * forecasts from these, so they have to describe the game rather than whatever the user has
+ * configured since.
+ */
+export interface SnapshotSettings {
+  game: GameSettings;
+  calc: CalcSettings;
+}
+
+/** Completes what the import extracted into a set that stands on its own. */
+export function snapshotSettings(
+  game: Partial<GameSettings>,
+  calc: Partial<CalcSettings>,
+): SnapshotSettings {
+  return {
+    game: { ...DEFAULT_GAME_SETTINGS, ...game },
+    calc: { ...DEFAULT_CALC_SETTINGS, ...calc },
+  };
+}
+
+/** Where the snapshot lives; exported so tests seed the same place rather than a copy. */
+export const SNAPSHOT_DB = { name: 'ottd-tools', version: 1, store: 'snapshot', key: 'current' };
+
+const DB_NAME = SNAPSHOT_DB.name;
+const STORE = SNAPSHOT_DB.store;
+const KEY = SNAPSHOT_DB.key;
 
 export interface SnapshotRecord {
   schemaVersion: number;
   fileName: string;
   savedAt: number;
   snapshot: Snapshot;
+  /** Settings of the game this snapshot came from; forecasts are computed from these. */
+  settings: SnapshotSettings;
 }
 
 export interface SnapshotState {
@@ -50,7 +85,7 @@ function setState(next: SnapshotState): void {
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(DB_NAME, SNAPSHOT_DB.version);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE)) {
         request.result.createObjectStore(STORE);
@@ -100,15 +135,37 @@ export async function loadSnapshot(): Promise<SnapshotState> {
 }
 
 /** Replaces the stored snapshot — the confirmed import calls this. */
-export async function saveSnapshot(fileName: string, snapshot: Snapshot, savedAt: number): Promise<void> {
+export async function saveSnapshot(
+  fileName: string,
+  snapshot: Snapshot,
+  savedAt: number,
+  settings: SnapshotSettings,
+): Promise<void> {
   const record: SnapshotRecord = {
     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     fileName,
     savedAt,
     snapshot,
+    settings,
   };
   await withStore('readwrite', (s) => s.put(record, KEY));
   setState({ loading: false, record, droppedOutdated: false });
+}
+
+/**
+ * Forgets the imported game — what "reset everything" on the settings page wipes along with
+ * the stored settings. The snapshot is the largest thing the calculator keeps of the user's
+ * own data, so a reset that left it behind would not be one.
+ */
+export async function deleteSnapshot(): Promise<void> {
+  // a browser without IndexedDB stored nothing to begin with; anything past this point that
+  // fails is a real failure to delete and is not swallowed — a state saying the game is gone
+  // while the record is still in the database would show a shell whose tab returns on the
+  // next reload
+  if (typeof indexedDB !== 'undefined') {
+    await withStore('readwrite', (s) => s.delete(KEY));
+  }
+  setState({ loading: false, record: null, droppedOutdated: false });
 }
 
 /** Test hook: forget the in-memory state without touching the database. */

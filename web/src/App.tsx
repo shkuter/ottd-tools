@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useSyncExternalStore } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router';
 import { Anchor, Box, Button, Group, Text, Title } from '@mantine/core';
 import OptimizerPage from './features/optimizer/OptimizerPage';
@@ -10,6 +10,7 @@ import { useSettingsStore } from './state/settingsStore';
 import { Warning } from './components/Warning';
 import { usePageviews } from './analytics';
 import { useKitWindowStore } from './state/kitWindowStore';
+import { getSnapshotState, subscribeSnapshot } from './savegame/snapshotStore';
 import { TABS } from './tabs';
 
 // the income tab pulls in recharts and the catalogue is a page of its own;
@@ -22,10 +23,16 @@ const IndustrySupplyPage = lazy(() => import('./features/industry-supply/Industr
 // the interface-elements page is for working on the skin, not for using the
 // calculator: no tab of its own, and no weight in the main chunk
 const KitPage = lazy(() => import('./features/kit/KitPage'));
+// the imported game: only reachable once a savegame has been imported, so most sessions
+// never load it at all
+const GamePage = lazy(() => import('./features/savegame/GamePage'));
 
 export default function App() {
   const inflation = useSettingsStore((s) => s.game.inflation);
   const firs = useSettingsStore((s) => s.game.firs);
+  // the game tab exists only as long as an imported snapshot does, and wears its file name
+  const snapshot = useSyncExternalStore(subscribeSnapshot, getSnapshotState);
+  const imported = snapshot.record;
   // t() reads the locale outside React, so the whole tree re-renders from here
   const locale = useLocale();
   const { pathname } = useLocation();
@@ -66,9 +73,13 @@ export default function App() {
             {TABS
               // both tabs answer about FIRS industries, and there are none with FIRS off
               .filter((tab) => firs || (tab.path !== '/firs' && tab.path !== '/supply'))
+              // and the game tab has nothing to show until a savegame is imported
+              .filter((tab) => tab.path !== '/game' || imported !== null)
               .map((tab) => (
                 <Button key={tab.path} component={NavLink} to={tab.path} size="compact-md">
-                  {t(tab.label)}
+                  {/* the file name titles the game tab; the label stands in for a
+                      savegame that arrived without one */}
+                  {tab.path === '/game' ? imported!.fileName || t(tab.label) : t(tab.label)}
                 </Button>
               ))}
           </Group>
@@ -89,6 +100,19 @@ export default function App() {
             <Route path="/income" element={<RoutePage />} />
             <Route path="/supply" element={<IndustrySupplyPage />} />
             <Route path="/firs" element={<FirsPage />} />
+            {/* the address stays registered without a snapshot: an old link lands on the
+                main tab rather than on an empty page. While the store is still reading the
+                database, staying put avoids a redirect that would undo itself */}
+            <Route
+              path="/game"
+              element={
+                imported ? (
+                  <GamePage record={imported} />
+                ) : snapshot.loading ? null : (
+                  <Navigate to="/optimizer" replace />
+                )
+              }
+            />
             <Route path="/combined" element={<Navigate to="/income" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/kit" element={<KitPage />} />

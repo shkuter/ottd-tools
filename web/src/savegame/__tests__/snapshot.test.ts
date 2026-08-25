@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildSnapshot } from '../snapshot';
+import { OWNER_NONE } from '../extract/stnn';
 import { readSavegame, type RawSavegame } from '../read';
 import { fixture } from './chunks.test';
 
@@ -147,5 +148,69 @@ describe('снапшот партии Londworth', () => {
     expect(snapshot.companies).toHaveLength(1);
     expect(snapshot.companies[0].isAi).toBe(false);
     expect(snapshot.groups.map((g) => g.name)).toContain('Port Plennpool');
+  });
+
+  it('у станции известен владелец; вышки и вейпоинты компании не принадлежат', async () => {
+    const snapshot = buildSnapshot(await raw());
+    const owned = snapshot.stations.filter((s) => !s.isWaypoint && s.companyId === 0);
+    expect(owned.length).toBeGreaterThan(0);
+
+    // партия одной компании, поэтому владелец у станций либо она, либо никто
+    expect(new Set(snapshot.stations.map((s) => s.companyId))).toEqual(new Set([0, OWNER_NONE]));
+
+    // станции нефтяных вышек стоят на воде и в игре не принадлежат никому —
+    // в список станций компании они не попадают, как и в игре
+    const unowned = snapshot.stations.filter((s) => !s.isWaypoint && s.companyId === OWNER_NONE);
+    expect(unowned.length).toBeGreaterThan(0);
+    expect(new Set(unowned.map((s) => s.suffixKey))).toEqual(new Set(['STR_STATION_WATER']));
+
+    // вейпоинт на рельсах строит компания, и он остаётся её —
+    // ничьи только буи на воде (station_sl.cpp:88)
+    const waypoints = snapshot.stations.filter((s) => s.isWaypoint);
+    expect(waypoints.length).toBeGreaterThan(0);
+    expect(waypoints.every((w) => w.companyId === 0)).toBe(true);
+  });
+
+  it('размер карты читается из MAPS', async () => {
+    expect((await raw()).network.mapSize).toEqual({ width: 512, height: 512 });
+  });
+
+  it('у маршрута есть расстояния плеч, посчитанные манхэттеном', async () => {
+    const base = await raw();
+    const snapshot = buildSnapshot(base);
+    const width = base.network.mapSize!.width;
+    const withLegs = snapshot.routes.filter((r) => r.legTiles.length > 0);
+    expect(withLegs.length).toBeGreaterThan(0);
+
+    for (const route of withLegs) {
+      const stops = route.stops.filter((s) => s.kind === 'station');
+      // круг рейса замкнут: плеч столько же, сколько станционных остановок
+      expect(route.legTiles).toHaveLength(stops.length);
+      expect(route.legTiles.every((tiles) => tiles > 0)).toBe(true);
+    }
+
+    // расстояние считается именно между опорными тайлами станций маршрута
+    const route = withLegs[0];
+    const tiles = route.stops
+      .filter((s) => s.kind === 'station')
+      .map((s) => base.network.stations.get(s.stationId!)!.xy);
+    const expected = tiles.map((tile, i) => {
+      const next = tiles[(i + 1) % tiles.length];
+      return (
+        Math.abs((tile % width) - (next % width)) +
+        Math.abs(Math.floor(tile / width) - Math.floor(next / width))
+      );
+    });
+    expect(route.legTiles).toEqual(expected);
+  });
+
+  it('без размера карты расстояний нет, но снапшот собирается', async () => {
+    const base = await raw();
+    const network = { ...base.network, mapSize: undefined };
+    const snapshot = buildSnapshot({ ...base, network });
+    expect(snapshot.routes.length).toBeGreaterThan(0);
+    expect(snapshot.routes.every((r) => r.legTiles.length === 0)).toBe(true);
+    // остальное на месте: расстояние — не то, без чего снапшот бессмыслен
+    expect(snapshot.trains).toHaveLength(92);
   });
 });

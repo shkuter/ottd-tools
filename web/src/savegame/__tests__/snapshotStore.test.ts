@@ -6,9 +6,11 @@ import {
   resetSnapshotStateForTests,
   saveSnapshot,
   SNAPSHOT_SCHEMA_VERSION,
+  snapshotSettings,
   subscribeSnapshot,
 } from '../snapshotStore';
 import type { Snapshot } from '../snapshot';
+import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../engine/settings';
 
 const EMPTY: Snapshot = {
   companies: [],
@@ -19,6 +21,8 @@ const EMPTY: Snapshot = {
   groups: [],
   industries: [],
 };
+
+const SETTINGS = snapshotSettings({}, {});
 
 describe('хранилище снапшота', () => {
   beforeEach(async () => {
@@ -32,7 +36,7 @@ describe('хранилище снапшота', () => {
   it('запись переживает перечтение и уведомляет подписчиков', async () => {
     let notified = 0;
     const unsubscribe = subscribeSnapshot(() => notified++);
-    await saveSnapshot('londworth.sav', EMPTY, 1_755_000_000_000);
+    await saveSnapshot('londworth.sav', EMPTY, 1_755_000_000_000, SETTINGS);
     expect(notified).toBeGreaterThan(0);
     unsubscribe();
 
@@ -44,15 +48,15 @@ describe('хранилище снапшота', () => {
   });
 
   it('новый импорт заменяет предыдущий', async () => {
-    await saveSnapshot('old.sav', EMPTY, 1);
-    await saveSnapshot('new.sav', EMPTY, 2);
+    await saveSnapshot('old.sav', EMPTY, 1, SETTINGS);
+    await saveSnapshot('new.sav', EMPTY, 2, SETTINGS);
     resetSnapshotStateForTests();
     const state = await loadSnapshot();
     expect(state.record?.fileName).toBe('new.sav');
   });
 
   it('устаревшая схема удаляется и об этом сообщается', async () => {
-    await saveSnapshot('old.sav', EMPTY, 1);
+    await saveSnapshot('old.sav', EMPTY, 1, SETTINGS);
     // руками старим запись в базе
     const db = await new Promise<IDBDatabase>((resolve) => {
       const req = indexedDB.open('ottd-tools', 1);
@@ -76,5 +80,27 @@ describe('хранилище снапшота', () => {
     expect(again.record).toBeNull();
     expect(again.droppedOutdated).toBe(false);
     expect(getSnapshotState().loading).toBe(false);
+  });
+});
+
+describe('настройки партии в записи', () => {
+  it('извлечённое побеждает, недостающее берётся из значений по умолчанию', () => {
+    const settings = snapshotSettings({ firs: true, firsEconomy: 'steeltown' }, { priceYear: 1975 });
+    expect(settings.game.firs).toBe(true);
+    expect(settings.game.firsEconomy).toBe('steeltown');
+    expect(settings.calc.priceYear).toBe(1975);
+    // сейв ничего не сказал про инфляцию — значит значение по умолчанию
+    expect(settings.game.inflation).toBe(DEFAULT_GAME_SETTINGS.inflation);
+    expect(settings.calc.capacityIndex).toBe(DEFAULT_CALC_SETTINGS.capacityIndex);
+  });
+
+  it('набор полон: у каждого поля значение есть', () => {
+    const settings = snapshotSettings({}, {});
+    for (const [key, value] of Object.entries(settings.game)) {
+      expect(value, `game.${key}`).not.toBeUndefined();
+    }
+    for (const [key, value] of Object.entries(settings.calc)) {
+      expect(value, `calc.${key}`).not.toBeUndefined();
+    }
   });
 });

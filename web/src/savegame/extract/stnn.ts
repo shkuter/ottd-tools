@@ -19,6 +19,9 @@ import {
 /** GoodsEntry::State::Rating (station_base.h:184): the cargo has a rating at all. */
 const GES_RATING = 1 << 1;
 
+/** No company owns it (company_type.h:26) — what a save without the field reads as. */
+export const OWNER_NONE = 0x10;
+
 export interface SavedGoods {
   /** Position in the goods list — the game's cargo id for this save. */
   cargoIndex: number;
@@ -34,6 +37,13 @@ export interface SavedStationBase {
   stringId: number;
   /** Player-given name; empty when the string id names it. */
   name: string;
+  /** Company that owns the station (station_sl.cpp:559). */
+  owner: number;
+  /**
+   * The station's reference tile — what the game measures distances from
+   * (station_sl.cpp:554). A TileIndex: x is `xy % map width`, y is the rest.
+   */
+  xy: number;
 }
 
 export interface SavedStation extends SavedStationBase {
@@ -61,6 +71,8 @@ export function readStations(chunk: Chunk | undefined): Map<number, SavedStation
       town: asPoolRef(base.get('town')),
       stringId: asNumber(base.get('string_id')) ?? 0,
       name: asString(base.get('name')),
+      owner: asNumber(base.get('owner')) ?? OWNER_NONE,
+      xy: asNumber(base.get('xy')) ?? 0,
     };
     return normal
       ? {

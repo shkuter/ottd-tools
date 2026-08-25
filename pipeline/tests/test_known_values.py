@@ -4,11 +4,14 @@
 FIRS — с исходниками и конверсией NML price_factor -> prop 0x12.
 """
 import os
+import pathlib
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from common import load_json  # noqa: E402
+import extract_vanilla as vanilla  # noqa: E402
 
 
 class IronHorseKnownValues(unittest.TestCase):
@@ -228,6 +231,80 @@ class VanillaSpriteIds(unittest.TestCase):
         self.assertEqual(self.cargos["passengers"]["sprite_id"], 4297)  # SPR_CARGO_PASSENGERS
         self.assertEqual(self.cargos["coal"]["sprite_id"], 4298)
         self.assertTrue(all(c["sprite_id"] for c in self.cargos.values()))
+
+
+@unittest.skipUnless(os.path.exists(vanilla.INDUSTRY_H), "нужен vendor/openttd (make fetch)")
+class VanillaIndustryTable(unittest.TestCase):
+    """The parse of the game's industry table, checked against what the game declares.
+
+    The only tests here that read `vendor/` rather than the committed JSON — everything else
+    in this file runs off the data alone. Without the checkout they are skipped, not failed:
+    `make fetch` is a separate step from `make test`.
+
+    The table is read as text, so a stray STR_INDUSTRY_NAME_* inside the block would shift
+    every type at once and rename a whole party — plausibly, and with nothing else noticing.
+    The one figure that can catch it is the count the game states itself.
+    """
+
+    def test_committed_count_matches_the_games_constant(self):
+        # the JSON is committed and the constant is read from industry_type.h, so this catches
+        # data left behind by a release that added or dropped an industry type
+        committed = load_json("vanilla_industries.json")["items"]
+        self.assertEqual(len(committed), vanilla.new_industry_offset())
+
+    def test_a_shifted_table_stops_the_build(self):
+        text = pathlib.Path(vanilla.INDUSTRY_H).read_text(encoding="utf-8")
+        marker = "_origin_industry_specs[NEW_INDUSTRYOFFSET] = {"
+        # one more name inside the block: exactly the accident this guards against
+        shifted = text.replace(marker, marker + "\n\tSTR_INDUSTRY_NAME_COAL_MINE,", 1)
+        with tempfile.NamedTemporaryFile("w", suffix=".h", delete=False, encoding="utf-8") as f:
+            f.write(shifted)
+            path = f.name
+        original, vanilla.INDUSTRY_H = vanilla.INDUSTRY_H, path
+        try:
+            with self.assertRaises(SystemExit) as cm:
+                vanilla.build_industries()
+            self.assertIn("NEW_INDUSTRYOFFSET", str(cm.exception))
+        finally:
+            vanilla.INDUSTRY_H = original
+            os.unlink(path)
+
+
+class VanillaIndustries(unittest.TestCase):
+    """Industry types of the base game.
+
+    The index in _origin_industry_specs is the IndustryType a savegame stores, so the order
+    of this table is what lets an imported vanilla game name its industries at all. Checked
+    against the game's own list: a shifted index would rename every industry of a party at
+    once, and nothing else would notice.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.by_type = {i["type"]: i for i in load_json("vanilla_industries.json")["items"]}
+
+    # _origin_industry_specs of OpenTTD 15.3, in its own order. Written out rather than read
+    # back from the parse: comparing the parse with itself would pass through any
+    # rearrangement, and it is the order that a savegame addresses by number. A release that
+    # genuinely reorders the table must update this list on purpose.
+    GAME_ORDER = [
+        "Coal Mine", "Power Station", "Sawmill", "Forest", "Oil Refinery", "Oil Rig",
+        "Factory", "Printing Works", "Steel Mill", "Farm", "Copper Ore Mine", "Oil Wells",
+        "Bank", "Food Processing Plant", "Paper Mill", "Gold Mine", "Bank", "Diamond Mine",
+        "Iron Ore Mine", "Fruit Plantation", "Rubber Plantation", "Water Supply",
+        "Water Tower", "Factory", "Farm", "Lumber Mill", "Candyfloss Forest", "Sweet Factory",
+        "Battery Farm", "Cola Wells", "Toy Shop", "Toy Factory", "Plastic Fountains",
+        "Fizzy Drink Factory", "Bubble Generator", "Toffee Quarry", "Sugar Mine",
+    ]
+
+    def test_types_are_the_games_own_order(self):
+        self.assertEqual([self.by_type[t]["name"] for t in sorted(self.by_type)],
+                         self.GAME_ORDER)
+
+    def test_ids_come_from_the_game_string(self):
+        for industry in self.by_type.values():
+            expected = industry["string_key"].removeprefix("STR_INDUSTRY_NAME_").lower()
+            self.assertEqual(industry["id"], expected)
 
 
 if __name__ == "__main__":

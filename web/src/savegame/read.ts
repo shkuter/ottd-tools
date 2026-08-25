@@ -12,6 +12,7 @@ import { readInflation, type SavedInflation } from './extract/ecmy';
 import { readGroups, type SavedGroup } from './extract/grps';
 import { readEngineIds, readIndustryTypeIds, type GrfEntityId } from './extract/ids';
 import { readIndustries, type SavedIndustry } from './extract/indy';
+import { readMapSize, type SavedMapSize } from './extract/maps';
 import { readNewGrfs, type SavedGrf } from './extract/ngrf';
 import { readOrderLists, type SavedOrder } from './extract/ordl';
 import { readSettings } from './extract/pats';
@@ -43,6 +44,8 @@ export interface RawStation extends Omit<SavedStation, 'goods'> {
  * pool — the biggest chunk of a large save — never crosses the worker boundary.
  */
 export interface RawNetwork {
+  /** Absent where the save states no map size; distances cannot be measured without it. */
+  mapSize?: SavedMapSize;
   engineIds: Map<number, GrfEntityId>;
   industryTypeIds: Map<number, GrfEntityId>;
   trains: Map<number, RawTrainUnit>;
@@ -102,6 +105,7 @@ function readNetwork(chunks: Map<string, Chunk>): RawNetwork {
     });
   }
   return {
+    mapSize: readMapSize(chunks.get('MAPS')),
     engineIds: readEngineIds(chunks.get('EIDS')),
     industryTypeIds: readIndustryTypeIds(chunks.get('IIDS')),
     trains,

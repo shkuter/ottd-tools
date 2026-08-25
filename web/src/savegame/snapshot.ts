@@ -10,7 +10,7 @@
 
 import { industries, trains as catalogue } from '../dataset';
 import type { Economy, Industry } from '../types';
-import { vanillaTrains, vanillaClimateSlots } from '../vanilla';
+import { vanillaTrains, vanillaClimateSlots, vanillaIndustryByType } from '../vanilla';
 import { economyFromGrfs } from './import';
 import { FIRS_GRFID, IRON_HORSE_GRFID } from './registry';
 import type { RawSavegame, RawStation, RawTrainUnit } from './read';
@@ -51,6 +51,8 @@ export interface SnapshotGoods {
 
 export interface SnapshotStation {
   id: number;
+  /** Company that owns the station; OWNER_NONE where none does. */
+  companyId: number;
   /** Town the name is built from; null when the save names no town. */
   townId: number | null;
   /** Custom name, or '' — then the suffix key renders the name. */
@@ -78,6 +80,17 @@ export interface SnapshotRoute {
   companyId: number;
   stops: SnapshotStop[];
   trainIds: number[];
+  /**
+   * Tiles between consecutive station stops, the last entry closing the loop back to the
+   * first — the distance the game pays over. Measured between the stations' reference tiles
+   * with the game's own metric (`DistanceManhattan`, cargopacket.h:251), which makes it an
+   * approximation: the game measures from the tile the cargo was loaded on, and caps the
+   * figure with the distance actually travelled.
+   *
+   * Empty where the distance cannot be stated: fewer than two station stops, a stop whose
+   * station is missing, or a save that never said how wide the map is.
+   */
+  legTiles: number[];
 }
 
 export interface SnapshotConsistEntry {
@@ -233,14 +246,46 @@ function buildRoutes(raw: RawSavegame, trains: SnapshotTrain[]): SnapshotRoute[]
   const routes: SnapshotRoute[] = [];
   for (const [listId, members] of byList) {
     const orders = raw.network.orderLists.get(listId) ?? [];
+    const stops = orders.map((order) => stopOf(order)).filter((s): s is SnapshotStop => s !== null);
     routes.push({
       id: listId,
       companyId: members[0]?.companyId ?? 0,
-      stops: orders.map((order) => stopOf(order)).filter((s): s is SnapshotStop => s !== null),
+      stops,
       trainIds: members.map((t) => t.id).sort((a, b) => a - b),
+      legTiles: legDistances(raw, stops),
     });
   }
   return routes.sort((a, b) => a.id - b.id);
+}
+
+/**
+ * Distance of each leg of the round trip, station stop to station stop and back to the
+ * first. Waypoints and depots are skipped: the game pays over source and destination, not
+ * over the path between them.
+ */
+function legDistances(raw: RawSavegame, stops: readonly SnapshotStop[]): number[] {
+  const width = raw.network.mapSize?.width;
+  if (width === undefined) return [];
+  const tiles: number[] = [];
+  for (const stop of stops) {
+    if (stop.kind !== 'station' || stop.stationId === null) continue;
+    const station = raw.network.stations.get(stop.stationId);
+    if (!station) return [];
+    tiles.push(station.xy);
+  }
+  if (tiles.length < 2) return [];
+  return tiles.map((tile, i) => manhattan(tile, tiles[(i + 1) % tiles.length]!, width));
+}
+
+/**
+ * The game's DistanceManhattan (map.cpp:169) over two TileIndexes of a map this wide.
+ * It splits a tile with a mask and a shift (TileX/TileY, map_func.h:428), which is the same
+ * arithmetic as here: the game refuses a map whose side is not a power of two (map.cpp:43).
+ */
+function manhattan(a: number, b: number, width: number): number {
+  return (
+    Math.abs((a % width) - (b % width)) + Math.abs(Math.floor(a / width) - Math.floor(b / width))
+  );
 }
 
 function stopOf(order: SavedOrder): SnapshotStop | null {
@@ -357,6 +402,7 @@ function buildStations(
       const serial = station.townCn !== 0;
       out.push({
         id: station.index,
+        companyId: station.owner,
         townId: station.town,
         customName: station.name,
         suffixKey: `STR_FORMAT_${buoy ? 'BUOY' : 'WAYPOINT'}_NAME${serial ? '_SERIAL' : ''}`,
@@ -368,6 +414,7 @@ function buildStations(
     }
     out.push({
       id: station.index,
+      companyId: station.owner,
       townId: station.town,
       customName: station.name,
       suffixKey: suffixKeyOf(station, byType),
@@ -391,11 +438,26 @@ function buildIndustries(
   label: (slot: number) => string | null,
   byType: ReadonlyMap<number, Industry>,
 ): SnapshotIndustry[] {
+  /*
+   * A save with no IIDS chunk at all defines no industries of its own, so a type is an index
+   * into the game's own table — the same reasoning EIDS-less saves get for vehicles.
+   *
+   * The corner this misses: a set that only *overrides* base-game slots registers no ids of
+   * its own (IndustryOverrideManager::AddEntityID skips overridden slots,
+   * newgrf_commons.cpp:213), so its game reads as vanilla here and its industries are named
+   * after the base ones they replaced. Sets of that shape are rare — FIRS and the like
+   * define their own types — and naming them by the slot they took is still closer than
+   * naming them nothing.
+   */
+  const vanilla = raw.network.industryTypeIds.size === 0;
   const out: SnapshotIndustry[] = [];
   for (const industry of raw.network.industries.values()) {
+    const known = vanilla
+      ? vanillaIndustryByType.get(industry.typeId)
+      : byType.get(industry.typeId);
     out.push({
       id: industry.index,
-      catalogueId: byType.get(industry.typeId)?.id ?? null,
+      catalogueId: known?.id ?? null,
       townId: industry.town,
       produced: industry.produced.map((p) => ({
         label: label(p.cargoIndex),

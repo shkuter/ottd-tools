@@ -84,6 +84,23 @@ def main():
     labels_v = [c["label"] for c in vanilla_cargos]
     check(len(labels_v) == len(set(labels_v)), "vanilla: дубли меток грузов")
 
+    # Base-game industries: the type is what a savegame stores, so the anchors below are the
+    # ones a party is named by. The count is checked against the game's own constant where
+    # the table is parsed (extract_vanilla.build_industries); here the anchors catch a
+    # rearrangement that keeps both the count and the ends.
+    vanilla_industries = load_json("vanilla_industries.json")["items"]
+    by_type = {i["type"]: i for i in vanilla_industries}
+    for type_id, id_, name in ((0, "coal_mine", "Coal Mine"),
+                               (1, "power_station", "Power Station"),
+                               (2, "sawmill", "Sawmill"),
+                               (7, "printing_works", "Printing Works"),
+                               (36, "sugar_mine", "Sugar Mine")):
+        got = by_type.get(type_id)
+        check(got is not None and got["id"] == id_ and got["name"] == name,
+              f"vanilla: тип {type_id} — не {name} ({got})")
+    ids_v = [i["id"] for i in vanilla_industries]
+    check(len(ids_v) == len(set(ids_v)), "vanilla: дубли id предприятий")
+
     # vanilla-mode graphics (make data-opengfx2): a missing set is not a data
     # error, but once the catalogue is built it has to be complete
     public = os.path.join(DATA_DIR, "..", "..", "public")

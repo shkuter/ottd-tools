@@ -54,8 +54,10 @@ export default function SettingsPage() {
     useSettingsStore();
   const { locale, setLocale } = useLocaleStore();
 
-  function resetAll() {
-    resetPersistedState();
+  async function resetAll() {
+    // awaited: the imported game lives in IndexedDB, and reloading before the delete lands
+    // would bring it back
+    await resetPersistedState();
     // route, optimizer and FIRS state only leaves memory on a reload, so a
     // notification here would be swept away with the page
     location.reload();
@@ -444,7 +446,7 @@ export default function SettingsPage() {
 
       <Fieldset className="settings-group" legend={t('settings.storage')}>
         <p className="hint">{t('settings.storageHint')}</p>
-        <Button className="btn-danger" onClick={resetAll}>
+        <Button className="btn-danger" onClick={() => void resetAll()}>
           {t('settings.reset')}
         </Button>
       </Fieldset>

@@ -31,6 +31,27 @@ of what users see):
   language through the game's and FIRS's own suffix strings ("Londworth Furnace" /
   "Londworth Печь"). Nothing is shown for it yet beyond the import summary — the savegame
   tab arrives in a follow-up change.
+- A tab for the imported game, titled with the savegame's file name and offered only once a
+  savegame has been imported. It lists the routes of a company with their fleet, cargo and
+  distance, and states the profit the game itself recorded last year beside the profit the
+  calculator expects for the same route — fact next to forecast, with a note that the two
+  count a year differently and are not meant to match. A row opens in place to show every
+  stop, the trains of the fleet and where the forecast came from. Three further lists cover
+  the trains (filtered by group, as the game's own train list is), the stations (waiting
+  cargo and the ratings the game shows) and the industries (last month's production and how
+  much of it was hauled away). A route the model cannot answer for — one stop, more than
+  two, an unknown cargo, a consist the catalogue cannot fully match or has no room for this
+  cargo in, or a fleet of differing consists — states that reason instead of a number.
+  Forecasts are computed from the settings the savegame was imported with rather than the
+  current ones, so editing the calculator afterwards does not silently restate them.
+  "Reset everything" on the settings page now clears the imported game as well: it used to
+  wipe localStorage only, leaving the savegame — the largest thing the calculator keeps of
+  yours — in the browser. Every list names a cargo the way the rest of the calculator does,
+  with its icon before the name.
+- Industries of a game played without FIRS are now named, where they used to read "unknown
+  industry": the base game's own table (`_origin_industry_specs`) orders the industry types
+  a savegame stores, and its locale names them — the same route the vanilla cargo names
+  already took, so Russian comes out as the game words it ("Угольная шахта").
 
 ### Changed
 

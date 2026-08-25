@@ -23,5 +23,8 @@ export const TABS: readonly Tab[] = [
   { path: '/income', label: 'nav.income' },
   { path: '/supply', label: 'nav.supply' },
   { path: '/firs', label: 'nav.firs' },
+  // the imported game; the shell titles it with the savegame's file name and only offers
+  // it once a snapshot exists. Grey like the game's own train list window
+  { path: '/game', label: 'nav.game' },
   { path: '/settings', label: 'nav.settings', windowColour: 'mauve' },
 ];

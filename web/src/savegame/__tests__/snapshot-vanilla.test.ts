@@ -66,10 +66,15 @@ const FRONT = 1, WAGON = 1 << 2, ENGINE = 1 << 3, MULTIHEADED = 1 << 5;
 
 function vanillaSave(): Uint8Array {
   const stationBase: Header = [
-    [U32, 'xy'], [U32, 'town'], [U16, 'string_id'], [STR, 'name'], [U8, 'facilities'],
+    [U32, 'xy'], [U32, 'town'], [U16, 'string_id'], [STR, 'name'], [U8, 'owner'],
+    [U8, 'facilities'],
   ];
   const body = [
     ...chunk('PATS', CH_TABLE, [[U8, 'game_creation.landscape']], [(b) => b.u8(0)]),
+    // карта 256 x 256: ширина решает, как TileIndex разворачивается в координаты
+    ...chunk('MAPS', CH_TABLE, [[U32, 'dim_x'], [U32, 'dim_y']], [
+      (b) => { b.u32(256); b.u32(256); },
+    ]),
     // поезд 0 компании 0: голова (engine 0) + задняя половина сдвоенного + вагон;
     // поезд 3 компании 1 без приказов — проверяет владельца и «вне маршрутов»
     ...chunk('VEHS', CH_SPARSE_TABLE, [[U8, 'type'], [STRUCT, 'train', [[STRUCT, 'common', COMMON]] as Header]], [
@@ -88,10 +93,14 @@ function vanillaSave(): Uint8Array {
     // станция 0: груз слота 1 с рейтингом (бит Rating), груз слота 0 без него —
     // у второго игра рейтинга не показывает, хотя в файле лежит 175
     ...chunk('STNN', CH_SPARSE_TABLE, [[U8, 'facilities'], [STRUCT, 'normal', [[STRUCT, 'base', stationBase], [U8, 'indtype'], [STRUCT, 'goods', [[U8, 'status'], [U8, 'rating']]]]], [STRUCT, 'waypoint', [[STRUCT, 'base', stationBase], [U32, 'town_cn']]]], [
-      (b) => { b.gamma(0); b.u8(8); b.gamma(1); b.gamma(1); b.u32(100); b.u32(1); b.u16(0x6010); b.str('Plenpool Порт'); b.u8(8); b.u8(0xff); b.gamma(2); b.u8(0); b.u8(175); b.u8(2); b.u8(200); b.gamma(0); },
-      (b) => { b.gamma(1); b.u8(8); b.gamma(1); b.gamma(1); b.u32(200); b.u32(1); b.u16(0x6027); b.str(''); b.u8(8); b.u8(0xff); b.gamma(0); b.gamma(0); },
+      // (100, 0) при ширине карты 256
+      (b) => { b.gamma(0); b.u8(8); b.gamma(1); b.gamma(1); b.u32(100); b.u32(1); b.u16(0x6010); b.str('Plenpool Порт'); b.u8(0); b.u8(8); b.u8(0xff); b.gamma(2); b.u8(0); b.u8(175); b.u8(2); b.u8(200); b.gamma(0); },
+      // (130, 10): от первой станции 30 тайлов по одной оси и 10 по другой
+      (b) => { b.gamma(1); b.u8(8); b.gamma(1); b.gamma(1); b.u32(10 * 256 + 130); b.u32(1); b.u16(0x6027); b.str(''); b.u8(0); b.u8(8); b.u8(0xff); b.gamma(0); b.gamma(0); },
       // вейпоинт, второй в своём городе: у игры для него свой формат имени, с номером
-      (b) => { b.gamma(2); b.u8(8); b.gamma(0); b.gamma(1); b.gamma(1); b.u32(300); b.u32(1); b.u16(0x6018); b.str(''); b.u8(8); b.u32(1); },
+      (b) => { b.gamma(2); b.u8(8); b.gamma(0); b.gamma(1); b.gamma(1); b.u32(300); b.u32(1); b.u16(0x6018); b.str(''); b.u8(0); b.u8(8); b.u32(1); },
+      // станция второй компании: в списке первой её быть не должно
+      (b) => { b.gamma(3); b.u8(8); b.gamma(1); b.gamma(1); b.u32(400); b.u32(1); b.u16(0x6027); b.str(''); b.u8(1); b.u8(8); b.u8(0xff); b.gamma(0); b.gamma(0); },
     ]),
     // EIDS чистой ванили: базовый набор помечен INVALID_GRFID, а не нулём; индекс записи —
     // это EngineID, на который ссылается машина, а internal_id — номер в таблице игры
@@ -154,6 +163,8 @@ describe('синтетический ванильный сейв', () => {
       'STR_SV_STNAME_WOODS',
       'STR_SV_STNAME_FALLBACK',
       'STR_FORMAT_WAYPOINT_NAME_SERIAL',
+      // станция второй компании — четвёртая запись STNN
+      'STR_SV_STNAME_FALLBACK',
     ]);
     // город переименован игроком — генератор к нему не применяется
     expect(snapshot.towns[0].name).toBe('Плённпуль');
@@ -167,6 +178,24 @@ describe('синтетический ванильный сейв', () => {
     ]);
     // маршрут собран только у поезда с приказами
     expect(snapshot.routes.flatMap((r) => r.trainIds)).toEqual([0]);
+  });
+
+  it('расстояние маршрута — манхэттен между опорными тайлами станций', async () => {
+    const snapshot = buildSnapshot(await readSavegame(vanillaSave()));
+    // станции стоят в (100, 0) и (130, 10) на карте шириной 256: 30 по одной оси и 10 по
+    // другой дают 40, и столько же на обратном плече
+    expect(snapshot.routes[0].legTiles).toEqual([40, 40]);
+  });
+
+  it('у станции известен владелец, и он не всегда компания игрока', async () => {
+    const snapshot = buildSnapshot(await readSavegame(vanillaSave()));
+    expect(snapshot.stations.map((s) => [s.id, s.companyId])).toEqual([
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      // четвёртая станция принадлежит второй компании
+      [3, 1],
+    ]);
   });
 
   it('снапшот держит все компании партии, включая ИИ', async () => {
@@ -323,13 +352,36 @@ describe('настоящая ванильная партия (vanilla-1951)', ()
     expect(snap.companies).toEqual([{ id: 0, name: '', isAi: false }]);
   });
 
-  it('ванильные индустрии читаются, но каталога для них в калькуляторе нет', async () => {
+  it('ванильные индустрии опознаются по таблице самой игры', async () => {
     const snap = await snapshot();
     expect(snap.industries.length).toBeGreaterThan(0);
-    // данные калькулятора описывают только предприятия FIRS, поэтому тип не опознаётся,
-    // а производство и грузы читаются
-    expect(snap.industries.every((i) => i.catalogueId === null)).toBe(true);
-    const coal = snap.industries.filter((i) => i.produced.some((p) => p.label === 'COAL'));
+    // IIDS в ванильной партии нет вовсе, поэтому тип — индекс _origin_industry_specs,
+    // и предприятие называется строкой игры, как в её собственном списке
+    expect(snap.industries.every((i) => i.catalogueId !== null)).toBe(true);
+
+    const coal = snap.industries.filter((i) => i.catalogueId === 'coal_mine');
     expect(coal.length).toBeGreaterThan(0);
+    // угольная шахта производит уголь — сходится с тем, что читается из самого сейва
+    expect(coal.every((i) => i.produced.some((p) => p.label === 'COAL'))).toBe(true);
+
+    // счёт по типам сходится с окном предприятий этой партии (40 из 40), сверено с игрой
+    const byType = new Map<string, number>();
+    for (const industry of snap.industries) {
+      const id = industry.catalogueId!;
+      byType.set(id, (byType.get(id) ?? 0) + 1);
+    }
+    expect(snap.industries).toHaveLength(40);
+    expect(Object.fromEntries(byType)).toEqual({
+      coal_mine: 5,
+      factory: 5,
+      farm: 6,
+      forest: 2,
+      iron_ore_mine: 5,
+      oil_refinery: 1,
+      oil_wells: 4,
+      power_station: 2,
+      sawmill: 3,
+      steel_mill: 7,
+    });
   });
 });

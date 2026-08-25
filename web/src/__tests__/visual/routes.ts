@@ -33,6 +33,8 @@ const PER_TAB: Record<string, { ready: string; scrollsX?: readonly string[] }> =
   // and so is the chain graph
   '/firs': { ready: '.page-firs', scrollsX: ['graph-container'] },
   '/settings': { ready: '.page-settings' },
+  // seeded with a snapshot by the harness, or the tab would not exist to look at
+  '/game': { ready: '.page-game', scrollsX: ['table-wrap'] },
 };
 
 /**
