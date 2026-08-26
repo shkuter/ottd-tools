@@ -216,6 +216,12 @@ speaks of that one economy.
 **economy**'s cargos with FIRS on, the vanilla set with it off. A cargo outside the active set
 is not offered anywhere; it has no payment rate to compute with.
 
+**Calculation year** (_год расчёта_) — the single year every tab computes in: it decides which
+vehicles the buy menu offers and, with inflation on, which prices apply. Tabs offer a field for
+it, but there is one value behind them all. The field it is stored in is still called
+`priceYear`, from when it only decided prices — see ADR-0004; the name is the exception, not a
+second concept.
+
 ## Savegame
 
 **Snapshot** (_снапшот партии_) — the calculator's stored copy of one saved game: its trains,

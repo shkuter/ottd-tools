@@ -3,6 +3,7 @@ import { afterAll, beforeAll } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { preview, type PreviewServer } from 'vite';
 import { chromium, type Browser, type Page } from 'playwright';
+import { SETTINGS_KEY, SETTINGS_VERSION } from '../../state/settingsStore';
 import { GAME_SNAPSHOT } from '../../features/savegame/__tests__/gameSnapshot';
 import { SNAPSHOT_DB } from '../../savegame/snapshotStore';
 
@@ -82,10 +83,26 @@ async function openHarness(): Promise<Harness> {
 
   const browser = await launch();
   // a fixed viewport, or an assertion about horizontal scrolling would depend on
-  // the window of whoever runs the checks; a fresh context, or persisted
-  // settings would decide which tabs exist
+  // the window of whoever runs the checks; a fresh context, or whatever the last
+  // run left behind would decide what the checks see
   const context = await browser.newContext({ viewport: VIEWPORT, reducedMotion: 'reduce' });
   const page = await context.newPage();
+
+  /*
+   * Settings the checks decide on rather than inherit: the NewGRF sets are off by default —
+   * a fresh calculator knows nothing about the player's game — and a set that is off hides
+   * its parameters. The fuller page is the one worth measuring: the nesting in the settings
+   * is drawn for those parameters, and nothing off-screen has a colour to read. Seeded
+   * before the first navigation, at the store's own version, so it arrives as a state the
+   * store accepts rather than one it migrates.
+   */
+  await context.addInitScript(
+    ({ key, version }) => {
+      const game = { ironHorse: true, firs: true, basecostGrf: true };
+      window.localStorage.setItem(key, JSON.stringify({ state: { game }, version }));
+    },
+    { key: SETTINGS_KEY, version: SETTINGS_VERSION },
+  );
 
   const goto = async (path: string, ready?: string) => {
     await page.goto(new URL(path.replace(/^\//, ''), base).href, { waitUntil: 'networkidle' });

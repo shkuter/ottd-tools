@@ -5,7 +5,7 @@ import { ByteReader } from '../reader';
 import { readRecord, type RecordValues } from '../values';
 import { readEngineIds, readIndustryTypeIds } from '../extract/ids';
 import { parseSavegame } from '../parse';
-import { fixture } from './chunks.test';
+import { fixture } from './fixture';
 
 const IRON_HORSE = 0x23124143;
 const FIRS = 0x100025f1;

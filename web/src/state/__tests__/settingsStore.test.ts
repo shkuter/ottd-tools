@@ -107,3 +107,76 @@ describe('settingsStore persist', () => {
     expect(s.game).not.toHaveProperty('basecostTrainRunning');
   });
 });
+
+describe('миграция до v2: наборы NewGRF выключаются у всех', () => {
+  it('сохранение v1 с включёнными наборами доходит до ветки v2, а не возвращается нетронутым', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({
+        state: { game: { ironHorse: true, firs: true, freightTrains: 3 } },
+        version: 1,
+      }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    const s = useSettingsStore.getState();
+    expect(s.game.ironHorse).toBe(false);
+    expect(s.game.firs).toBe(false);
+    // всё прочее сохранённое осталось при своём
+    expect(s.game.freightTrains).toBe(3);
+  });
+
+  it('сохранение v0 проходит обе ветки: множители разделяются И наборы выключаются', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({
+        state: { game: { ironHorse: true, firs: true, basecostTrainRunning: 4 } },
+        version: 0,
+      }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    const s = useSettingsStore.getState();
+    // ветка v1 отработала — иначе множители остались бы дефолтными
+    expect(s.game.basecostTrainRunningSteam).toBe(4);
+    expect(s.game.basecostTrainRunningDiesel).toBe(4);
+    expect(s.game.basecostTrainRunningElectric).toBe(4);
+    // и ветка v2 следом
+    expect(s.game.ironHorse).toBe(false);
+    expect(s.game.firs).toBe(false);
+  });
+
+  it('сохранение v2 не трогается: набор, включённый после миграции, остаётся включённым', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { game: { ironHorse: true, firs: true } }, version: 2 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    const s = useSettingsStore.getState();
+    expect(s.game.ironHorse).toBe(true);
+    expect(s.game.firs).toBe(true);
+  });
+});
+
+describe('год расчёта в сохранённых настройках', () => {
+  it('переживает перезагрузку: каталог поднимает его из хранилища, а не из дефолта', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { calc: { priceYear: 1975 } }, version: 2 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    expect(useSettingsStore.getState().calc.priceYear).toBe(1975);
+  });
+
+  it('год вне обычного диапазона поля тоже переживает: границы у года игровые', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { calc: { priceYear: 1700 } }, version: 2 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    expect(useSettingsStore.getState().calc.priceYear).toBe(1700);
+  });
+});

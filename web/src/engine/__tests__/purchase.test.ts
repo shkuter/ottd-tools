@@ -5,9 +5,10 @@ import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../settings';
 import { purchaseEntries, purchaseKey, purchaseRepresentatives } from '../purchase';
 
 const CAPACITY_INDEX = DEFAULT_CALC_SETTINGS.capacityIndex;
-const GAME = DEFAULT_GAME_SETTINGS;
+// файл считает по машинам Iron Horse, а наборы по умолчанию выключены — включаем их явно
+const GAME = { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true };
 /** Единственный режим, где расчёт читает грузы по умолчанию (`canCarryIn`). */
-const NO_FIRS = { ...DEFAULT_GAME_SETTINGS, firs: false };
+const NO_FIRS = { ...GAME, firs: false };
 
 describe('purchase entries', () => {
   it('collapses a family of visual variants into one entry', () => {

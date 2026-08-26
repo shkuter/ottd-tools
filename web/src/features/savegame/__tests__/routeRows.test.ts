@@ -4,7 +4,7 @@ import { buildSnapshot } from '../../../savegame/snapshot';
 import { readSavegame, type RawSavegame } from '../../../savegame/read';
 import { snapshotSettings, type SnapshotSettings } from '../../../savegame/snapshotStore';
 import { buildImport } from '../../../savegame/import';
-import { fixture } from '../../../savegame/__tests__/chunks.test';
+import { fixture } from '../../../savegame/__tests__/fixture';
 import type { Snapshot, SnapshotTrain } from '../../../savegame/snapshot';
 import { useSettingsStore } from '../../../state/settingsStore';
 

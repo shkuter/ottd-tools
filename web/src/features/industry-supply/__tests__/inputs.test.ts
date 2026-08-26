@@ -4,7 +4,12 @@ import { createOptimizerCache, type OptimizerCache } from '../../../engine/optim
 import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../../engine/settings';
 import { EMPTY_INPUT } from '../../../state/industrySupplyStore';
 
-const game = { ...DEFAULT_GAME_SETTINGS, firs: true, firsEconomy: 'STEELTOWN' };
+const game = {
+  ...DEFAULT_GAME_SETTINGS,
+  ironHorse: true,
+  firs: true,
+  firsEconomy: 'STEELTOWN',
+};
 const calc = DEFAULT_CALC_SETTINGS;
 
 /** One run of the tyre plant's inputs, with whatever routes the case gives them. */

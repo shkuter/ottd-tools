@@ -42,6 +42,9 @@ function draw() {
 
 beforeEach(() => {
   useSettingsStore.getState().reset();
+  // заметка сравнивает состав, а он из Iron Horse: без набора состав не активен и сравнение
+  // идёт по пустому списку (`activeEntries`). По умолчанию наборы выключены.
+  useSettingsStore.getState().applySettings({ ironHorse: true, firs: true }, {});
   useLocaleStore.getState().setLocale('en');
   useConsistStore.setState({ entries: [] });
   useRouteStore.setState({

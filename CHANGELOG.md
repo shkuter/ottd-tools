@@ -18,6 +18,43 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING**: every NewGRF set now starts switched off. The game loads no set of its own —
+  a set comes from the savegame — so a calculator that has been told nothing about the
+  player's game computes vanilla OpenTTD. A stored configuration is migrated to match rather
+  than left as it was: the calculator cannot tell "agreed with the old default" from "chose
+  the same thing", so anyone who plays with Iron Horse and FIRS switches them back on, or
+  imports a savegame, which switches on whatever that game runs. Two tabs go with FIRS —
+  FIRS chains and Industry supply — since neither has anything to answer without it; a link
+  straight to one of them now lands on the main tab rather than on an empty page.
+- **BREAKING**: the buy-menu year is one setting for the whole calculator. Best train, the
+  catalogue and the supply tab used to keep a year each — and started from two different
+  defaults, 1938 and 1950 — so the same game answered differently depending on the tab.
+  The year fields stay where they are but edit the one setting, an imported savegame sets it
+  once for everything, and the catalogue's year now survives a reload.
+- The NewGRF section of the settings holds all three sets at one rank — Iron Horse, FIRS 5
+  and Base Costs, which no longer has a section of its own — and what belongs to a set is
+  shown as part of it: the wagon capacity parameter, the FIRS economy and the Base Costs
+  multipliers are nested under their own switch instead of standing beside it. The capacity
+  parameter moves there out of the calculation section, where it stood as a setting of its
+  own though it does nothing without Iron Horse. Base Costs keeps its English name in both
+  languages, the way the game leaves it.
+- The year setting is now called "Calculation year" rather than "Price year": it decides the
+  buy menu as well as the prices, and its hint said otherwise. Editing the year on a tab now
+  counts as a settings change against an imported game, so the game tab reports the drift the
+  way it does for any other setting.
+
+### Fixed
+
+- The warning about Iron Horse refusing to load with inflation showed on every tab whenever
+  inflation was on, Iron Horse or not. With the sets off by default it was telling players
+  computing vanilla — where inflation is an ordinary setting — to turn it off.
+- Clearing the year field wrote a zero into the setting instead of leaving the previous year
+  standing. An emptied number field reads back as an empty string, and `Number('')` is 0 — a
+  year inside the game's range, so nothing rejected it. It affected both year fields on the
+  settings tab.
+
 ## [0.12.0] - 2026-08-25
 
 ### Added

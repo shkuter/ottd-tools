@@ -24,6 +24,9 @@ const fullBridge: IncomeBridge = {
 
 beforeEach(() => {
   useSettingsStore.getState().reset();
+  // мост несёт состав Iron Horse, а наборы по умолчанию выключены: без них состав считается
+  // машинами другого набора и выпадает из сравнения (`activeEntries` в routePrefillState)
+  useSettingsStore.getState().applySettings({ ironHorse: true, firs: true }, {});
   useRouteStore.setState({
     cargoLabel: 'WOOD',
     distanceTiles: 7,

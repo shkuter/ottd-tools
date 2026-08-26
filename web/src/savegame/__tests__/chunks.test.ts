@@ -1,12 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decompressSavegame } from '../decompress';
 import { readChunks } from '../chunks';
-
-/** Start of the Londworth game: real save, no vehicles yet. */
-export function fixture(name: string): Uint8Array {
-  return new Uint8Array(readFileSync(new URL(`./fixtures/${name}.sav`, import.meta.url)));
-}
+import { fixture } from './fixture';
 
 describe('обход чанков настоящего сейва', () => {
   it('сыгранная партия разбирается целиком, тяжёлые чанки пропускаются', async () => {

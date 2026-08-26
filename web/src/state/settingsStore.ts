@@ -20,6 +20,10 @@ export const CURRENCIES = {
 
 export type CurrencyCode = keyof typeof CURRENCIES;
 
+/** Where the settings live, and at which version; exported so checks seed the real thing. */
+export const SETTINGS_KEY = 'ottd-tools-settings';
+export const SETTINGS_VERSION = 2;
+
 /** Speed units of the game's Localisation settings (locale.units_velocity), metric by default. */
 export type SpeedUnit = 'imperial' | 'metric';
 
@@ -79,30 +83,51 @@ export const useSettingsStore = create<SettingsState>()(
         }),
     }),
     {
-      name: 'ottd-tools-settings',
-      version: 1,
+      name: SETTINGS_KEY,
+      version: SETTINGS_VERSION,
       /**
-       * v1 split the single Base Costs running-cost multiplier into one per running class.
-       * The saved value applied to every train, so it carries over to all three and the
-       * migrated settings keep producing the numbers they produced before.
+       * Steps run in ascending order and each one is skipped by the version that already has
+       * it, so a state saved at any version walks the rest of the way. Returning early on the
+       * first step that does not apply would strand the state one version short — which is
+       * what a single `version >= 1` guard did while v1 was the newest.
        */
       migrate: (persisted, version) => {
-        if (version >= 1) return persisted as SettingsState;
-        const p = (persisted ?? {}) as Partial<SettingsState> & {
+        if (version >= SETTINGS_VERSION) return persisted as SettingsState;
+        type Persisted = Omit<Partial<SettingsState>, 'game'> & {
           game?: Partial<GameSettings> & { basecostTrainRunning?: number };
         };
+        let p = (persisted ?? {}) as Persisted;
+
+        /*
+         * v1 split the single Base Costs running-cost multiplier into one per running class.
+         * The saved value applied to every train, so it carries over to all three and the
+         * migrated settings keep producing the numbers they produced before.
+         */
         const legacy = p.game?.basecostTrainRunning;
-        if (legacy == null) return p as SettingsState;
-        const { basecostTrainRunning: _dropped, ...game } = p.game ?? {};
-        return {
-          ...p,
-          game: {
-            ...game,
-            basecostTrainRunningSteam: legacy,
-            basecostTrainRunningDiesel: legacy,
-            basecostTrainRunningElectric: legacy,
-          },
-        } as SettingsState;
+        if (version < 1 && legacy != null) {
+          const { basecostTrainRunning: _dropped, ...game } = p.game ?? {};
+          p = {
+            ...p,
+            game: {
+              ...game,
+              basecostTrainRunningSteam: legacy,
+              basecostTrainRunningDiesel: legacy,
+              basecostTrainRunningElectric: legacy,
+            },
+          };
+        }
+
+        /*
+         * v2 turned every NewGRF off by default: the calculator no longer claims a game it
+         * knows nothing about. persist keeps a saved value ahead of a default, and it cannot
+         * tell "agreed with the old default" from "chose the same thing", so the switch is
+         * rewritten for everyone. Two switches — or one savegame import — bring the sets back.
+         */
+        if (version < 2) {
+          p = { ...p, game: { ...p.game, ironHorse: false, firs: false } };
+        }
+
+        return p as SettingsState;
       },
       // новые поля настроек должны появляться у старых пользователей
       merge: (persisted, current) => {

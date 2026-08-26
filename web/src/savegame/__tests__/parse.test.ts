@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MIN_SAVEGAME_VERSION, parseSavegame } from '../parse';
 import { SavegameFormatError } from '../reader';
-import { fixture } from './chunks.test';
+import { fixture } from './fixture';
 
 function join(...parts: Uint8Array[]): Uint8Array {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));

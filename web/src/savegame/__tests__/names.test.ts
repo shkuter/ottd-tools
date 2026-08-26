@@ -4,7 +4,7 @@ import { stationName } from '../display';
 import { useLocaleStore } from '../../state/localeStore';
 import { buildSnapshot } from '../snapshot';
 import { readSavegame } from '../read';
-import { fixture } from './chunks.test';
+import { fixture } from './fixture';
 
 describe('генератор имён English Original', () => {
   it('повторяет игру на эталонных сидах', () => {

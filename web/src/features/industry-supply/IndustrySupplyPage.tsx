@@ -16,6 +16,7 @@ import {
   type InputState,
 } from '../../engine/supply';
 import { useSettingsStore } from '../../state/settingsStore';
+import { YearField } from '../../components/YearField';
 import { EMPTY_INPUT, inputKey, useIndustrySupplyStore } from '../../state/industrySupplyStore';
 import type { OptimizerCache } from '../../engine/optimizeCache';
 import { runSupplyInputs, type InputRun } from './inputs';
@@ -43,7 +44,7 @@ export default function IndustrySupplyPage() {
   // every keystroke — the same debounce the optimizer tab uses on its numeric fields.
   const searchFields = useMemo(
     () => ({
-      year: store.year,
+      year: calc.priceYear,
       stationTiles: store.stationTiles,
       maxTrains: store.maxTrains,
       routes: inputs.map(({ cargoLabel }) => ({
@@ -51,7 +52,7 @@ export default function IndustrySupplyPage() {
         ...(store.inputs[inputKey(industry?.id ?? '', cargoLabel)] ?? EMPTY_INPUT),
       })),
     }),
-    [store.year, store.stationTiles, store.maxTrains, store.inputs, inputs, industry],
+    [calc.priceYear, store.stationTiles, store.maxTrains, store.inputs, inputs, industry],
   );
   const [settled] = useDebouncedValue(searchFields, 300);
 
@@ -101,13 +102,7 @@ export default function IndustrySupplyPage() {
           onChange={(v) => v && store.setIndustryId(v)}
           data={industryList.map((i) => ({ value: i.id, label: industryName(i) }))}
         />
-        <NumberInput
-          label={t('consist.filter.year')}
-          min={1860}
-          max={2050}
-          value={store.year}
-          onChange={(v) => store.setYear(Number(v) || 1860)}
-        />
+        <YearField />
         <NumberInput
           label={t('opt.stationTiles')}
           min={1}

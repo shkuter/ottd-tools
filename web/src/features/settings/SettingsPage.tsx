@@ -8,27 +8,25 @@ import {
   type CurrencyCode,
   type SpeedUnit,
 } from '../../state/settingsStore';
-import {
-  BASECOST_MULTIPLIERS,
-  MAX_GAME_YEAR,
-  MIN_GAME_YEAR,
-  clampGameYear,
-} from '../../engine/settings';
+import { BASECOST_MULTIPLIERS } from '../../engine/settings';
 import { resetPersistedState } from '../../state';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 import { SavegameImportPanel } from './SavegameImportPanel';
+import { useYearField } from '../../components/useYearField';
 
 function Row({
   label,
   hint,
+  className = 'setting-row',
   children,
 }: {
   label: string;
   hint?: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="setting-row">
+    <div className={className}>
       <div className="setting-label">
         <span>{label}</span>
         {hint && <span className="hint setting-hint">{hint}</span>}
@@ -36,6 +34,14 @@ function Row({
       <div className="setting-control">{children}</div>
     </div>
   );
+}
+
+/**
+ * A parameter of the set above it — the FIRS economy, a Base Costs multiplier, the Iron Horse
+ * capacity index — shown as part of that set rather than as a setting of its own rank.
+ */
+function NestedRow(props: Omit<Parameters<typeof Row>[0], 'className'>) {
+  return <Row {...props} className="setting-row setting-row--nested" />;
 }
 
 /** A NumberInput hands back a string while it is being typed; settings are numbers. */
@@ -53,6 +59,8 @@ export default function SettingsPage() {
   const { currency, speedUnit, game, calc, setCurrency, setSpeedUnit, setGame, setCalc } =
     useSettingsStore();
   const { locale, setLocale } = useLocaleStore();
+  const priceYear = useYearField(calc.priceYear, (v) => setCalc('priceYear', v));
+  const startingYear = useYearField(game.startingYear, (v) => setGame('startingYear', v));
 
   async function resetAll() {
     // awaited: the imported game lives in IndexedDB, and reloading before the delete lands
@@ -153,6 +161,19 @@ export default function SettingsPage() {
             label={game.ironHorse ? t('settings.on') : t('settings.off')}
           />
         </Row>
+        {game.ironHorse && (
+          <NestedRow label={t('consist.capacityParam')} hint={t('settings.capacityHint')}>
+            <Select
+              allowDeselect={false}
+              value={String(calc.capacityIndex)}
+              onChange={(v) => v && setCalc('capacityIndex', Number(v))}
+              data={trainsMeta.capacity_param_multipliers.map((m, i) => ({
+                value: String(i),
+                label: `×${m}${i === 2 ? ` (${t('settings.default')})` : ''}`,
+              }))}
+            />
+          </NestedRow>
+        )}
         <Row label={t('settings.firs')} hint={t('settings.firsHint')}>
           <Switch
             checked={game.firs}
@@ -161,7 +182,7 @@ export default function SettingsPage() {
           />
         </Row>
         {game.firs && (
-          <Row label={t('settings.firsEconomy')} hint={t('settings.firsEconomyHint')}>
+          <NestedRow label={t('settings.firsEconomy')} hint={t('settings.firsEconomyHint')}>
             <Select
               allowDeselect={false}
               // shows what the calculation actually uses: an id the data lost reads back as
@@ -170,44 +191,36 @@ export default function SettingsPage() {
               onChange={(v) => v && setGame('firsEconomy', v)}
               data={economies.map((eco) => ({ value: eco.id, label: eco.name }))}
             />
-          </Row>
+          </NestedRow>
         )}
-      </Fieldset>
-
-      <Fieldset
-        className="settings-group"
-        legend={
-          <Group gap="xs">
-            {t('settings.basecostGrf')}
-            <Switch
-              className="group-toggle"
-              checked={game.basecostGrf}
-              onChange={(e) => setGame('basecostGrf', e.currentTarget.checked)}
-              label={game.basecostGrf ? t('settings.on') : t('settings.off')}
-            />
-          </Group>
-        }
-      >
-        <p className="hint">{t('settings.basecostGrfHint')}</p>
+        {/* Base Costs is a set the game loads like any other, so it stands beside the other
+            two rather than in a section of its own. */}
+        <Row label={t('settings.basecostGrf')} hint={t('settings.basecostGrfHint')}>
+          <Switch
+            checked={game.basecostGrf}
+            onChange={(e) => setGame('basecostGrf', e.currentTarget.checked)}
+            label={game.basecostGrf ? t('settings.on') : t('settings.off')}
+          />
+        </Row>
         {game.basecostGrf && (
           <>
-            <Row label={t('settings.basecostLoco')} hint={t('settings.basecostHint')}>
+            <NestedRow label={t('settings.basecostLoco')} hint={t('settings.basecostHint')}>
               <Select
                 allowDeselect={false}
                 value={String(game.basecostLocomotive)}
                 onChange={(v) => v && setGame('basecostLocomotive', Number(v))}
                 data={numericData(BASECOST_MULTIPLIERS)}
               />
-            </Row>
-            <Row label={t('settings.basecostWagon')} hint={t('settings.basecostHint')}>
+            </NestedRow>
+            <NestedRow label={t('settings.basecostWagon')} hint={t('settings.basecostHint')}>
               <Select
                 allowDeselect={false}
                 value={String(game.basecostWagon)}
                 onChange={(v) => v && setGame('basecostWagon', Number(v))}
                 data={numericData(BASECOST_MULTIPLIERS)}
               />
-            </Row>
-            <Row
+            </NestedRow>
+            <NestedRow
               label={t('settings.basecostRunningSteam')}
               hint={t('settings.basecostRunningHint')}
             >
@@ -217,8 +230,8 @@ export default function SettingsPage() {
                 onChange={(v) => v && setGame('basecostTrainRunningSteam', Number(v))}
                 data={numericData(BASECOST_MULTIPLIERS)}
               />
-            </Row>
-            <Row
+            </NestedRow>
+            <NestedRow
               label={t('settings.basecostRunningDiesel')}
               hint={t('settings.basecostRunningHint')}
             >
@@ -228,8 +241,8 @@ export default function SettingsPage() {
                 onChange={(v) => v && setGame('basecostTrainRunningDiesel', Number(v))}
                 data={numericData(BASECOST_MULTIPLIERS)}
               />
-            </Row>
-            <Row
+            </NestedRow>
+            <NestedRow
               label={t('settings.basecostRunningElectric')}
               hint={t('settings.basecostRunningHint')}
             >
@@ -239,7 +252,7 @@ export default function SettingsPage() {
                 onChange={(v) => v && setGame('basecostTrainRunningElectric', Number(v))}
                 data={numericData(BASECOST_MULTIPLIERS)}
               />
-            </Row>
+            </NestedRow>
           </>
         )}
       </Fieldset>
@@ -326,7 +339,8 @@ export default function SettingsPage() {
             label={game.inflation ? t('settings.on') : t('settings.off')}
           />
         </Row>
-        {game.inflation && (
+        {/* the fatal error is Iron Horse's; without it inflation is an ordinary setting */}
+        {game.inflation && game.ironHorse && (
           <Warning>
             <strong>{t('settings.inflationWarnTitle')}</strong>
             <p className="grf-error">{t('settings.inflationGrfError')}</p>
@@ -358,14 +372,7 @@ export default function SettingsPage() {
           />
         </Row>
         <Row label={t('settings.startingYear')} hint={t('settings.startingYearHint')}>
-          <NumberInput
-            min={MIN_GAME_YEAR}
-            max={MAX_GAME_YEAR}
-            value={game.startingYear}
-            onChange={(v) =>
-              setGame('startingYear', clampGameYear(Number(v), game.startingYear))
-            }
-          />
+          <NumberInput {...startingYear} />
         </Row>
       </Fieldset>
 
@@ -407,17 +414,6 @@ export default function SettingsPage() {
       </Fieldset>
 
       <Fieldset className="settings-group" legend={t('settings.calc')}>
-        <Row label={t('consist.capacityParam')} hint={t('settings.capacityHint')}>
-          <Select
-            allowDeselect={false}
-            value={String(calc.capacityIndex)}
-            onChange={(v) => v && setCalc('capacityIndex', Number(v))}
-            data={trainsMeta.capacity_param_multipliers.map((m, i) => ({
-              value: String(i),
-              label: `×${m}${i === 2 ? ` (${t('settings.default')})` : ''}`,
-            }))}
-          />
-        </Row>
         <Row label={t('settings.trackType')} hint={t('settings.trackTypeHint')}>
           <Select
             allowDeselect={false}
@@ -435,12 +431,8 @@ export default function SettingsPage() {
           />
         </Row>
         <Row label={t('settings.priceYear')} hint={t('settings.priceYearHint')}>
-          <NumberInput
-            min={MIN_GAME_YEAR}
-            max={MAX_GAME_YEAR}
-            value={calc.priceYear}
-            onChange={(v) => setCalc('priceYear', clampGameYear(Number(v), calc.priceYear))}
-          />
+          {/* the same editing rule the tabs use: this is one setting, not two fields */}
+          <NumberInput {...priceYear} />
         </Row>
       </Fieldset>
 

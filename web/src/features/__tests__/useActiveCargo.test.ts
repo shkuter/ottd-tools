@@ -3,8 +3,10 @@ import { pickActiveCargo } from '../useActiveCargo';
 import { activeCargos } from '../../dataset';
 import { DEFAULT_GAME_SETTINGS } from '../../engine/settings';
 
-const steeltown = activeCargos({ ...DEFAULT_GAME_SETTINGS, firsEconomy: 'STEELTOWN' });
-const temperate = activeCargos({ ...DEFAULT_GAME_SETTINGS, firsEconomy: 'BASIC_TEMPERATE' });
+// FIRS is off by default; these cases are about its economies, so they switch it on
+const FIRS = { ...DEFAULT_GAME_SETTINGS, firs: true };
+const steeltown = activeCargos({ ...FIRS, firsEconomy: 'STEELTOWN' });
+const temperate = activeCargos({ ...FIRS, firsEconomy: 'BASIC_TEMPERATE' });
 
 describe('pickActiveCargo', () => {
   it('keeps a choice the active set still holds', () => {

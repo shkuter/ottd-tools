@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_SEARCH_PARAMS, type SearchParams } from './searchParams';
+import { DEFAULT_SEARCH_PARAMS, searchStorePersist, type SearchParams } from './searchParams';
 
 /** Route the user gave one input of an industry. Zero means "not given". */
 export interface InputRouteParams {
@@ -32,7 +32,6 @@ interface IndustrySupplyState extends SearchParams {
   /** Distance the "same distance everywhere" action fills the inputs with. */
   commonDistanceTiles: number;
   setIndustryId: (id: string) => void;
-  setYear: (year: number) => void;
   setStationTiles: (tiles: number) => void;
   setMaxTrains: (trains: number) => void;
   setAllowElectric: (allow: boolean) => void;
@@ -50,7 +49,6 @@ export const useIndustrySupplyStore = create<IndustrySupplyState>()(
       inputs: {},
       commonDistanceTiles: 100,
       setIndustryId: (industryId) => set({ industryId }),
-      setYear: (year) => set({ year }),
       setStationTiles: (stationTiles) => set({ stationTiles }),
       setMaxTrains: (maxTrains) => set({ maxTrains }),
       setAllowElectric: (allowElectric) => set({ allowElectric }),
@@ -72,6 +70,6 @@ export const useIndustrySupplyStore = create<IndustrySupplyState>()(
           return { inputs };
         }),
     }),
-    { name: 'ottd-tools-industry-supply' },
+    searchStorePersist<IndustrySupplyState>('ottd-tools-industry-supply'),
   ),
 );

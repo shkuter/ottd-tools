@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { OptimizeGoal } from '../engine/optimize';
-import { DEFAULT_SEARCH_PARAMS, type SearchParams } from './searchParams';
+import { DEFAULT_SEARCH_PARAMS, searchStorePersist, type SearchParams } from './searchParams';
 import type { PrefillOrigin } from './prefill';
 
 /** The inputs a bridge from the game tab fills in; the consist is not one of them. */
@@ -32,7 +32,6 @@ interface OptimizerState extends SearchParams {
   excludedIds: string[];
   /** Set when a bridge filled these inputs in; null when they were typed by hand. */
   prefillOrigin: PrefillOrigin<OptimizerPrefill> | null;
-  setYear: (year: number) => void;
   setCargoLabel: (label: string) => void;
   setDistanceTiles: (tiles: number) => void;
   setStationTiles: (tiles: number) => void;
@@ -58,7 +57,6 @@ export const useOptimizerStore = create<OptimizerState>()(
       destinationId: '',
       excludedIds: [],
       prefillOrigin: null,
-      setYear: (year) => set({ year }),
       setCargoLabel: (cargoLabel) => set({ cargoLabel }),
       setDistanceTiles: (distanceTiles) => set({ distanceTiles }),
       setStationTiles: (stationTiles) => set({ stationTiles }),
@@ -76,6 +74,6 @@ export const useOptimizerStore = create<OptimizerState>()(
       clearExcluded: () => set({ excludedIds: [] }),
       setPrefillOrigin: (prefillOrigin) => set({ prefillOrigin }),
     }),
-    { name: 'ottd-tools-optimizer' },
+    searchStorePersist<OptimizerState>('ottd-tools-optimizer'),
   ),
 );

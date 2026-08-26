@@ -25,6 +25,14 @@ import {
 
 const cargo = cargoByLabel.get('COAL')!;
 
+/**
+ * Наборы по умолчанию выключены — калькулятор ничего не знает о партии, пока ему не скажут.
+ * Мерить настройки на ванили нельзя: половина из них читается только там, где есть машины и
+ * грузы этих наборов (экономика FIRS, классы содержания Iron Horse). Поэтому эталон и кейсы
+ * стоят на включённых наборах, а кейс, которому нужна именно ваниль, гасит их сам.
+ */
+const SETS: Partial<GameSettings> = { ironHorse: true, firs: true };
+
 function baseParams(game: GameSettings, calc: CalcSettings): OptimizeParams {
   return {
     year: 1950,
@@ -49,7 +57,7 @@ function snapshot(
   calcOverrides: Partial<CalcSettings> = {},
   paramOverrides: Partial<OptimizeParams> = {},
 ) {
-  const game = { ...DEFAULT_GAME_SETTINGS, ...gameOverrides };
+  const game = { ...DEFAULT_GAME_SETTINGS, ...SETS, ...gameOverrides };
   const calc = { ...DEFAULT_CALC_SETTINGS, ...calcOverrides };
   // набор машин следует настройкам: без Iron Horse считаются ванильные поезда
   const meta = activeTrainsMeta(game);
@@ -105,6 +113,10 @@ const CASES: {
    */
   baseCalc?: Partial<CalcSettings>;
 }[] = [
+  // сам набор машин: без Iron Horse считаются ванильные поезда, а это другие числа целиком
+  { name: 'ironHorse', game: { ironHorse: false } },
+  // без FIRS активен ванильный набор грузов, и оплата берётся по ключу VANILLA
+  { name: 'firs', game: { firs: false } },
   // экономика решает не числа, а состав набора: тот же груз оплачивается в них одинаково
   { name: 'firsEconomy', game: { firsEconomy: 'BASIC_TEMPERATE' } },
   { name: 'freightTrains', game: { freightTrains: 4 } },
@@ -188,15 +200,16 @@ describe('каждая настройка влияет на расчёт', () =>
     it(c.name, () => {
       const changed =
         c.name === 'subsidyMultiplier'
-          ? // множитель субсидии действует только на субсидированный груз
+          ? // множитель субсидии действует только на субсидированный груз; ростер берётся по
+            // настройкам кейса, иначе кейс с выключенным набором считал бы по машинам набора
             JSON.stringify(
               optimizeConsists(
-                trains,
+                activeTrains({ ...DEFAULT_GAME_SETTINGS, ...SETS, ...c.game }),
                 {
-                  ...baseParams({ ...DEFAULT_GAME_SETTINGS, ...c.game }, DEFAULT_CALC_SETTINGS),
+                  ...baseParams({ ...DEFAULT_GAME_SETTINGS, ...SETS, ...c.game }, DEFAULT_CALC_SETTINGS),
                   subsidised: true,
                 },
-                trainsMeta,
+                activeTrainsMeta({ ...DEFAULT_GAME_SETTINGS, ...SETS, ...c.game }),
                 1,
               )[0]?.profitPerYear,
             )
@@ -205,9 +218,12 @@ describe('каждая настройка влияет на расчёт', () =>
         c.name === 'subsidyMultiplier'
           ? JSON.stringify(
               optimizeConsists(
-                trains,
-                { ...baseParams(DEFAULT_GAME_SETTINGS, DEFAULT_CALC_SETTINGS), subsidised: true },
-                trainsMeta,
+                activeTrains({ ...DEFAULT_GAME_SETTINGS, ...SETS }),
+                {
+                  ...baseParams({ ...DEFAULT_GAME_SETTINGS, ...SETS }, DEFAULT_CALC_SETTINGS),
+                  subsidised: true,
+                },
+                activeTrainsMeta({ ...DEFAULT_GAME_SETTINGS, ...SETS }),
                 1,
               )[0]?.profitPerYear,
             )
@@ -268,6 +284,11 @@ describe('диапазон года', () => {
 
   it('пустое поле оставляет прежнее значение, а не обнуляет год', () => {
     expect(clampGameYear(Number.NaN, 1860)).toBe(1860);
+    // очищенный NumberInput отдаёт '', а не NaN: Number('') === 0 — год, которого никто
+    // не вводил, и который диапазон игры принимает как законный
+    expect(clampGameYear('', 1860)).toBe(1860);
+    expect(clampGameYear('   ', 1860)).toBe(1860);
+    expect(clampGameYear('не год', 1860)).toBe(1860);
   });
 
   it('за границы игры не выпускает', () => {

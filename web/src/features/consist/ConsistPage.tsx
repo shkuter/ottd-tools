@@ -33,6 +33,7 @@ import { CargoIcon } from '../../components/CargoIcon';
 import { TrainImage } from '../../components/TrainImage';
 import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
+import { YearField } from '../../components/YearField';
 import { consistStats } from '../../engine/consist';
 import { purchaseRepresentatives } from '../../engine/purchase';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
@@ -52,8 +53,9 @@ export default function ConsistPage() {
   const entries = useMemo(() => activeEntries(stored, game), [stored, game]);
   const [kindFilter, setKindFilter] = useState<'all' | 'engine' | 'wagon'>('all');
   const [search, setSearch] = useState('');
-  const [year, setYear] = useState(1950);
   const [track, setTrack] = useState<'all' | 'RAIL' | 'NG' | 'METRO'>('RAIL');
+  // the buy-menu year is one setting for the whole calculator, not this tab's own state
+  const year = calc.priceYear;
   const [cargoFilter, setCargoFilter] = useState('');
   /**
    * The catalogue's default order is itself a sorted column, so `null` is never held: a third
@@ -154,13 +156,7 @@ export default function ConsistPage() {
               { value: 'METRO', label: 'METRO' },
             ]}
           />
-          <NumberInput
-            label={t('consist.filter.year')}
-            min={1860}
-            max={2050}
-            value={year}
-            onChange={(v) => setYear(Number(v) || 1860)}
-          />
+          <YearField />
           <Select
             searchable
             leftSection={<CargoIcon icon={cargoList.find((c) => c.label === cargoFilter)?.icon ?? ''} />}

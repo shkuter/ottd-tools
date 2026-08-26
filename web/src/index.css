@@ -421,6 +421,21 @@ h4 {
   border-top: none;
 }
 
+/*
+ * A parameter of the set above it. The rule is the same for every set, so the nesting reads
+ * the same wherever it appears: the run of parameters is bound to its switch by one line down
+ * the side, and the separators between them go away so the run reads as one block rather than
+ * as more settings of the same rank.
+ */
+.setting-row--nested {
+  padding-left: var(--skin-hsep-wide);
+  border-left: var(--bevel) solid var(--skin-edge-lo);
+}
+
+.setting-row--nested + .setting-row--nested {
+  border-top: none;
+}
+
 .setting-label {
   display: flex;
   flex-direction: column;

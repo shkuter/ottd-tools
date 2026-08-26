@@ -4,7 +4,7 @@ import { readSettings } from '../extract/pats';
 import { readNewGrfs } from '../extract/ngrf';
 import { readGameYear, yearOfDate } from '../extract/date';
 import { readInflation } from '../extract/ecmy';
-import { fixture } from './chunks.test';
+import { fixture } from './fixture';
 
 const IRON_HORSE = 0x23124143;
 const FIRS = 0x100025f1;
@@ -93,6 +93,16 @@ describe('сборка предложения импорта', () => {
     expect(proposal.calc).toEqual({ priceYear: 1860, capacityIndex: 2 });
     expect(proposal.game.firsEconomy).toBe('STEELTOWN');
     expect(proposal.inflation).toEqual({ prices: 1, payment: 1 });
+  });
+
+  it('набор, которого в сейве нет, предлагается выключить', async () => {
+    const { buildImport } = await import('../import');
+    const { readSavegame } = await import('../read');
+    // партия без NewGRF вообще: сейв описывает игру целиком, и отсутствие набора —
+    // такое же её свойство, как присутствие
+    const proposal = buildImport(await readSavegame(fixture('vanilla-1951')));
+
+    expect(proposal.game).toMatchObject({ ironHorse: false, firs: false, basecostGrf: false });
   });
 
   it('настройки без модели попадают в справочный список', async () => {

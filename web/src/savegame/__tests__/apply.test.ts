@@ -9,6 +9,8 @@ import {
   SNAPSHOT_SCHEMA_VERSION,
 } from '../snapshotStore';
 import { useSettingsStore } from '../../state/settingsStore';
+import { useOptimizerStore } from '../../state/optimizerStore';
+import { useIndustrySupplyStore } from '../../state/industrySupplyStore';
 
 const PROPOSAL: SavegameImport = {
   jgrpp: true,
@@ -40,16 +42,16 @@ const CONFIRMED: ConfirmedImport = {
   fileName: 'londworth.sav',
 };
 
-describe('применение импорта', () => {
-  beforeEach(async () => {
-    useSettingsStore.getState().reset();
-    resetSnapshotStateForTests();
-    await new Promise<void>((resolve) => {
-      const request = indexedDB.deleteDatabase('ottd-tools');
-      request.onsuccess = request.onerror = request.onblocked = () => resolve();
-    });
+beforeEach(async () => {
+  useSettingsStore.getState().reset();
+  resetSnapshotStateForTests();
+  await new Promise<void>((resolve) => {
+    const request = indexedDB.deleteDatabase('ottd-tools');
+    request.onsuccess = request.onerror = request.onblocked = () => resolve();
   });
+});
 
+describe('применение импорта', () => {
   it('пока подтверждения нет, ничего не меняется и снапшот не сохраняется', async () => {
     const { game } = useSettingsStore.getState();
     expect(game.dayLengthFactor).toBe(1);
@@ -78,6 +80,21 @@ describe('применение импорта', () => {
     expect(calc).toMatchObject({ priceYear: 1860, capacityIndex: 2 });
     // настройки, которых в сейве нет, остаются прежними
     expect(game.freightTrains).toBe(1);
+  });
+
+  it('год партии становится годом всего калькулятора', async () => {
+    // год живёт одной настройкой, и вкладки берут список покупки из неё: после импорта
+    // каталог, подбор и снабжение считают на год партии, а не на то, что стояло раньше
+    const year = 1975;
+    await applyImport(
+      { ...CONFIRMED, proposal: { ...PROPOSAL, calc: { ...PROPOSAL.calc, priceYear: year } } },
+      1,
+    );
+
+    expect(useSettingsStore.getState().calc.priceYear).toBe(year);
+    // и своего года ни у одной вкладки не осталось — иначе он бы тут и всплыл
+    expect(useOptimizerStore.getState()).not.toHaveProperty('year');
+    expect(useIndustrySupplyStore.getState()).not.toHaveProperty('year');
   });
 
   it('экономика FIRS приезжает обычной настройкой партии', async () => {
@@ -114,5 +131,60 @@ describe('применение импорта', () => {
     const record = (await loadSnapshot()).record!;
     expect(record.settings.game.dayLengthFactor).toBe(5);
     expect(record.settings.calc.priceYear).toBe(1860);
+  });
+});
+
+/**
+ * Импорт кончается не настройкой, а тем, что видно на вкладке: сейв доезжает до списка
+ * покупки и до активного набора. Тесты выше проверяют, что применилось; эти — что
+ * применённое дошло по назначению.
+ */
+describe('импорт доезжает до вкладок', () => {
+  it('год партии решает список покупки, а не только настройку', async () => {
+    const { activeTrains } = await import('../../dataset');
+    const { introAvailability } = await import('../../engine/availability');
+    await applyImport(
+      { ...CONFIRMED, proposal: { ...PROPOSAL, game: { ...PROPOSAL.game, ironHorse: true }, calc: { priceYear: 1975 } } },
+      1,
+    );
+
+    const { game, calc } = useSettingsStore.getState();
+    expect(calc.priceYear).toBe(1975);
+    // список покупки того года: машина 1975 года продаётся, машина 1990-го ещё нет
+    const trains = activeTrains(game);
+    const later = trains.find((t) => t.intro_year > calc.priceYear)!;
+    expect(introAvailability(later, calc.priceYear, game).certain).toBe(false);
+    const earlier = trains.find((t) => t.intro_year < calc.priceYear)!;
+    expect(introAvailability(earlier, calc.priceYear, game).certain).toBe(true);
+  });
+
+  it('год вне обычного диапазона переживает импорт и остаётся годом расчёта', async () => {
+    await applyImport(
+      { ...CONFIRMED, proposal: { ...PROPOSAL, calc: { ...PROPOSAL.calc, priceYear: 1700 } } },
+      1,
+    );
+    // поле года на вкладках диапазон не сужает: партия может быть начата когда угодно
+    expect(useSettingsStore.getState().calc.priceYear).toBe(1700);
+  });
+
+  it('сейв без наборов выключает включённые и оставляет каталог ванильным', async () => {
+    const { activeTrains } = await import('../../dataset');
+    const { buildImport } = await import('../import');
+    const { readSavegame } = await import('../read');
+    const { fixture } = await import('./fixture');
+
+    // до импорта пользователь играл с наборами — иначе тест сравнивал бы дефолт с дефолтом
+    useSettingsStore.getState().applySettings({ ironHorse: true, firs: true }, {});
+    expect(activeTrains(useSettingsStore.getState().game).some((t) => !t.id.startsWith('vanilla_')))
+      .toBe(true);
+
+    // настоящая ванильная партия: предложение собирается из её списка GRF, а не пишется руками
+    const proposal = buildImport(await readSavegame(fixture('vanilla-1951')));
+    await applyImport({ ...CONFIRMED, proposal }, 1);
+
+    const { game } = useSettingsStore.getState();
+    expect(game.ironHorse).toBe(false);
+    expect(game.firs).toBe(false);
+    expect(activeTrains(game).every((t) => t.id.startsWith('vanilla_'))).toBe(true);
   });
 });

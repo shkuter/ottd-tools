@@ -10,7 +10,7 @@ import { readSavegame } from '../read';
 import { stationDisplayName } from '../names';
 import { townName } from '../display';
 import { useLocaleStore } from '../../state/localeStore';
-import { fixture } from './chunks.test';
+import { fixture } from './fixture';
 import {
   chunk,
   savegame,

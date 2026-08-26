@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildSnapshot } from '../snapshot';
 import { OWNER_NONE } from '../extract/stnn';
 import { readSavegame, type RawSavegame } from '../read';
-import { fixture } from './chunks.test';
+import { fixture } from './fixture';
 
 let cached: RawSavegame | undefined;
 async function raw(): Promise<RawSavegame> {

@@ -86,8 +86,10 @@ export const DEFAULT_FIRS_ECONOMY = 'STEELTOWN';
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
   jgrpp: false,
-  ironHorse: true,
-  firs: true,
+  // The game loads no NewGRF of its own — a set comes from the savegame — so a calculator
+  // that has been told nothing about the player's game starts from vanilla.
+  ironHorse: false,
+  firs: false,
   firsEconomy: DEFAULT_FIRS_ECONOMY,
   freightTrains: 1,
   slopeSteepness: 3,
@@ -123,12 +125,16 @@ export const MIN_GAME_YEAR = 0;
 export const MAX_GAME_YEAR = 5_000_000;
 
 /**
- * Keeps a year inside the game's range. An emptied number field reads as NaN, which would
- * otherwise wipe the setting, so it falls back to the value already set.
+ * Keeps a year inside the game's range, falling back to the value already set when the field
+ * holds no year at all. It takes the raw field value rather than a number on purpose: an
+ * emptied number field hands back '', and `Number('')` is 0 — a year the player never typed,
+ * and one the game's range would happily accept.
  */
-export function clampGameYear(value: number, fallback: number): number {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.min(MAX_GAME_YEAR, Math.max(MIN_GAME_YEAR, Math.trunc(value)));
+export function clampGameYear(value: number | string, fallback: number): number {
+  if (typeof value === 'string' && value.trim() === '') return fallback;
+  const year = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(year)) return fallback;
+  return Math.min(MAX_GAME_YEAR, Math.max(MIN_GAME_YEAR, Math.trunc(year)));
 }
 
 /**
@@ -228,7 +234,14 @@ export interface CalcSettings {
   hillTiles: number;
   /** Тип пути по умолчанию. */
   trackType: TrackType;
-  /** Год для цен (используется при включённой инфляции). */
+  /**
+   * The one year the calculator works in: it decides which vehicles the buy menu offers on
+   * every tab and, with inflation on, which prices apply. The name is historical — the field
+   * predates the buy menu reading it — and stays because it travels inside the savegame
+   * snapshot in IndexedDB: renaming it would bump the snapshot schema, and a record of an
+   * older schema is dropped rather than migrated, so every imported game would have to be
+   * imported again for a rename.
+   */
   priceYear: number;
 }
 

@@ -398,6 +398,10 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root),
   border-top-color: var(--skin-edge-lo);
 }
 
+.setting-row--nested {
+  border-left-color: var(--skin-edge-lo);
+}
+
 /*
  * Setting groups are drawn like the game's option boxes: a frame around the
  * block with the heading sitting on it, exactly the way <fieldset>/<legend>

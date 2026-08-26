@@ -53,7 +53,7 @@ describe('resetPersistedState', () => {
     ]);
     useSettingsStore.getState().setCurrency('EUR');
     useSettingsStore.getState().setSpeedUnit('imperial');
-    useOptimizerStore.getState().setYear(1999);
+    useOptimizerStore.getState().setDistanceTiles(199);
     useRouteStore.getState().setDistanceTiles(321);
     expect(Object.keys(storage.dump()).length).toBeGreaterThanOrEqual(3);
     await resetPersistedState();

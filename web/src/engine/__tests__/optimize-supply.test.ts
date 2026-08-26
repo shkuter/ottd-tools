@@ -11,7 +11,8 @@ const base = {
   economyId: 'STEELTOWN',
   allowElectric: false,
   maxLengthTiles: 6,
-  game: DEFAULT_GAME_SETTINGS,
+  // Steeltown и составы Iron Horse: наборы по умолчанию выключены, здесь они нужны
+  game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true },
   calc: DEFAULT_CALC_SETTINGS,
 };
 
@@ -225,7 +226,12 @@ describe('цель «Снабжение»', () => {
 });
 
 describe('получатель из данных', () => {
-  const game = { ...DEFAULT_GAME_SETTINGS, firs: true, firsEconomy: DEFAULT_FIRS_ECONOMY };
+  const game = {
+    ...DEFAULT_GAME_SETTINGS,
+    ironHorse: true,
+    firs: true,
+    firsEconomy: DEFAULT_FIRS_ECONOMY,
+  };
 
   it('единственный потребитель подставляется сам', () => {
     const target = supplyTargetFor(game, 'COAL', '');

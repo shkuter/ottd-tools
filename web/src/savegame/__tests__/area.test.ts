@@ -5,7 +5,7 @@ import { readIndustries } from '../extract/indy';
 import { areasTouch, type TileArea } from '../extract/area';
 import { buildSnapshot } from '../snapshot';
 import { readSavegame } from '../read';
-import { fixture } from './chunks.test';
+import { fixture } from './fixture';
 
 /** Площадки читаются из настоящих сейвов: имена полей приходят из заголовка таблицы. */
 describe('площадки станций и индустрий', () => {

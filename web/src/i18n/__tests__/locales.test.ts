@@ -26,6 +26,8 @@ const KEPT_IN_ENGLISH = new Set([
   'app.title',
   'settings.ironHorse',
   'settings.firs',
+  // набор зовётся Base Costs и в русской игре: собственного перевода у него нет
+  'settings.basecostGrf',
   'settings.jgrpp',
   'settings.inflationGrfError',
   // JGRPP-специфичная строка без русского перевода в самой игре

@@ -30,6 +30,7 @@ const GamePage = lazy(() => import('./features/savegame/GamePage'));
 export default function App() {
   const inflation = useSettingsStore((s) => s.game.inflation);
   const firs = useSettingsStore((s) => s.game.firs);
+  const ironHorse = useSettingsStore((s) => s.game.ironHorse);
   // the game tab exists only as long as an imported snapshot does, and wears its file name
   const snapshot = useSyncExternalStore(subscribeSnapshot, getSnapshotState);
   const imported = snapshot.record;
@@ -86,7 +87,9 @@ export default function App() {
         </Box>
       </Box>
       <Box component="main">
-        {inflation && (
+        {/* the warning is about Iron Horse refusing to load with inflation; a vanilla game
+            runs it perfectly well, and vanilla is what a fresh calculator computes */}
+        {inflation && ironHorse && (
           <Warning>
             {t('settings.inflationBanner')}{' '}
             <NavLink to="/settings">{t('settings.inflationBannerLink')}</NavLink>
@@ -98,8 +101,18 @@ export default function App() {
             <Route path="/optimizer" element={<OptimizerPage />} />
             <Route path="/consist" element={<ConsistPage />} />
             <Route path="/income" element={<RoutePage />} />
-            <Route path="/supply" element={<IndustrySupplyPage />} />
-            <Route path="/firs" element={<FirsPage />} />
+            {/* both tabs answer about FIRS industries, so with FIRS off they answer nothing:
+                the supply tab offers an empty industry list and the chain graph draws a set
+                the calculator is not computing with. The addresses stay registered — an old
+                link lands on the main tab rather than in that dead end */}
+            <Route
+              path="/supply"
+              element={firs ? <IndustrySupplyPage /> : <Navigate to="/optimizer" replace />}
+            />
+            <Route
+              path="/firs"
+              element={firs ? <FirsPage /> : <Navigate to="/optimizer" replace />}
+            />
             {/* the address stays registered without a snapshot: an old link lands on the
                 main tab rather than on an empty page. While the store is still reading the
                 database, staying put avoids a redirect that would undo itself */}

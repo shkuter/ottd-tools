@@ -185,6 +185,11 @@ describe('the lists', () => {
   });
 
   it('says the forecasts follow the imported game once the settings drift', async () => {
+    // сначала настройки калькулятора совпадают с партией — иначе расхождением был бы уже
+    // сам набор NewGRF: партия играна с Iron Horse и FIRS, а по умолчанию они выключены
+    useSettingsStore
+      .getState()
+      .applySettings(GAME_SNAPSHOT.settings.game, GAME_SNAPSHOT.settings.calc);
     draw(<GamePage record={GAME_SNAPSHOT} />);
     await screen.findByText('Route');
     expect(screen.queryByText(/Forecasts use the settings/)).toBeNull();

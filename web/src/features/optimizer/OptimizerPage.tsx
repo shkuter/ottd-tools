@@ -18,6 +18,7 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useSettingsStore } from '../../state/settingsStore';
+import { YearField } from '../../components/YearField';
 import { useNavigate } from 'react-router';
 import {
   activeCargos,
@@ -214,9 +215,9 @@ function introTitle(intro: IntroAvailability): string {
 
 export default function OptimizerPage() {
   const {
-    year, cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, goal, maxTrains,
+    cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, goal, maxTrains,
     allowElectric, excludedIds, destinationId, prefillOrigin,
-    setYear, setCargoLabel, setDistanceTiles: setDistance,
+    setCargoLabel, setDistanceTiles: setDistance,
     setStationTiles, setProductionPerMonth, setGoal, setMaxTrains, setAllowElectric,
     setDestinationId, toggleExcluded, clearExcluded,
   } = useOptimizerStore();
@@ -224,6 +225,8 @@ export default function OptimizerPage() {
   const [sort, setSort] = useState<OptimizerSort>(null);
   const [subsidised, setSubsidised] = useState(false);
   const { game, calc } = useSettingsStore();
+  // one year for the whole calculator: the field here edits the setting itself
+  const year = calc.priceYear;
   const locale = useLocale();
   const navigate = useNavigate();
   const consistStore = useConsistStore();
@@ -354,13 +357,7 @@ export default function OptimizerPage() {
     <div className="page-optimizer">
       <Title order={2}>{t('opt.title')}</Title>
       <Group className="filters" align="flex-end" gap="xs">
-        <NumberInput
-          label={t('consist.filter.year')}
-          min={1860}
-          max={2050}
-          value={year}
-          onChange={(v) => setYear(Number(v) || 1860)}
-        />
+        <YearField />
         <Select
           label={t('route.cargo')}
           searchable

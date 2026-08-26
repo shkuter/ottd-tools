@@ -10,7 +10,7 @@ import { readIndustries } from '../extract/indy';
 import { readTowns, TOWNNAME_ENGLISH_ORIGINAL } from '../extract/city';
 import { readGroups } from '../extract/grps';
 import { readCompanies } from '../extract/plyr';
-import { fixture } from './chunks.test';
+import { fixture } from './fixture';
 
 async function chunksOf1975() {
   const { chunks } = await parseSavegame(fixture('londworth-1975'));

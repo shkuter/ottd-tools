@@ -68,7 +68,9 @@ describe('costs', () => {
 
 describe('игровые значения по умолчанию', () => {
   it('Kirby Paul Tank на дефолтных настройках: (400000 × 6/8) × 7 / 256 = £8203', () => {
-    const game = { ...DEFAULT_GAME_SETTINGS, ironHorse: false };
+    // ровно дефолт, без правок: наборы выключены, и Kirby — машина активного набора.
+    // Вернись дефолт к Iron Horse — тест упадёт здесь, а не промолчит
+    const game = DEFAULT_GAME_SETTINGS;
     const kirby = activeTrains(game).find((t) => t.name === 'Kirby Paul Tank')!;
     expect(trainBuyCost(kirby, activeTrainsMeta(game), game)).toBe(8203);
   });
@@ -442,7 +444,14 @@ describe('optimizer', () => {
   it('оптимизатор отдаёт рейтинг станции с множителем длины дня', () => {
     const dayLengthFactor = 5;
     const productionPerMonth = 510;
-    const game = { ...DEFAULT_GAME_SETTINGS, jgrpp: true, dayLengthFactor };
+    // строка считается по машинам Iron Horse и грузу Steeltown — наборы включаем явно
+    const game = {
+      ...DEFAULT_GAME_SETTINGS,
+      ironHorse: true,
+      firs: true,
+      jgrpp: true,
+      dayLengthFactor,
+    };
     const top = optimizeConsists(
       trains,
       {
