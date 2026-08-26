@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-26
+
 ### Changed
 
 - **BREAKING**: every NewGRF set now starts switched off. The game loads no set of its own —
