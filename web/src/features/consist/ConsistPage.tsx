@@ -28,8 +28,9 @@ import {
 } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
-import { money, num, speed } from '../../components/format';
+import { money, num, speed, speedUnitLabel, speedValue, withUnit } from '../../components/format';
 import { CargoIcon } from '../../components/CargoIcon';
+import { fieldWidth } from '../../skin';
 import { TrainImage } from '../../components/TrainImage';
 import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
@@ -136,6 +137,8 @@ export default function ConsistPage() {
         <Title order={2}>{t('consist.catalogue')}</Title>
         <Group className="filters" align="flex-end" gap="xs">
           <Select
+            {...fieldWidth('normal')}
+            label={t('consist.filter.kind')}
             allowDeselect={false}
             value={kindFilter}
             onChange={(v) => v && setKindFilter(v as typeof kindFilter)}
@@ -146,11 +149,13 @@ export default function ConsistPage() {
             ]}
           />
           <Select
+            {...fieldWidth('narrow')}
+            label={t('consist.filter.track')}
             allowDeselect={false}
             value={track}
             onChange={(v) => v && setTrack(v as typeof track)}
             data={[
-              { value: 'all', label: `${t('consist.filter.track')}: ${t('consist.filter.all')}` },
+              { value: 'all', label: t('consist.filter.all') },
               { value: 'RAIL', label: 'RAIL' },
               { value: 'NG', label: 'NG' },
               { value: 'METRO', label: 'METRO' },
@@ -158,15 +163,19 @@ export default function ConsistPage() {
           />
           <YearField />
           <Select
+            {...fieldWidth('wide')}
+            label={t('consist.filter.cargo')}
             searchable
             leftSection={<CargoIcon icon={cargoList.find((c) => c.label === cargoFilter)?.icon ?? ''} />}
             value={cargoFilter || null}
             onChange={(v) => setCargoFilter(v ?? '')}
-            placeholder={`${t('consist.filter.cargo')}: ${t('consist.filter.any')}`}
+            placeholder={t('consist.filter.any')}
             data={cargoOptions}
           />
           <TextInput
+            {...fieldWidth('normal')}
             type="search"
+            label={t('consist.filter.name')}
             placeholder={t('consist.filter.search')}
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
@@ -178,19 +187,19 @@ export default function ConsistPage() {
               <SortableTh column="name" sort={sort} onSort={setSortOrDefault}>
                 {t('table.name')}
               </SortableTh>
-              <SortableTh column="intro_year" sort={sort} onSort={setSortOrDefault}>
+              <SortableTh column="intro_year" sort={sort} onSort={setSortOrDefault} className="cell-num">
                 {t('table.year')}
               </SortableTh>
-              <SortableTh column="power_hp" sort={sort} onSort={setSortOrDefault}>
-                {t('table.power')}
+              <SortableTh column="power_hp" sort={sort} onSort={setSortOrDefault} className="cell-num">
+                {withUnit(t('table.power'), t('units.hp'))}
               </SortableTh>
-              <SortableTh column="speed" sort={sort} onSort={setSortOrDefault}>
-                {t('table.speed')}
+              <SortableTh column="speed" sort={sort} onSort={setSortOrDefault} className="cell-num">
+                {withUnit(t('table.speed'), speedUnitLabel())}
               </SortableTh>
-              <SortableTh column="weight_t" sort={sort} onSort={setSortOrDefault}>
-                {t('table.weight')}
+              <SortableTh column="weight_t" sort={sort} onSort={setSortOrDefault} className="cell-num">
+                {withUnit(t('table.weight'), t('units.t'))}
               </SortableTh>
-              <SortableTh column="capacity" sort={sort} onSort={setSortOrDefault}>
+              <SortableTh column="capacity" sort={sort} onSort={setSortOrDefault} className="cell-num">
                 {t('table.capacity')}
               </SortableTh>
               <SortableTh column="cost" sort={sort} onSort={setSortOrDefault} className="cell-money">
@@ -210,13 +219,15 @@ export default function ConsistPage() {
                 <Table.Td className="cell-vehicle">
                   <TrainImage trainId={train.id} /> {train.name}
                 </Table.Td>
-                <Table.Td>{train.intro_year}</Table.Td>
-                <Table.Td>
-                  {train.power_hp ? `${num(train.power_hp)} ${t('units.hp')}` : '—'}
+                <Table.Td className="cell-num">{train.intro_year}</Table.Td>
+                <Table.Td className="cell-num">
+                  {train.power_hp ? num(train.power_hp) : '—'}
                 </Table.Td>
-                <Table.Td>{train.speed_internal ? speed(train.speed_internal) : '—'}</Table.Td>
-                <Table.Td>{num(train.weight_t)} {t('units.t')}</Table.Td>
-                <Table.Td>
+                <Table.Td className="cell-num">
+                  {train.speed_internal ? speedValue(train.speed_internal) : '—'}
+                </Table.Td>
+                <Table.Td className="cell-num">{num(train.weight_t)}</Table.Td>
+                <Table.Td className="cell-num">
                   {train.capacities[calc.capacityIndex]
                     ? num(train.capacities[calc.capacityIndex])
                     : '—'}
@@ -255,9 +266,11 @@ export default function ConsistPage() {
       </section>
 
       <Paper component="aside" className="consist-side" p="sm">
-        <Title order={2}>{t('consist.panel')}</Title>
+        {/* the panel names its own part of the tab, so it is a heading below the
+            page's — the tab is titled by the catalogue beside it */}
+        <Title order={3}>{t('consist.panel')}</Title>
         {entries.length === 0 ? (
-          <Text className="hint">{t('consist.empty')}</Text>
+          <TableFrame rowCount={0} emptyMessage={t('consist.empty')} />
         ) : (
           <Stack gap={4} className="consist-list">
             {entries.map(({ train, count }) => (
@@ -310,11 +323,11 @@ export default function ConsistPage() {
               />
               <StatRow
                 label={t('consist.stats.weight')}
-                value={`${num(stats.emptyWeightT)} / ${num(stats.loadedWeightT)} ${t('units.t')}`}
+                value={`${num(stats.emptyWeightT)}/${num(stats.loadedWeightT)} ${t('units.t')}`}
               />
               <StatRow
                 label={t('consist.stats.length')}
-                value={`${num(stats.lengthTiles, 2)} ${t('consist.stats.tiles')}`}
+                value={`${num(stats.lengthTiles, 2)} ${t('units.tiles')}`}
               />
               <StatRow
                 label={t('consist.stats.speedLimit')}

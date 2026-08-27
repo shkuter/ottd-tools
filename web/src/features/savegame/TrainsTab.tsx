@@ -12,6 +12,7 @@ import { groupOptions, groupWithDescendants } from './game';
 import { cargoLookup, cargoNamer, consistText, trainLabel } from './labels';
 import { CargoLabel } from './CargoLabel';
 import { GoodsCell } from './GoodsCell';
+import { fieldWidth } from '../../skin';
 
 type Column = 'name' | 'consist' | 'cargo' | 'thisYear' | 'lastYear' | 'built';
 
@@ -73,8 +74,9 @@ export function TrainsTab({
 
   return (
     <>
-      <Group mb="sm">
+      <Group className="filters">
         <Select
+          {...fieldWidth('wide')}
           label={t('game.group')}
           data={[
             { value: '', label: t('game.allGroups') },
@@ -87,7 +89,6 @@ export function TrainsTab({
           value={groupId ?? ''}
           onChange={(value) => setGroupId(value === '' ? null : value)}
           allowDeselect={false}
-          w={280}
         />
       </Group>
       <TableFrame pinEdges rowCount={shown.length} emptyMessage={t('game.noTrains')}>
@@ -108,7 +109,7 @@ export function TrainsTab({
             <SortableTh column="thisYear" sort={sort} onSort={setSort} className="cell-money">
               {t('game.thisYear')}
             </SortableTh>
-            <SortableTh column="built" sort={sort} onSort={setSort}>
+            <SortableTh column="built" sort={sort} onSort={setSort} className="cell-num">
               {t('game.built')}
             </SortableTh>
           </Table.Tr>
@@ -137,7 +138,7 @@ export function TrainsTab({
               <Table.Td className="cell-money">
                 <Money value={train.profitThisYear} />
               </Table.Td>
-              <Table.Td>{train.buildYear}</Table.Td>
+              <Table.Td className="cell-num">{train.buildYear}</Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>

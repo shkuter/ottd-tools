@@ -19,41 +19,19 @@ export interface Exemption {
 }
 
 /*
- * All of these are inside the FIRS chart. Its colours come from the dot graph
- * extract_firs.py writes and from graphviz's own defaults — the calculator does
- * not paint them, and repainting the chart in palette colours would be a new
- * demand on the look, which this change deliberately does not make.
+ * Empty, and meant to stay that way.
  *
- * Listed colour by colour rather than as "anything inside the chart": a white
- * sheet under the graph is no excuse for white on a button.
+ * The list is for a colour the skin does not choose — one a third-party renderer
+ * paints from its own data. The chain graph was its last inhabitant, until it
+ * turned out that graphviz writes its colours as *presentation* attributes,
+ * which lose to any CSS rule: a renderer of its own is not the same as a colour
+ * of its own, and the first thing to try is overriding it.
+ *
+ * An entry is a subtree, a colour and a reason — colour by colour, never "any
+ * colour inside this chart": a white sheet under a graph is no excuse for white
+ * on a button.
  */
-export const EXEMPTIONS: readonly Exemption[] = [
-  {
-    within: '.graph-container',
-    colour: '#ffffff',
-    reason: 'graphviz draws the chart on a white sheet of its own',
-  },
-  {
-    within: '.graph-container',
-    colour: '#000000',
-    reason: "node outlines and labels in graphviz's default black",
-  },
-  {
-    within: '.graph-container',
-    colour: '#888888',
-    reason: 'edge colour set by the dot graph (edge [color="#888888"])',
-  },
-  {
-    within: '.graph-container',
-    colour: '#f5efd8',
-    reason: 'cargo node fill set by the dot graph',
-  },
-  {
-    within: '.graph-container',
-    colour: '#dce7f5',
-    reason: 'industry node fill set by the dot graph',
-  },
-];
+export const EXEMPTIONS: readonly Exemption[] = [];
 
 /**
  * Was this colour, on this element, signed off? `path` is the DOM path the

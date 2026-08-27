@@ -289,7 +289,12 @@ def economy_dot(economy, dh, edges, cargo_names_by_label):
     lines = [
         "digraph cargoflow {",
         '  rankdir="LR";',
-        '  node [fontsize=10, fontname="sans-serif"];',
+        # graphviz spaces a graph this size out over several screens by default;
+        # the ranks and the nodes within them are pulled closer together so the
+        # chart is read by scrolling once rather than by scrolling past gaps
+        '  ranksep=0.35;',
+        '  nodesep=0.12;',
+        '  node [fontsize=10, fontname="sans-serif", height=0.3, margin="0.08,0.04"];',
         "  edge [color=\"#888888\"];",
     ]
     industry_ids = set()

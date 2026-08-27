@@ -3,6 +3,7 @@
 Three things are pulled out of the base set:
   * vehicle sprites -> web/public/icons/vanilla_trains/vanilla_<n>.png
   * cargo icons     -> web/public/icons/vanilla_cargo/<id>.png
+  * GUI icons       -> web/public/icons/vanilla_gui/<name>.png
   * GUI gradients   -> web/src/data/opengfx2_palette.json
   * named GUI colours (the TC_*/PC_* the game addresses by palette index)
 
@@ -27,6 +28,13 @@ from grf_sprites import (
 
 TRAIN_DIR = os.path.join(REPO_ROOT, "web", "public", "icons", "vanilla_trains")
 CARGO_DIR = os.path.join(REPO_ROOT, "web", "public", "icons", "vanilla_cargo")
+GUI_DIR = os.path.join(REPO_ROOT, "web", "public", "icons", "vanilla_gui")
+# The graphics the base set does not hold are in an extra set loaded over it.
+# A base set brings its own (ogfx2e_extra_8.grf here), and the game falls back to
+# the one shipped with its sources — pinned by OPENTTD_REF like every file read
+# from there — for whatever the set leaves out.
+EXTRA_MEMBER = "ogfx2e_extra_8.grf"
+FALLBACK_GRF = os.path.join(VENDOR, "openttd", "media", "baseset", "openttd.grf")
 PALETTES_H = os.path.join(VENDOR, "openttd", "src", "table", "palettes.h")
 GFX_TYPE_H = os.path.join(VENDOR, "openttd", "src", "gfx_type.h")
 STRING_COLOURS_H = os.path.join(VENDOR, "openttd", "src", "table", "string_colours.h")
@@ -216,6 +224,41 @@ def render_cargos(grf, palette, cargos):
     return count, missing
 
 
+def render_gui(grf, extra, fallback, palette, icons):
+    """Icons the interface borrows from the game's own buttons.
+
+    A base-set icon is taken by its number. One that lives in a graphics block is
+    looked up through the Action 5 that fills the block, in the set that actually
+    provides it: the base set's own extra file first, so the icon matches the rest
+    of the graphics, and the game's fallback only for what that file leaves out.
+    These are drawn at one size — they are buttons, not cargo icons with a zoom of
+    their own — so whatever the set holds for the number is what is taken.
+    """
+    os.makedirs(GUI_DIR, exist_ok=True)
+    count, missing = 0, []
+    for name, where in sorted(icons.items()):
+        if "sprite" in where:
+            sprite = grf.sprite(where["sprite"])
+        else:
+            sprite = None
+            for source in (extra, fallback):
+                if source is None:
+                    continue
+                block = source.action5_block(where["block"])
+                entry = block.get(where["offset"])
+                if entry is not None:
+                    sprite = source.sprite(entry)
+                    break
+        if sprite is None:
+            missing.append(name)
+            continue
+        sprite.to_image(palette).save(
+            os.path.join(GUI_DIR, f"{name}.png"), optimize=True, transparency=0
+        )
+        count += 1
+    return count, missing
+
+
 def render_palette(grf, palette):
     """GUI gradients: 16 colours of 8 shades, read the way the game reads them."""
     names = colour_names()
@@ -250,8 +293,16 @@ def main():
     trains = load_json("vanilla_trains.json")["items"]
     cargos = load_json("vanilla_cargos.json")["items"]
 
+    gui_icons = load_json("vanilla_gui.json")["icons"]
+    try:
+        extra = load_base_set(path, member=EXTRA_MEMBER)
+    except GrfError:
+        extra = None  # a set without an extra file of its own
+    fallback = load_base_set(FALLBACK_GRF)
+
     drawn, missing_trains = render_trains(grf, palette, trains)
     icons, missing_cargos = render_cargos(grf, palette, cargos)
+    glyphs, missing_gui = render_gui(grf, extra, fallback, palette, gui_icons)
     write_json("opengfx2_palette.json", {
         # the file name says where the set came from, the checksum says which
         # release it was: copies of the same set are named differently depending
@@ -262,9 +313,12 @@ def main():
         "named": render_named(palette),
     })
 
-    print(f"opengfx2: {drawn} vehicles, {icons} cargo icons")
-    if missing_trains or missing_cargos:
-        sys.exit(f"missing sprites: vehicles {missing_trains}, cargos {missing_cargos}")
+    print(f"opengfx2: {drawn} vehicles, {icons} cargo icons, {glyphs} GUI icons")
+    if missing_trains or missing_cargos or missing_gui:
+        sys.exit(
+            f"missing sprites: vehicles {missing_trains}, cargos {missing_cargos}, "
+            f"gui {missing_gui}"
+        )
 
 
 if __name__ == "__main__":

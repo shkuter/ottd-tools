@@ -59,3 +59,33 @@ export function consistLabel(
 ): string {
   return row.wagonCount > 0 ? `${engineLabel(row)} + ${wagonLabel(row)}` : engineLabel(row);
 }
+
+/**
+ * A column heading with the unit its figures are in: "Round trip, days".
+ *
+ * The unit is named once, in the heading, rather than repeated in every cell —
+ * the way the game heads its own lists. Money keeps its symbol beside the
+ * figure, as the game writes it there too.
+ *
+ * A unit that opens with a slash reads as "per" rather than as a noun, and "per"
+ * takes no comma before it: "Source output/month", not "Source output, /month".
+ */
+export function withUnit(label: string, unit: string): string {
+  return unit.startsWith('/') ? `${label}${unit}` : `${label}, ${unit}`;
+}
+
+/**
+ * The unit as a field shows it, beside the number the user is typing: " tiles".
+ *
+ * The space belongs to the unit rather than to each caller — five fields ask for
+ * the same suffix, and one of them writing it differently is exactly the kind of
+ * drift this change is about.
+ */
+export function unitSuffix(unit: string): string {
+  return ` ${unit}`;
+}
+
+/** The currency symbol on its own, for a heading that names what a column holds. */
+export function currencySymbol(): string {
+  return CURRENCIES[useSettingsStore.getState().currency].symbol.trim();
+}

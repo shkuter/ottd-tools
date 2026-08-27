@@ -27,7 +27,7 @@ COMPONENT_ALPHA = 0x02
 COMPONENT_PALETTE = 0x04
 COMPONENT_MASK = 0x07
 
-CHUNKED = 0x08  # per-row offset table; not used by the sprites we need
+CHUNKED = 0x08  # rows stored as runs, with the gaps between them transparent
 
 # `zoom` byte in the file → zoom level (zoom_lvl_map in grf.cpp:258)
 ZOOM_NORMAL = 0
@@ -81,6 +81,47 @@ def decode_sprite_data(buf, pos, size):
     if len(out) != size:
         raise GrfError(f"decoded {len(out)} bytes instead of {size}")
     return bytes(out), pos
+
+
+def unchunk(decoded, width, height):
+    """Rows stored as runs of pixels, the gaps between them transparent.
+
+    A sprite with transparent parts is not stored row by row: the decoded stream
+    opens with an offset per row, and at each offset sit the runs that row is
+    made of — a length, a flag for the last run, and how many pixels to skip
+    before it starts. What no run covers stays index 0, which is the transparent
+    one. Written from grf.cpp:110 (the `type & 0x08` branch of DecodeSingleSprite);
+    only the 8bpp palette case is handled, which is all a base set holds, and only
+    the two-byte header, since that is what a sprite up to 256 wide uses.
+    """
+    if width > 256 or len(decoded) > 0xFFFF:
+        raise GrfError("chunked sprite too wide for the two-byte row header")
+    out = bytearray(width * height)
+    for y in range(height):
+        pos = decoded[y * 2] | (decoded[y * 2 + 1] << 8)
+        while True:
+            if pos + 2 > len(decoded):
+                raise GrfError("chunked row runs past the decoded data")
+            length = decoded[pos] & 0x7F
+            last = decoded[pos] & 0x80
+            skip = decoded[pos + 1]
+            pos += 2
+            if skip + length > width or pos + length > len(decoded):
+                raise GrfError("chunked run runs past its row")
+            start = y * width + skip
+            out[start : start + length] = decoded[pos : pos + length]
+            pos += length
+            if last:
+                break
+    return bytes(out)
+
+
+def _extended_byte(data, pos):
+    """NewGRF extended byte: one byte, or 0xFF followed by a 16-bit value."""
+    value, pos = _u8(data, pos)
+    if value == 0xFF:
+        return _u16(data, pos)
+    return value, pos
 
 
 class Sprite:
@@ -156,6 +197,41 @@ class BaseSetGrf:
     def __len__(self):
         return len(self._info)
 
+    def action5_block(self, block_type):
+        """The sprites an Action 5 puts into one of the game's graphics blocks.
+
+        A NewGRF does not address the game's sprite numbers directly: it says
+        "here come N sprites for block X", and the game lays them over the block
+        starting at that block's base. Action 5 is `05 <type> <count> [<offset>]`
+        followed by the sprites themselves (newgrf_act5.cpp:94); the high bit of
+        the type says whether an offset into the block is stated.
+
+        Returns {offset within the block: SpriteID in this file}, so a caller
+        that knows a sprite as `SPR_<BLOCK>_BASE + 36` can ask for 36.
+        """
+        found = {}
+        for index, (kind, pos, num) in enumerate(self._info):
+            # a pseudo-sprite carries the action; only its first bytes matter
+            if kind != "recolour" or num < 3 or self.data[pos] != 0x05:
+                continue
+            p = pos + 1
+            type_byte, p = _u8(self.data, p)
+            count, p = _extended_byte(self.data, p)
+            offset = 0
+            if type_byte & 0x80:
+                offset, p = _extended_byte(self.data, p)
+            if (type_byte & 0x7F) != block_type:
+                continue
+            # the sprites follow the action, one info entry each
+            taken = 0
+            cursor = index + 1
+            while taken < count and cursor < len(self._info):
+                if self._info[cursor][0] == "sprite":
+                    found[offset + taken] = cursor
+                    taken += 1
+                cursor += 1
+        return found
+
     def sprite(self, sprite_id, zoom=ZOOM_NORMAL):
         """An 8bpp variant of the sprite at the given zoom, or None.
 
@@ -187,6 +263,8 @@ class BaseSetGrf:
                 else:
                     size = width * height  # palette data is one byte per pixel
                 indices, _ = decode_sprite_data(self.data, pos, size)
+                if flags & CHUNKED:
+                    indices = unchunk(indices, width, height)
                 return Sprite(width, height, x_offs, y_offs, indices)
 
             # variants of one sprite follow each other, each with its own header

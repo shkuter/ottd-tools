@@ -69,3 +69,16 @@ export function applyPalette(root: HTMLElement = document.documentElement) {
     root.style.setProperty(`--ottd-${kebab(colour)}`, value);
   }
 }
+
+/** Which step of the width scale in skin.css the field stands on. */
+export type FieldWidth = 'narrow' | 'normal' | 'wide';
+
+/**
+ * The width as a Mantine input takes it. Those draw their own label and need
+ * nothing else from Field, but the step they stand on has to be named the same
+ * way — spelling the attribute out by hand at each call site is how one of them
+ * ends up on a step that does not exist.
+ */
+export function fieldWidth(width: FieldWidth) {
+  return { 'data-width': width };
+}

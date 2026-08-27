@@ -1,6 +1,7 @@
 import { Button, Fieldset, Group, NumberInput, Select, Switch } from '@mantine/core';
 import { activeEconomy, economies, trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
+import { unitSuffix } from '../../components/format';
 import { t } from '../../i18n';
 import {
   CURRENCIES,
@@ -424,6 +425,7 @@ export default function SettingsPage() {
         </Row>
         <Row label={t('settings.hillTiles')} hint={t('settings.hillTilesHint')}>
           <NumberInput
+            suffix={unitSuffix(t('units.tiles'))}
             min={1}
             max={64}
             value={calc.hillTiles}

@@ -26,7 +26,8 @@ export function TableFrame({
   /** What to say when there are none — each tab filters by something of its own. */
   emptyMessage: string;
   pinEdges?: boolean;
-  children: React.ReactNode;
+  /** The rows themselves — a frame with none of them says so instead. */
+  children?: React.ReactNode;
 }) {
   return (
     <div className={`table-wrap${pinEdges ? ' pin-edges' : ''}`}>

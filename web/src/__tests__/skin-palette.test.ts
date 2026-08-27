@@ -10,7 +10,7 @@ import { PALETTE, SHADES, WINDOW_COLOURS, gradients, kebab, named } from '../ski
  * instead of quietly becoming a colour OpenTTD does not have.
  */
 
-const files = ['../skin.css', '../skin-mantine.css', '../index.css'];
+const files = ['../skin.css', '../skin-mantine.css'];
 
 /** Colours drawn by something other than the game, and their reason. */
 const ALLOWED = new Map([

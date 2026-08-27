@@ -80,11 +80,11 @@ describe('the note about where the figures came from', () => {
     draw();
 
     useRouteStore.getState().setDistanceTiles(40);
-    await screen.findByDisplayValue('40');
+    await screen.findByDisplayValue('40 tiles');
     expect(note()).toBeNull();
 
     useRouteStore.getState().setDistanceTiles(96);
-    await screen.findByDisplayValue('96');
+    await screen.findByDisplayValue('96 tiles');
     expect(note()!.textContent).toContain('Coalmouth');
   });
 
@@ -92,7 +92,7 @@ describe('the note about where the figures came from', () => {
     applyIncomeBridge(bridge, 'Coalmouth — Power Station');
     draw();
 
-    const distance = screen.getByDisplayValue('96');
+    const distance = screen.getByLabelText('Distance (Manhattan)');
     await userEvent.clear(distance);
     await userEvent.type(distance, '55');
 

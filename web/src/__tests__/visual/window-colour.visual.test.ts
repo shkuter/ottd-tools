@@ -3,6 +3,8 @@ import { harnessFixture } from './harness';
 import { snapshot, type ThemeTokens } from './collect';
 import { ROUTES } from './routes';
 import { openKit } from './kit';
+import { TABS } from '../../tabs';
+import { WINDOW_COLOURS } from '../../skin';
 
 /**
  * A window of OpenTTD is painted in the colour group of its kind, and a tab here
@@ -36,5 +38,19 @@ describe.each(ROUTES)('$path', (route) => {
     for (const token of ['--skin-window', '--skin-text', '--skin-muted'] as const) {
       expect(tokens[token], `${token} on ${route.path}`).toBe(expectedTokens[token]);
     }
+  });
+});
+
+describe('every colour group the skin defines', () => {
+  it('is worn by a tab, not only by the specimens page', () => {
+    // A group nobody wears is checked on /kit alone, and drifts from the rest
+    // of the skin unnoticed — which is how brown and dark green sat unused
+    // while the two tabs about industries wore the vehicle-purchase grey.
+    const worn = new Set(TABS.map((tab) => tab.windowColour ?? 'grey'));
+
+    expect(
+      WINDOW_COLOURS.filter((group) => !worn.has(group)),
+      'a colour group with no tab of its own',
+    ).toEqual([]);
   });
 });

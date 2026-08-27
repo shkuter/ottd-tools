@@ -21,8 +21,10 @@ export const TABS: readonly Tab[] = [
   { path: '/optimizer', label: 'nav.optimizer' },
   { path: '/consist', label: 'nav.consist' },
   { path: '/income', label: 'nav.income' },
-  { path: '/supply', label: 'nav.supply' },
-  { path: '/firs', label: 'nav.firs' },
+  // the two tabs that answer about industries take the colours of the game's
+  // industry windows: the list of them is dark green, one of them is brown
+  { path: '/supply', label: 'nav.supply', windowColour: 'dark-green' },
+  { path: '/firs', label: 'nav.firs', windowColour: 'brown' },
   // the imported game; the shell titles it with the savegame's file name and only offers
   // it once a snapshot exists. Grey like the game's own train list window
   { path: '/game', label: 'nav.game' },

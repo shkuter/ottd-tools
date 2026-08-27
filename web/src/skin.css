@@ -74,11 +74,69 @@
   --skin-pad-frametext: round(calc(6px * var(--skin-scale)), 1px);
   --skin-pad-frame: round(calc(1px * var(--skin-scale)), 1px)
     round(calc(2px * var(--skin-scale)), 1px);
-  --skin-pad-row: round(calc(3px * var(--skin-scale)), 1px)
-    round(calc(2px * var(--skin-scale)), 1px) round(calc(1px * var(--skin-scale)), 1px);
   --skin-pad-dropdown: 0 round(calc(2px * var(--skin-scale)), 1px);
-  /* hsep_wide 6: the gap the game leaves between widgets that are not neighbours */
+  /*
+   * Height of a control, the way the game sizes a text button: the line of text
+   * plus framerect top and bottom, which are one pixel each — the thickness of
+   * the bevel, so the text starts exactly where the frame ends
+   * (`d2.height += padding.height` with framerect.Vertical(), widget.cpp:2943).
+   * One height for every control there is: the library gives each of its own,
+   * and a row of them ends up stepped.
+   *
+   * The line is the rendered one, not the font size: the game's 10-pixel line
+   * holds a 10-pixel glyph, while a browser sets a 15-pixel glyph in a taller
+   * box, and taking the glyph alone leaves a control too tight to be one. The
+   * result is rounded up to an even number of pixels — the bevel is drawn on
+   * both edges, and an odd height splits unevenly between them.
+   */
+  --skin-control-height: round(
+    up,
+    calc(var(--skin-font) * var(--skin-line-height) + 2 * var(--bevel)),
+    2px
+  );
+  /* the line box a browser sets our text in; Mantine's own line-height */
+  --skin-line-height: 1.55;
+
+  /*
+   * Cell padding of a list. The vertical half is the game's matrix metric, the
+   * asymmetric one its rows are drawn with; the horizontal half is half of
+   * hsep_wide, so that two neighbouring cells leave exactly that gap between
+   * their contents — the interval the game keeps between things that are not
+   * parts of one widget. Left at the matrix metric alone, the columns stood
+   * three pixels apart and read as one block of figures.
+   */
+  --skin-pad-cell: round(calc(3px * var(--skin-scale)), 1px)
+    calc(var(--skin-hsep-wide) / 2) round(calc(1px * var(--skin-scale)), 1px);
+
+  /*
+   * Size of the arrow, one for every place there is one: the chevron of a
+   * dropdown, the stepper of a number field, the mark on a sorted column. It has
+   * to fit inside the smallest of those — a stepper button is half a control
+   * high, less its bevels — and once it fits there, the same size is used
+   * everywhere rather than each place taking its own.
+   */
+  --skin-arrow: calc(var(--skin-control-height) / 2 - 2 * var(--bevel));
+  /*
+   * The arrow itself, as one shape used everywhere: the chevron the component
+   * library draws on a number field's stepper, lifted out as a mask. Sizing the
+   * places an arrow appears was not enough to make them match — a dropdown's
+   * chevron is a double one, a stepper's a single, a mark drawn in CSS a third
+   * thing again — so the drawing, not just the box around it, is shared.
+   */
+  --skin-arrow-shape: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2015%2015%22%3E%3Cpath%20d%3D%22M3.13523%206.15803C3.3241%205.95657%203.64052%205.94637%203.84197%206.13523L7.5%209.56464L11.158%206.13523C11.3595%205.94637%2011.6759%205.95657%2011.8648%206.15803C12.0536%206.35949%2012.0434%206.67591%2011.842%206.86477L7.84197%2010.6148C7.64964%2010.7951%207.35036%2010.7951%207.15803%2010.6148L3.15803%206.86477C2.95657%206.67591%202.94637%206.35949%203.13523%206.15803Z%22%2F%3E%3C%2Fsvg%3E");
+
+  /* hsep_normal 2 between the parts of one widget, hsep_wide 6 between widgets
+     that are not neighbours (WidgetDimensions::unscaled, window_gui.h) */
+  --skin-hsep-normal: round(calc(2px * var(--skin-scale)), 1px);
   --skin-hsep-wide: round(calc(6px * var(--skin-scale)), 1px);
+
+  /* Field widths. The game sizes a field by the longest string it has to hold
+     (GetStringBoundingBox), which is why its rows are ragged; a row here is
+     regular instead, so the widths come off a scale measured in the same unit
+     the game measures — characters. Three steps, by what the field holds. */
+  --skin-field-narrow: 12ch; /* a year, a count of tiles, a fleet size — with its unit */
+  --skin-field-normal: 18ch; /* a short list value: RAIL, All */
+  --skin-field-wide: 26ch; /* a cargo name, which carries an icon as well */
 
 }
 
@@ -169,7 +227,6 @@
 
   /* money; the dim green is for a figure that holds, but only just */
   --skin-profit: var(--ottd-tc-green);
-  --skin-profit-dim: var(--ottd-green-light);
   --skin-loss: var(--ottd-tc-red);
 
   color-scheme: dark;
@@ -282,6 +339,564 @@
 }
 
 /* ==========================================================================
+   SHELL — the page around the tabs
+
+   Layout only. What these elements are painted in is the business of the
+   sections below: the window themes hand them their colours, TEXT COLOURS
+   their text roles, TYPE their sizes.
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 20px 0;
+}
+
+.app-header h1 {
+  margin: 0;
+}
+
+.subtitle {
+  margin: 2px 0 10px;
+}
+
+nav {
+  display: flex;
+  gap: 4px;
+}
+
+/*
+ * Everything scrolls with the document: the page is as tall as its content, and
+ * the one scrollbar belongs to the window. Panels that used to carry a scroll
+ * area of their own — the lists, the FIRS chart, the side panels — keep only
+ * their horizontal one, where the content really is wider than the column.
+ */
+main {
+  padding: 16px 20px;
+}
+
+.app-footer {
+  padding: 10px 20px;
+  font-size: var(--skin-font-small);
+}
+
+h2 {
+  margin: 0 0 12px;
+}
+
+h3 {
+  margin: 0 0 8px;
+}
+
+h4 {
+  margin: 10px 0 4px;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   PAGES — layout of what each tab puts on the window
+
+   Same division as the shell above: these rules place things. Their colours,
+   frames and type come from the sections below, which is why a border here is
+   only ever a width and a style — the colour is the skin's to choose.
+   ========================================================================== */
+
+/* ---------- vehicle catalogue and consist builder ---------- */
+
+.page-consist {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+/*
+ * A grid column will not shrink below what its content measures, so the wide
+ * list inside the first one pushed the panel in the second off the page — the
+ * list is meant to scroll inside its own frame, not to carry the page sideways
+ * with it. Telling the columns they may be narrower than their content puts
+ * the scrolling back where it belongs.
+ */
+.page-consist > *,
+.page-route > *,
+.firs-layout > * {
+  min-width: 0;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  /*
+   * Lined up from the top, by the labels rather than by the bottom of the
+   * controls: the controls are not all of one height — a group of buttons is
+   * sized by its own padding, an input by the library's — and aligning along
+   * the bottom pushes the shorter one's label down, which is the stepping being
+   * fixed. The cell may be wider than the field inside it, so a label never has
+   * to wrap and push its control down.
+   */
+  align-items: flex-start;
+  gap: var(--skin-hsep-wide);
+  margin-bottom: 10px;
+}
+
+/*
+ * Every field of a row stands on the width scale and says which step it needs.
+ * Where the attribute lands depends on who put it there, so both cases are
+ * named: Mantine hands anything it does not recognise to the input element, and
+ * the width is taken from there onto the wrapper around it — that is what the
+ * spinner arrows and the dropdown chevron are positioned against, and sizing
+ * the input alone leaves them stranded at the far edge of a wrapper still as
+ * wide as the label. A field built by Field carries the attribute on its own
+ * root instead, and is sized directly. Only what carries the attribute is
+ * sized: a button in the row stays as wide as its own label, as in the game.
+ */
+.filters .mantine-Input-wrapper:has([data-width='narrow']),
+.filters > [data-width='narrow']:not(input) {
+  width: var(--skin-field-narrow);
+}
+
+.filters .mantine-Input-wrapper:has([data-width='normal']),
+.filters > [data-width='normal']:not(input) {
+  width: var(--skin-field-normal);
+}
+
+.filters .mantine-Input-wrapper:has([data-width='wide']),
+.filters > [data-width='wide']:not(input) {
+  width: var(--skin-field-wide);
+}
+
+
+/* A control that came through Field rather than being one of Mantine's inputs:
+   it fills the field it was given, so the row is as regular as its widths. */
+.field-cell > .mantine-Switch-root,
+.field-cell > .mantine-Group-root {
+  width: 100%;
+}
+
+/*
+ * A switch shown as an icon has no label above it, and a row lined up from the
+ * top would leave it floating where the labels are. It takes the height of the
+ * row instead, holds the line the labels occupy free, and centres itself in
+ * what is left — which is the band the fields stand in, so its middle lands on
+ * theirs whatever height either of them turns out to be.
+ */
+.filters > .mantine-Switch-root {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding-top: calc(var(--skin-font) * var(--skin-line-height));
+}
+
+/* "show more" under the table: buttons and counter on a single line */
+.table-more {
+  margin-top: 8px;
+}
+
+/*
+ * Why the chosen goal cannot answer yet. It stands on its own line under the
+ * row, beside the summary of the calculation, rather than inside the row: as a
+ * field of the row it took two lines in its 260px and pushed its neighbours
+ * about every time it appeared. Across the row it is one line.
+ */
+.goal-hint {
+  margin: -4px 0 10px;
+}
+
+.filters label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.train-sprite {
+  /* the source is 4x (64px); shown at 1x logical size so its pixels divide evenly */
+  height: 16px;
+  width: auto;
+  max-width: 65px;
+  image-rendering: pixelated;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.cargo-icon {
+  image-rendering: pixelated;
+  vertical-align: -1px;
+  flex-shrink: 0;
+}
+
+/* An icon of the game's interface standing in for a label. Drawn at the height
+   of a line of text, so it sits in a row of controls as a word would; the width
+   follows, because these are buttons of different shapes — a mail bag is square,
+   a stretch of electrified track is not. */
+.gui-icon {
+  height: var(--skin-font);
+  width: auto;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+/* vehicles in doubt: the checkbox drops them from the search */
+.intro-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 14px;
+  margin: -6px 0 10px;
+  font-size: var(--skin-font);
+}
+
+.intro-toggles .intro-reset {
+  padding: 1px 8px;
+  font-size: var(--skin-font-small);
+}
+
+/* the "?" on a vehicle that may not have appeared yet in the chosen year */
+.intro-warn {
+  color: var(--skin-link);
+  cursor: help;
+  padding-left: 2px;
+}
+
+/* Loading branch of an optimizer row: lit when the full-load order is the better one,
+   struck through when it is what holds the route back. */
+.branch-mark {
+  cursor: help;
+  padding-left: 3px;
+  color: var(--skin-link);
+}
+
+.branch-mark--off {
+  color: var(--skin-muted);
+  font-weight: normal;
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.btn-add {
+  padding: 1px 9px;
+  color: var(--skin-link);
+}
+
+.consist-side {
+  padding: 14px;
+  position: sticky;
+  top: 12px;
+}
+
+.consist-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.consist-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.consist-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-clear {
+  margin-bottom: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0;
+}
+
+/* summaries: a label-and-value table whose labels are allowed to wrap */
+.summary-table {
+  table-layout: fixed;
+  width: 100%;
+  margin-top: 14px;
+  font-size: var(--skin-font);
+}
+
+.summary-table .mantine-Table-td {
+  /* Mantine keeps table cells on one line; the labels here are long */
+  white-space: normal;
+  overflow-wrap: break-word;
+  vertical-align: top;
+}
+
+.summary-table .mantine-Table-td:first-child {
+  /* the labels are the long half of the row; give them the room */
+  width: 62%;
+  color: var(--skin-muted);
+}
+
+.summary-table .mantine-Table-td:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- settings ---------- */
+
+.page-settings {
+  max-width: 760px;
+}
+
+.settings-group {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.settings-group h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: 1fr 210px;
+  gap: 12px;
+  align-items: start;
+  padding: 8px 0;
+  border-top-width: 1px;
+  border-top-style: solid;
+}
+
+.setting-row:first-of-type {
+  border-top-style: none;
+}
+
+/*
+ * A parameter of the set above it. The rule is the same for every set, so the nesting reads
+ * the same wherever it appears: the run of parameters is bound to its switch by one line down
+ * the side, and the separators between them go away so the run reads as one block rather than
+ * as more settings of the same rank.
+ */
+.setting-row--nested {
+  padding-left: var(--skin-hsep-wide);
+  border-left-width: var(--bevel);
+  border-left-style: solid;
+}
+
+.setting-row--nested + .setting-row--nested {
+  border-top-style: none;
+}
+
+.setting-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setting-hint {
+  font-size: var(--skin-font);
+}
+
+.setting-control .mantine-InputWrapper-root {
+  width: 100%;
+}
+
+.group-toggle {
+  font-size: var(--skin-font);
+  font-weight: normal;
+}
+
+@media (max-width: 700px) {
+  .setting-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- warnings ---------- */
+
+.warning {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  font-size: var(--skin-font);
+}
+
+.warning p {
+  margin: 4px 0 0;
+}
+
+.warning-icon {
+  color: var(--skin-loss);
+  font-size: var(--skin-font);
+  line-height: 1.2;
+}
+
+/* ---------- route income ---------- */
+
+.page-route {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.route-controls {
+  padding: 14px;
+  /* the controls span both rows, so profitability sits straight under the chart */
+  grid-row: 1 / span 2;
+}
+
+.route-controls .mantine-InputWrapper-root {
+  width: 100%;
+}
+
+.route-chart,
+.route-profit {
+  grid-column: 2;
+}
+
+/* what the marked trip comes to, right under the field it is marked on */
+.chart-mark {
+  margin-top: var(--skin-hsep-normal);
+  text-align: right;
+}
+
+.stats-wide {
+  max-width: 460px;
+  font-size: var(--skin-font);
+}
+
+/*
+ * A button that reads as a link: no frame of its own, just the text. Its label
+ * wraps, unlike a button's — the library keeps a button on one line, and a line
+ * of this length in a 320px panel simply left the panel, running over the
+ * column beside it.
+ */
+.btn-link {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  height: auto;
+  white-space: normal;
+}
+
+.btn-link .mantine-Button-label {
+  white-space: normal;
+}
+
+/* ---------- FIRS chains ---------- */
+
+.firs-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 16px;
+  align-items: start;
+}
+
+.graph-container {
+  overflow-x: auto;
+}
+
+.graph-container svg {
+  display: block;
+}
+
+.graph-container g.node {
+  cursor: pointer;
+}
+
+.firs-side {
+  padding: 14px;
+  position: sticky;
+  top: 12px;
+}
+
+.node-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.node-card img {
+  vertical-align: -3px;
+  image-rendering: pixelated;
+}
+
+/* ---------- industry supply ---------- */
+
+/* Cargo cell of the supply tab: icon beside the name, as the cargo select shows it. The
+   column is narrow between the input fields, so the pair has to be told not to wrap. */
+.supply-cargo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* ---------- interface elements page ---------- */
+
+/*
+ * The interface-elements page: one specimen of the set per window colour, each
+ * on its own surface so the colour under the controls is the one being shown.
+ */
+.page-kit {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.kit-window {
+  background: var(--skin-window);
+  padding: 12px;
+}
+
+/* ---------- narrow windows ---------- */
+
+@media (max-width: 1000px) {
+  .page-consist,
+  .page-route,
+  .firs-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .consist-side,
+  .firs-side {
+    position: static;
+  }
+
+  .route-controls {
+    grid-row: auto;
+  }
+
+  .route-chart,
+  .route-profit {
+    grid-column: auto;
+  }
+}
+
+/* ==========================================================================
    RAISED AND LOWERED WIDGETS
    ========================================================================== */
 
@@ -378,10 +993,38 @@ h4,
   text-shadow: var(--skin-text-shadow);
 }
 
+/*
+ * A link is underlined as well as coloured. The palette gives coloured text a
+ * low contrast against the window — that is the game's own look, kept — so
+ * colour alone leaves a link indistinguishable from the words beside it, and
+ * several links in a row indistinguishable from one another. The game has no
+ * links to copy here; the underline comes from the browser, where it is read
+ * without explanation.
+ */
 a:not(.mantine-Button-root):not(.mantine-ActionIcon-root),
-.btn-link {
+.btn-link,
+.mantine-Button-root[data-variant='subtle'] {
   color: var(--skin-link);
   text-shadow: var(--skin-text-shadow);
+}
+
+/* A link leads somewhere: solid underline, the way a browser draws one. */
+a:not(.mantine-Button-root):not(.mantine-ActionIcon-root) {
+  text-decoration: underline;
+  text-decoration-color: currentcolor;
+}
+
+/*
+ * A button that reads as a link but leads nowhere — it sets a value, opens a
+ * tab, undoes an entry — is underlined dashed. The broken line is the older
+ * convention for exactly this: something to click that is not a destination.
+ * A button that reads as a button (the ones under a list, say) keeps no
+ * underline at all; its plate and its place say what it is.
+ */
+.btn-link {
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: currentcolor;
 }
 
 /* a figure that carries a verdict is coloured, so it is shaded too */
@@ -392,6 +1035,38 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root),
 .supply-misses,
 .supply-marginal {
   text-shadow: var(--skin-text-shadow);
+}
+
+.profit {
+  color: var(--skin-profit);
+}
+
+.loss,
+.money-neg {
+  color: var(--skin-loss);
+}
+
+/* Supply column: the figure carries the verdict, so the colour only reinforces it — green
+   where the fleet holds the window, red where it misses. A ratio close to 1 deliberately keeps
+   the plain text colour: it holds, but only just, and the tooltip is where that is explained. */
+.supply-holds {
+  color: var(--skin-profit);
+}
+
+.supply-misses {
+  color: var(--skin-loss);
+}
+
+/* Supply tab states. "Barely" holds — it counts as supplied, but the model spaces trains
+   evenly and a real game bunches them, so it does not get the confident colour; "not set"
+   is not a verdict at all and stays quiet next to the ones that are. */
+.supply-marginal {
+  color: var(--skin-profit);
+  opacity: 0.7;
+}
+
+.supply-unset {
+  opacity: 0.6;
 }
 
 .setting-row {
@@ -424,7 +1099,7 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root),
   gap: var(--skin-hsep-wide);
   width: auto;
   margin: 0;
-  padding: 0 round(calc(2px * var(--skin-scale)), 1px);
+  padding: 0 var(--skin-hsep-normal);
   background: var(--skin-window);
   color: var(--skin-heading);
 }
@@ -450,20 +1125,42 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root),
   overflow-x: auto;
 }
 
+/*
+ * The mark on a sorted column: the shared arrow, pointing down for descending
+ * and turned over for ascending.
+ */
 .sort-mark {
-  font-size: var(--skin-font-small);
+  display: inline-block;
+  width: var(--skin-arrow);
+  height: var(--skin-arrow);
+  margin-left: var(--skin-hsep-normal);
+  vertical-align: middle;
+  background: currentcolor;
+  mask-image: var(--skin-arrow-shape);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.sort-mark[data-direction='ascending'] {
+  transform: rotate(180deg);
 }
 
 /* the catalogue names a vehicle beside its sprite in one cell, and Mantine's Image is a block,
-   which would stack the two */
+   which would stack the two. The sprite is given the width of the widest one rather than its
+   own, so that every name in the column starts at the same place: a double-header is twice the
+   length of a shunter, and left to themselves the names stepped in and out along the column. */
 .cell-vehicle .train-sprite {
   display: inline-block;
+  width: 65px;
+  object-fit: contain;
+  object-position: left center;
 }
 
 /* Nothing to list: the frame says why instead of standing empty. */
 .table-empty {
   margin: 0;
-  padding: var(--skin-pad-row);
+  padding: var(--skin-pad-cell);
   color: var(--skin-muted);
 }
 
@@ -485,10 +1182,40 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root),
   color: var(--skin-loss);
 }
 
-/* the FIRS graph is drawn by graphviz on white, so the panel keeps that white
-   rather than a colour of the palette */
+/*
+ * The chain graph. Graphviz lays it out and writes its own colours into the SVG
+ * as presentation attributes — which CSS overrides, so the palette wins without
+ * the layout being touched: the boxes keep the sizes graphviz measured for them,
+ * and only what fills them changes. The font is left to graphviz for the same
+ * reason: it sized every box around the text before the page ever saw it.
+ */
 .graph-container {
-  background: #fff;
+  background: var(--skin-window);
+}
+
+.graph-container g.node polygon,
+.graph-container g.node ellipse {
+  fill: var(--skin-button);
+  stroke: var(--skin-edge-lo);
+}
+
+.graph-container g.node text {
+  fill: var(--skin-button-text);
+}
+
+.graph-container g.edge path {
+  stroke: var(--skin-text);
+}
+
+.graph-container g.edge polygon {
+  fill: var(--skin-text);
+  stroke: var(--skin-text);
+}
+
+/* the sheet graphviz draws on is its own — a white polygon behind everything,
+   in the group it names "graph"; the panel is the window */
+.graph-container g.graph > polygon {
+  fill: var(--skin-window);
 }
 
 /* scrollbars: a sunken track with a raised thumb, like the game's */
@@ -605,10 +1332,15 @@ strong {
   color: inherit;
 }
 
-
+/* ==========================================================================
+   THE GAME TAB
+   What an imported savegame puts on the page: a route list that opens in place,
+   cargo lines that have to stay level with the figures beside them, and the
+   note about how far the game has drifted from the settings.
+   ========================================================================== */
 
 /*
- * The game tab. Its route list opens a row in place instead of leading anywhere, so the row
+ * Its route list opens a row in place instead of leading anywhere, so the row
  * has to look answerable: the pointer changes over it and the mark turns as it opens.
  */
 .route-row {

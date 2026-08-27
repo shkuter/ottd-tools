@@ -140,6 +140,65 @@ def parse_cargo_sprites():
     }
 
 
+# Icons the interface borrows from the game, where a switch's own label would run
+# half a filter row long. Two kinds, because the game keeps them in two places: a
+# plain number is a sprite of the base set, while a block is one the base set does
+# not hold at all — the graphics an Action 5 lays over a range of sprite numbers,
+# which is where the rail-construction buttons live.
+GUI_SPRITES = {
+    # the toolbar button that opens the subsidy list
+    "subsidies": {"base_set": "SPR_IMG_SUBSIDIES"},
+    # the rail-construction button for electrified track, seen from the side
+    "electrified": {
+        "block": 0x05,  # "Rail catenary graphics" (newgrf_act5.cpp:59)
+        "offset": ("SPR_BUILD_EW_ELRAIL", "SPR_ELRAIL_BASE"),
+    },
+}
+
+
+def sprite_constants():
+    """Resolves `static const SpriteID NAME = OTHER + 36;` to plain numbers.
+
+    sprites.h states almost every sprite as an offset from a base, and the bases
+    themselves as offsets from earlier bases plus a count. Both kinds of constant
+    are read, then each name asked for is resolved through the chain until it is
+    a number. Returns the lookup rather than a fixed set, because the callers
+    want different names out of the same header.
+    """
+    exprs = {
+        m.group(1): m.group(2).strip()
+        for m in re.finditer(
+            r"^static const (?:SpriteID|uint16_t|uint)\s+(\w+)\s*=\s*([^;]+);",
+            read(SPRITES_H),
+            re.M,
+        )
+    }
+    cache: dict[str, int] = {}
+
+    def value(name, seen=()):
+        if name in cache:
+            return cache[name]
+        if name in seen:
+            raise ValueError(f"{name}: circular sprite constant")
+        expr = exprs.get(name)
+        if expr is None:
+            raise KeyError(f"{name}: not stated in sprites.h")
+        total, sign = 0, 1
+        for token in re.findall(r"[A-Za-z_]\w*|\d+|[+-]", expr):
+            if token == "+":
+                sign = 1
+            elif token == "-":
+                sign = -1
+            elif token.isdigit():
+                total += sign * int(token)
+            else:
+                total += sign * value(token, (*seen, name))
+        cache[name] = total
+        return total
+
+    return value
+
+
 def parse_rail_vehicle_info():
     """RVI(image, type, cost, speed, power, weight, running_cost, class, capacity, railtype, running_cost_class)."""
     text = read(ENGINES_H)
@@ -363,6 +422,18 @@ def main():
         "items": cargos,
     })
     write_json("vanilla_industries.json", {"meta": meta, "items": industries})
+    # Sprites at or above SPR_OPENTTD_BASE are not in the base set: they come from
+    # openttd.grf, which the game loads on top of it. The number says which file to
+    # look in, so the boundary travels with the numbers.
+    sprite = sprite_constants()
+    icons = {}
+    for key, where in GUI_SPRITES.items():
+        if "base_set" in where:
+            icons[key] = {"sprite": sprite(where["base_set"])}
+        else:
+            name, base = where["offset"]
+            icons[key] = {"block": where["block"], "offset": sprite(name) - sprite(base)}
+    write_json("vanilla_gui.json", {"meta": meta, "icons": icons})
     print(
         f"vanilla: {len(trains)} trains, {len(cargos)} cargos, "
         f"{len(industries)} industries"

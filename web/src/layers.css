@@ -5,8 +5,8 @@
  * the skin lives in @layer app. A later layer wins over an earlier one no
  * matter how specific the earlier selector is, so the skin can restyle any
  * Mantine component with a plain one-class rule — no !important, no counting
- * specificity. Rules outside any layer still beat both; index.css is there
- * until its pages have moved over.
+ * specificity. Rules outside any layer still beat both, which is why every
+ * rule of ours sits inside one — the skin is the whole of it.
  *
  * Any third-party layer must be named here: a layer that is not is appended
  * after the ones that are, so it would sit after `app` and win over the skin

@@ -67,28 +67,21 @@ describe.each(PINNED)('$path', (route) => {
     );
   });
 
-  it('keeps the money columns right-aligned', async () => {
-    // A cell modifier and the row rule are both one class, so whichever comes later wins. When
-    // the table rules moved into the skin, .cell-money stayed behind in a file imported earlier
-    // and lost silently — the rule was still there, the column was simply left-aligned again.
+  it('lines money up digit under digit', async () => {
+    // Which columns read right is checked in list.visual.test.ts, for every kind
+    // of figure. What only money has is the tabular figure: a column of prices
+    // is compared by eye down the column, and proportional digits make the same
+    // number of them different widths.
     const page = await harness().goto(route.path, route.ready);
-    const aligned = await page.evaluate(() => {
-      const cells = [...document.querySelectorAll('.table-wrap tbody td.cell-money')];
-      const heads = [...document.querySelectorAll('.table-wrap thead th.cell-money')];
-      if (!cells.length) return { error: 'no money column on this tab' };
-      return {
-        cells: cells.map((c) => getComputedStyle(c).textAlign),
-        heads: heads.map((h) => getComputedStyle(h).textAlign),
-        figures: getComputedStyle(cells[0]).fontVariantNumeric,
-      };
+    const figures = await page.evaluate(() => {
+      const cell = document.querySelector('.table-wrap tbody td.cell-money');
+      if (!cell) return { error: 'no money column on this tab' as const };
+      return { variant: getComputedStyle(cell).fontVariantNumeric };
     });
 
-    expect(aligned.error).toBeUndefined();
-    expect(new Set(aligned.cells), 'every money cell is right-aligned').toEqual(
-      new Set(['right']),
-    );
-    expect(new Set(aligned.heads), 'and so is the header above it').toEqual(new Set(['right']));
-    expect(aligned.figures, 'money lines up digit under digit').toContain('tabular-nums');
+    expect(figures.error).toBeUndefined();
+    if ('error' in figures) return;
+    expect(figures.variant, 'money lines up digit under digit').toContain('tabular-nums');
   });
 
   it('takes its row metrics from the skin, and holds no header at the top', async () => {
@@ -107,7 +100,7 @@ describe.each(PINNED)('$path', (route) => {
       // what the token resolves to, asked of the browser rather than computed here: the skin
       // states it as round(calc(...)) against its own scale
       const probe = document.createElement('div');
-      probe.style.padding = 'var(--skin-pad-row)';
+      probe.style.padding = 'var(--skin-pad-cell)';
       document.body.append(probe);
       const fromToken = getComputedStyle(probe).padding;
       probe.remove();
@@ -128,5 +121,32 @@ describe.each(PINNED)('$path', (route) => {
       measured.headerPosition,
       'there is no sticky header: the page is one document with one scrollbar',
     ).toBe('static');
+  });
+  it('marks the edge of a pinned column and lets the last value out from under it', async () => {
+    const page = await harness().goto(route.path, route.ready);
+
+    const measured = await page.evaluate(() => {
+      const wrap = document.querySelector<HTMLElement>('.table-wrap.pin-edges');
+      if (!wrap) return { error: 'no pinned list' as const };
+      const row = wrap.querySelector('tbody tr');
+      if (!row) return { error: 'no rows' as const };
+
+      const pinned = row.lastElementChild!;
+      const edge = getComputedStyle(pinned).borderLeftWidth;
+
+      // scrolled to the far right, the last value of the row is out in the open
+      wrap.scrollLeft = wrap.scrollWidth;
+      const last = row.children[row.children.length - 2]!.getBoundingClientRect();
+      const cover = pinned.getBoundingClientRect();
+      return { edge, overlap: Math.round(last.right - cover.left) };
+    });
+
+    expect(measured.error, 'the tab lists something').toBeUndefined();
+    if ('error' in measured) return;
+    expect(measured.edge, 'a pinned column has an edge of its own').not.toBe('0px');
+    expect(
+      measured.overlap,
+      'and at the far end of the scroll nothing hides under it',
+    ).toBeLessThanOrEqual(0);
   });
 });

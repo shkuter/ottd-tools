@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Group, Select, Tabs, Text } from '@mantine/core';
+import { Group, Select, Tabs, Text, Title } from '@mantine/core';
 import { intlLocale, t, useLocale } from '../../i18n';
+import { fieldWidth } from '../../skin';
 import type { SnapshotRecord } from '../../savegame/snapshotStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { RoutesTab } from './RoutesTab';
@@ -42,14 +43,15 @@ export default function GamePage({ record }: { record: SnapshotRecord }) {
 
   return (
     <div className="page-game">
-      <Group justify="space-between" align="flex-end" mb="sm">
+      <Title order={2}>{t('game.title')}</Title>
+      <Group className="filters" justify="space-between" align="flex-end">
         <Select
+          {...fieldWidth('wide')}
           label={t('game.company')}
           data={companies}
           value={String(companyId)}
           onChange={(value) => value !== null && setCompanyId(Number(value))}
           allowDeselect={false}
-          w={260}
         />
         <Text className="hint">
           {t('game.snapshotOf', {

@@ -28,6 +28,8 @@ export interface ElementStyles {
   /** computed colour-bearing declarations, property to raw value */
   readonly colours: Readonly<Record<string, string>>;
   readonly textShadow: string;
+  /** the game's font ships in one face, so anything but 400 is a synthesised bold */
+  readonly fontWeight: string;
   readonly height: number;
   readonly paddingTop: string;
   readonly paddingBottom: string;
@@ -98,6 +100,8 @@ export function snapshot(): Snapshot {
     '--skin-list-text',
     '--skin-tooltip-bg',
     '--skin-tooltip-text',
+    '--skin-field-bg',
+    '--skin-field-text',
   ];
 
   /* `auto`, `none` and a fully transparent colour say "nothing painted here";
@@ -265,6 +269,7 @@ export function snapshot(): Snapshot {
       ownText,
       colours,
       textShadow: style.textShadow,
+      fontWeight: style.fontWeight,
       height: rect.height,
       paddingTop: style.paddingTop,
       paddingBottom: style.paddingBottom,

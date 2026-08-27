@@ -75,8 +75,8 @@
   .mantine-Checkbox-input:disabled,
   .mantine-Radio-radio:disabled,
   .mantine-Tabs-tab[data-disabled],
-  .mantine-NumberInput-control:disabled,
-  .mantine-Pagination-control[data-disabled] {
+  .mantine-Pagination-control[data-disabled],
+  .mantine-SegmentedControl-label[data-disabled] {
     /* the gradient is spelled out here rather than kept in a token: a var()
        inside a custom property is substituted where that property is declared,
        so a ready-made pattern would carry whatever colour the declaring element
@@ -91,13 +91,25 @@
     opacity: 1;
   }
 
+  /*
+   * A stepper arrow is too small to be hatched: the pattern is a two-pixel cell,
+   * and on a button that size it reads as a damaged sprite rather than as a
+   * widget that cannot be used. It goes dim instead, the way the game dims the
+   * small arrows of a scrollbar.
+   */
+  .mantine-NumberInput-control:disabled {
+    background-image: none;
+    background: var(--skin-button);
+    color: var(--skin-disabled);
+    opacity: 1;
+  }
+
   /* a tab is one of the game's buttons, so its hatch is the button's shade */
   .mantine-Button-root:disabled,
   .mantine-Button-root[data-disabled],
   .mantine-ActionIcon-root:disabled,
   .mantine-ActionIcon-root[data-disabled],
   .mantine-Tabs-tab[data-disabled],
-  .mantine-NumberInput-control:disabled,
   .mantine-Pagination-control[data-disabled],
   .mantine-SegmentedControl-label[data-disabled] {
     --skin-hatch-colour: var(--skin-button-hatch);
@@ -122,9 +134,37 @@
     opacity: 1;
   }
 
+  /*
+   * What a switch is made of stands hsep_normal apart, the interval the game
+   * leaves inside one widget. Mantine spaces the two with a gap on the body and
+   * a padding on the label both, which together came to more than the row
+   * leaves between whole fields — so the label keeps none of its own.
+   */
+  .mantine-Switch-root .mantine-Switch-body {
+    gap: var(--skin-hsep-normal);
+  }
+
+  .mantine-Switch-root .mantine-Switch-label {
+    padding-inline-start: 0;
+  }
+
+  /* the moving part of a switch stays inside its track: the library sizes the
+     thumb off its own scale, and a thumb wider than the track hangs over the
+     bevel it is supposed to slide along */
+  .mantine-Switch-thumb {
+    max-width: calc(var(--switch-height) - 2 * var(--bevel));
+    max-height: calc(var(--switch-height) - 2 * var(--bevel));
+  }
+
   /* the library asks for 600 on a button and 700 on a heading; the game has
-     neither (see the single-weight rule in skin.css) */
+     neither (see the single-weight rule in skin.css). The button is named twice
+     over: the weight sits on its root, and the label inside would inherit a
+     later one from anywhere else. */
+  .mantine-Button-root,
   .mantine-Button-label,
+  .mantine-Switch-track,
+  .mantine-Switch-thumb,
+  .mantine-Switch-trackLabel,
   .mantine-InputWrapper-label,
   .mantine-Fieldset-legend,
   .mantine-Title-root,
@@ -157,6 +197,105 @@
   /* ==========================================================================
      FIELDS — sunken plates, labels in the window's own text colour
      ========================================================================== */
+
+  /*
+   * One height for every control, the game's: a line of text with the frame
+   * above and below it. The library sizes each kind of control off a scale of
+   * its own — an input, a group of buttons, a tab and an icon button came to
+   * four different heights — and a row of them reads as stepped no matter how
+   * the labels are aligned. Stated as a height rather than as padding because
+   * that is what the library varies.
+   */
+  .mantine-Input-input,
+  .mantine-Button-root,
+  .mantine-ActionIcon-root,
+  .mantine-SegmentedControl-root,
+  .mantine-Tabs-tab,
+  .mantine-Pagination-control {
+    height: var(--skin-control-height);
+    min-height: var(--skin-control-height);
+    line-height: 1;
+  }
+
+  /* an inline-flex control sits on the text baseline and leaves the descender
+     space under it, which shows up as a taller cell than its neighbours' */
+  .mantine-SegmentedControl-root {
+    display: flex;
+  }
+
+  /*
+   * The stepper of a number field is sized by the library, not by the field it
+   * stands in, so it stood taller than the plate and hung over both its edges.
+   * It takes the field's own height instead — edge to edge, covering the bevel
+   * of the plate the way a switch's thumb covers the bevel of its track: these
+   * are buttons in their own right, and a button of the game brings its own
+   * frame rather than sitting inside somebody else's.
+   */
+  .mantine-NumberInput-controls {
+    height: var(--skin-control-height);
+  }
+
+  /* the section the stepper sits in is inset by a pixel, which would leave the
+     bevel of the plate showing along the edge the buttons are meant to cover */
+  .mantine-NumberInput-root .mantine-Input-section {
+    inset-block: 0;
+    inset-inline-end: 0;
+  }
+
+  .mantine-NumberInput-control {
+    height: 50%;
+    min-height: 0;
+  }
+
+  /*
+   * The arrow came out as tall as the whole button, bevel and all, so it stood
+   * on the frame instead of inside it. Its size is written into the element by
+   * the library, where no rule of ours could reach it — the variable behind it
+   * is what gets set, to the room a button actually has between its bevels.
+   */
+  .mantine-NumberInput-controls {
+    /* the stepper writes --ni-chevron-size onto itself out of the size variant,
+       so the variant has to carry the new value, and on the very element that
+       reads it — the library sets its own further up the tree */
+    --ni-chevron-size-sm: var(--skin-arrow);
+  }
+
+  /*
+   * The same arrow, the same size, wherever the library draws one: its own
+   * drawing is hidden and the shared shape masked in over it, because the two it
+   * draws are not the same shape — a dropdown gets a double chevron, a stepper a
+   * single one.
+   */
+  .mantine-ComboboxChevron-chevron > *,
+  .mantine-NumberInput-control svg > * {
+    display: none;
+  }
+
+  .mantine-ComboboxChevron-chevron,
+  .mantine-NumberInput-control svg {
+    width: var(--skin-arrow);
+    height: var(--skin-arrow);
+    /* both sit on a yellow plate — the dropdown's own and the stepper button —
+       so both are drawn in the colour the game letters a button in */
+    background: var(--skin-button-text);
+    mask-image: var(--skin-arrow-shape);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+  }
+
+  .mantine-NumberInput-control[data-direction='up'] svg {
+    transform: rotate(180deg);
+  }
+
+  /* the parts a group of buttons is made of fill it rather than sizing it */
+  .mantine-SegmentedControl-control,
+  .mantine-SegmentedControl-label {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+  }
 
   /*
    * The padding is restated from Mantine's own variables so the sections keep
@@ -355,11 +494,11 @@
     border-width: var(--bevel);
     border-color: var(--skin-edges-button-raised);
     background: var(--skin-switch-off);
-    /* the button covers the track's bevel on every side rather than sitting
-       inside it, which is what makes it read as tall as the whole track */
-    top: calc(-1 * var(--bevel));
-    bottom: calc(-1 * var(--bevel));
-    height: auto;
+    /* Height left to the library, which centres the thumb in the track. Setting
+       `top` and `bottom` here does not stretch it: the rule above caps it at the
+       track's inner height, and a cap plus an explicit `top` leaves `bottom`
+       with nothing to do — the thumb stood 14px tall in an 18px track with all
+       4px of the gap under it, hanging off the top edge. */
   }
 
   /* the game's button is a plain plate — no dot in the middle of it */
@@ -468,7 +607,7 @@
 
   .mantine-Table-th,
   .mantine-Table-td {
-    padding: var(--skin-pad-row);
+    padding: var(--skin-pad-cell);
     text-align: left;
     white-space: nowrap;
   }
@@ -485,13 +624,23 @@
 
   /*
    * Modifiers of a single cell. They override the row rule above, so they stand after it:
-   * same file, same weight, later line. Keeping them in index.css or skin.css instead would
-   * put them in a file imported earlier, where an equally specific rule loses — which is how
-   * the money columns quietly lost their right alignment once.
+   * same file, same weight, later line. Keeping them in skin.css instead would put them in a file
+   * imported earlier, where an equally specific rule loses — which is how the money columns
+   * quietly lost their right alignment once.
    */
-  .cell-money {
+  .cell-money,
+  .cell-num {
     text-align: right;
     font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The action on a row ends it, so its button stands at the edge of the list
+   * rather than against the next column's boundary — in a column wider than the
+   * button, left alignment left it adrift in the middle of nowhere.
+   */
+  .mantine-Table-td:has(> .btn-add) {
+    text-align: right;
   }
 
   /* a cell holding nothing but a sprite needs no line box around it. Marked by a class rather
@@ -541,6 +690,23 @@
   }
 
   /*
+   * A pinned column covers whatever scrolls under it — that is what pinning is
+   * — and without an edge of its own the value going under it reads as cut off
+   * rather than as scrolled past. The bevel says where the pinned column ends
+   * and the scrolling part begins, the way the game separates a fixed pane
+   * from a scrolling one.
+   */
+  .table-wrap.pin-edges .mantine-Table-th:first-child,
+  .table-wrap.pin-edges .mantine-Table-td:first-child {
+    border-right: var(--bevel) solid var(--skin-edge-lo);
+  }
+
+  .table-wrap.pin-edges .mantine-Table-th:last-child,
+  .table-wrap.pin-edges .mantine-Table-td:last-child {
+    border-left: var(--bevel) solid var(--skin-edge-lo);
+  }
+
+  /*
    * A row opened in place is one cell spanning the table, so it is both the first and the
    * last of its row and would be pinned to both edges at once. It scrolls with the rest.
    */
@@ -582,6 +748,63 @@
     fill: var(--skin-text);
   }
 
+  /*
+   * The field a graph is drawn on is dark and sunken, the way the game draws its
+   * own: the production graph of an industry and the finances of a company are
+   * both black plates let into the window, with the lines and the figures on
+   * top. Only the plot area is dark — the axis labels stay on the window, as
+   * they do in the game.
+   */
+  .mantine-LineChart-root,
+  .mantine-AreaChart-root,
+  .mantine-BarChart-root {
+    /* the chart package names its colours through these; left alone they are a
+       dimmed grey of its own, which is no colour of the game's palette */
+    --chart-grid-color: var(--skin-edge-lo);
+    --chart-text-color: var(--skin-field-text);
+    --chart-cursor-color: var(--skin-edge-lo);
+    --chart-cursor-fill: transparent;
+    background: var(--skin-field-bg);
+    border-style: solid;
+    border-width: var(--bevel);
+    border-color: var(--skin-edges-lowered);
+    padding: var(--skin-hsep-normal);
+  }
+
+  /*
+   * The readout that follows the pointer along the curve. It is a tooltip of the
+   * game like any other — a pale plate in a black frame — and it needed saying:
+   * left alone it drew its figures in the body colour, which is black, over the
+   * dark plate of the chart, where nothing of it could be seen.
+   */
+  .mantine-ChartTooltip-tooltip {
+    border-radius: var(--skin-radius);
+    border: var(--bevel) solid var(--skin-tooltip-border);
+    background: var(--skin-tooltip-bg);
+    color: var(--skin-tooltip-text);
+    box-shadow: none;
+    padding: var(--skin-pad-frame);
+  }
+
+  .mantine-ChartTooltip-tooltipLabel,
+  .mantine-ChartTooltip-tooltipBody,
+  .mantine-ChartTooltip-tooltipItemName,
+  .mantine-ChartTooltip-tooltipItemData {
+    color: var(--skin-tooltip-text);
+    /* a tooltip of the game is dark-on-pale and carries no shadow, but the
+       shadow is inherited from the theme carrier, so it has to be switched off
+       here as it is on every other plate of that kind */
+    text-shadow: none;
+  }
+
+  /* the figures down the axes: recharts fills them with currentColor, so it is
+     the colour that has to be set, and they stand on the dark plate now */
+  .mantine-LineChart-root .recharts-text,
+  .mantine-AreaChart-root .recharts-text,
+  .mantine-BarChart-root .recharts-text {
+    color: var(--skin-field-text);
+  }
+
   /* ==========================================================================
      ODDS AND ENDS
      ========================================================================== */
@@ -590,7 +813,7 @@
   .mantine-Tabs-list {
     border: none;
     /* hsep_normal, the game's gap between neighbouring widgets */
-    gap: round(calc(2px * var(--skin-scale)), 1px);
+    gap: var(--skin-hsep-normal);
   }
 
   .mantine-Tabs-tab {

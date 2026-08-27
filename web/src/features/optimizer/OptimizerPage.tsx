@@ -7,7 +7,6 @@ import {
   NumberInput,
   SegmentedControl,
   Select,
-  Switch,
   Table,
   Text,
   TextInput,
@@ -18,6 +17,9 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useOptimizerStore } from '../../state/optimizerStore';
 import { useSettingsStore } from '../../state/settingsStore';
+import { Field } from '../../components/Field';
+import { fieldWidth } from '../../skin';
+import { IconSwitch } from '../../components/IconSwitch';
 import { YearField } from '../../components/YearField';
 import { useNavigate } from 'react-router';
 import {
@@ -32,7 +34,7 @@ import {
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, industryName, sortCargos } from '../../i18n/names';
 import {
-  engineLabel, num, percent, speed, speedUnitLabel, speedValue, wagonLabel,
+  engineLabel, num, percent, speedUnitLabel, speedValue, unitSuffix, wagonLabel, withUnit,
 } from '../../components/format';
 import { Money } from '../../components/Money';
 import { optimizeConsists, type OptimizeResult } from '../../engine/optimize';
@@ -75,7 +77,7 @@ function ratingBreakdown(r: StationRating): string {
     // average of the two and the parts above fall short of it. Shown only where the gap is
     // visible at all, or the line would read "+0".
     ...(swing === 0 ? [] : [`${t('opt.ratingSwing')}: ${signed(swing)}`]),
-    `${t('opt.ratingTotal')}: ${total} / 255`,
+    `${t('opt.ratingTotal')}: ${total}/255`,
   ].join('\n');
 }
 
@@ -275,7 +277,7 @@ export default function OptimizerPage() {
   const intervalHint = t('opt.intervalHint', {
     thresholds: waitTimeThresholdDays(effectiveDayLength(game))
       .map((d) => num(d, 1))
-      .join(' / '),
+      .join('/'),
   });
 
   // Consist physics survives between searches, so editing production or the fleet limit
@@ -359,6 +361,7 @@ export default function OptimizerPage() {
       <Group className="filters" align="flex-end" gap="xs">
         <YearField />
         <Select
+          {...fieldWidth('wide')}
           label={t('route.cargo')}
           searchable
           allowDeselect={false}
@@ -368,13 +371,17 @@ export default function OptimizerPage() {
           data={cargoList.map((c) => ({ value: c.label, label: cargoName(c) }))}
         />
         <NumberInput
+          {...fieldWidth('narrow')}
           label={t('opt.distance')}
+          suffix={unitSuffix(t('units.tiles'))}
           min={10}
           value={distance}
           onChange={(v) => setDistance(Number(v) || 10)}
         />
         <NumberInput
+          {...fieldWidth('narrow')}
           label={t('opt.stationTiles')}
+          suffix={unitSuffix(t('units.tiles'))}
           min={1}
           max={16}
           value={stationTiles}
@@ -382,7 +389,9 @@ export default function OptimizerPage() {
         />
         <Tooltip label={t('opt.productionHint')} multiline w={320}>
           <NumberInput
+            {...fieldWidth('narrow')}
             label={t('opt.production')}
+            suffix={t('units.perMonth')}
             min={0}
             step={10}
             value={productionPerMonth}
@@ -391,6 +400,7 @@ export default function OptimizerPage() {
         </Tooltip>
         {consumers.length > 1 && (
           <Select
+            {...fieldWidth('wide')}
             label={t('opt.destination')}
             searchable
             allowDeselect={false}
@@ -399,21 +409,23 @@ export default function OptimizerPage() {
             data={consumers.map((i) => ({ value: i.id, label: industryName(i) }))}
           />
         )}
-        <div className="goal-field">
-          <Text component="label" size="sm">{t('opt.goal')}</Text>
-          <SegmentedControl
-            value={activeGoal}
-            onChange={(v) => setGoal(v as typeof goal)}
-            data={[
-              { value: 'profit', label: t('opt.goalProfit') },
-              { value: 'transported', label: t('opt.goalTransported'), disabled: !goalAvailable },
-              { value: 'supply', label: t('opt.goalSupply'), disabled: !supplyAvailable },
-            ]}
-          />
-        </div>
-        {!goalAvailable && <Text className="hint goal-hint">{t('opt.goalNeedsProduction')}</Text>}
+        <Field label={t('opt.goal')}>
+          {({ labelId }) => (
+            <SegmentedControl
+              aria-labelledby={labelId}
+              value={activeGoal}
+              onChange={(v) => setGoal(v as typeof goal)}
+              data={[
+                { value: 'profit', label: t('opt.goalProfit') },
+                { value: 'transported', label: t('opt.goalTransported'), disabled: !goalAvailable },
+                { value: 'supply', label: t('opt.goalSupply'), disabled: !supplyAvailable },
+              ]}
+            />
+          )}
+        </Field>
         <Tooltip label={t('opt.maxTrainsHint')} multiline w={320}>
           <NumberInput
+            {...fieldWidth('narrow')}
             label={t('opt.maxTrains')}
             min={1}
             max={20}
@@ -421,23 +433,27 @@ export default function OptimizerPage() {
             onChange={(v) => setMaxTrains(Math.max(1, Number(v) || 1))}
           />
         </Tooltip>
-        <Switch
-          checked={allowElectric}
-          onChange={(e) => setAllowElectric(e.currentTarget.checked)}
-          label={t('opt.allowElectric')}
-        />
-        <Switch
-          checked={subsidised}
-          onChange={(e) => setSubsidised(e.currentTarget.checked)}
-          label={t('opt.subsidised')}
-        />
         <TextInput
+          {...fieldWidth('normal')}
           type="search"
-          placeholder={t('opt.engineFilter')}
+          label={t('opt.engineFilter')}
           value={engineFilter}
           onChange={(e) => setEngineFilter(e.currentTarget.value)}
         />
+        <IconSwitch
+          icon="electrified"
+          name={t('opt.allowElectric')}
+          checked={allowElectric}
+          onChange={setAllowElectric}
+        />
+        <IconSwitch
+          icon="subsidies"
+          name={t('opt.subsidised')}
+          checked={subsidised}
+          onChange={setSubsidised}
+        />
       </Group>
+      {!goalAvailable && <p className="hint goal-hint">{t('opt.goalNeedsProduction')}</p>}
       <PrefillNote
         origin={prefillOrigin}
         current={{ cargoLabel, distanceTiles: distance, productionPerMonth }}
@@ -488,34 +504,62 @@ export default function OptimizerPage() {
       <TableFrame pinEdges rowCount={shown.length} emptyMessage={t('opt.noResults')}>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>#</Table.Th>
+            <Table.Th className="cell-num">#</Table.Th>
             <SortableTh column="engine" sort={sort} onSort={setSort} colSpan={2}>
               {t('opt.engine')}
             </SortableTh>
             <SortableTh column="wagon" sort={sort} onSort={setSort} colSpan={2}>
               {t('opt.wagons')}
             </SortableTh>
-            <SortableTh column="cargoTrip" sort={sort} onSort={setSort} title={t('opt.cargoTripHint')}>
-              {t('opt.cargoTrip')}
+            <SortableTh
+              column="cargoTrip"
+              sort={sort}
+              onSort={setSort}
+              title={t('opt.cargoTripHint')}
+              className="cell-num"
+            >
+              {cargo ? withUnit(t('opt.cargoTrip'), cargoUnits(cargo.units)) : t('opt.cargoTrip')}
             </SortableTh>
-            <SortableTh column="speed" sort={sort} onSort={setSort}>
-              {t('opt.speedLoadedEmpty')}
+            <SortableTh column="speed" sort={sort} onSort={setSort} className="cell-num">
+              {withUnit(t('opt.speedLoadedEmpty'), speedUnitLabel())}
             </SortableTh>
-            <SortableTh column="gradeSpeed" sort={sort} onSort={setSort}>
-              {t('opt.gradeSpeed')}
+            <SortableTh column="gradeSpeed" sort={sort} onSort={setSort} className="cell-num">
+              {withUnit(t('opt.gradeSpeed'), speedUnitLabel())}
             </SortableTh>
-            <SortableTh column="dwell" sort={sort} onSort={setSort}>{t('opt.dwell')}</SortableTh>
-            <SortableTh column="roundTrip" sort={sort} onSort={setSort}>
-              {t('combined.roundTrip')}
+            <SortableTh column="dwell" sort={sort} onSort={setSort} className="cell-num">
+              {withUnit(t('opt.dwell'), t('units.days'))}
             </SortableTh>
-            <SortableTh column="trips" sort={sort} onSort={setSort}>{t('opt.trips')}</SortableTh>
-            <SortableTh column="fleet" sort={sort} onSort={setSort} title={t('opt.fleetHint')}>
+            <SortableTh column="roundTrip" sort={sort} onSort={setSort} className="cell-num">
+              {withUnit(t('combined.roundTrip'), t('units.days'))}
+            </SortableTh>
+            <SortableTh column="trips" sort={sort} onSort={setSort} className="cell-num">
+              {t('opt.trips')}
+            </SortableTh>
+            <SortableTh
+              column="fleet"
+              sort={sort}
+              onSort={setSort}
+              title={t('opt.fleetHint')}
+              className="cell-num"
+            >
               {t('opt.fleet')}
             </SortableTh>
-            <SortableTh column="interval" sort={sort} onSort={setSort} title={intervalHint}>
-              {t('opt.interval')}
+            <SortableTh
+              column="interval"
+              sort={sort}
+              onSort={setSort}
+              title={intervalHint}
+              className="cell-num"
+            >
+              {withUnit(t('opt.interval'), t('units.days'))}
             </SortableTh>
-            <SortableTh column="rating" sort={sort} onSort={setSort} title={t('opt.ratingHint')}>
+            <SortableTh
+              column="rating"
+              sort={sort}
+              onSort={setSort}
+              title={t('opt.ratingHint')}
+              className="cell-num"
+            >
               {t('opt.rating')}
             </SortableTh>
             {supplyTarget && (
@@ -533,7 +577,9 @@ export default function OptimizerPage() {
               </SortableTh>
             )}
             {activeGoal === 'transported' && (
-              <SortableTh column="hauled" sort={sort} onSort={setSort}>{t('opt.hauled')}</SortableTh>
+              <SortableTh column="hauled" sort={sort} onSort={setSort} className="cell-num">
+                {cargo ? withUnit(t('opt.hauled'), cargoUnits(cargo.units)) : t('opt.hauled')}
+              </SortableTh>
             )}
             <SortableTh column="incomeTrip" sort={sort} onSort={setSort} className="cell-money">
               {t('opt.incomeTrip')}
@@ -547,14 +593,16 @@ export default function OptimizerPage() {
             <SortableTh column="profit" sort={sort} onSort={setSort} className="cell-money">
               {t('opt.profitYear')}
             </SortableTh>
-            <SortableTh column="payback" sort={sort} onSort={setSort}>{t('opt.payback')}</SortableTh>
+            <SortableTh column="payback" sort={sort} onSort={setSort} className="cell-num">
+              {withUnit(t('opt.payback'), t('units.years'))}
+            </SortableTh>
             <Table.Th></Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
           {shown.map((r, i) => (
             <Table.Tr key={`${r.engine.id}-${r.engineCount}-${r.wagon.id}`}>
-              <Table.Td>{i + 1}</Table.Td>
+              <Table.Td className="cell-num">{i + 1}</Table.Td>
               <Table.Td className="cell-sprite"><TrainImage trainId={r.engine.id} /></Table.Td>
               <Table.Td>
                 {engineLabel(r)}
@@ -563,40 +611,44 @@ export default function OptimizerPage() {
               </Table.Td>
               <Table.Td className="cell-sprite"><TrainImage trainId={r.wagon.id} /></Table.Td>
               <Table.Td>{wagonLabel(r)}<IntroNote intro={r.wagonIntro} /></Table.Td>
-              <Table.Td>
-                {num(r.cargoPerTrip)} {cargoUnits(cargo?.units)}
+              <Table.Td className="cell-num">
+                {num(r.cargoPerTrip)}
                 {r.cargoPerTrip < r.capacity - 0.5 && (
-                  <span className="dim"> / {num(r.capacity)}</span>
+                  <span className="dim">/{num(r.capacity)}</span>
                 )}
                 <LoadingBranchMark row={r} />
               </Table.Td>
-              <Table.Td>
-                {speedValue(r.loadedSpeedInternal)} / {speedValue(r.emptySpeedInternal)}{' '}
-                {speedUnitLabel()}
+              <Table.Td className="cell-num">
+                {speedValue(r.loadedSpeedInternal)}/{speedValue(r.emptySpeedInternal)}
               </Table.Td>
-              <Table.Td>{speed(r.gradeSpeedInternal)}</Table.Td>
-              <Table.Td>{num(r.loadingDays, 1)} {t('combined.days')}</Table.Td>
-              <Table.Td>{num(r.roundTripDays, 1)} {t('combined.days')}</Table.Td>
-              <Table.Td>{num(r.tripsPerYear, 1)}</Table.Td>
-              <Table.Td>
+              <Table.Td className="cell-num">{speedValue(r.gradeSpeedInternal)}</Table.Td>
+              <Table.Td className="cell-num">{num(r.loadingDays, 1)}</Table.Td>
+              <Table.Td className="cell-num">{num(r.roundTripDays, 1)}</Table.Td>
+              <Table.Td className="cell-num">{num(r.tripsPerYear, 1)}</Table.Td>
+              <Table.Td className="cell-num">
                 {r.fleetSize}
                 {r.fleetLimited && (
                   <sup className="intro-warn" title={t('opt.fleetLimited')}>!</sup>
                 )}
               </Table.Td>
-              <Table.Td>{num(r.pickupIntervalDays, 1)} {t('combined.days')}</Table.Td>
-              <Table.Td title={r.stationRating ? ratingBreakdown(r.stationRating) : undefined}>
+              <Table.Td className="cell-num">{num(r.pickupIntervalDays, 1)}</Table.Td>
+              <Table.Td
+                className="cell-num"
+                title={r.stationRating ? ratingBreakdown(r.stationRating) : undefined}
+              >
                 {r.stationRating ? percent(r.stationRating.deliveredShare) : '—'}
               </Table.Td>
               {supplyTarget && <SupplyCell row={r} target={supplyTarget} />}
               {activeGoal === 'transported' && (
-                <Table.Td>{num(r.hauledPerYear)} {cargoUnits(cargo?.units)}</Table.Td>
+                <Table.Td className="cell-num">{num(r.hauledPerYear)}</Table.Td>
               )}
               <Table.Td className="cell-money"><Money value={r.incomePerTrip} /></Table.Td>
               <Table.Td className="cell-money"><Money value={r.runningCostPerYear} /></Table.Td>
               <Table.Td className="cell-money"><Money value={r.buyCostTotal} /></Table.Td>
               <Table.Td className={"cell-money " + (r.profitPerYear >= 0 ? "profit" : "money-neg")}><Money value={r.profitPerYear} /></Table.Td>
-              <Table.Td>{r.paybackYears ? `${num(r.paybackYears, 1)} ${t('combined.years')}` : '—'}</Table.Td>
+              <Table.Td className="cell-num">
+                {r.paybackYears ? num(r.paybackYears, 1) : '—'}
+              </Table.Td>
               <Table.Td>
                 <ActionIcon
                   className="btn-add"

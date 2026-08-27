@@ -1,12 +1,22 @@
 import { useMemo, useRef } from 'react';
-import { Button, Group, NumberInput, Paper, Select, Switch, Table, Text, Title } from '@mantine/core';
+import {
+  Button,
+  Group,
+  NumberInput,
+  Paper,
+  Select,
+  Table,
+  Text,
+  Title,
+} from '@mantine/core';
 import { TableFrame } from '../../components/table/TableFrame';
 import { useDebouncedValue } from '@mantine/hooks';
 import { activeIndustries, industriesMeta, industrySupplyInputs } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, industryName } from '../../i18n/names';
-import { engineLabel, num, wagonLabel } from '../../components/format';
+import { engineLabel, num, unitSuffix, wagonLabel, withUnit } from '../../components/format';
 import { CargoIcon } from '../../components/CargoIcon';
+import { fieldWidth } from '../../skin';
 import { TrainImage } from '../../components/TrainImage';
 import { Warning } from '../../components/Warning';
 import {
@@ -16,6 +26,7 @@ import {
   type InputState,
 } from '../../engine/supply';
 import { useSettingsStore } from '../../state/settingsStore';
+import { IconSwitch } from '../../components/IconSwitch';
 import { YearField } from '../../components/YearField';
 import { EMPTY_INPUT, inputKey, useIndustrySupplyStore } from '../../state/industrySupplyStore';
 import type { OptimizerCache } from '../../engine/optimizeCache';
@@ -95,6 +106,7 @@ export default function IndustrySupplyPage() {
 
       <Group className="filters" align="flex-end" gap="xs">
         <Select
+          {...fieldWidth('wide')}
           label={t('supply.industry')}
           searchable
           value={industry?.id ?? null}
@@ -104,27 +116,40 @@ export default function IndustrySupplyPage() {
         />
         <YearField />
         <NumberInput
+          {...fieldWidth('narrow')}
           label={t('opt.stationTiles')}
+          suffix={unitSuffix(t('units.tiles'))}
           min={1}
           max={16}
           value={store.stationTiles}
           onChange={(v) => store.setStationTiles(Number(v) || 1)}
         />
         <NumberInput
+          {...fieldWidth('narrow')}
           label={t('opt.maxTrains')}
           min={1}
           max={20}
           value={store.maxTrains}
           onChange={(v) => store.setMaxTrains(Number(v) || 1)}
         />
-        <Switch
-          label={t('opt.allowElectric')}
+        <IconSwitch
+          icon="electrified"
+          name={t('opt.allowElectric')}
           checked={store.allowElectric}
-          onChange={(e) => store.setAllowElectric(e.currentTarget.checked)}
+          onChange={store.setAllowElectric}
         />
       </Group>
 
-      {industry && inputs.length === 0 && <Text>{t('supply.noInputs')}</Text>}
+      {/* nothing to compute yet — no industry chosen, or one with no inputs. Said
+          in the frame the list would stand in, rather than as blank space under
+          the filters: blank space reads as a calculation that failed rather than
+          as one not asked for */}
+      {(!industry || inputs.length === 0) && (
+        <TableFrame
+          rowCount={0}
+          emptyMessage={industry ? t('supply.noInputs') : t('supply.pickIndustry')}
+        />
+      )}
 
       {industry && inputs.length > 0 && summary && !hasVerdict(summary.rule) && (
         <Text>
@@ -136,7 +161,9 @@ export default function IndustrySupplyPage() {
         <>
           <Group className="filters" align="flex-end" gap="xs">
             <NumberInput
+              {...fieldWidth('narrow')}
               label={t('supply.commonDistance')}
+              suffix={unitSuffix(t('units.tiles'))}
               description={t('supply.commonDistanceHint')}
               min={1}
               value={store.commonDistanceTiles}
@@ -157,12 +184,16 @@ export default function IndustrySupplyPage() {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>{t('route.cargo')}</Table.Th>
-                <Table.Th>{t('supply.distance')}</Table.Th>
-                <Table.Th>{t('supply.production')}</Table.Th>
-                <Table.Th>{t('supply.trains')}</Table.Th>
+                <Table.Th className="cell-num">
+                  {withUnit(t('supply.distance'), t('units.tiles'))}
+                </Table.Th>
+                <Table.Th className="cell-num">
+                  {withUnit(t('supply.production'), t('units.perMonth'))}
+                </Table.Th>
+                <Table.Th className="cell-num">{t('supply.trains')}</Table.Th>
                 <Table.Th colSpan={2}>{t('opt.engine')}</Table.Th>
                 <Table.Th colSpan={2}>{t('opt.wagons')}</Table.Th>
-                <Table.Th>{t('supply.ratio')}</Table.Th>
+                <Table.Th className="cell-num">{t('supply.ratio')}</Table.Th>
                 <Table.Th>{t('supply.state')}</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -180,7 +211,7 @@ export default function IndustrySupplyPage() {
                         {run.cargo ? cargoName(run.cargo) : run.cargoLabel}
                       </span>
                     </Table.Td>
-                    <Table.Td>
+                    <Table.Td className="cell-num">
                       <NumberInput
                         min={0}
                         value={params.distanceTiles || ''}
@@ -190,7 +221,7 @@ export default function IndustrySupplyPage() {
                         }
                       />
                     </Table.Td>
-                    <Table.Td>
+                    <Table.Td className="cell-num">
                       <NumberInput
                         min={0}
                         step={10}
@@ -205,7 +236,7 @@ export default function IndustrySupplyPage() {
                     </Table.Td>
                     {/* Whole trains and the vehicles inside one of them are different counts,
                         so they get columns of their own rather than one crowded cell. */}
-                    <Table.Td>{run.best ? run.best.fleetSize : '—'}</Table.Td>
+                    <Table.Td className="cell-num">{run.best ? run.best.fleetSize : '—'}</Table.Td>
                     {/* Sprite and name apart, the way the optimizer's rows read: the wagon's
                         own length shows in its sprite and nowhere in its name. */}
                     <Table.Td>
@@ -220,14 +251,16 @@ export default function IndustrySupplyPage() {
                         <>
                           {wagonLabel(run.best)}{' '}
                           <span className="dim">
-                            · {num(run.best.lengthTiles, 1)} {t('consist.stats.tiles')}
+                            · {num(run.best.lengthTiles, 1)} {t('units.tiles')}
                           </span>
                         </>
                       ) : (
                         '—'
                       )}
                     </Table.Td>
-                    <Table.Td>{run.outcome?.ratio != null ? num(run.outcome.ratio, 2) : '—'}</Table.Td>
+                    <Table.Td className="cell-num">
+                      {run.outcome?.ratio != null ? num(run.outcome.ratio, 2) : '—'}
+                    </Table.Td>
                     <Table.Td className={`supply-${state}`}>{stateLabel(state)}</Table.Td>
                   </Table.Tr>
                 );

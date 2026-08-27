@@ -36,7 +36,15 @@ export function SortableTh<C extends string>({
       onClick={() => onSort(next)}
     >
       {children}
-      <span className="sort-mark">{active ? (sort.descending ? ' ▾' : ' ▴') : ''}</span>
+      {/* the arrow is a shape of the skin rather than a glyph of the font: a glyph
+          carries its font's own size and baseline, and would never line up with
+          the same arrow on a dropdown or a stepper */}
+      {active && (
+        <span
+          className="sort-mark"
+          data-direction={sort.descending ? 'descending' : 'ascending'}
+        />
+      )}
     </Table.Th>
   );
 }

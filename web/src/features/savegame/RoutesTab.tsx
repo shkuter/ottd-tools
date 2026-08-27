@@ -89,10 +89,10 @@ export function RoutesTab({
           <SortableTh column="cargo" sort={sort} onSort={setSort}>
             {t('game.cargo')}
           </SortableTh>
-          <SortableTh column="fleet" sort={sort} onSort={setSort}>
+          <SortableTh column="fleet" sort={sort} onSort={setSort} className="cell-num">
             {t('game.fleet')}
           </SortableTh>
-          <SortableTh column="distance" sort={sort} onSort={setSort}>
+          <SortableTh column="distance" sort={sort} onSort={setSort} className="cell-num">
             {t('game.distance')}
           </SortableTh>
           <SortableTh column="fact" sort={sort} onSort={setSort} className="cell-money">
@@ -170,12 +170,15 @@ function RouteRows({
             out in the row pushes the fact and the forecast — the point of the table — off the
             page, and wrapping it makes every row four lines tall. The full consist is one
             click away in the detail below */}
-        <Table.Td title={row.consist === null ? t('game.mixedConsists') : consistText(row.consist)}>
+        <Table.Td
+          className="cell-num"
+          title={row.consist === null ? t('game.mixedConsists') : consistText(row.consist)}
+        >
           {row.trains.length}
         </Table.Td>
         {/* the leg the model would run; a longer rotation has no single one, and its first
             leg is not the distance of the route */}
-        <Table.Td>
+        <Table.Td className="cell-num">
           {row.blocker === 'multiStop' || row.distanceTiles === null
             ? '—'
             : num(row.distanceTiles)}

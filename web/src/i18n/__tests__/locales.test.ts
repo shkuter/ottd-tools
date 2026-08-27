@@ -231,3 +231,21 @@ describe('industry names', () => {
     expect(dot).toContain('"coal_mine" -> "COAL"');
   });
 });
+
+/*
+ * A slash is written without spaces around it — between two figures of one
+ * quantity ("144/144") and where it reads as "per" ("Profit/year"). The
+ * dictionaries once held ten of each spelling, split along tab lines, and the
+ * same quantity was named "Income/trip" on one tab and "Income / trip" on
+ * another. Nothing on screen shows which spelling a string uses until the two
+ * stand side by side.
+ */
+describe('a slash in a dictionary', () => {
+  it.each(Object.entries({ en, ru }))('is written without spaces in %s', (_locale, dictionary) => {
+    const spaced = Object.entries(dictionary as Record<string, string>)
+      .filter(([, value]) => value.includes(' / '))
+      .map(([key, value]) => `${key}: ${value}`);
+
+    expect(spaced, 'a slash joins, so it is not spaced apart').toEqual([]);
+  });
+});

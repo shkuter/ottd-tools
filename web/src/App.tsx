@@ -97,7 +97,7 @@ export default function App() {
         )}
         <Suspense fallback={null}>
           <Routes>
-            <Route path="/" element={<Navigate to="/optimizer" replace />} />
+            <Route path="/" element={<Navigate to={TABS[0].path} replace />} />
             <Route path="/optimizer" element={<OptimizerPage />} />
             <Route path="/consist" element={<ConsistPage />} />
             <Route path="/income" element={<RoutePage />} />
@@ -129,6 +129,10 @@ export default function App() {
             <Route path="/combined" element={<Navigate to="/income" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/kit" element={<KitPage />} />
+            {/* an address no tab answers to: the shell would otherwise stand with
+                its header and footer around nothing, which reads as a page that
+                failed to load rather than as an address that does not exist */}
+            <Route path="*" element={<Navigate to={TABS[0].path} replace />} />
           </Routes>
         </Suspense>
       </Box>

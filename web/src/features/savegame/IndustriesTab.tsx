@@ -84,7 +84,7 @@ export function IndustriesTab({
           <SortableTh column="produced" sort={sort} onSort={setSort}>
             {t('game.produced')}
           </SortableTh>
-          <SortableTh column="transported" sort={sort} onSort={setSort}>
+          <SortableTh column="transported" sort={sort} onSort={setSort} className="cell-num">
             {t('game.transported')}
           </SortableTh>
         </Table.Tr>
@@ -109,7 +109,7 @@ export function IndustriesTab({
                 )}
               </GoodsCell>
             </Table.Td>
-            <Table.Td>
+            <Table.Td className="cell-num">
               {/* how much of what was made actually left — the share the game's own industry
                   window shows */}
               <GoodsCell entries={stated(industry)}>

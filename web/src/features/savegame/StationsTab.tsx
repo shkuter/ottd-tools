@@ -62,7 +62,7 @@ export function StationsTab({
           <SortableTh column="waiting" sort={sort} onSort={setSort}>
             {t('game.waiting')}
           </SortableTh>
-          <SortableTh column="rating" sort={sort} onSort={setSort}>
+          <SortableTh column="rating" sort={sort} onSort={setSort} className="cell-num">
             {t('game.rating')}
           </SortableTh>
         </Table.Tr>
@@ -76,7 +76,7 @@ export function StationsTab({
                 {(goods) => <CargoLabel cargo={cargoOf(goods.label)} after={num(goods.waiting)} />}
               </GoodsCell>
             </Table.Td>
-            <Table.Td>
+            <Table.Td className="cell-num">
               {/* the cargo is named once, in the column before this one: both cells walk the
                   same list, so their rows line up. The game rates a cargo only once it has
                   handled one, and where it shows nothing this stays blank rather than

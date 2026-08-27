@@ -8,7 +8,9 @@ import App from './App.tsx';
 import './layers.css';
 import '@mantine/core/styles.layer.css';
 import '@mantine/notifications/styles.layer.css';
-import './index.css';
+/* the chart package brings its own: without it the marker in a tooltip is an
+   <svg> with no size, which a browser then draws at its default 300x150 */
+import '@mantine/charts/styles.layer.css';
 import './skin.css';
 import './skin-mantine.css';
 import { applyPalette } from './skin';

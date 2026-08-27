@@ -35,7 +35,15 @@ describe('cargo lines of a station', () => {
     // the fixture holds a station with two cargoes, one of them unrated
     expect(rows.some((row) => row.left.length > 1)).toBe(true);
     for (const row of rows) {
-      expect(row.right, `${row.station}: a rating sits beside the wrong cargo`).toEqual(row.left);
+      expect(row.right.length, `${row.station}: a rating went missing`).toBe(row.left.length);
+      // a line apart is 23px, so a pixel of rounding is not a line out of place:
+      // the lines sit at fractional heights, and where the block starts decides
+      // which way each of them rounds
+      const apart = row.left.map((top, index) => Math.abs(row.right[index] - top));
+      expect(
+        apart.filter((gap) => gap > 1),
+        `${row.station}: a rating sits beside the wrong cargo`,
+      ).toEqual([]);
     }
   });
 });

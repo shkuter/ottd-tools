@@ -18,6 +18,91 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- Two icons of the game's own interface, extracted like the cargo ones: the subsidy button and
+  the button for electrified track, standing in for switch labels that ran half a filter row
+  long. They come with a new dataset, `vanilla_gui.json`, and with a decoder that reads chunked
+  sprites and the Action 5 blocks a NewGRF lays over the game's sprite numbers — which is how
+  the second icon is taken at all, since the base set does not hold it.
+- Ten rendered-page checks: one weight throughout, one height for every control, nothing inside
+  a control standing past its edges, one arrow, a filter row on one line and sized off the
+  scale, a list that aligns its figures and its action, an underline that says which of the
+  three kinds of clickable text this is, a page titled where every other one is, a panel that
+  holds its content in both languages, and a chart on a dark plate with a graph in palette
+  colours. Each was written after a defect that was plain on screen and invisible to the checks.
+
+### Changed
+
+- The controls are one height throughout, the height the game gives a widget: a line of text
+  with the frame above and below it. Every kind of control used to take its height from the
+  component library's own scale — a field stood at 36px, a segmented control at 31, a tab at 30,
+  an icon button at 28 — so a row of them read as stepped whatever was done to their labels.
+- A filter row is built from fields of one shape: the label above the control, the width off a
+  scale of three steps counted in characters. Controls that were built the other way round — a
+  group of buttons under a heading of its own, a switch with its label beside it, a field whose
+  only clue was the placeholder inside it — are in that shape now, and the fields that had no
+  label at all have one. A row that stood at five different heights stands on one line.
+- Units of measurement moved out of the labels and the cells into the field and the column
+  heading: "Station length" with "5 tiles" in the field, "Round trip, days" over a column of
+  plain figures. A label carrying its unit in brackets ran half again as wide as the field
+  under it, leaving a gap the eye reads as a mistake.
+- Every column of figures is aligned right, not only the money ones, so the digits line up
+  down the column. Vehicle names in the catalogue start at one place regardless of how long
+  the sprite beside them is, and the button that acts on a row stands at the edge of the list.
+- The gaps in a list come from the game's metrics: cells are spaced by half of hsep_wide, so
+  neighbouring columns leave that interval between them rather than the three pixels they had.
+- The two tabs that answer about industries wear the colours of the game's industry windows —
+  brown for the chains, dark green for the supply list. Both had been the vehicle-purchase
+  grey, and the two colour groups they now use were defined in the skin but worn by nothing.
+- The chain graph is drawn in palette colours: graphviz still lays it out, but the white sheet,
+  the pale nodes and the grey edges it writes into the SVG are overridden, and every exemption
+  the rendered-page checks held for that chart is gone. Its layout is also tighter — graphviz
+  spread a graph that size over some 2500 pixels of height, which is now about 1400.
+- The income chart is drawn the way the game draws its own: a dark sunken field, a solid grid
+  on both axes, a thick line in a palette colour, plain figures down the side — in the colour a
+  dark plate is lettered in — with the currency named in the heading. The label on the marked
+  trip moved under the field, where it no longer lands on whichever axis tick is behind it.
+- Links are underlined. The palette gives coloured text a low contrast against the window, so
+  colour alone left a link indistinguishable from the words around it — and a row of links in
+  the footer indistinguishable from one another.
+- One arrow throughout: the same chevron at the same size and in the same colour on a dropdown,
+  on the stepper of a number field and as the mark on a sorted column. Each had been drawn by
+  something else — a double chevron here, a single one there, a glyph of the font in the table
+  header — and matching their boxes was not enough to make them look alike.
+- A slash is written without spaces around it, both between two figures of one quantity
+  ("144/144") and where it reads as "per" ("Profit/year"). The dictionaries had ten of each
+  spelling, split along tab lines, and the same quantity was named "Income/trip" on one tab and
+  "Income / trip" on another.
+- `index.css` is gone; its rules live in `skin.css`, which is now the only place a rule of the
+  skin can be. Seventeen classes had been described in both files, and the pages of one tab sat
+  outside the cascade layer entirely, winning over the skin by nothing but position.
+- The chart package's stylesheet is imported. Without it the marker in a chart tooltip was an
+  `<svg>` with no size at all, which a browser draws at its default 300×150 — the tooltip then
+  covered most of the chart. Its colour variables are pointed at the palette in the same move.
+
+### Fixed
+
+- An address no tab answers to lands on the first tab instead of leaving the shell standing
+  around an empty page.
+- A pinned column has a visible edge, so a value scrolled under it reads as scrolled rather
+  than as cut off.
+- The stepper of a number field is the height of the field it sits in, covering its bevel
+  rather than sitting inside it, and the arrow inside each button is centred in it. Both were
+  sized by the library and stood over the plate they belong to.
+- The thumb of a switch is centred in its track. Two rules disagreed about its height — one
+  capping it, one setting its top and bottom — and it ended up standing against the top edge
+  with the whole of the gap underneath.
+- The switch is no longer set in a heavier face than everything else, and neither is anything
+  else: the library asks for 600 on several of its parts, and the rule saying otherwise had
+  stopped matching them.
+- A wide list no longer carries the page sideways with it: a grid column will not shrink below
+  its content unless told it may, so the catalogue pushed the consist panel off the page.
+- Text stays inside the panel it belongs to. A button's label is kept on one line by the
+  library, and a line of that length in a 320px panel simply left it.
+- The reading that follows the pointer along the income curve is a tooltip of the game like any
+  other, and shows the day it stands on rounded rather than to fourteen decimals.
+
 ## [0.13.0] - 2026-08-26
 
 ### Changed
