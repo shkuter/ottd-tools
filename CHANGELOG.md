@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-27
+
 ### Added
 
 - Two icons of the game's own interface, extracted like the cargo ones: the subsidy button and
