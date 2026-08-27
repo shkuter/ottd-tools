@@ -409,7 +409,7 @@ export default function OptimizerPage() {
             data={consumers.map((i) => ({ value: i.id, label: industryName(i) }))}
           />
         )}
-        <Field label={t('opt.goal')}>
+        <Field label={t('opt.goal')} width="content">
           {({ labelId }) => (
             <SegmentedControl
               aria-labelledby={labelId}

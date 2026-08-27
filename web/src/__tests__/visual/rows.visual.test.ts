@@ -77,6 +77,10 @@ function offTheScale() {
     ...row.querySelectorAll('.mantine-Input-wrapper, .field-cell'),
   ]);
   for (const field of fields) {
+    // a field sized by what it holds stands on no step by design: a group of
+    // buttons is as wide as its own labels, which are a different width in
+    // every language (see FieldWidth in skin.ts)
+    if (field.getAttribute('data-width') === 'content') continue;
     const width = Math.round(field.getBoundingClientRect().width);
     if (width === 0 || scale.some((step) => Math.abs(step - width) <= 1)) continue;
     const label = field

@@ -18,6 +18,22 @@ of what users see):
 
 ## [Unreleased]
 
+### Fixed
+
+- The goal switch in the optimizer's filter row is as wide as its own options again. Held to a
+  step of the width scale it clipped the last one in Russian — "Снабжение" wanted 255px of a
+  189px field — and left a gap inside itself in English, where the three options filled 166 of
+  the same 189. Which of the two happened depended on the language, so neither showed up in the
+  other. A group of buttons is sized by the game from its labels, and now says so.
+- A rendered-page check for text cut off by the box around it, in both languages. Every other
+  check measures boxes, and a box of exactly the right size can still hide what stands inside
+  it — which is how the clipped option went unnoticed.
+
+### Changed
+
+- The output field in the filter row is labelled "Output" rather than "Source output": the full
+  name stays on the supply tab, where the column is wide enough to carry it.
+
 ## [0.14.0] - 2026-08-27
 
 ### Added

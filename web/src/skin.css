@@ -481,11 +481,19 @@ h4 {
   width: var(--skin-field-wide);
 }
 
+/* Sized by what it holds rather than by a step: see FieldWidth in skin.ts. */
+.filters .mantine-Input-wrapper:has([data-width='content']),
+.filters > [data-width='content']:not(input) {
+  width: auto;
+}
+
 
 /* A control that came through Field rather than being one of Mantine's inputs:
-   it fills the field it was given, so the row is as regular as its widths. */
-.field-cell > .mantine-Switch-root,
-.field-cell > .mantine-Group-root {
+   it fills the field it was given, so the row is as regular as its widths. The
+   field sized by its content is the exception — there the control leads and the
+   field follows. */
+.field-cell:not([data-width='content']) > .mantine-Switch-root,
+.field-cell:not([data-width='content']) > .mantine-Group-root {
   width: 100%;
 }
 

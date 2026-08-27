@@ -70,8 +70,16 @@ export function applyPalette(root: HTMLElement = document.documentElement) {
   }
 }
 
-/** Which step of the width scale in skin.css the field stands on. */
-export type FieldWidth = 'narrow' | 'normal' | 'wide';
+/**
+ * Which step of the width scale in skin.css the field stands on.
+ *
+ * `content` is not a step but the absence of one: a group of buttons is as wide
+ * as its own labels, the way the game sizes them. Held to a step it either
+ * clips them (Russian "Снабжение" wanted 255px of a 189px field) or leaves a
+ * gap inside itself (English "Profit / Haul / Supply" filled 166 of the same
+ * 189) — and which of the two happens depends on the language.
+ */
+export type FieldWidth = 'narrow' | 'normal' | 'wide' | 'content';
 
 /**
  * The width as a Mantine input takes it. Those draw their own label and need

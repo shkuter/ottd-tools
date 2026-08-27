@@ -96,7 +96,7 @@
   "opt.title": "Best train for the job",
   "opt.distance": "Distance",
   "opt.stationTiles": "Station length",
-  "opt.production": "Source output",
+  "opt.production": "Output",
   "opt.goal": "Goal",
   "opt.goalProfit": "Profit",
   "opt.goalTransported": "Haul",
