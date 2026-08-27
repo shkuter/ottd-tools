@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-08-27
+
 ### Fixed
 
 - The thumb of a switch is the whole height of its track again. Two rules disagreed about it:
