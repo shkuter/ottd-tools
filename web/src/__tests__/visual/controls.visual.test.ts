@@ -162,7 +162,12 @@ describe('the moving part of a switch', () => {
       if (!track || !thumb) return { error: 'no switch on the page' as const };
       const around = track.getBoundingClientRect();
       const inside = thumb.getBoundingClientRect();
-      return { above: inside.top - around.top, below: around.bottom - inside.bottom };
+      return {
+        above: inside.top - around.top,
+        below: around.bottom - inside.bottom,
+        track: Math.round(around.height),
+        thumb: Math.round(inside.height),
+      };
     });
 
     expect(gaps.error, 'the tab shows a switch').toBeUndefined();
@@ -170,6 +175,13 @@ describe('the moving part of a switch', () => {
     expect(
       Math.abs(gaps.above - gaps.below),
       `the thumb stands ${gaps.above}px from the top and ${gaps.below}px from the bottom`,
+    ).toBeLessThanOrEqual(1);
+    // and it is the whole of the track, not a smaller button centred in it: a
+    // library height cap once left it two thirds as tall, which reads as a
+    // switch of a different kind rather than as a mistake
+    expect(
+      gaps.track - gaps.thumb,
+      `the thumb is ${gaps.thumb}px tall in a ${gaps.track}px track`,
     ).toBeLessThanOrEqual(1);
   });
 });

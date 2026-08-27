@@ -18,6 +18,14 @@ of what users see):
 
 ## [Unreleased]
 
+### Fixed
+
+- The thumb of a switch is the whole height of its track again. Two rules disagreed about it:
+  one capped its height, the other set its top and bottom, and the cap won — leaving a button
+  two thirds as tall as the track it slides along, which reads as a switch of a different kind
+  rather than as a mistake. It now covers the track's bevel, the way the stepper of a number
+  field covers the bevel of its plate.
+
 ## [0.14.1] - 2026-08-27
 
 ### Fixed

@@ -150,10 +150,10 @@
 
   /* the moving part of a switch stays inside its track: the library sizes the
      thumb off its own scale, and a thumb wider than the track hangs over the
-     bevel it is supposed to slide along */
+     bevel it is supposed to slide along. Only the width is capped — the height
+     is set below, where the thumb is given the whole of the track */
   .mantine-Switch-thumb {
     max-width: calc(var(--switch-height) - 2 * var(--bevel));
-    max-height: calc(var(--switch-height) - 2 * var(--bevel));
   }
 
   /* the library asks for 600 on a button and 700 on a heading; the game has
@@ -494,11 +494,17 @@
     border-width: var(--bevel);
     border-color: var(--skin-edges-button-raised);
     background: var(--skin-switch-off);
-    /* Height left to the library, which centres the thumb in the track. Setting
-       `top` and `bottom` here does not stretch it: the rule above caps it at the
-       track's inner height, and a cap plus an explicit `top` leaves `bottom`
-       with nothing to do — the thumb stood 14px tall in an 18px track with all
-       4px of the gap under it, hanging off the top edge. */
+    /* The button covers the track's bevel rather than sitting inside it, which
+       is what makes it read as tall as the whole track — the same way the
+       stepper of a number field covers the bevel of its plate. Absolute
+       positioning counts from the padding box, so -bevel lands the thumb flush
+       with the outer edge of the track and no further.
+       This needs the height cap above to stay off: a cap plus an explicit `top`
+       leaves `bottom` with nothing to do, and the thumb ends up short and
+       hanging off the top edge. */
+    top: calc(-1 * var(--bevel));
+    bottom: calc(-1 * var(--bevel));
+    height: auto;
   }
 
   /* the game's button is a plain plate — no dot in the middle of it */
