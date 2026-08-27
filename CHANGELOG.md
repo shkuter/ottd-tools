@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-08-27
+
 ### Fixed
 
 - The goal switch in the optimizer's filter row is as wide as its own options again. Held to a
