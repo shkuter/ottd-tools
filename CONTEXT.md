@@ -144,6 +144,27 @@ identical rows, so the optimizer searches one per profile. Deliberately blind to
 groups harder than a **purchase entry** — that one is for lists a human reads, this one is for
 the search.
 
+## Track types
+
+**Track type** (_тип путей_) — the kind of track a route is built with: a railtype in NewGRF
+terms, a label carrying a speed limit and the set of vehicles it powers. The user picks one per
+calculation — a single global choice shared by every computing tab — and it decides both which
+vehicles are offered and how fast they go. _Avoid_: rail type, track kind; тип пути (the UI
+says «Тип путей»).
+
+**Track family** (`base_track_type`) — the coarse gauge family of a vehicle: RAIL, NG, METRO —
+plus MONO and MAGLEV in vanilla. It is what Iron Horse states speeds and capacities by; several
+**track types** share one family (RAIL covers plain, electrified and LGV track), so the family
+alone cannot say what runs where.
+
+**Powered** (_потянет сам_) — the relation "this vehicle pulls under its own power on this
+**track type**". An engine is offered only for track it is powered on; a dual-power engine is
+powered on several types, with a different power on each.
+
+**Compatible** (_проедет_) — the weaker relation "this vehicle can physically travel on this
+**track type**", towed if need be. Enough for wagons; an engine that is merely compatible
+would move at zero power.
+
 ## Industry supply
 
 **Supply window** (_окно поставок_) — the stretch FIRS looks back over when it decides whether
