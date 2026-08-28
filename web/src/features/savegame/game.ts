@@ -16,6 +16,15 @@ export function defaultCompanyId(companies: readonly SnapshotCompany[]): number 
 }
 
 /**
+ * Settings the tab does not compare, because its forecasts do not read them either. The
+ * track type is one: a route's track is read off the consist that runs it (`routeRows`),
+ * not taken from the calculator, so a different choice on the searching tabs moves none of
+ * these figures — and naming it as a difference would send the user looking for a drift
+ * that is not there.
+ */
+const NOT_USED_BY_THE_FORECAST = new Set<keyof SnapshotSettings['calc']>(['trackType']);
+
+/**
  * Translation keys of the settings that have drifted since the import, so the tab can say
  * which figures its forecasts are not using. Compared field by field: what matters to the
  * user is that the calculator now stands somewhere else, not by how much.
@@ -32,6 +41,7 @@ export function differingSettings(
     if (snapshot.game[key] !== current.game[key]) keys.push(SETTING_LABEL_KEYS[key]);
   }
   for (const key of Object.keys(snapshot.calc) as (keyof SnapshotSettings['calc'])[]) {
+    if (NOT_USED_BY_THE_FORECAST.has(key)) continue;
     if (snapshot.calc[key] !== current.calc[key]) keys.push(SETTING_LABEL_KEYS[key]);
   }
   return keys;

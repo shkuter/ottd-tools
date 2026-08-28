@@ -6,7 +6,7 @@
  * this module, so the same consist on the same route can only produce one set of numbers.
  */
 import type { Cargo, ConsistEntry, TrainsMeta } from '../types';
-import { canCarryIn } from '../dataset';
+import { activeRailtype, canCarryIn } from '../dataset';
 import { consistPhysics } from './consist';
 import type { ConsistPhysics } from './physics';
 import { consistMoney } from './costs';
@@ -133,8 +133,11 @@ export function tripSetup(params: TripParams): TripSetup {
   const { entries, cargo, distanceTiles, meta } = params;
   const capacityIndex = calc.capacityIndex;
 
-  const loaded = consistPhysics(entries, cargo, capacityIndex, game);
-  const empty = consistPhysics(entries, null, capacityIndex, game);
+  // the trip runs on the chosen track, which decides both the speed the consist reaches
+  // and the power it makes getting there
+  const track = activeRailtype(game, calc.trackType);
+  const loaded = consistPhysics(entries, cargo, capacityIndex, game, track);
+  const empty = consistPhysics(entries, null, capacityIndex, game, track);
   const capacity = loaded.stats.capacityForCargo;
   const loadedSpeedInternal = entries.length
     ? balancingSpeed(loaded.physics, 0, game.accelerationModel)

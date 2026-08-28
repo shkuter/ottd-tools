@@ -17,6 +17,16 @@ export function internalToMph(internal: number): number {
 }
 
 /**
+ * The same conversion without the truncation, for a figure that goes into the physics
+ * rather than onto the screen. `internalToMph` truncates the way the game's own display
+ * does, which is right for what the interface prints and wrong for what is computed from:
+ * there a lost unit stays lost.
+ */
+export function internalToMphExact(internal: number): number {
+  return (internal * 10) / 16;
+}
+
+/**
  * Internal speed to km/h, the way the game does it: ConvertKmhishSpeedToDisplaySpeed =
  * ToDisplay(speed * 10, round = false) / 16 with the metric factor 1.609344
  * (strings.cpp:858 and :993). ToDisplay truncates when not rounding, the /16 is integer.

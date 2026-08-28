@@ -9,6 +9,7 @@ vanilla set come from the game's own Russian locale.
 
 Output: web/src/i18n/{cargos,industries}.ru.json
 """
+import functools
 import json
 import os
 import re
@@ -36,6 +37,25 @@ UNITS = {
     "passengers": "пасс.",
 }
 GAME_LANG_DIR = os.path.join(VENDOR, "openttd", "src", "lang")
+
+# Track type names that are ours rather than a translation, and why each has to be.
+#
+# Iron Horse ships English only (src/lang holds english.toml alone), so its own types have
+# nothing to translate from. Two of the game's four are adjectives agreeing with a noun the
+# surrounding sentence supplies — "Монорельсовый", "Магнитный" (russian.txt:2985-2990, with
+# .m/.n case forms beside them) — and a list of tracks has no such sentence, so those forms
+# name nothing on their own. The other two ("Ж/д", "Электрифиц. ж/д") do name their track and
+# are taken from the game as they are. Naming the exceptions here rather than in
+# ru_overrides.json keeps that file to what it says it is: spelling, letter case and ё over a
+# translation, never a name of our own.
+RAILTYPES_WITHOUT_A_SOURCE = {
+    "STR_RAIL_NAME_MONORAIL": "Монорельсовая ж/д",
+    "STR_RAIL_NAME_MAGLEV": "Магнитная ж/д",
+    "STR_RAILTYPE_NARROW_GAUGE_NAME": "Узкоколейная ж/д",
+    "STR_RAILTYPE_METRO_NAME": "Линия метро",
+    "STR_RAILTYPE_LGV_NAME": "Высокоскоростная ж/д",
+    "STR_RAILTYPE_LGV_ELECTRIFIED_OHLE_NAME": "Высокоскоростная ж/д",
+}
 
 # Leading {G=m} and friends mark grammatical gender for the game's own string system;
 # the UI needs the bare nominative.
@@ -263,6 +283,59 @@ def units_payload(cargos_data):
     return {unit: UNITS[unit] for unit in sorted(used)}
 
 
+@functools.cache
+def railtype_string_ids():
+    """Track type label -> the lang string id it names itself by, across both sets.
+
+    A label means the same track in either set — RAIL is the game's plain rail whoever
+    ships it — so one dictionary serves both, unlike cargo ids, which collide.
+
+    Cached because both callers here want the same table and it costs two file reads; the
+    data files do not change while the extractor runs.
+    """
+    string_ids = {}
+    for source in ("trains.json", "vanilla_trains.json"):
+        for railtype in load_json(source)["meta"]["railtypes"]:
+            string_ids[railtype["label"]] = railtype["string_id"]
+    return string_ids
+
+
+def railtype_names(game_lang, fixes=None):
+    """Russian names for every track type of both sets, keyed by label.
+
+    Same route as the vanilla cargos: the name is translated through the string id the type
+    declares, with the table above standing in where the source has no usable name.
+    """
+    fixes = fixes or {}
+    # A fix cannot double as a name of ours: ru_overrides.json is for spelling, case and ё on
+    # top of somebody else's translation, and a track type we name ourselves has no such
+    # translation behind it. Silently ignoring the fix would leave a dead entry that reads
+    # like it is doing something, so the build says which file the name belongs in.
+    clashing = sorted(set(fixes) & set(RAILTYPES_WITHOUT_A_SOURCE))
+    if clashing:
+        raise SystemExit(
+            f"ru_overrides.json: {', '.join(clashing)} — this track type is named in "
+            "RAILTYPES_WITHOUT_A_SOURCE, so edit the name there rather than fixing it here"
+        )
+    names = {}
+    for label, string_id in railtype_string_ids().items():
+        # a name of ours outranks the game's string, which a list cannot use as it stands;
+        # ru_overrides.json holds fixes *on top of someone else's translation* and never a
+        # name of our own, so it does not get to overrule the table (see the check above)
+        name = (
+            RAILTYPES_WITHOUT_A_SOURCE.get(string_id)
+            or fixes.get(string_id)
+            or game_lang.get(string_id)
+        )
+        if not name:
+            raise SystemExit(
+                f"no Russian name for track type {label} ({string_id}) — add it to "
+                "RAILTYPES_WITHOUT_A_SOURCE, or fix the string id"
+            )
+        names[label] = name
+    return names
+
+
 def main(check=False):
     firs.main()
     economies = list(firs.economy_manager)
@@ -277,10 +350,16 @@ def main(check=False):
         industry["id"]: industry["string_key"]
         for industry in load_json("vanilla_industries.json")["items"]
     }
+    railtype_strings = railtype_string_ids()
     fixes = load_overrides(
-        lambda string_id: translate(string_id, translation, game_lang),
+        # a fix can name a string of the FIRS translation, one the set delegates to the
+        # game (TTD_*), or one that only ever lived in the game's locale — track types
+        lambda string_id: (
+            translate(string_id, translation, game_lang) or game_lang.get(string_id)
+        ),
         set(cargo_strings.values()) | set(industry_strings.values())
-        | set(vanilla_sources.values()) | set(vanilla_industry_sources.values()),
+        | set(vanilla_sources.values()) | set(vanilla_industry_sources.values())
+        | set(railtype_strings.values()),
     )
     cargos = {
         id_: translate(string_id, translation, game_lang, fixes)
@@ -309,7 +388,10 @@ def main(check=False):
     ok &= write_dictionary(os.path.join(I18N_DIR, "industries.ru.json"), {
         id_: name for id_, name in industries.items() if name
     }, check)
-    print(f"cargos: {len(cargos)}, industries: {len(industries)}")
+    railtypes = railtype_names(game_lang, fixes)
+    ok &= write_dictionary(os.path.join(I18N_DIR, "railtypes.ru.json"), railtypes, check)
+    print(f"cargos: {len(cargos)}, industries: {len(industries)}, "
+          f"railtypes: {len(railtypes)}")
     if not ok:
         sys.exit(1)
 

@@ -15,18 +15,17 @@ const calc = DEFAULT_CALC_SETTINGS;
 /** One run of the tyre plant's inputs, with whatever routes the case gives them. */
 function run(
   inputs: { cargoLabel: string; ratio: number; params: typeof EMPTY_INPUT }[],
-  overrides: Partial<{ year: number; stationTiles: number; maxTrains: number }> = {},
+  overrides: Partial<{ year: number; stationTiles: number; maxTrains: number; trackType: string }> = {},
 ) {
   const caches = new Map<string, OptimizerCache>();
   return runSupplyInputs({
     game,
-    calc,
+    calc: overrides.trackType ? { ...calc, trackType: overrides.trackType } : calc,
     industryId: 'tyre_plant',
     inputs,
     year: overrides.year ?? 1950,
     stationTiles: overrides.stationTiles ?? 5,
     maxTrains: overrides.maxTrains ?? 4,
-    allowElectric: false,
     caches,
   });
 }
@@ -76,7 +75,6 @@ describe('supply tab input runs', () => {
       year: 1950,
       stationTiles: 5,
       maxTrains: 4,
-      allowElectric: false,
       caches,
     });
     expect(result.outcome?.unserved).toBe(true);
@@ -91,8 +89,28 @@ describe('supply tab input runs', () => {
     runSupplyInputs({
       game, calc, industryId: 'tyre_plant',
       inputs: [routed('RUBR', 100), routed('SULP', 300)],
-      year: 1950, stationTiles: 5, maxTrains: 4, allowElectric: false, caches,
+      year: 1950, stationTiles: 5, maxTrains: 4, caches,
     });
     expect([...caches.keys()].sort()).toEqual(['RUBR', 'SULP']);
+  });
+});
+
+describe('the supply tab follows the shared track type', () => {
+  // it used to carry an electrification switch of its own; the line is now the shared choice
+  it('picks a different consist on electrified track', () => {
+    const [onPlainRail] = run([routed('RUBR', 100)]);
+    const [onElectrified] = run([routed('RUBR', 100)], { trackType: 'ELRL' });
+    expect(onPlainRail.best).not.toBeNull();
+    expect(onElectrified.best).not.toBeNull();
+    // electrics are only available under the wires, so the best consist parts ways here
+    expect(onElectrified.best!.engine.id).not.toBe(onPlainRail.best!.engine.id);
+  });
+
+  it('offers narrow gauge vehicles only on narrow gauge', () => {
+    const [result] = run([routed('RUBR', 100)], { trackType: 'NAAN' });
+    if (result.best) {
+      expect(result.best.engine.base_track_type).toBe('NG');
+      expect(result.best.wagon.base_track_type).toBe('NG');
+    }
   });
 });

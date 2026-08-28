@@ -22,7 +22,17 @@ export type CurrencyCode = keyof typeof CURRENCIES;
 
 /** Where the settings live, and at which version; exported so checks seed the real thing. */
 export const SETTINGS_KEY = 'ottd-tools-settings';
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
+
+/**
+ * Gauge families the track setting used to hold → the label of the track each stood for.
+ * `RAIL` and `MONO` name themselves; `MAGLEV` is the family, `MGLV` the game's label.
+ */
+const TRACK_FAMILY_LABELS: Record<string, string> = {
+  NG: 'NAAN',
+  METRO: 'MTRO',
+  MAGLEV: 'MGLV',
+};
 
 /** Speed units of the game's Localisation settings (locale.units_velocity), metric by default. */
 export type SpeedUnit = 'imperial' | 'metric';
@@ -125,6 +135,17 @@ export const useSettingsStore = create<SettingsState>()(
          */
         if (version < 2) {
           p = { ...p, game: { ...p.game, ironHorse: false, firs: false } };
+        }
+
+        /*
+         * v3 made the track a railtype rather than a gauge family, so a saved family becomes
+         * the label of the track it stood for. Electrification is not here: it was saved by
+         * the tab stores, and carrying it into this choice needs all three at once — that is
+         * `carryElectrificationIntoTrackType` in state/upgrade.ts, which runs before any store.
+         */
+        if (version < 3 && p.calc?.trackType) {
+          const label = TRACK_FAMILY_LABELS[p.calc.trackType] ?? p.calc.trackType;
+          p = { ...p, calc: { ...p.calc, trackType: label } };
         }
 
         return p as SettingsState;

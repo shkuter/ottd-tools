@@ -4,11 +4,9 @@ import { GuiIcon, type GuiIconName } from './GuiIcon';
 /**
  * A switch whose label is an icon of the game rather than a line of text.
  *
- * Two of the filters read as sentences — "electrified line (include OHLE
- * engines)", "subsidised cargo" — and a label that long stands two or three
- * times wider than the switch it names, which is what made the row ragged. The
- * game states the same two things with pictures, so the label is that picture
- * and the words move into the tooltip.
+ * A filter that reads as a sentence — "subsidised cargo" — stands two or three times wider
+ * than the switch it names, which is what made the row ragged. The game states the same
+ * thing with a picture, so the label is that picture and the words move into the tooltip.
  *
  * The name goes in twice, which is the point of having this in one place: once
  * where the pointer finds it and once where a screen reader does, and never one

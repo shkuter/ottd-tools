@@ -2,12 +2,13 @@
  * Сборка статистики состава из выбранных машин Iron Horse.
  * Все игровые формулы — в physics.ts/costs.ts, здесь только агрегация.
  */
-import type { Cargo, ConsistEntry, TrainsMeta } from '../types';
+import type { Cargo, ConsistEntry, Railtype, TrainsMeta } from '../types';
 import { consistMoney } from './costs';
 import type { ConsistPhysics } from './physics';
 import { balancingSpeed } from './physics';
-import { mphToInternal } from './units';
-import { canCarryIn } from '../dataset';
+import { poweredOutputOn, trackSpeedLimit, vehicleSpeedOn } from './tracktypes';
+import { internalToMphExact, mphToInternal } from './units';
+import { activeRailtype, activeRailtypes, canCarryIn } from '../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
@@ -39,7 +40,11 @@ export function consistPhysics(
   entries: readonly ConsistEntry[],
   cargo: Cargo | null,
   capacityIndex: number,
-  game: GameSettings = DEFAULT_GAME_SETTINGS,
+  game: GameSettings,
+  // no default, here or on `game`: a consist computed without a track would silently read
+  // every electric vehicle as making no power at all. `activeRailtype` always answers with
+  // one, so there is no null case to carry either.
+  track: Railtype,
 ): {
   physics: ConsistPhysics;
   stats: Omit<ConsistStats, 'balancingSpeedInternal' | 'balancingSpeedOnGradeInternal'>;
@@ -54,20 +59,28 @@ export function consistPhysics(
   let capacityForCargo = 0;
   let numUnits = 0;
 
+  // the set's own table, needed to tell whether a vehicle draws power on this track at all
+  const railtypes = activeRailtypes(game);
+
   for (const { train, count } of entries) {
     numUnits += count * Math.max(1, train.units.length);
-    powerHp += count * train.power_hp;
+    // what the vehicle actually contributes here: nothing unless the track powers it, and a
+    // dual-power engine's electric figure only where the wires are
+    const power = poweredOutputOn(train, track, railtypes);
+    powerHp += count * power;
     emptyWeightT += count * train.weight_t;
     lengthUnits += count * train.length;
-    if (train.power_hp > 0) {
+    // tractive effort comes with power, so it follows the track as well: a vehicle that
+    // makes no power here pulls nothing (ground_vehicle.cpp: `if (current_power > 0)`)
+    if (power > 0) {
       teWeightProduct += count * train.weight_t * train.te_coefficient;
     }
     // both units are tracked: physics keeps using mph (see the note below), the display
     // takes the internal speed straight from the data so it matches the game
-    if (train.speed_mph != null) {
-      speedLimitMph = minOf(speedLimitMph, train.speed_mph);
-      const internal = train.speed_internal ?? mphToInternal(train.speed_mph);
-      speedLimitInternal = minOf(speedLimitInternal, internal);
+    const speed = vehicleSpeedOn(train, track);
+    if (speed.mph != null) {
+      speedLimitMph = minOf(speedLimitMph, speed.mph);
+      speedLimitInternal = minOf(speedLimitInternal, speed.internal ?? mphToInternal(speed.mph));
     }
     if (cargo && canCarryIn(game, train, cargo)) {
       const capacity = count * (train.capacities[capacityIndex] ?? train.capacities[2]);
@@ -77,6 +90,17 @@ export function consistPhysics(
       const freightMultiplier = cargo.is_freight ? game.freightTrains : 1;
       cargoWeightT += (capacity * freightMultiplier * cargo.weight_16ths) / 16;
     }
+  }
+
+  // the track's own limit binds the whole consist, so it is taken once over the finished
+  // train rather than per vehicle. Neither vanilla nor Iron Horse states one; sets that do
+  // (xUSSR-style track grids) cap the train here, exactly as the game does.
+  const trackLimit = trackSpeedLimit(track);
+  if (trackLimit != null) {
+    speedLimitInternal = minOf(speedLimitInternal, trackLimit);
+    // the exact conversion, not internalToMph(): this figure feeds the physics, where the
+    // truncation the game's display does would lose a unit for good
+    speedLimitMph = minOf(speedLimitMph, internalToMphExact(trackLimit));
   }
 
   return {
@@ -114,7 +138,8 @@ export function consistStats(
   game: GameSettings = DEFAULT_GAME_SETTINGS,
   calc: CalcSettings = DEFAULT_CALC_SETTINGS,
 ): ConsistStats {
-  const { physics, stats } = consistPhysics(entries, cargo, capacityIndex, game);
+  const track = activeRailtype(game, calc.trackType);
+  const { physics, stats } = consistPhysics(entries, cargo, capacityIndex, game, track);
   const { buy, running } = consistMoney(entries, meta, game, calc);
   const flat = entries.length ? balancingSpeed(physics, 0, game.accelerationModel) : 0;
   // на уклоне не больше hillTiles тайлов состава

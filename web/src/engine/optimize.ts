@@ -4,7 +4,8 @@
  * Гружёное плечо и порожний обратный ход считаются с разной скоростью.
  */
 import type { Cargo, ConsistEntry, Train, TrainsMeta } from '../types';
-import { canCarryIn } from '../dataset';
+import { activeRailtype, activeRailtypes, canCarryIn } from '../dataset';
+import { canRunOn, poweredOutputOn, vehicleSpeedOn } from './tracktypes';
 import { balancingSpeed } from './physics';
 import { cargoPaymentRate } from './income';
 import { ratingPeriods, speedRating, visitClearsFlow, type StationRating } from './rating';
@@ -49,8 +50,6 @@ export interface OptimizeParams {
   economyId: string;
   /** Длина станции в тайлах — лимит длины состава. */
   maxLengthTiles: number;
-  /** Линия электрифицирована: включать чисто электрические (OHLE) локомотивы. */
-  allowElectric: boolean;
   /** Груз идёт под субсидией — доход умножается (difficulty.subsidy_multiplier). */
   subsidised?: boolean;
   /** Машины, выброшенные из перебора (например, которых в игре ещё может не быть). */
@@ -76,12 +75,6 @@ export interface OptimizeParams {
   maxTrains?: number;
   game?: GameSettings;
   calc?: CalcSettings;
-}
-
-/** Локомотив требует контактную сеть (единственный источник тяги — OHLE). */
-export function isPureElectric(train: Train): boolean {
-  const sources = Object.keys(train.power_by_source ?? {});
-  return sources.length > 0 && sources.every((s) => s === 'OHLE');
 }
 
 /** The losing branch of a row, in the two figures that show why it lost. */
@@ -288,19 +281,25 @@ export function optimizeConsists(
   });
 
   const excluded = new Set(params.excludedIds ?? []);
+  // An engine is offered where it pulls under its own power; a wagon only has to fit the
+  // gauge. This is also what decides electrification: plain rail carries no wires, so a
+  // pure electric is powered nowhere on it.
+  const railtypes = activeRailtypes(game);
+  const track = activeRailtype(game, trackType);
   const engines = trains.filter(
     (t) =>
       t.kind === 'engine' &&
-      t.base_track_type === trackType &&
-      t.power_hp > 0 &&
+      // "powered here, and making something" in one question: `poweredOutputOn` is already
+      // nothing where the track does not power it, so asking `canRunOn` first would be the
+      // same question twice
+      poweredOutputOn(t, track, railtypes) > 0 &&
       isAvailable(t, year) &&
-      !excluded.has(t.id) &&
-      (params.allowElectric || !isPureElectric(t)),
+      !excluded.has(t.id),
   );
   const wagons = trains.filter(
     (t) =>
       t.kind === 'wagon' &&
-      t.base_track_type === trackType &&
+      canRunOn(t, track, railtypes) &&
       isAvailable(t, year) &&
       !excluded.has(t.id) &&
       canCarryIn(game, t, cargo) &&
@@ -311,13 +310,21 @@ export function optimizeConsists(
   // Horse ships whole families of visual variants: 142 wagons take coal in 2050, but only
   // 14 of them differ here. Sweeping one representative per profile is the same search an
   // order of magnitude cheaper.
-  const wagonProfile = (t: Train) =>
-    [
+  // Speed and power are the figures for *this* track, not the fields they come from: two
+  // wagons that state different power sources make the same power here, and one built for
+  // high speed track is a different wagon only where that track is. The figures come from
+  // the same calls `consistPhysics` makes, or the key would drift from the sweep it stands
+  // in for. No wagon in either set is powered at all today, so the power term changes no
+  // number yet — it is here because the sweep must not have to be revisited when one is.
+  const wagonProfile = (t: Train) => {
+    const speed = vehicleSpeedOn(t, track);
+    return [
       t.capacities[capacityIndex] ?? t.capacities[2],
-      t.weight_t, t.length, t.power_hp, t.te_coefficient,
-      t.speed_mph, t.speed_internal, t.units.length,
+      t.weight_t, t.length, poweredOutputOn(t, track, railtypes), t.te_coefficient,
+      speed.mph, speed.internal, t.units.length,
       t.cost_factor, t.running_cost_base, t.running_cost_factor, t.loading_speed,
     ].join('|');
+  };
   const representatives = new Map<string, Train>();
   for (const w of wagons) {
     const key = wagonProfile(w);

@@ -180,6 +180,131 @@ class FirsKnownValues(unittest.TestCase):
         self.assertIn("coke_oven", consumers)
 
 
+class VehicleTrackTypes(unittest.TestCase):
+    """Which track a vehicle runs on, and what it draws power from there."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.by_id = {t["id"]: t for t in load_json("trains.json")["items"]}
+
+    def test_narrow_gauge_vehicle(self):
+        t = self.by_id["bean_feast"]
+        self.assertEqual(t["base_track_type"], "NG")
+        self.assertEqual(t["track_types"], ["NAAN"])
+
+    def test_electric_vehicle_runs_under_the_wires_only(self):
+        t = self.by_id["pinhorse"]
+        self.assertEqual(t["track_types"], ["ELRL"])
+        self.assertEqual(sorted(t["power_by_source"]), ["OHLE"])
+
+    def test_electro_diesel_states_both_tracks_and_both_powers(self):
+        # Shoebox: 2500hp under the wires, 950hp on its own — the calculator picks by
+        # the chosen track, so both figures have to survive extraction
+        t = self.by_id["shoebox"]
+        self.assertEqual(sorted(t["track_types"]), ["ELRL", "RAIL"])
+        self.assertEqual(t["power_by_source"], {"DIESEL": 950, "OHLE": 2500})
+
+    def test_high_speed_vehicle_carries_a_second_speed(self):
+        t = self.by_id["blaze_cab"]
+        self.assertTrue(t["lgv_capable"])
+        self.assertIn("LGVN", t["track_types"])
+        self.assertEqual(t["speed_mph"], 128)
+        self.assertEqual(t["speed_lgv_mph"], 155)
+        self.assertGreater(t["speed_lgv_internal"], t["speed_internal"])
+
+
+class Railtypes(unittest.TestCase):
+    """Track types of both sets, and the masks that decide what runs on them.
+
+    Vanilla masks are the game's own table (table/railtypes.h); Iron Horse states only
+    the *other* types a type relates to, plus labels of sets that are not installed, so
+    the extractor normalises both into one shape.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.iron_horse = {rt["label"]: rt for rt in load_json("trains.json")["meta"]["railtypes"]}
+        cls.vanilla = {
+            rt["label"]: rt for rt in load_json("vanilla_trains.json")["meta"]["railtypes"]
+        }
+
+    def test_vanilla_is_the_games_four(self):
+        self.assertEqual(list(self.vanilla), ["RAIL", "ELRL", "MONO", "MGLV"])
+        # rail_type.h:20 — the label is MGLV; MAGLEV is the family name, not a label
+        self.assertIn("MGLV", self.vanilla)
+
+    def test_vanilla_masks_match_the_game(self):
+        # railtypes.h: a plain engine is powered on electrified track as well,
+        # an electric one only under the wires, but it travels on both
+        self.assertEqual(self.vanilla["RAIL"]["powered"], ["RAIL", "ELRL"])
+        self.assertEqual(self.vanilla["ELRL"]["powered"], ["ELRL"])
+        self.assertEqual(sorted(self.vanilla["ELRL"]["compatible"]), ["ELRL", "RAIL"])
+        self.assertEqual(self.vanilla["MGLV"]["powered"], ["MGLV"])
+
+    def test_no_railtype_states_a_speed_limit(self):
+        # neither set limits speed by track: the vehicle decides (max_speed 0 = no limit)
+        for table in (self.vanilla, self.iron_horse):
+            for rt in table.values():
+                self.assertEqual(rt["speed_limit_internal"], 0, rt["label"])
+
+    def test_iron_horse_is_its_six(self):
+        self.assertEqual(
+            sorted(self.iron_horse), ["ELRL", "LGVE", "LGVN", "MTRO", "NAAN", "RAIL"]
+        )
+        self.assertEqual(
+            sorted(l for l, rt in self.iron_horse.items() if rt["lgv"]), ["LGVE", "LGVN"]
+        )
+
+    def test_every_type_relates_to_itself(self):
+        # narrow gauge states ["NAAE"] and metro states nothing at all; unnormalised,
+        # neither would admit a vehicle onto its own track and both catalogues would
+        # come up empty
+        for table in (self.vanilla, self.iron_horse):
+            for label, rt in table.items():
+                self.assertIn(label, rt["powered"], label)
+                self.assertIn(label, rt["compatible"], label)
+
+    def test_masks_name_only_types_of_this_set(self):
+        # the set keeps legacy labels of other grfs (NAAE, IHA_, IHB_, IHBA) in its lists
+        for table in (self.vanilla, self.iron_horse):
+            known = set(table)
+            for label, rt in table.items():
+                self.assertLessEqual(set(rt["powered"]), known, label)
+                self.assertLessEqual(set(rt["compatible"]), known, label)
+
+    def test_a_hidden_type_is_marked_as_such(self):
+        # lgv.py: RAILTYPE_FLAG_HIDDEN — the set defines plain LGV so high speed vehicles
+        # stay compatible with ordinary track, but the game keeps it out of the build menu
+        self.assertTrue(self.iron_horse["LGVN"]["hidden"])
+        self.assertFalse(self.iron_horse["LGVE"]["hidden"])
+        # the game hides none of its own
+        for rt in self.vanilla.values():
+            self.assertFalse(rt["hidden"], rt["label"])
+
+    def test_powered_implies_compatible(self):
+        # the rule is the game's, not the sets': a type you draw power on is one you can
+        # travel on (newgrf_act0_railtypes.cpp)
+        for table in (self.vanilla, self.iron_horse):
+            for label, rt in table.items():
+                self.assertLessEqual(set(rt["powered"]), set(rt["compatible"]), label)
+
+    def test_borrowed_types_carry_the_games_names(self):
+        # rail and electrified rail belong to the game, so Iron Horse names neither
+        self.assertEqual(self.iron_horse["RAIL"]["name"], self.vanilla["RAIL"]["name"])
+        self.assertEqual(self.iron_horse["ELRL"]["name"], self.vanilla["ELRL"]["name"])
+
+    def test_high_speed_types_share_one_name(self):
+        # english.toml:675,694 — the set names both LGV types the same string, so the
+        # interface has to tell them apart itself
+        self.assertEqual(self.iron_horse["LGVN"]["name"], self.iron_horse["LGVE"]["name"])
+
+    def test_vehicles_reference_known_types(self):
+        for train in load_json("trains.json")["items"]:
+            self.assertLessEqual(set(train["track_types"]), set(self.iron_horse), train["id"])
+        for train in load_json("vanilla_trains.json")["items"]:
+            self.assertIn(train["railtype"], self.vanilla, train["id"])
+
+
 class VanillaSpriteIds(unittest.TestCase):
     """Base-set sprite numbers: they address OpenGFX2 graphics directly.
 

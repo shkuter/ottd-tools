@@ -6,10 +6,41 @@ export interface TrainUnit {
 }
 
 /**
- * Track families the calculator can pick vehicles for. RAIL/NG/METRO come from Iron Horse,
- * MONO/MAGLEV exist only in the vanilla catalogue.
+ * Track families a vehicle belongs to — the gauge Iron Horse states its speeds and
+ * capacities by. Several track types share one family: RAIL covers plain, electrified and
+ * high speed track alike, so a family does not say what runs where. That is `Railtype`.
  */
 export type TrackType = 'RAIL' | 'NG' | 'METRO' | 'MONO' | 'MAGLEV';
+
+/**
+ * One kind of track a route can be built with, as the set defines it.
+ *
+ * `powered` lists the types a vehicle of this type pulls under its own power on, and
+ * `compatible` the ones it can physically travel on; both include this type itself, the
+ * extractors having normalised the sets' differing conventions. A `speed_limit_internal`
+ * of 0 means the track sets no limit — neither vanilla nor Iron Horse states one.
+ */
+export interface Railtype {
+  /** The game's four-character label: `RAIL`, `ELRL`, `MGLV`, `NAAN`… */
+  label: string;
+  /** Lang string id the type names itself by — how a translation is matched to it. */
+  string_id: string;
+  name: string;
+  /** Overhead wires (RailTypeFlag::Catenary): what makes an electric vehicle draw power. */
+  catenary: boolean;
+  /**
+   * The game keeps this type out of its build menu (RailTypeFlag::Hidden). It still takes
+   * part in the relations — a hidden type is how a set keeps vehicles compatible across
+   * tracks — but it is no route to build, so it is not offered as a choice.
+   */
+  hidden: boolean;
+  speed_limit_internal: number;
+  powered: string[];
+  compatible: string[];
+  /** High speed track: vehicles able to run faster there use their LGV speed. */
+  lgv: boolean;
+  sort: number;
+}
 
 export interface Train {
   id: string;
@@ -66,6 +97,8 @@ export interface RefitGroup {
 export interface TrainsMeta {
   roster: string;
   describe: string;
+  /** Track types this set defines, in the order its build menu lists them. */
+  railtypes: Railtype[];
   basecost_shifts: {
     build_engine: number;
     build_wagon: number;

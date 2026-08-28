@@ -23,6 +23,8 @@ from common import VENDOR, vendor_meta, write_json
 OTTD = os.path.join(VENDOR, "openttd")
 ENGINES_H = os.path.join(OTTD, "src", "table", "engines.h")
 CARGO_H = os.path.join(OTTD, "src", "table", "cargo_const.h")
+RAILTYPES_H = os.path.join(OTTD, "src", "table", "railtypes.h")
+RAIL_TYPE_H = os.path.join(OTTD, "src", "rail_type.h")
 CARGO_TYPE_H = os.path.join(OTTD, "src", "cargo_type.h")
 LANG = os.path.join(OTTD, "src", "lang", "english.txt")
 INDUSTRY_H = os.path.join(OTTD, "src", "table", "build_industry.h")
@@ -55,6 +57,14 @@ ENGINE_CLASS_KEYS = {
     "N": "monorail",
     "V": "maglev",
     "A": "steam",
+}
+
+# RVI column j (engines.h: R/C/O/L = RAILTYPE_*) -> the game's own label (rail_type.h)
+RAILTYPE_KEYS = {
+    "R": "RAIL",
+    "C": "ELRL",
+    "O": "MONO",
+    "L": "MGLV",
 }
 
 
@@ -148,11 +158,6 @@ def parse_cargo_sprites():
 GUI_SPRITES = {
     # the toolbar button that opens the subsidy list
     "subsidies": {"base_set": "SPR_IMG_SUBSIDIES"},
-    # the rail-construction button for electrified track, seen from the side
-    "electrified": {
-        "block": 0x05,  # "Rail catenary graphics" (newgrf_act5.cpp:59)
-        "offset": ("SPR_BUILD_EW_ELRAIL", "SPR_ELRAIL_BASE"),
-    },
 }
 
 
@@ -220,9 +225,73 @@ def parse_rail_vehicle_info():
             "running_cost": int(p[6]),
             "running_cost_class": RUNNING_COST_KEYS[p[7]],
             "capacity": int(p[8]),
-            "railtype": p[9],
+            "railtype": RAILTYPE_KEYS[p[9]],
             "engine_class": ENGINE_CLASS_KEYS[p[10]],
         })
+    return entries
+
+
+def parse_railtype_labels():
+    """RAILTYPE_LABEL_ELECTRIC = 'ELRL' -> {"ELECTRIC": "ELRL"} (rail_type.h)."""
+    text = read(RAIL_TYPE_H)
+    return {
+        m.group(1): m.group(2)
+        for m in re.finditer(r"RAILTYPE_LABEL_(\w+)\s*=\s*'(\w{4})'", text)
+    }
+
+
+def parse_railtypes():
+    """The game's own track types from _original_railtypes[] (table/railtypes.h).
+
+    Each entry states which railtypes a vehicle of this type draws power on and which
+    it can travel on; both lists name this type as well, so the masks are already in
+    the normalised form the calculator expects. A max speed of 0 means "no limit" —
+    none of the original types has one.
+    """
+    labels = parse_railtype_labels()
+    names = parse_lang_names("STR_RAIL_NAME_")
+    text = read(RAILTYPES_H)
+    start = text.index("_original_railtypes[]")
+    block = text[start : text.index("\n};\n", start)]
+
+    def mask(section):
+        # the table spells the section both ways ("Compatible railtypes" for rail and
+        # elrail, "Compatible Railtypes" for monorail and maglev)
+        return [
+            [labels[e.removeprefix("RAILTYPE_")] for e in re.findall(r"RAILTYPE_\w+", m)]
+            for m in re.findall(rf"/\* {section} [Rr]ailtypes \*/\s*\{{([^}}]*)\}}", block)
+        ]
+
+    entries = [
+        {
+            "label": labels[label.removeprefix("RAILTYPE_LABEL_")],
+            # RailTypeFlag::Catenary (rail.h): the track carries overhead wires, which is
+            # what decides whether an electric vehicle draws power on it
+            "catenary": "Catenary" in flags,
+            # the game hides no track type of its own; a set can (RailTypeFlag::Hidden)
+            "hidden": "Hidden" in flags,
+            # the string id the type declares, so a translation is matched by what the
+            # type names itself rather than by a guess from its label
+            "string_id": f"STR_RAIL_NAME_{name}",
+            "name": names[f"STR_RAIL_NAME_{name}"],
+            "speed_limit_internal": int(speed),
+            "powered": powered,
+            "compatible": compatible,
+            "lgv": False,
+            "sort": index,
+        }
+        for index, (label, name, speed, flags, powered, compatible) in enumerate(zip(
+            re.findall(r"/\* rail type label \*/\s*(RAILTYPE_LABEL_\w+)", block),
+            re.findall(r"STR_RAIL_NAME_(\w+)", block),
+            re.findall(r"/\* max speed \*/\s*(\d+)", block),
+            re.findall(r"/\* flags \*/\s*\{([^}]*)\}", block),
+            mask("Powered"),
+            mask("Compatible"),
+            strict=True,
+        ))
+    ]
+    if len(entries) != 4:
+        raise SystemExit(f"expected the game's four railtypes, parsed {len(entries)}")
     return entries
 
 
@@ -415,7 +484,10 @@ def main():
     seen = set()
     cargos = [c for c in cargos if not (c["label"] in seen or seen.add(c["label"]))]
     meta = vendor_meta("openttd")
-    write_json("vanilla_trains.json", {"meta": meta, "items": trains})
+    write_json("vanilla_trains.json", {
+        "meta": {**meta, "railtypes": parse_railtypes()},
+        "items": trains,
+    })
     write_json("vanilla_cargos.json", {
         "meta": meta,
         "climate_slots": build_climate_slots(),

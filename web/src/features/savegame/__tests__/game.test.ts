@@ -103,6 +103,25 @@ describe('settings that drifted since the import', () => {
     });
     expect(drifted).toEqual(['settings.dayLength', 'settings.priceYear']);
   });
+
+  it('says nothing about the track type, which its forecasts do not read', () => {
+    // the track of a route is read off the consist running it, so a different choice on the
+    // searching tabs moves no figure here — naming it would send the user after a drift
+    // that does not exist
+    const drifted = differingSettings(snapshotSettings({}, {}), {
+      game: DEFAULT_GAME_SETTINGS,
+      calc: { ...DEFAULT_CALC_SETTINGS, trackType: 'ELRL' },
+    });
+    expect(drifted).toEqual([]);
+
+    // a setting the forecast does read is still named, so this is an exception, not a hole
+    expect(
+      differingSettings(snapshotSettings({}, {}), {
+        game: DEFAULT_GAME_SETTINGS,
+        calc: { ...DEFAULT_CALC_SETTINGS, trackType: 'ELRL', priceYear: 1975 },
+      }),
+    ).toEqual(['settings.priceYear']);
+  });
 });
 
 describe('the reasons a route states instead of a forecast', () => {

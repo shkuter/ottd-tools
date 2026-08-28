@@ -11,8 +11,10 @@ import {
   activeTrains,
   activeTrainsMeta,
   economyIdForPayment,
+  activeRailtypes,
 } from '../../dataset';
 import { cargoPaymentRate } from '../../engine/income';
+import { trackTypeOfConsist } from '../../engine/tracktypes';
 import { tripEconomics, type TripEconomics } from '../../engine/trip';
 import type { Cargo, ConsistEntry } from '../../types';
 import type {
@@ -97,6 +99,7 @@ export function routeRows(
   const byLabel = activeCargoByLabel(settings.game);
   const catalogue = new Map(activeTrains(settings.game).map((train) => [train.id, train]));
   const economyId = economyIdForPayment(settings.game);
+  const railtypes = activeRailtypes(settings.game);
 
   return snapshot.routes
     .filter((route) => route.companyId === companyId)
@@ -125,16 +128,23 @@ export function routeRows(
       const blocker = forecastBlocker(row);
       if (blocker !== null) return { ...row, blocker };
 
+      // The save says which trains run the route, not what they run on, and the
+      // calculator's own track setting describes a different game. The consist answers it:
+      // the track it can work on is one the player built. A consist that works nowhere —
+      // vehicles of two gauges in one train — leaves the snapshot's own settings alone;
+      // its figures are doubtful either way, and `forecastBlocker` has already had its say.
+      const track = trackTypeOfConsist(row.entries!, railtypes);
+      const calc = track ? { ...settings.calc, trackType: track.label } : settings.calc;
       const forecast = tripEconomics({
         entries: row.entries!,
         meta,
         cargo: cargo!,
-        payment: cargoPaymentRate(cargo!, economyId, settings.game, settings.calc),
+        payment: cargoPaymentRate(cargo!, economyId, settings.game, calc),
         distanceTiles: distanceTiles!,
         fleetSize: trains.length,
         waitForFullLoad: route.stops.some((stop) => stop.fullLoad),
         game: settings.game,
-        calc: settings.calc,
+        calc,
       });
       // the game hauls this cargo; if the catalogue says the consist cannot, the figures
       // below it are a running cost against no income at all

@@ -22,6 +22,8 @@ import {
   activeCargoByLabel,
   activeCargos,
   activeEntries,
+  activeRailtype,
+  activeRailtypes,
   activeTrains,
   activeTrainsMeta,
   canCarryIn,
@@ -32,6 +34,9 @@ import { money, num, speed, speedUnitLabel, speedValue, withUnit } from '../../c
 import { CargoIcon } from '../../components/CargoIcon';
 import { fieldWidth } from '../../skin';
 import { TrainImage } from '../../components/TrainImage';
+import { TrackTypeField } from '../../components/TrackTypeField';
+import { StrandedVehicles } from '../../components/StrandedVehicles';
+import { canRunOn, poweredOutputOn, topSpeedOn } from '../../engine/tracktypes';
 import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { YearField } from '../../components/YearField';
@@ -54,7 +59,6 @@ export default function ConsistPage() {
   const entries = useMemo(() => activeEntries(stored, game), [stored, game]);
   const [kindFilter, setKindFilter] = useState<'all' | 'engine' | 'wagon'>('all');
   const [search, setSearch] = useState('');
-  const [track, setTrack] = useState<'all' | 'RAIL' | 'NG' | 'METRO'>('RAIL');
   // the buy-menu year is one setting for the whole calculator, not this tab's own state
   const year = calc.priceYear;
   const [cargoFilter, setCargoFilter] = useState('');
@@ -88,6 +92,8 @@ export default function ConsistPage() {
    * совпадают и рефит, и `model_life`, так что фильтр по грузу или году не может оставить
    * одного члена пункта и убрать другого, а представитель не прыгает при вводе в поиск.
    */
+  const railtypes = activeRailtypes(game);
+  const track = activeRailtype(game, calc.trackType);
   const catalogue = useMemo(
     () => purchaseRepresentatives(activeTrains(game), calc.capacityIndex, game),
     [game, calc.capacityIndex],
@@ -96,7 +102,8 @@ export default function ConsistPage() {
     const cargo = cargoFilter ? activeCargoByLabel(game).get(cargoFilter) : null;
     return catalogue.filter((train) => {
       if (kindFilter !== 'all' && train.kind !== kindFilter) return false;
-      if (track !== 'all' && train.base_track_type !== track) return false;
+      // the shared track choice, under the same rule the optimizer searches by
+      if (!canRunOn(train, track, railtypes)) return false;
       if (train.intro_year > year) return false;
       // a model is on sale until intro + model_life; vehicle_life is how long a
       // single unit lasts before wearing out, which does not gate the catalogue
@@ -106,7 +113,7 @@ export default function ConsistPage() {
       if (cargo && !canCarryIn(game, train, cargo)) return false;
       return true;
     });
-  }, [catalogue, kindFilter, search, year, track, cargoFilter, game]);
+  }, [catalogue, kindFilter, search, year, track, railtypes, cargoFilter, game]);
 
   const sortValue = useMemo(() => catalogueSortValues(game, calc), [game, calc]);
 
@@ -148,19 +155,7 @@ export default function ConsistPage() {
               { value: 'wagon', label: t('consist.filter.wagons') },
             ]}
           />
-          <Select
-            {...fieldWidth('narrow')}
-            label={t('consist.filter.track')}
-            allowDeselect={false}
-            value={track}
-            onChange={(v) => v && setTrack(v as typeof track)}
-            data={[
-              { value: 'all', label: t('consist.filter.all') },
-              { value: 'RAIL', label: 'RAIL' },
-              { value: 'NG', label: 'NG' },
-              { value: 'METRO', label: 'METRO' },
-            ]}
-          />
+          <TrackTypeField />
           <YearField />
           <Select
             {...fieldWidth('wide')}
@@ -212,43 +207,47 @@ export default function ConsistPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {records.map((train) => (
-              <Table.Tr key={train.id}>
-                {/* one cell, the way a line of the game's purchase list is: the sprite and the
-                    name identify the row together, and the pinned first column keeps both */}
-                <Table.Td className="cell-vehicle">
-                  <TrainImage trainId={train.id} /> {train.name}
-                </Table.Td>
-                <Table.Td className="cell-num">{train.intro_year}</Table.Td>
-                <Table.Td className="cell-num">
-                  {train.power_hp ? num(train.power_hp) : '—'}
-                </Table.Td>
-                <Table.Td className="cell-num">
-                  {train.speed_internal ? speedValue(train.speed_internal) : '—'}
-                </Table.Td>
-                <Table.Td className="cell-num">{num(train.weight_t)}</Table.Td>
-                <Table.Td className="cell-num">
-                  {train.capacities[calc.capacityIndex]
-                    ? num(train.capacities[calc.capacityIndex])
-                    : '—'}
-                </Table.Td>
-                <Table.Td className="cell-money">
-                  {money(trainBuyCost(train, activeTrainsMeta(game), game, calc))}
-                </Table.Td>
-                <Table.Td className="cell-money">
-                  {money(trainRunningCostPerYear(train, activeTrainsMeta(game), game, calc))}
-                </Table.Td>
-                <Table.Td>
-                  <ActionIcon
-                    className="btn-add"
-                    aria-label={t('consist.add')}
-                    onClick={() => addToConsist(train.id)}
-                  >
-                    +
-                  </ActionIcon>
-                </Table.Td>
-              </Table.Tr>
-            ))}
+            {records.map((train) => {
+              const power = poweredOutputOn(train, track, railtypes);
+              const topSpeed = topSpeedOn(train, track);
+              return (
+                <Table.Tr key={train.id}>
+                  {/* one cell, the way a line of the game's purchase list is: the sprite and the
+                      name identify the row together, and the pinned first column keeps both */}
+                  <Table.Td className="cell-vehicle">
+                    <TrainImage trainId={train.id} /> {train.name}
+                  </Table.Td>
+                  <Table.Td className="cell-num">{train.intro_year}</Table.Td>
+                  {/* the figures for the chosen track: an electro-diesel shows the power it
+                      makes on this line, a high speed train the speed it reaches there */}
+                  <Table.Td className="cell-num">{power ? num(power) : '—'}</Table.Td>
+                  <Table.Td className="cell-num">
+                    {topSpeed ? speedValue(topSpeed) : '—'}
+                  </Table.Td>
+                  <Table.Td className="cell-num">{num(train.weight_t)}</Table.Td>
+                  <Table.Td className="cell-num">
+                    {train.capacities[calc.capacityIndex]
+                      ? num(train.capacities[calc.capacityIndex])
+                      : '—'}
+                  </Table.Td>
+                  <Table.Td className="cell-money">
+                    {money(trainBuyCost(train, activeTrainsMeta(game), game, calc))}
+                  </Table.Td>
+                  <Table.Td className="cell-money">
+                    {money(trainRunningCostPerYear(train, activeTrainsMeta(game), game, calc))}
+                  </Table.Td>
+                  <Table.Td>
+                    <ActionIcon
+                      className="btn-add"
+                      aria-label={t('consist.add')}
+                      onClick={() => addToConsist(train.id)}
+                    >
+                      +
+                    </ActionIcon>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
           </Table.Tbody>
         </TableFrame>
         {sorted.length > 0 && (
@@ -312,6 +311,8 @@ export default function ConsistPage() {
           onChange={(v) => setCargoLabel(v)}
           data={cargoOptions}
         />
+
+        <StrandedVehicles entries={entries} game={game} calc={calc} />
 
         {entries.length > 0 && (
           <Table className="summary-table" withRowBorders={false}>

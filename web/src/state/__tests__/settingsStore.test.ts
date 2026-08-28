@@ -180,3 +180,47 @@ describe('год расчёта в сохранённых настройках',
     expect(useSettingsStore.getState().calc.priceYear).toBe(1700);
   });
 });
+
+describe('миграция типа путей', () => {
+  const rehydrate = async (state: unknown, version: number) => {
+    const storage = memoryStorage({ [KEY]: JSON.stringify({ state, version }) });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+    return useSettingsStore.getState();
+  };
+
+  // семейства колеи стали лейблами путей игры
+  it.each([
+    ['NG', 'NAAN'],
+    ['METRO', 'MTRO'],
+    ['MAGLEV', 'MGLV'],
+    ['RAIL', 'RAIL'],
+    ['MONO', 'MONO'],
+  ])('сохранённое семейство %s читается как путь %s', async (saved, expected) => {
+    const s = await rehydrate({ calc: { trackType: saved } }, 2);
+    expect(s.calc.trackType).toBe(expected);
+  });
+
+  it('состояние каждой прошлой версии доходит до текущей', async () => {
+    // v0 не знал ни лейблов, ни раздельных множителей содержания
+    const fromZero = await rehydrate(
+      { game: { basecostTrainRunning: 4 }, calc: { trackType: 'NG' } },
+      0,
+    );
+    expect(fromZero.calc.trackType).toBe('NAAN');
+    expect(fromZero.game.basecostTrainRunningSteam).toBe(4);
+
+    const fromOne = await rehydrate({ calc: { trackType: 'METRO' } }, 1);
+    expect(fromOne.calc.trackType).toBe('MTRO');
+  });
+
+  it('сохранение текущей версии не трогается', async () => {
+    const s = await rehydrate({ calc: { trackType: 'ELRL' } }, 3);
+    expect(s.calc.trackType).toBe('ELRL');
+  });
+
+  it('пустой calc получает путь по умолчанию', async () => {
+    const s = await rehydrate({ game: { inflation: true } }, 2);
+    expect(s.calc.trackType).toBe('RAIL');
+  });
+});

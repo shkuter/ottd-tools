@@ -26,8 +26,8 @@ import {
   type InputState,
 } from '../../engine/supply';
 import { useSettingsStore } from '../../state/settingsStore';
-import { IconSwitch } from '../../components/IconSwitch';
 import { YearField } from '../../components/YearField';
+import { TrackTypeField } from '../../components/TrackTypeField';
 import { EMPTY_INPUT, inputKey, useIndustrySupplyStore } from '../../state/industrySupplyStore';
 import type { OptimizerCache } from '../../engine/optimizeCache';
 import { runSupplyInputs, type InputRun } from './inputs';
@@ -85,10 +85,9 @@ export default function IndustrySupplyPage() {
       year: settled.year,
       stationTiles: settled.stationTiles,
       maxTrains: settled.maxTrains,
-      allowElectric: store.allowElectric,
       caches: caches.current,
     });
-  }, [game, calc, industry, inputs, settled, store.allowElectric]);
+  }, [game, calc, industry, inputs, settled]);
 
   const summary = useMemo(
     () => (industry ? assessIndustrySupply(industry, runs) : null),
@@ -132,12 +131,7 @@ export default function IndustrySupplyPage() {
           value={store.maxTrains}
           onChange={(v) => store.setMaxTrains(Number(v) || 1)}
         />
-        <IconSwitch
-          icon="electrified"
-          name={t('opt.allowElectric')}
-          checked={store.allowElectric}
-          onChange={store.setAllowElectric}
-        />
+        <TrackTypeField />
       </Group>
 
       {/* nothing to compute yet — no industry chosen, or one with no inputs. Said

@@ -111,5 +111,36 @@ class GameNamesMerge(unittest.TestCase):
         self.assertEqual(names["coal_mine"], "Угольная шахта")
 
 
+class RailtypeNames(unittest.TestCase):
+    """Where a track type's Russian name is allowed to come from."""
+
+    # the two the game names in a form a list can use; the rest come from
+    # RAILTYPES_WITHOUT_A_SOURCE, which is what these cases are about
+    GAME_LANG = {
+        "STR_RAIL_NAME_RAILROAD": "Ж/д",
+        "STR_RAIL_NAME_ELRAIL": "Электрифиц. ж/д",
+        "STR_RAIL_NAME_MONORAIL": "Монорельсовый",
+    }
+
+    def test_a_name_of_ours_wins_over_the_games_adjective(self):
+        # the game says "Монорельсовый", which names nothing on its own; ours is the noun
+        names = ru.railtype_names(dict(self.GAME_LANG))
+        self.assertEqual(names["MONO"], ru.RAILTYPES_WITHOUT_A_SOURCE["STR_RAIL_NAME_MONORAIL"])
+        # and a string the game does state usably is still the game's
+        self.assertEqual(names["RAIL"], "Ж/д")
+
+    def test_an_override_cannot_stand_in_for_a_name_of_ours(self):
+        # ru_overrides.json fixes somebody else's translation; a name we write ourselves has
+        # none behind it, so putting one there is an error rather than a silent no-op
+        with self.assertRaises(SystemExit) as cm:
+            ru.railtype_names(dict(self.GAME_LANG), {"STR_RAIL_NAME_MONORAIL": "Монорельс"})
+        self.assertIn("RAILTYPES_WITHOUT_A_SOURCE", str(cm.exception))
+
+    def test_a_track_type_with_no_name_anywhere_stops_the_build(self):
+        with self.assertRaises(SystemExit) as cm:
+            ru.railtype_names({})
+        self.assertIn("no Russian name for track type", str(cm.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

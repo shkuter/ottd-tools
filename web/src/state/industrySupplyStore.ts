@@ -34,7 +34,6 @@ interface IndustrySupplyState extends SearchParams {
   setIndustryId: (id: string) => void;
   setStationTiles: (tiles: number) => void;
   setMaxTrains: (trains: number) => void;
-  setAllowElectric: (allow: boolean) => void;
   setInput: (key: string, params: Partial<InputRouteParams>) => void;
   setCommonDistanceTiles: (tiles: number) => void;
   /** Fill the given inputs with one distance, leaving their outputs alone. */
@@ -51,7 +50,6 @@ export const useIndustrySupplyStore = create<IndustrySupplyState>()(
       setIndustryId: (industryId) => set({ industryId }),
       setStationTiles: (stationTiles) => set({ stationTiles }),
       setMaxTrains: (maxTrains) => set({ maxTrains }),
-      setAllowElectric: (allowElectric) => set({ allowElectric }),
       setInput: (key, params) =>
         set((s) => ({
           inputs: { ...s.inputs, [key]: { ...EMPTY_INPUT, ...s.inputs[key], ...params } },

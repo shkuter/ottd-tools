@@ -7,6 +7,8 @@ import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
 import { currencySymbol, money, num, percent, speed, unitSuffix, withUnit } from '../../components/format';
 import { Money } from '../../components/Money';
 import { CargoIcon } from '../../components/CargoIcon';
+import { TrackTypeField } from '../../components/TrackTypeField';
+import { StrandedVehicles } from '../../components/StrandedVehicles';
 import { TableFrame } from '../../components/table/TableFrame';
 import { useRouteStore } from '../../state/routeStore';
 import { PrefillNote } from '../../components/PrefillNote';
@@ -113,6 +115,10 @@ export default function RoutePage() {
       {/* the page is titled where every other tab titles itself; the panel below
           names its own part rather than standing in for the whole tab */}
       <Title order={2}>{t('route.title')}</Title>
+      {/* the track can be changed right here, and the consist is the one the builder holds:
+          a vehicle stranded by that change turns this tab's figures into a thousand-day trip
+          rather than a plain zero, so it is named before they are read */}
+      <StrandedVehicles entries={entries} game={game} calc={calc} />
       <div className="page-route">
         <Paper component="section" className="route-controls" p="sm">
           <PrefillNote origin={route.prefillOrigin} current={routePrefillState(game)} />
@@ -126,6 +132,7 @@ export default function RoutePage() {
             onChange={(v) => v && route.setCargoLabel(v)}
             data={cargoList.map((c) => ({ value: c.label, label: cargoName(c) }))}
           />
+          <TrackTypeField className="field" />
           <NumberInput
             className="field"
             label={t('route.distance')}

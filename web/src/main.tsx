@@ -1,3 +1,6 @@
+// first import of the entry point: saved state that moves between stores is carried over
+// before any store module can hydrate and rewrite its key
+import './state/upgradeOnLoad';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { loadSnapshot } from './savegame/snapshotStore';
@@ -15,7 +18,6 @@ import './skin.css';
 import './skin-mantine.css';
 import { applyPalette } from './skin';
 import { cssVariablesResolver, theme } from './theme';
-
 // base-set colours become CSS custom properties before the first paint
 applyPalette();
 

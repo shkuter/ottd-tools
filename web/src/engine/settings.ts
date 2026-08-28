@@ -3,8 +3,6 @@
  * (src/table/settings/*.ini) и JGR's Patchpack.
  */
 
-import type { TrackType } from '../types';
-
 export interface GameSettings {
   /** Играем на JGR's Patchpack: доступны специфичные для патчпака настройки. */
   jgrpp: boolean;
@@ -232,8 +230,12 @@ export interface CalcSettings {
   capacityIndex: number;
   /** Длина подъёма в тайлах для колонки «на подъёме». */
   hillTiles: number;
-  /** Тип пути по умолчанию. */
-  trackType: TrackType;
+  /**
+   * Track the route is built with, as the label of a railtype (`RAIL`, `ELRL`, `NAAN`…).
+   * It decides which vehicles are offered and how fast they go, so a set the calculator
+   * does not know is read as plain rail rather than left dangling (`activeRailtype`).
+   */
+  trackType: string;
   /**
    * The one year the calculator works in: it decides which vehicles the buy menu offers on
    * every tab and, with inflation on, which prices apply. The name is historical — the field

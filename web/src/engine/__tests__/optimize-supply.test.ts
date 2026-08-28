@@ -9,7 +9,6 @@ const base = {
   year: 1938,
   cargo: cargoByLabel.get('COAL')!,
   economyId: 'STEELTOWN',
-  allowElectric: false,
   maxLengthTiles: 6,
   // Steeltown и составы Iron Horse: наборы по умолчанию выключены, здесь они нужны
   game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true },

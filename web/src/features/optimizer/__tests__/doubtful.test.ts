@@ -17,7 +17,6 @@ const params: OptimizeParams = {
   cargo: cargoByLabel.get('ALUM')!,
   economyId: 'STEELTOWN',
   maxLengthTiles: 6,
-  allowElectric: false,
   game: GAME,
   calc: DEFAULT_CALC_SETTINGS,
 };

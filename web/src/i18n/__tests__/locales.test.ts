@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { intlLocale, t } from '..';
-import { cargoName, cargoUnits, industryName, localiseDot, sortCargos } from '../names';
-import { useLocaleStore } from '../../state/localeStore';
+import {
+  cargoName, cargoUnits, industryName, localiseDot, railtypeName, railtypeOptions, sortCargos,
+} from '../names';
+import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 import firsCargos from '../../data/cargos.json';
 import industries from '../../data/industries.json';
 import vanillaCargos from '../../data/vanilla_cargos.json';
@@ -11,6 +13,9 @@ import cargosRu from '../cargos.ru.json';
 import industriesRu from '../industries.ru.json';
 import stationNames from '../../data/station_names.json';
 import stationsRu from '../stations.ru.json';
+import railtypesRu from '../railtypes.ru.json';
+import trainsJson from '../../data/trains.json';
+import vanillaTrainsJson from '../../data/vanilla_trains.json';
 import en from '../en.json';
 import ru from '../ru.json';
 
@@ -247,5 +252,79 @@ describe('a slash in a dictionary', () => {
       .map(([key, value]) => `${key}: ${value}`);
 
     expect(spaced, 'a slash joins, so it is not spaced apart').toEqual([]);
+  });
+});
+
+describe('track type names', () => {
+  const ironHorse = trainsJson.meta.railtypes;
+  const vanilla = vanillaTrainsJson.meta.railtypes;
+
+  it('the dictionary covers every track type of both sets', () => {
+    // one dictionary serves both: a label means the same track whoever ships it
+    const missing = [...ironHorse, ...vanilla]
+      .map((rt) => rt.label)
+      .filter((label) => !(label in railtypesRu));
+    expect(missing).toEqual([]);
+  });
+
+  it('carries no entry the data has no track for', () => {
+    const known = new Set([...ironHorse, ...vanilla].map((rt) => rt.label));
+    expect(Object.keys(railtypesRu).filter((label) => !known.has(label))).toEqual([]);
+  });
+
+  it('russian names read as names, not as bare adjectives', () => {
+    // the game's own russian.txt states them as adjectives agreeing with a noun
+    // ("Монорельсовый"), which name nothing on their own
+    useLocaleStore.setState({ locale: 'ru' });
+    for (const railtype of vanilla) {
+      expect(railtypeName(railtype), railtype.label).toMatch(/ж\/д|метро/i);
+    }
+  });
+
+  it('a name two tracks share is told apart in every language', () => {
+    // Iron Horse names both its high speed types "Dedicated High Speed Railway"
+    for (const locale of Object.keys(LOCALES) as Locale[]) {
+      useLocaleStore.setState({ locale });
+      const names = railtypeOptions(ironHorse).map((option) => option.name);
+      expect(new Set(names).size, locale).toBe(names.length);
+      const highSpeed = railtypeOptions(ironHorse).filter((o) =>
+        ['LGVN', 'LGVE'].includes(o.railtype.label),
+      );
+      expect(highSpeed.every((o) => o.name.includes('('))).toBe(true);
+    }
+  });
+
+  it('leaves a name no other track shares alone', () => {
+    useLocaleStore.setState({ locale: 'ru' });
+    const rail = railtypeOptions(ironHorse).find((o) => o.railtype.label === 'RAIL')!;
+    // the game names it so; only the adjectival strings are replaced
+    expect(rail.name).toBe('Ж/д');
+  });
+});
+
+describe('track types a set names alike', () => {
+  const named = (labels: string[], catenary: boolean[]) =>
+    labels.map((label, i) => ({
+      label,
+      name: 'Same Name Railway',
+      catenary: catenary[i],
+    }));
+
+  it('tells apart namesakes that differ in wires', () => {
+    useLocaleStore.setState({ locale: 'en' });
+    const options = railtypeOptions(named(['AAAA', 'BBBB'], [false, true]));
+    expect(new Set(options.map((o) => o.name)).size).toBe(2);
+    // each says which one it is, and "unelectrified" must not pass for "electrified"
+    expect(options[0].name).toBe(`Same Name Railway (${en['railtype.unelectrified']})`);
+    expect(options[1].name).toBe(`Same Name Railway (${en['railtype.electrified']})`);
+  });
+
+  it('falls back to the label when even the wires agree', () => {
+    // a set is free to name two tracks alike and electrify both; the menu still has to
+    // offer a choice rather than two identical lines
+    useLocaleStore.setState({ locale: 'en' });
+    const options = railtypeOptions(named(['AAAA', 'BBBB'], [true, true]));
+    expect(new Set(options.map((o) => o.name)).size).toBe(2);
+    expect(options.map((o) => o.name).join(' ')).toContain('AAAA');
   });
 });

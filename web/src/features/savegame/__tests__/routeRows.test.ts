@@ -7,6 +7,8 @@ import { buildImport } from '../../../savegame/import';
 import { fixture } from '../../../savegame/__tests__/fixture';
 import type { Snapshot, SnapshotTrain } from '../../../savegame/snapshot';
 import { useSettingsStore } from '../../../state/settingsStore';
+import { activeTrainsMeta } from '../../../dataset';
+import { consistStats } from '../../../engine/consist';
 
 let cached: RawSavegame | undefined;
 async function raw(): Promise<RawSavegame> {
@@ -88,6 +90,68 @@ describe('route rows of a real game', () => {
     const stillSame = routeRows(snapshot, settings, 0).find((row) => row.id === before.id)!;
     expect(stillSame.forecast!.profitPerYear).toBe(before.forecast!.profitPerYear);
     useSettingsStore.getState().reset();
+  });
+
+  it('runs every route on the track its own consist needs, not the one in the settings', async () => {
+    const { snapshot, settings } = await londworth();
+    const before = routeRows(snapshot, settings, 0).filter((row) => row.forecast !== null);
+
+    // the track type is the one setting the tab is deaf to: a route's track comes from the
+    // consist that runs it, so picking another one on the searching tabs moves nothing here
+    for (const trackType of ['ELRL', 'NAAN', 'MTRO']) {
+      const rows = routeRows(snapshot, { ...settings, calc: { ...settings.calc, trackType } }, 0);
+      for (const was of before) {
+        const now = rows.find((row) => row.id === was.id)!;
+        expect(now.forecast!.profitPerYear).toBe(was.forecast!.profitPerYear);
+        expect(now.forecast!.loadedSpeedInternal).toBe(was.forecast!.loadedSpeedInternal);
+      }
+    }
+  });
+
+  it('an electric fleet is forecast on its full power, not stalled on plain rail', async () => {
+    const { snapshot, settings } = await londworth();
+    const source = routeRows(snapshot, settings, 0).find((row) => row.forecast !== null)!;
+    const route = snapshot.routes.find((r) => r.id === source.id)!;
+    // swap the fleet's engine for one that only runs under wires, leaving its wagons —
+    // and so the cargo — alone. The settings still say plain rail, where this engine makes
+    // no power at all; the route has to be read as electrified because its train is.
+    const engineIds = new Set(
+      source.entries!.filter((entry) => entry.train.kind === 'engine').map((e) => e.train.id),
+    );
+    const patched: Snapshot = {
+      ...snapshot,
+      trains: snapshot.trains.map((t) =>
+        route.trainIds.includes(t.id)
+          ? {
+            ...t,
+            consist: t.consist.map((part) =>
+              part.catalogueId !== null && engineIds.has(part.catalogueId)
+                ? { ...part, catalogueId: 'pinhorse' }
+                : part),
+          }
+          : t,
+      ),
+    };
+
+    expect(settings.calc.trackType).toBe('RAIL');
+    const row = routeRows(patched, settings, 0).find((r) => r.id === route.id)!;
+    expect(row.blocker).toBeNull();
+
+    // what the settings would have given: no power at all, and the crawl a train makes on
+    // none. The forecast has to stand clear of it, or the track came from the wrong place.
+    const meta = activeTrainsMeta(settings.game);
+    const statsOn = (trackType: string) =>
+      consistStats(row.entries!, null, settings.calc.capacityIndex, meta, settings.game, {
+        ...settings.calc,
+        trackType,
+      });
+    const onPlainRail = statsOn('RAIL');
+    const onWires = statsOn('ELRL');
+    expect(onPlainRail.powerHp).toBe(0);
+    expect(onWires.powerHp).toBeGreaterThan(0);
+    expect(row.forecast!.loadedSpeedInternal).toBeGreaterThan(
+      onPlainRail.balancingSpeedInternal,
+    );
   });
 });
 

@@ -35,6 +35,27 @@ def main():
     check(set(shifts) == {"build_engine", "build_wagon", "running_steam", "running_diesel"},
           "trains: basecost_shifts неполные")
 
+    # --- railtypes (оба набора) ---
+    for source in ("trains.json", "vanilla_trains.json"):
+        payload = trains if source == "trains.json" else load_json(source)
+        railtypes = payload["meta"].get("railtypes")
+        check(bool(railtypes), f"{source}: нет таблицы railtypes")
+        known = {rt["label"] for rt in railtypes}
+        for rt in railtypes:
+            where = f"{source}/{rt['label']}"
+            check(len(rt["label"]) == 4, f"{where}: лейбл не 4 символа")
+            check(bool(rt["name"]), f"{where}: без имени")
+            check(rt["speed_limit_internal"] >= 0, f"{where}: отрицательный лимит скорости")
+            for mask in ("powered", "compatible"):
+                # normalised on extraction: a type always relates to itself, and every
+                # label resolves — otherwise no vehicle is admitted onto its own track
+                check(rt["label"] in rt[mask], f"{where}: {mask} без своего типа")
+                check(set(rt[mask]) <= known, f"{where}: {mask} ссылается за пределы набора")
+        for t in payload["items"]:
+            labels = t["track_types"] if source == "trains.json" else [t["railtype"]]
+            check(set(labels) <= known,
+                  f"{source}/{t['id']}: track type вне таблицы: {sorted(set(labels) - known)}")
+
     # --- cargos ---
     cargo_labels = {c["label"] for c in cargos["items"]}
     check(len(cargos["items"]) >= 90, f"cargos: мало грузов: {len(cargos['items'])}")

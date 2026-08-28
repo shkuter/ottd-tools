@@ -5,7 +5,7 @@
 import vanillaIndustriesJson from './data/vanilla_industries.json';
 import vanillaTrainsJson from './data/vanilla_trains.json';
 import vanillaCargosJson from './data/vanilla_cargos.json';
-import type { Cargo, Train } from './types';
+import type { Cargo, Railtype, Train } from './types';
 
 interface VanillaTrainRaw {
   id: string;
@@ -58,7 +58,6 @@ const POWER_SOURCE: Record<string, string> = {
   maglev: 'MAGLEV',
 };
 
-/** engines.h RVI railtype column: R/C = plain and electrified rail, O = monorail, L = maglev. */
 /** Extractor's running_cost_class → the RUNNING_COST_* vocabulary Iron Horse uses. */
 const RUNNING_COST_BASE: Record<string, string> = {
   running_steam: 'RUNNING_COST_STEAM',
@@ -66,11 +65,16 @@ const RUNNING_COST_BASE: Record<string, string> = {
   running_electric: 'RUNNING_COST_ELECTRIC',
 };
 
+/**
+ * The game's track label → the family a vehicle of that track belongs to. Plain and
+ * electrified rail are one gauge, so their vehicles share a family; what tells them apart
+ * is the track type itself (`track_types`), which is where electrification lives.
+ */
 const RAILTYPE_TRACK: Record<string, Train['base_track_type']> = {
-  R: 'RAIL',
-  C: 'RAIL',
-  O: 'MONO',
-  L: 'MAGLEV',
+  RAIL: 'RAIL',
+  ELRL: 'RAIL',
+  MONO: 'MONO',
+  MGLV: 'MAGLEV',
 };
 
 function toTrain(raw: VanillaTrainRaw): Train {
@@ -87,14 +91,19 @@ function toTrain(raw: VanillaTrainRaw): Train {
     joker: false,
     randomised: false,
     base_track_type: RAILTYPE_TRACK[raw.railtype] ?? 'RAIL',
-    track_types: [RAILTYPE_TRACK[raw.railtype] ?? 'RAIL'],
+    track_types: [raw.railtype],
     lgv_capable: false,
     intro_year: raw.intro_year,
     intro_month: raw.intro_month,
     vehicle_life: raw.vehicle_life,
     model_life: raw.model_life,
     power_hp: raw.power_hp,
-    power_by_source: raw.power_hp ? { [POWER_SOURCE[raw.engine_class] ?? 'NULL']: raw.power_hp } : null,
+    // an engine class the map does not know leaves the breakdown empty rather than
+    // keyed by nothing: the physics then reads the stated power, as it did before
+    power_by_source:
+      raw.power_hp && POWER_SOURCE[raw.engine_class]
+        ? { [POWER_SOURCE[raw.engine_class]]: raw.power_hp }
+        : null,
     te_coefficient: raw.te_coefficient,
     speed_mph: raw.speed_mph,
     speed_lgv_mph: null,
@@ -137,6 +146,10 @@ function toCargo(raw: VanillaCargoRaw): Cargo {
 export const vanillaTrains: Train[] = (
   (vanillaTrainsJson as { items: unknown }).items as VanillaTrainRaw[]
 ).map(toTrain);
+
+/** The game's own four track types (table/railtypes.h). */
+export const vanillaRailtypes = (vanillaTrainsJson as { meta: { railtypes: unknown } }).meta
+  .railtypes as Railtype[];
 
 /** Cargo labels in slot order per climate (cargo_const.h `_default_climate_cargo`). */
 export const vanillaClimateSlots = (

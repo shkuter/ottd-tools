@@ -3,8 +3,10 @@ import cargosJson from './data/cargos.json';
 import industriesJson from './data/industries.json';
 import economiesJson from './data/economies.json';
 import metaJson from './data/meta.json';
-import type { Cargo, Economy, IndustriesMeta, Industry, Train, TrainsMeta } from './types';
-import { vanillaCanCarry, vanillaCargos, vanillaTrains } from './vanilla';
+import type {
+  Cargo, Economy, IndustriesMeta, Industry, Railtype, Train, TrainsMeta,
+} from './types';
+import { vanillaCanCarry, vanillaCargos, vanillaRailtypes, vanillaTrains } from './vanilla';
 import { DEFAULT_FIRS_ECONOMY, type GameSettings } from './engine/settings';
 import type { SupplyTarget } from './engine/supply';
 
@@ -38,6 +40,35 @@ export const economyById = new Map(economies.map((e) => [e.id, e]));
 /** Активный набор машин: Iron Horse или ванильные поезда. */
 export function activeTrains(game: GameSettings): Train[] {
   return game.ironHorse ? trains : vanillaTrains;
+}
+
+/**
+ * Track types a route can be built with, in the order the game's build menu lists them.
+ * Which set is active decides them: Iron Horse ships narrow gauge, metro and high speed
+ * track; without it the game's own four are all there is.
+ */
+export function activeRailtypes(game: GameSettings): Railtype[] {
+  return game.ironHorse ? trainsMeta.railtypes : vanillaRailtypes;
+}
+
+/**
+ * Track types a route can be built on, which is what the choice offers. A set may define a
+ * type the game keeps out of its build menu — Iron Horse hides plain LGV, which exists so
+ * high speed vehicles stay compatible with ordinary track — and a track nobody can lay is
+ * not a route anyone can cost. It stays in `activeRailtypes`, where the relations need it.
+ */
+export function selectableRailtypes(game: GameSettings): Railtype[] {
+  return activeRailtypes(game).filter((rt) => !rt.hidden);
+}
+
+/** The chosen track type, or the plain rail every set has when the choice is a stranger. */
+export function activeRailtype(game: GameSettings, label: string): Railtype {
+  const railtypes = activeRailtypes(game);
+  return (
+    railtypes.find((rt) => rt.label === label)
+    ?? railtypes.find((rt) => rt.label === 'RAIL')
+    ?? railtypes[0]
+  );
 }
 
 /**

@@ -19,7 +19,6 @@ const rows = optimizeConsists(
     year: 1938,
     cargo: cargoByLabel.get('COAL')!,
     economyId: 'STEELTOWN',
-    allowElectric: false,
     maxLengthTiles: 6,
     distanceTiles: 300,
     productionPerMonth: 200,

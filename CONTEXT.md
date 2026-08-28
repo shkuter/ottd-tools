@@ -149,8 +149,11 @@ the search.
 **Track type** (_тип путей_) — the kind of track a route is built with: a railtype in NewGRF
 terms, a label carrying a speed limit and the set of vehicles it powers. The user picks one per
 calculation — a single global choice shared by every computing tab — and it decides both which
-vehicles are offered and how fast they go. _Avoid_: rail type, track kind; тип пути (the UI
-says «Тип путей»).
+vehicles are offered and how fast they go. A set may define a track the game keeps out of its
+build menu, to hold vehicles compatible across gauges; such a track takes part in the relations
+but is never offered as a choice. A track's introduction date is ignored: the year decides
+which vehicles exist, not which track can be laid. _Avoid_: rail type, track kind; тип пути
+(the UI says «Тип путей»).
 
 **Track family** (`base_track_type`) — the coarse gauge family of a vehicle: RAIL, NG, METRO —
 plus MONO and MAGLEV in vanilla. It is what Iron Horse states speeds and capacities by; several

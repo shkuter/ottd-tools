@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeCargos,
+  activeRailtype,
+  activeRailtypes,
   activeTrains,
   canCarry,
   canCarryIn,
@@ -172,5 +174,38 @@ describe('cargoConsumers', () => {
   it('the index is not rebuilt: a second call returns the same array', () => {
     const first = cargoConsumers(steeltown, 'COAL');
     expect(cargoConsumers(steeltown, 'COAL')).toBe(first);
+  });
+});
+
+describe('active railtypes', () => {
+  const ironHorse = { ...DEFAULT_GAME_SETTINGS, ironHorse: true };
+
+  it("without Iron Horse the choice is the game's own four", () => {
+    expect(activeRailtypes(DEFAULT_GAME_SETTINGS).map((rt) => rt.label)).toEqual([
+      'RAIL',
+      'ELRL',
+      'MONO',
+      'MGLV',
+    ]);
+  });
+
+  it('Iron Horse adds narrow gauge, metro and high speed track', () => {
+    // and monorail and maglev are gone with it: the set replaces the buy menu and ships
+    // neither of them
+    expect(activeRailtypes(ironHorse).map((rt) => rt.label)).toEqual([
+      'RAIL',
+      'ELRL',
+      'LGVN',
+      'LGVE',
+      'NAAN',
+      'MTRO',
+    ]);
+  });
+
+  it('a label the active set does not have falls back to plain rail', () => {
+    // switching sets leaves the stored choice pointing at a type that is gone
+    expect(activeRailtype(ironHorse, 'MGLV').label).toBe('RAIL');
+    expect(activeRailtype(DEFAULT_GAME_SETTINGS, 'NAAN').label).toBe('RAIL');
+    expect(activeRailtype(ironHorse, 'NAAN').label).toBe('NAAN');
   });
 });

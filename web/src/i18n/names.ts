@@ -9,10 +9,13 @@ import { cargoByLabel } from '../dataset';
 import { LOCALES, useLocaleStore, type Locale } from '../state/localeStore';
 import cargosRu from './cargos.ru.json';
 import industriesRu from './industries.ru.json';
+import railtypesRu from './railtypes.ru.json';
+import { t } from './index';
 
 const CARGO_NAMES: Record<string, Record<string, string>> = { ru: cargosRu.names };
 const CARGO_UNITS: Record<string, Record<string, string>> = { ru: cargosRu.units };
 const INDUSTRY_NAMES: Record<string, Record<string, string>> = { ru: industriesRu };
+const RAILTYPE_NAMES: Record<string, Record<string, string>> = { ru: railtypesRu };
 
 /** Translated cargo name, or the English one from the data. */
 export function cargoName(cargo: { id: string; name: string } | null | undefined): string {
@@ -38,6 +41,56 @@ export function industryName(
   const translated = INDUSTRY_NAMES[locale]?.[industry.id];
   if (translated) return translated;
   return (economyId ? industry.name_by_economy?.[economyId] : undefined) ?? industry.name;
+}
+
+/** Track type name, as the set or the game calls it. */
+export function railtypeName(
+  railtype: { label: string; name: string } | null | undefined,
+): string {
+  if (!railtype) return '';
+  const { locale } = useLocaleStore.getState();
+  return RAILTYPE_NAMES[locale]?.[railtype.label] ?? railtype.name;
+}
+
+/**
+ * Track types with the labels a picker shows, which are their names except where a set
+ * gives two types the same one — Iron Horse names both its high speed tracks "Dedicated
+ * High Speed Railway". A menu of identical entries is no choice at all, so a name shared
+ * by several types says which is which by the one thing that tells them apart: whether
+ * the track carries wires. The suffix is ours; the set has no word for it.
+ */
+export function railtypeOptions<T extends { label: string; name: string; catenary: boolean }>(
+  railtypes: readonly T[],
+): { railtype: T; name: string }[] {
+  const named = railtypes.map((railtype) => ({ railtype, name: railtypeName(railtype) }));
+  const shared = repeated(named.map((option) => option.name));
+  const told = named.map((option) => {
+    if (!shared.has(option.name)) return option;
+    const suffix = t(
+      option.railtype.catenary ? 'railtype.electrified' : 'railtype.unelectrified',
+    );
+    return { ...option, name: `${option.name} (${suffix})` };
+  });
+  // wires tell today's namesakes apart, but a set could name two tracks alike that agree on
+  // them too. The label is what the game itself falls back on, and a menu of identical
+  // entries is no choice at all, so it is better than leaving them indistinguishable.
+  const stillShared = repeated(told.map((option) => option.name));
+  return told.map((option) =>
+    stillShared.has(option.name)
+      ? { ...option, name: `${option.name} [${option.railtype.label}]` }
+      : option,
+  );
+}
+
+/** The names that more than one entry carries — the ones a picker has to tell apart. */
+function repeated(names: readonly string[]): Set<string> {
+  const seen = new Set<string>();
+  const twice = new Set<string>();
+  for (const name of names) {
+    if (seen.has(name)) twice.add(name);
+    seen.add(name);
+  }
+  return twice;
 }
 
 /**

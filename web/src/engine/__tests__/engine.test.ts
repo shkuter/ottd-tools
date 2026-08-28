@@ -377,7 +377,6 @@ describe('optimizer', () => {
         cargo: cargoByLabel.get('COAL')!,
         economyId: 'STEELTOWN',
         maxLengthTiles: 3,
-        allowElectric: false,
         game: DEFAULT_GAME_SETTINGS,
         calc: DEFAULT_CALC_SETTINGS,
       },
@@ -396,7 +395,6 @@ describe('optimizer', () => {
       cargo: cargoByLabel.get('COAL')!,
       economyId: 'STEELTOWN',
       maxLengthTiles: 6,
-      allowElectric: false,
       game: DEFAULT_GAME_SETTINGS,
       calc: DEFAULT_CALC_SETTINGS,
     };
@@ -460,7 +458,6 @@ describe('optimizer', () => {
         cargo: cargoByLabel.get('COAL')!,
         economyId: 'STEELTOWN',
         maxLengthTiles: 6,
-        allowElectric: false,
         productionPerMonth,
         game,
         calc: DEFAULT_CALC_SETTINGS,
@@ -493,7 +490,6 @@ describe('optimizer', () => {
       cargo: cargoByLabel.get('COAL')!,
       economyId: 'STEELTOWN',
       maxLengthTiles: 6,
-      allowElectric: false,
       game: DEFAULT_GAME_SETTINGS,
       calc: DEFAULT_CALC_SETTINGS,
     };
@@ -523,7 +519,6 @@ describe('optimizer', () => {
     year: 1938,
     cargo: cargoByLabel.get('COAL')!,
     economyId: 'STEELTOWN',
-    allowElectric: false,
     game: DEFAULT_GAME_SETTINGS,
     calc: DEFAULT_CALC_SETTINGS,
   };
@@ -618,7 +613,7 @@ describe('optimizer', () => {
       ...goalBase,
       distanceTiles: 300,
       maxLengthTiles: 7,
-      allowElectric: true,
+      calc: { ...DEFAULT_CALC_SETTINGS, trackType: 'ELRL' },
       productionPerMonth: 500,
     };
     const r = optimizeConsists(trains, params, trainsMeta, 1)[0];
@@ -779,7 +774,7 @@ describe('optimizer', () => {
       ...goalBase,
       distanceTiles: 180,
       maxLengthTiles: 6,
-      allowElectric: true,
+      calc: { ...DEFAULT_CALC_SETTINGS, trackType: 'ELRL' },
       productionPerMonth: 500,
       goal: 'transported' as const,
       maxTrains: 4,
@@ -847,7 +842,7 @@ describe('optimizer', () => {
         ...goalBase,
         distanceTiles: 300,
         maxLengthTiles: 7,
-        allowElectric: true,
+        calc: { ...DEFAULT_CALC_SETTINGS, trackType: 'ELRL' },
         productionPerMonth: 500,
         goal: 'transported' as const,
         maxTrains: 4,

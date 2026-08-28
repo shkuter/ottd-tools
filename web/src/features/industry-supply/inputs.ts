@@ -48,7 +48,6 @@ export interface RunOptions {
   year: number;
   stationTiles: number;
   maxTrains: number;
-  allowElectric: boolean;
   /** One cache per cargo: the caches key on the route length, which differs per input. */
   caches: Map<string, OptimizerCache>;
 }
@@ -59,7 +58,7 @@ function isRouted(params: InputRouteParams): boolean {
 }
 
 export function runSupplyInputs(options: RunOptions): InputRun[] {
-  const { game, calc, industryId, inputs, year, stationTiles, maxTrains, allowElectric } = options;
+  const { game, calc, industryId, inputs, year, stationTiles, maxTrains } = options;
   const trains = activeTrains(game);
   const meta = activeTrainsMeta(game);
   const economyId = economyIdForPayment(game);
@@ -89,7 +88,6 @@ export function runSupplyInputs(options: RunOptions): InputRun[] {
         goal: 'supply',
         supplyTarget: supplyTargetFor(game, cargoLabel, industryId),
         maxTrains,
-        allowElectric,
         game,
         calc,
       },

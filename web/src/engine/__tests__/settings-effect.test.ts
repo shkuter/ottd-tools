@@ -40,8 +40,9 @@ function baseParams(game: GameSettings, calc: CalcSettings): OptimizeParams {
     cargo,
     economyId: economyIdForPayment(game),
     maxLengthTiles: 6,
-    allowElectric: true,
     game,
+    // the track comes from the case's own calc: pinning it here would make the snapshot
+    // blind to the one setting whose whole effect is which vehicles the search may use
     calc,
   };
 }
@@ -136,13 +137,14 @@ const CASES: {
     name: 'basecostTrainRunningDiesel',
     game: { basecostGrf: true, basecostTrainRunningDiesel: 4 },
   },
-  // электрический класс встречается только у ванильных машин
+  // электрический класс встречается только у ванильных машин, а электровоз выходит на
+  // линию только под контактной сетью — отсюда путь ELRL в обоих снимках
   {
     name: 'basecostTrainRunningElectric',
     game: { ironHorse: false, basecostGrf: true, basecostTrainRunningElectric: 4 },
     base: { ironHorse: false, basecostGrf: true },
-    calc: { priceYear: 1990 },
-    baseCalc: { priceYear: 1990 },
+    calc: { priceYear: 1990, trackType: 'ELRL' },
+    baseCalc: { priceYear: 1990, trackType: 'ELRL' },
     params: { year: 1990 },
   },
   { name: 'inflation', game: { inflation: true }, calc: { priceYear: 2000 } },
@@ -192,7 +194,8 @@ const CASES: {
     baseCalc: {},
     calc: { priceYear: 2050 },
   },
-  { name: 'trackType', calc: { trackType: 'NG' } },
+  // электрифицированная линия против обычной: те же машины, другой набор допущенных
+  { name: 'trackType', calc: { trackType: 'ELRL' } },
 ];
 
 describe('каждая настройка влияет на расчёт', () => {

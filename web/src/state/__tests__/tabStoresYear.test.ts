@@ -59,3 +59,59 @@ describe('tab stores after the year moved out', () => {
     expect(s.maxTrains).toBe(7);
   });
 });
+
+/**
+ * Electrification left the tabs the way the year did: it describes not the search but the
+ * track the route is built with. The value itself is carried over by the upgrade step
+ * (state/upgrade.ts) before any store hydrates; what is checked here is that state saved by
+ * earlier versions still reads afterwards.
+ */
+describe('the tabs after electrification moved out', () => {
+  it('reads state that has the flag, and keeps no field for it', async () => {
+    const storage = memoryStorage({
+      'ottd-tools-optimizer': JSON.stringify({
+        state: { allowElectric: true, cargoLabel: 'COAL', maxTrains: 3 },
+        version: 1,
+      }),
+    });
+    useOptimizerStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useOptimizerStore.persist.rehydrate();
+
+    const s = useOptimizerStore.getState();
+    expect(s).not.toHaveProperty('allowElectric');
+    expect(s.cargoLabel).toBe('COAL');
+    expect(s.maxTrains).toBe(3);
+  });
+
+  it('the same for the supply tab', async () => {
+    const storage = memoryStorage({
+      'ottd-tools-industry-supply': JSON.stringify({
+        state: { allowElectric: true, industryId: 'tyre_plant', commonDistanceTiles: 55 },
+        version: 1,
+      }),
+    });
+    useIndustrySupplyStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useIndustrySupplyStore.persist.rehydrate();
+
+    const s = useIndustrySupplyStore.getState();
+    expect(s).not.toHaveProperty('allowElectric');
+    expect(s.industryId).toBe('tyre_plant');
+    expect(s.commonDistanceTiles).toBe(55);
+  });
+
+  it('state saved before the year moved out walks all the way to the current version', async () => {
+    const storage = memoryStorage({
+      'ottd-tools-optimizer': JSON.stringify({
+        state: { year: 1999, allowElectric: true, cargoLabel: 'FEAL' },
+        version: 0,
+      }),
+    });
+    useOptimizerStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useOptimizerStore.persist.rehydrate();
+
+    const s = useOptimizerStore.getState();
+    expect(s).not.toHaveProperty('year');
+    expect(s).not.toHaveProperty('allowElectric');
+    expect(s.cargoLabel).toBe('FEAL');
+  });
+});

@@ -4,6 +4,8 @@
 рецепт — как в vendor/iron-horse/src/id_report.py.
 """
 from common import bootstrap_iron_horse, vendor_meta, write_json
+# imported before the bootstrap below, which puts the set's own src/ first on sys.path
+from extract_vanilla import parse_railtypes as vanilla_railtypes
 
 ih = bootstrap_iron_horse()
 iron_horse = ih.iron_horse
@@ -125,6 +127,67 @@ def catalogue_payload(catalogue, dh):
     return item
 
 
+def railtypes_payload(dh):
+    """The set's track types, in the same shape as the vanilla table.
+
+    Iron Horse defines rail and electrified rail only to carry their labels (they are
+    the game's own types, hence suppress_for_nml): it states neither masks, sort order
+    nor names for them, so those come from the game's table.
+
+    The masks need normalising. A NewGRF lists the *other* types a type relates to and
+    leaves itself implied (rail.h: "bitmask to the OTHER railtypes"), while the game's
+    table names itself as well; and the lists still carry labels of sets that are not
+    here (NAAE, IHA_, IHB_, IHBA), kept for compatibility with older grfs. Left as
+    stated, narrow gauge and metro would end up relating to nothing at all and admit no
+    vehicle onto their own track.
+    """
+    vanilla = {rt["label"]: rt for rt in vanilla_railtypes()}
+    entries = []
+    for rt in iron_horse.railtype_manager:
+        borrowed = vanilla.get(rt.label) if rt.suppress_for_nml else None
+        string_id = f"STR_RAILTYPE_{rt.id.upper()}_NAME"
+        entries.append({
+            "label": rt.label,
+            "string_id": borrowed["string_id"] if borrowed else string_id,
+            "name": borrowed["name"] if borrowed else dh.lang_strings[string_id],
+            "catenary": (
+                borrowed["catenary"] if borrowed
+                else "RAILTYPE_FLAG_CATENARY" in (rt.railtype_flags or [])
+            ),
+            # RAILTYPE_FLAG_HIDDEN: the set defines the type but the game keeps it out of
+            # the build menu (rail.h: "hiding from selection"). Iron Horse hides plain LGV,
+            # which exists so high speed vehicles stay compatible with ordinary track — the
+            # player never lays it, so it is no route to cost, but the masks still need it.
+            "hidden": (
+                borrowed["hidden"] if borrowed
+                else "RAILTYPE_FLAG_HIDDEN" in (rt.railtype_flags or [])
+            ),
+            "speed_limit_internal": rt.speed_limit,
+            "powered": borrowed["powered"] if borrowed else list(rt.powered_railtype_list),
+            "compatible": (
+                borrowed["compatible"] if borrowed
+                else list(rt.compatible_railtype_list)
+            ),
+            "lgv": bool(rt.is_lgv_railtype),
+            "sort": borrowed["sort"] if borrowed else rt.sort_order,
+        })
+
+    known = {rt["label"] for rt in entries}
+    for rt in entries:
+        for mask in ("powered", "compatible"):
+            others = [label for label in rt[mask] if label in known and label != rt["label"]]
+            rt[mask] = [rt["label"], *others]
+        # a type a vehicle draws power on is one it can travel on: the game states this
+        # rule rather than the sets (newgrf_act0_railtypes.cpp: powered implies compatible)
+        rt["compatible"] = [
+            *rt["compatible"],
+            *(label for label in rt["powered"] if label not in rt["compatible"]),
+        ]
+
+    entries.sort(key=lambda rt: rt["sort"])
+    return entries
+
+
 def main():
     iron_horse.main()
     roster = iron_horse.roster_manager.active_roster
@@ -162,6 +225,7 @@ def main():
         "meta": {
             **vendor_meta("iron-horse"),
             "roster": roster.id,
+            "railtypes": railtypes_payload(dh),
             # basecost-шифты GRF (см. vendor/iron-horse/src/templates/header.pynml);
             # цена = base << shift * factor / 256
             "basecost_shifts": {

@@ -14,6 +14,7 @@ import { resetPersistedState } from '../../state';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 import { SavegameImportPanel } from './SavegameImportPanel';
 import { useYearField } from '../../components/useYearField';
+import { TrackTypeField } from '../../components/TrackTypeField';
 
 function Row({
   label,
@@ -416,12 +417,7 @@ export default function SettingsPage() {
 
       <Fieldset className="settings-group" legend={t('settings.calc')}>
         <Row label={t('settings.trackType')} hint={t('settings.trackTypeHint')}>
-          <Select
-            allowDeselect={false}
-            value={calc.trackType}
-            onChange={(v) => v && setCalc('trackType', v as typeof calc.trackType)}
-            data={['RAIL', 'NG', 'METRO', ...(game.ironHorse ? [] : ['MONO', 'MAGLEV'])]}
-          />
+          <TrackTypeField width="wide" withLabel={false} />
         </Row>
         <Row label={t('settings.hillTiles')} hint={t('settings.hillTilesHint')}>
           <NumberInput

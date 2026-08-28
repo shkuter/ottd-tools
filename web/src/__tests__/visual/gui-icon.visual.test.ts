@@ -11,8 +11,12 @@ import { ROUTES } from './routes';
 
 const harness = harnessFixture();
 
-/** Tabs whose filter row names a switch with a picture instead of a label. */
-const WITH_ICONS = ['/optimizer', '/supply'];
+/**
+ * Tabs whose filter row names a switch with a picture instead of a label. The supply tab
+ * had one for the electrified line; that question is the track type now, and a track is
+ * picked from a list rather than switched on.
+ */
+const WITH_ICONS = ['/optimizer'];
 
 describe.each(ROUTES)('$path', ({ path, ready }) => {
   it('draws an icon standing in for a label from the game', async () => {

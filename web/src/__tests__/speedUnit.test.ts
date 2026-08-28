@@ -23,9 +23,8 @@ const params: OptimizeParams = {
   cargo,
   economyId: 'STEELTOWN',
   maxLengthTiles: 6,
-  allowElectric: true,
   game,
-  calc,
+  calc: { ...calc, trackType: 'ELRL' },
 };
 
 /** Всё, что видит пользователь на вкладках дохода и оптимизатора, кроме самой скорости. */

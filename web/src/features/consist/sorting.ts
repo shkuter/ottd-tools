@@ -1,7 +1,8 @@
 import type { Train } from '../../types';
 import type { CalcSettings, GameSettings } from '../../engine/settings';
 import type { SortState, SortValues } from '../../components/table/sorting';
-import { activeTrainsMeta } from '../../dataset';
+import { activeRailtype, activeRailtypes, activeTrainsMeta } from '../../dataset';
+import { poweredOutputOn, topSpeedOn } from '../../engine/tracktypes';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 
 export type CatalogueColumn =
@@ -30,18 +31,21 @@ export const DEFAULT_SORT: SortState<CatalogueColumn> = {
  *
  * A column sorts by what it shows: where the cell draws an em dash the row has no value here,
  * so the map says `null` and the row leaves the ordering instead of passing for a zero that
- * would head the list the moment the direction is reversed. Speed is read off `speed_internal`
- * for the same reason — that is the field the cell prints.
+ * would head the list the moment the direction is reversed. Power and speed are the figures
+ * for the chosen track, the same ones the cells print — an electro-diesel is ranked by the
+ * power it makes on the line being planned, not by its best.
  */
 export function catalogueSortValues(
   game: GameSettings,
   calc: CalcSettings,
 ): SortValues<Train, CatalogueColumn> {
+  const track = activeRailtype(game, calc.trackType);
+  const railtypes = activeRailtypes(game);
   return {
     name: (train) => train.name,
     intro_year: (train) => train.intro_year,
-    power_hp: (train) => train.power_hp || null,
-    speed: (train) => train.speed_internal || null,
+    power_hp: (train) => poweredOutputOn(train, track, railtypes) || null,
+    speed: (train) => topSpeedOn(train, track) || null,
     weight_t: (train) => train.weight_t,
     capacity: (train) => train.capacities[calc.capacityIndex] || null,
     cost: (train) => trainBuyCost(train, activeTrainsMeta(game), game, calc),

@@ -39,7 +39,6 @@ interface OptimizerState extends SearchParams {
   setGoal: (goal: OptimizeGoal) => void;
   setMaxTrains: (trains: number) => void;
   setDestinationId: (id: string) => void;
-  setAllowElectric: (allow: boolean) => void;
   /** Выключить/вернуть пункт списка покупки целиком: у него бывает несколько моделей. */
   toggleExcluded: (ids: string[]) => void;
   clearExcluded: () => void;
@@ -64,7 +63,6 @@ export const useOptimizerStore = create<OptimizerState>()(
       setGoal: (goal) => set({ goal }),
       setMaxTrains: (maxTrains) => set({ maxTrains }),
       setDestinationId: (destinationId) => set({ destinationId }),
-      setAllowElectric: (allowElectric) => set({ allowElectric }),
       toggleExcluded: (ids) =>
         set((s) => ({
           excludedIds: ids.every((id) => s.excludedIds.includes(id))

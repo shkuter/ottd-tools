@@ -21,9 +21,12 @@ import { Field } from '../../components/Field';
 import { fieldWidth } from '../../skin';
 import { IconSwitch } from '../../components/IconSwitch';
 import { YearField } from '../../components/YearField';
+import { TrackTypeField } from '../../components/TrackTypeField';
 import { useNavigate } from 'react-router';
 import {
   activeCargos,
+  activeRailtype,
+  activeRailtypes,
   activeTrains,
   activeTrainsMeta,
   cargoConsumers,
@@ -31,6 +34,7 @@ import {
   economyIdForPayment,
   supplyTargetFor,
 } from '../../dataset';
+import { poweredOutputOn } from '../../engine/tracktypes';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, industryName, sortCargos } from '../../i18n/names';
 import {
@@ -218,15 +222,18 @@ function introTitle(intro: IntroAvailability): string {
 export default function OptimizerPage() {
   const {
     cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, goal, maxTrains,
-    allowElectric, excludedIds, destinationId, prefillOrigin,
+    excludedIds, destinationId, prefillOrigin,
     setCargoLabel, setDistanceTiles: setDistance,
-    setStationTiles, setProductionPerMonth, setGoal, setMaxTrains, setAllowElectric,
+    setStationTiles, setProductionPerMonth, setGoal, setMaxTrains,
     setDestinationId, toggleExcluded, clearExcluded,
   } = useOptimizerStore();
   const [engineFilter, setEngineFilter] = useState('');
   const [sort, setSort] = useState<OptimizerSort>(null);
   const [subsidised, setSubsidised] = useState(false);
   const { game, calc } = useSettingsStore();
+  // the track the rows were searched on: their figures follow it, and so must what they show
+  const track = activeRailtype(game, calc.trackType);
+  const railtypes = activeRailtypes(game);
   // one year for the whole calculator: the field here edits the setting itself
   const year = calc.priceYear;
   const locale = useLocale();
@@ -298,7 +305,6 @@ export default function OptimizerPage() {
         goal: activeGoal,
         supplyTarget,
         maxTrains: searchInput.maxTrains,
-        allowElectric,
         subsidised,
         excludedIds,
         game,
@@ -308,7 +314,7 @@ export default function OptimizerPage() {
       50,
       searchCache.current,
     );
-  }, [trains, cargo, economyId, searchInput, activeGoal, supplyTarget, allowElectric, subsidised, excludedIds, game, calc]);
+  }, [trains, cargo, economyId, searchInput, activeGoal, supplyTarget, subsidised, excludedIds, game, calc]);
 
   // машины, которые в выбранном году могут ещё не появиться, — их можно выключить
   const collator = useMemo(() => new Intl.Collator(intlLocale(locale)), [locale]);
@@ -433,18 +439,13 @@ export default function OptimizerPage() {
             onChange={(v) => setMaxTrains(Math.max(1, Number(v) || 1))}
           />
         </Tooltip>
+        <TrackTypeField />
         <TextInput
           {...fieldWidth('normal')}
           type="search"
           label={t('opt.engineFilter')}
           value={engineFilter}
           onChange={(e) => setEngineFilter(e.currentTarget.value)}
-        />
-        <IconSwitch
-          icon="electrified"
-          name={t('opt.allowElectric')}
-          checked={allowElectric}
-          onChange={setAllowElectric}
         />
         <IconSwitch
           icon="subsidies"
@@ -607,7 +608,12 @@ export default function OptimizerPage() {
               <Table.Td>
                 {engineLabel(r)}
                 <IntroNote intro={r.engineIntro} />
-                <span className="dim"> ({r.engine.power_hp * r.engineCount} {t('units.hp')})</span>
+                {/* the power the engine makes on the line being planned, which is what the
+                    row's own figures were computed from: an electro-diesel states its
+                    diesel power in the data and gives more than that under the wires */}
+                <span className="dim">
+                  {' '}({poweredOutputOn(r.engine, track, railtypes) * r.engineCount} {t('units.hp')})
+                </span>
               </Table.Td>
               <Table.Td className="cell-sprite"><TrainImage trainId={r.wagon.id} /></Table.Td>
               <Table.Td>{wagonLabel(r)}<IntroNote intro={r.wagonIntro} /></Table.Td>

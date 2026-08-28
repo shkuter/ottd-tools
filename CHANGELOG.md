@@ -18,6 +18,39 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- The track a route is built with is now a choice of its own, offered wherever a search runs
+  (best train, consist builder, route income, industry supply) and in the settings, all
+  writing to one place. It lists the track types of the active set, named as the game names
+  them: plain and electrified rail, and with Iron Horse also narrow gauge, metro and high
+  speed track. Where a set gives two types the same name, the picker tells them apart.
+- Track types are extracted from the sets themselves — labels, speed limits, catenary, and
+  which vehicles each type carries and powers — so a set that limits speed by track will cap
+  trains without a code change.
+
+### Changed
+
+- **BREAKING** The "electrified line" switch is gone from both tabs that had one, and the
+  consist builder's own track filter with it: what runs on a line follows from the track it
+  is built with. An engine is offered where it draws power, a wagon where it fits the gauge —
+  so a pure electric no longer appears on plain rail, and a diesel appears under the wires,
+  as in the game. Saved state migrates: gauge families become track labels, and a saved
+  "electrified" switch becomes electrified track.
+- **BREAKING** Vehicles whose figures depend on the track now state them for the track
+  chosen. An electro-diesel makes its diesel power away from the wires and its electric power
+  under them; a high speed train runs at its high speed only on high speed track. Both used to
+  be computed from a single figure regardless of the line.
+- A consist keeping a vehicle the chosen track cannot carry now says so above its summary,
+  naming the vehicle: the zeroes underneath are what the game would give it, and without a
+  word they read as a broken calculation. The consist itself is left alone.
+- Forecasts on the savegame tab read the track from the trains that run each route, since a
+  save states the vehicles but not what they run on. An electric route is now forecast at the
+  power it actually makes instead of at none.
+- The vanilla catalogue stops folding electrified rail into plain rail, so its four track
+  types — including monorail and maglev, which the settings offered but the catalogue could
+  not show — are all reachable.
+
 ## [0.14.2] - 2026-08-27
 
 ### Fixed
