@@ -120,7 +120,8 @@ describe('миграция до v2: наборы NewGRF выключаются �
     await useSettingsStore.persist.rehydrate();
 
     const s = useSettingsStore.getState();
-    expect(s.game.ironHorse).toBe(false);
+    // v2 выключила набор, v4 перевела выключенный флаг в ванильный ростер
+    expect(s.game.trainSet).toBe('vanilla');
     expect(s.game.firs).toBe(false);
     // всё прочее сохранённое осталось при своём
     expect(s.game.freightTrains).toBe(3);
@@ -141,8 +142,8 @@ describe('миграция до v2: наборы NewGRF выключаются �
     expect(s.game.basecostTrainRunningSteam).toBe(4);
     expect(s.game.basecostTrainRunningDiesel).toBe(4);
     expect(s.game.basecostTrainRunningElectric).toBe(4);
-    // и ветка v2 следом
-    expect(s.game.ironHorse).toBe(false);
+    // и ветки v2/v4 следом
+    expect(s.game.trainSet).toBe('vanilla');
     expect(s.game.firs).toBe(false);
   });
 
@@ -154,8 +155,45 @@ describe('миграция до v2: наборы NewGRF выключаются �
     await useSettingsStore.persist.rehydrate();
 
     const s = useSettingsStore.getState();
-    expect(s.game.ironHorse).toBe(true);
+    // v4 переводит включённый флаг в Iron Horse — выбор пользователя не теряется
+    expect(s.game.trainSet).toBe('iron_horse');
     expect(s.game.firs).toBe(true);
+  });
+});
+
+describe('миграция до v4: флаг Iron Horse становится выбором набора', () => {
+  it('включённый флаг v3 переводится в Iron Horse, поле исчезает', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { game: { ironHorse: true, firs: true } }, version: 3 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    // живой стор, а не localStorage: гидратация случается раньше любого чтения,
+    // и затирание перевода первой же записью видно только здесь
+    const s = useSettingsStore.getState();
+    expect(s.game.trainSet).toBe('iron_horse');
+    expect(s.game).not.toHaveProperty('ironHorse');
+  });
+
+  it('выключенный флаг v3 переводится в ванильный ростер', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { game: { ironHorse: false } }, version: 3 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    expect(useSettingsStore.getState().game.trainSet).toBe('vanilla');
+  });
+
+  it('сохранение v4 не трогается: выбранный xUSSR остаётся выбранным', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { game: { trainSet: 'xussr' } }, version: 4 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    expect(useSettingsStore.getState().game.trainSet).toBe('xussr');
   });
 });
 

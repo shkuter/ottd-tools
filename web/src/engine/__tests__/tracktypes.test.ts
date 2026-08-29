@@ -8,9 +8,11 @@ import {
   trackTypeOfConsist,
   vehiclePowerOn,
   vehicleSpeedOn,
+  topSpeedOn,
 } from '../tracktypes';
 import {
   activeRailtypes, activeTrainsMeta, cargoByLabel, selectableRailtypes, trains, trainsMeta,
+  xussrTrains, xussrTrainsMeta,
 } from '../../dataset';
 import { consistPhysics } from '../consist';
 import { optimizeConsists } from '../optimize';
@@ -20,16 +22,16 @@ import { daysForDistance, mphToInternal } from '../units';
 import { vanillaCargos, vanillaRailtypes, vanillaTrains } from '../../vanilla';
 import type { Railtype } from '../../types';
 
-const IRON_HORSE_GAME = { ...DEFAULT_GAME_SETTINGS, ironHorse: true };
-const ironHorse = trainsMeta.railtypes;
+const IRON_HORSE_GAME = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const };
+const ironHorseRailtypes = trainsMeta.railtypes;
 const track = (table: readonly Railtype[], label: string) =>
   table.find((rt) => rt.label === label)!;
 
-const rail = track(ironHorse, 'RAIL');
-const elrl = track(ironHorse, 'ELRL');
-const naan = track(ironHorse, 'NAAN');
-const mtro = track(ironHorse, 'MTRO');
-const lgve = track(ironHorse, 'LGVE');
+const rail = track(ironHorseRailtypes, 'RAIL');
+const elrl = track(ironHorseRailtypes, 'ELRL');
+const naan = track(ironHorseRailtypes, 'NAAN');
+const mtro = track(ironHorseRailtypes, 'MTRO');
+const lgve = track(ironHorseRailtypes, 'LGVE');
 
 const byId = new Map(trains.map((t) => [t.id, t]));
 const electric = byId.get('pinhorse')!;
@@ -39,51 +41,51 @@ const narrowGaugeEngine = byId.get('bean_feast')!;
 
 describe('what runs on a track', () => {
   it('an electric engine is powered only under the wires', () => {
-    expect(isPoweredOn(electric, elrl, ironHorse)).toBe(true);
-    expect(isPoweredOn(electric, rail, ironHorse)).toBe(false);
+    expect(isPoweredOn(electric, elrl, ironHorseRailtypes)).toBe(true);
+    expect(isPoweredOn(electric, rail, ironHorseRailtypes)).toBe(false);
   });
 
   it('a diesel is powered on electrified track too, as the game has it', () => {
     const diesel = trains.find(
       (t) => t.kind === 'engine' && t.power_by_source?.DIESEL && !t.power_by_source?.OHLE,
     )!;
-    expect(isPoweredOn(diesel, rail, ironHorse)).toBe(true);
-    expect(isPoweredOn(diesel, elrl, ironHorse)).toBe(true);
+    expect(isPoweredOn(diesel, rail, ironHorseRailtypes)).toBe(true);
+    expect(isPoweredOn(diesel, elrl, ironHorseRailtypes)).toBe(true);
   });
 
   it('an electro-diesel is powered on both', () => {
-    expect(isPoweredOn(electroDiesel, rail, ironHorse)).toBe(true);
-    expect(isPoweredOn(electroDiesel, elrl, ironHorse)).toBe(true);
+    expect(isPoweredOn(electroDiesel, rail, ironHorseRailtypes)).toBe(true);
+    expect(isPoweredOn(electroDiesel, elrl, ironHorseRailtypes)).toBe(true);
   });
 
   it('a narrow gauge engine is powered on its own track', () => {
     // the set states no mask for it at all; unnormalised, this is where the narrow
     // gauge catalogue would silently come up empty
-    expect(isPoweredOn(narrowGaugeEngine, naan, ironHorse)).toBe(true);
-    expect(isPoweredOn(narrowGaugeEngine, rail, ironHorse)).toBe(false);
+    expect(isPoweredOn(narrowGaugeEngine, naan, ironHorseRailtypes)).toBe(true);
+    expect(isPoweredOn(narrowGaugeEngine, rail, ironHorseRailtypes)).toBe(false);
   });
 
   it('metro vehicles are powered on metro track', () => {
     const metro = trains.find((t) => t.base_track_type === 'METRO' && t.kind === 'engine')!;
-    expect(isPoweredOn(metro, mtro, ironHorse)).toBe(true);
-    expect(isPoweredOn(metro, rail, ironHorse)).toBe(false);
+    expect(isPoweredOn(metro, mtro, ironHorseRailtypes)).toBe(true);
+    expect(isPoweredOn(metro, rail, ironHorseRailtypes)).toBe(false);
   });
 
   it('a narrow gauge wagon does not fit standard gauge', () => {
     const wagon = trains.find((t) => t.kind === 'wagon' && t.base_track_type === 'NG')!;
-    expect(isCompatibleWith(wagon, naan, ironHorse)).toBe(true);
-    expect(isCompatibleWith(wagon, rail, ironHorse)).toBe(false);
+    expect(isCompatibleWith(wagon, naan, ironHorseRailtypes)).toBe(true);
+    expect(isCompatibleWith(wagon, rail, ironHorseRailtypes)).toBe(false);
   });
 
   it('an electric engine still travels on plain rail, it just makes no power there', () => {
     // compatible is the weaker relation: the game lets it be towed
-    expect(isCompatibleWith(electric, rail, ironHorse)).toBe(true);
-    expect(isPoweredOn(electric, rail, ironHorse)).toBe(false);
+    expect(isCompatibleWith(electric, rail, ironHorseRailtypes)).toBe(true);
+    expect(isPoweredOn(electric, rail, ironHorseRailtypes)).toBe(false);
   });
 
   it('a vehicle of another set relates to nothing', () => {
     const vanillaEngine = vanillaTrains.find((t) => t.kind === 'engine')!;
-    expect(isPoweredOn(vanillaEngine, naan, ironHorse)).toBe(false);
+    expect(isPoweredOn(vanillaEngine, naan, ironHorseRailtypes)).toBe(false);
   });
 
   it('vanilla keeps the game’s own relations', () => {
@@ -117,7 +119,7 @@ describe('speed on a track', () => {
   });
 
   it('no track of either set states a limit', () => {
-    for (const table of [ironHorse, vanillaRailtypes]) {
+    for (const table of [ironHorseRailtypes, vanillaRailtypes]) {
       for (const rt of table) expect(trackSpeedLimit(rt), rt.label).toBeNull();
     }
   });
@@ -172,12 +174,12 @@ describe('power on a track', () => {
       power_hp: 600,
       power_by_source: { DIESEL: 600 },
     };
-    expect(isCompatibleWith(towed, rail, ironHorse)).toBe(true);
-    expect(isPoweredOn(towed, rail, ironHorse)).toBe(false);
+    expect(isCompatibleWith(towed, rail, ironHorseRailtypes)).toBe(true);
+    expect(isPoweredOn(towed, rail, ironHorseRailtypes)).toBe(false);
 
     expect(vehiclePowerOn(towed, rail)).toBe(600); // its source, asked on its own
-    expect(poweredOutputOn(towed, rail, ironHorse)).toBe(0); // what it makes here
-    expect(poweredOutputOn(towed, elrl, ironHorse)).toBe(600); // and on its own track
+    expect(poweredOutputOn(towed, rail, ironHorseRailtypes)).toBe(0); // what it makes here
+    expect(poweredOutputOn(towed, elrl, ironHorseRailtypes)).toBe(600); // and on its own track
   });
 });
 
@@ -217,7 +219,7 @@ describe('which tracks are offered as a choice', () => {
   it('leaves out a track the game hides from its build menu', () => {
     // Iron Horse defines plain LGV only so high speed vehicles stay compatible with
     // ordinary track (RAILTYPE_FLAG_HIDDEN); nobody can lay it, so it is no route to cost
-    const hidden = ironHorse.filter((rt) => rt.hidden).map((rt) => rt.label);
+    const hidden = ironHorseRailtypes.filter((rt) => rt.hidden).map((rt) => rt.label);
     expect(hidden).toEqual(['LGVN']);
     expect(selectableRailtypes(IRON_HORSE_GAME).map((rt) => rt.label)).not.toContain('LGVN');
     // it stays in the table, where the relations still need it
@@ -273,9 +275,14 @@ describe('tractive effort follows power', () => {
     // counts any power (train_cmd.cpp), so its diesel or third-rail figure is beside the
     // point. Reading the source alone would have the summary show its full power on a track
     // it cannot run on, and the warning above the summary would be saying otherwise.
+    // the narrow gauge engine carries its own fire, so its source still names a figure on
+    // plain rail — that is the case this guards: the summary must ignore it. The metro car
+    // draws from a third rail the track does not have, so its source names nothing there;
+    // both end at zero power, by two different rules
+    expect(vehiclePowerOn(narrowGaugeEngine, rail)).toBeGreaterThan(0);
+    expect(vehiclePowerOn(byId.get('debden')!, rail)).toBe(0);
     for (const stranded of [byId.get('debden')!, narrowGaugeEngine]) {
-      expect(isPoweredOn(stranded, rail, ironHorse)).toBe(false);
-      expect(vehiclePowerOn(stranded, rail)).toBeGreaterThan(0); // its source says otherwise
+      expect(isPoweredOn(stranded, rail, ironHorseRailtypes)).toBe(false);
       const consist = consistPhysics(
         [{ train: stranded, count: 1 }], null, 2, IRON_HORSE_GAME, rail,
       );
@@ -371,11 +378,11 @@ describe('a hidden track still does its job', () => {
   it('vehicles that belong to it are unaffected by its being hidden', () => {
     // blaze_cab is a high speed vehicle of the hidden LGVN type; hiding the track from the
     // choice must not strand it — it still runs on ordinary rail and on electrified LGV
-    const hiddenTrack = track(ironHorse, 'LGVN');
+    const hiddenTrack = track(ironHorseRailtypes, 'LGVN');
     expect(hiddenTrack.hidden).toBe(true);
     expect(highSpeed.track_types).toContain('LGVN');
-    expect(isPoweredOn(highSpeed, rail, ironHorse)).toBe(true);
-    expect(isPoweredOn(highSpeed, lgve, ironHorse)).toBe(true);
+    expect(isPoweredOn(highSpeed, rail, ironHorseRailtypes)).toBe(true);
+    expect(isPoweredOn(highSpeed, lgve, ironHorseRailtypes)).toBe(true);
     // and it is still the vehicle the optimizer offers on those tracks
     const rows = optimizeConsists(
       trains,
@@ -462,7 +469,7 @@ describe('the vanilla catalogue keeps its gauges apart', () => {
 });
 
 describe('the track a consist must be on', () => {
-  const table = ironHorse;
+  const table = ironHorseRailtypes;
 
   it('an electric train is read as running under wires', () => {
     // a savegame states the trains, not the track; assuming plain rail would report this
@@ -495,5 +502,151 @@ describe('the track a consist must be on', () => {
   it('an empty consist has no track', () => {
     expect(trackTypeOfConsist([], table)).toBeNull();
     expect(trackTypeOfConsist([{ train: electric, count: 0 }], table)).toBeNull();
+  });
+
+  it('a multi-system engine is not read onto a current it only stubs on', () => {
+    // ВЛ19 ходит по двухсистемному семейству ER2D, но ток принимает только 3 кВ: на
+    // 1,5 кВ набор отвечает заглушкой в 5 л.с. Маска пускает его на обе линии, и порядок
+    // меню выдал бы заглушку — прогноз рейса считал бы электровоз почти без мощности
+    const xTable = xussrTrainsMeta.railtypes;
+    const vl19 = xussrTrains.find((t) => t.id === 'xussr_vl19')!;
+    const chosen = trackTypeOfConsist([{ train: vl19, count: 1 }], xTable)!;
+    expect(vehiclePowerOn(vl19, chosen)).toBe(vl19.power_by_source!.DC3);
+    expect(vehiclePowerOn(vl19, chosen)).toBeGreaterThan(vl19.power_by_source!.SELF);
+    // и скорость на этом же пути — своя, а не заглушечная
+    expect(vehicleSpeedOn(vl19, chosen).internal).toBe(vl19.speed_by_source!.DC3);
+  });
+
+  it('a graded set is not read as the slowest grade the consist happens to fit', () => {
+    // xUSSR grades plain track by speed (RLA0 60, RLA1 100, RLA2 140, RLA3 249), and the
+    // build-menu order puts the slowest first. Read by order alone, a savegame's 82 km/h
+    // steam engine would be reported crawling at 60 on a line the player never said they
+    // built — the calculator asserts nothing it has not been told (ADR-0004)
+    const xTable = xussrTrainsMeta.railtypes;
+    const engine = xussrTrains.find((t) => t.id === 'xussr_steam_a')!;
+    const chosen = trackTypeOfConsist([{ train: engine, count: 1 }], xTable)!;
+    expect(engine.speed_internal).toBeGreaterThan(60);
+    expect(chosen.speed_limit_internal).toBeGreaterThanOrEqual(engine.speed_internal!);
+    // and among the tracks that do not cap it, the build-menu order still decides
+    const fitting = xTable.filter(
+      (rt) => !rt.hidden && canRunOn(engine, rt, xTable)
+        && (!rt.speed_limit_internal || rt.speed_limit_internal >= engine.speed_internal!),
+    );
+    expect(chosen.label).toBe(fitting[0].label);
+  });
+
+  it('where every candidate caps the consist, the fastest of them is read', () => {
+    // a real ceiling of the set, not one the calculator invented: the answer is then the
+    // least wrong track rather than the first in the menu
+    const xTable = xussrTrainsMeta.railtypes;
+    const capped = xussrTrains.find((t) => {
+      if (t.kind !== 'engine' || !t.speed_internal) return false;
+      const fits = xTable.filter((rt) => !rt.hidden && canRunOn(t, rt, xTable));
+      return fits.length > 1
+        && fits.every((rt) => rt.speed_limit_internal && rt.speed_limit_internal < t.speed_internal!);
+    });
+    if (!capped) return; // сегодня в наборе такого нет — правило всё равно описано
+    const chosen = trackTypeOfConsist([{ train: capped, count: 1 }], xTable)!;
+    const best = Math.max(
+      ...xTable
+        .filter((rt) => !rt.hidden && canRunOn(capped, rt, xTable))
+        .map((rt) => rt.speed_limit_internal),
+    );
+    expect(chosen.speed_limit_internal).toBe(best);
+  });
+});
+
+describe('xUSSR: род тока пути решает мощность', () => {
+  const table = xussrTrainsMeta.railtypes;
+  const xById = new Map(xussrTrains.map((t) => [t.id, t]));
+  const ac25 = track(table, 'ERA1');
+  const dc3 = track(table, 'ERD1');
+  const trunk = track(table, 'ER2S');
+  const plain = track(table, 'RLA1');
+
+  it('двухсистемник берёт мощность своего рода тока на каждом пути', () => {
+    // TGV Réseau: полная мощность под 25 кВ AC, меньшая под 3 кВ DC
+    const tgv = xById.get('xussr_tgv_r')!;
+    expect(vehiclePowerOn(tgv, ac25)).toBe(tgv.power_by_source!.AC25);
+    expect(vehiclePowerOn(tgv, dc3)).toBe(tgv.power_by_source!.DC3);
+    expect(vehiclePowerOn(tgv, ac25)).not.toBe(vehiclePowerOn(tgv, dc3));
+  });
+
+  it('многосистемная магистраль питает машины обоих родов тока', () => {
+    // ER2S несёт 25 кВ AC и 3 кВ DC: чисто постоянноточный ВЛ19 едет на своём токе
+    const vl19 = xById.get('xussr_vl19')!;
+    expect(trunk.power_source).toEqual(['AC25', 'DC3']);
+    expect(vehiclePowerOn(vl19, trunk)).toBe(vl19.power_by_source!.DC3);
+    // а двухсистемник — по первому роду тока в порядке пути, как в игре
+    const tgv = xById.get('xussr_tgv_r')!;
+    expect(vehiclePowerOn(tgv, trunk)).toBe(tgv.power_by_source!.AC25);
+  });
+
+  it('скорость читает магистраль так же, как мощность: заглушка — не ответ', () => {
+    // ВЛ19 на ER2S: 25 кВ он не принимает, и набор отвечает за него заглушкой — 10
+    // внутренних единиц при собственных 85. Мощность этот случай уже различает,
+    // скорость обязана различать так же, иначе машина поедет 6 км/ч со своей тягой
+    const vl19 = xById.get('xussr_vl19')!;
+    const speeds = vl19.speed_by_source!;
+    expect(speeds.AC25).toBe(speeds.SELF);
+    expect(speeds.DC3).not.toBe(speeds.SELF);
+    expect(vehicleSpeedOn(vl19, trunk).internal).toBe(speeds.DC3);
+    // и то же на чисто постоянноточной линии
+    expect(vehicleSpeedOn(vl19, dc3).internal).toBe(speeds.DC3);
+    // источник скорости и источник мощности на одном пути — один и тот же
+    expect(vehiclePowerOn(vl19, trunk)).toBe(vl19.power_by_source!.DC3);
+  });
+
+  it('без провода остаётся собственный источник: дизель 2ЭВ120, заглушка ВЛ19', () => {
+    const lastMile = xById.get('xussr_2ev120')!;
+    expect(vehiclePowerOn(lastMile, plain)).toBe(671);
+    // чистый электровоз без сети — 5 л.с.: так его моделирует сам набор
+    expect(vehiclePowerOn(xById.get('xussr_vl19')!, plain)).toBe(5);
+  });
+
+  it('род тока пути решает и предел скорости', () => {
+    // TGV Atlantique: 300 км/ч под 25 кВ AC, 250 на постоянном токе — так его держит
+    // сам набор (engine_speed(tgv_a_AC, 300) против engine_speed(tgv_a_DC, 250))
+    const tgv = xById.get('xussr_tgv_a')!;
+    expect(tgv.speed_by_source).not.toBeNull();
+    expect(vehicleSpeedOn(tgv, ac25).internal).toBe(tgv.speed_by_source!.AC25);
+    expect(vehicleSpeedOn(tgv, dc3).internal).toBe(tgv.speed_by_source!.DC3);
+    expect(vehicleSpeedOn(tgv, ac25).internal).toBeGreaterThan(
+      vehicleSpeedOn(tgv, dc3).internal!,
+    );
+    // многосистемная магистраль — первый род тока в её порядке, как и у мощности
+    expect(vehicleSpeedOn(tgv, trunk).internal).toBe(tgv.speed_by_source!.AC25);
+    // верхняя граница на пути — меньшее из скорости машины на этом токе и лимита пути
+    expect(topSpeedOn(tgv, dc3)).toBe(
+      Math.min(tgv.speed_by_source!.DC3, dc3.speed_limit_internal || Infinity),
+    );
+    expect(topSpeedOn(tgv, ac25)).toBe(
+      Math.min(tgv.speed_by_source!.AC25, ac25.speed_limit_internal || Infinity),
+    );
+  });
+
+  it('без тока берётся предел набора для езды без тока, а не число меню покупки', () => {
+    // 2ЭВ120: 120 км/ч под проводом, 60 на дизеле последней мили. speed_internal —
+    // это первое (его показывает меню покупки), и на обычном пути оно было бы враньём
+    const lastMile = xById.get('xussr_2ev120')!;
+    expect(lastMile.speed_by_source!.SELF).not.toBe(lastMile.speed_internal);
+    expect(vehicleSpeedOn(lastMile, plain).internal).toBe(lastMile.speed_by_source!.SELF);
+    expect(vehicleSpeedOn(lastMile, ac25).internal).toBe(lastMile.speed_by_source!.AC25);
+  });
+
+  it('машина без веток скорости едет одинаково везде', () => {
+    const plainEngine = xussrTrains.find(
+      (t) => t.speed_by_source == null && t.speed_internal,
+    )!;
+    expect(vehicleSpeedOn(plainEngine, ac25).internal).toBe(plainEngine.speed_internal);
+    expect(vehicleSpeedOn(plainEngine, dc3).internal).toBe(plainEngine.speed_internal);
+  });
+
+  it('сценарии Iron Horse не изменились: электро-дизель и провод', () => {
+    expect(vehiclePowerOn(electroDiesel, elrl)).toBeGreaterThan(0);
+    expect(vehiclePowerOn(electroDiesel, rail)).toBeGreaterThan(0);
+    expect(vehiclePowerOn(electroDiesel, elrl)).not.toBe(vehiclePowerOn(electroDiesel, rail));
+    // порядок источников набора решает, а не большее число (спека track-types)
+    expect(vehiclePowerOn(electric, elrl)).toBe(electric.power_by_source!.OHLE);
   });
 });

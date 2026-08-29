@@ -6,7 +6,7 @@ import { EMPTY_INPUT } from '../../../state/industrySupplyStore';
 
 const game = {
   ...DEFAULT_GAME_SETTINGS,
-  ironHorse: true,
+  trainSet: 'iron_horse' as const,
   firs: true,
   firsEconomy: 'STEELTOWN',
 };
@@ -68,7 +68,7 @@ describe('supply tab input runs', () => {
     // ванильные вагоны не берут грузы FIRS, поэтому под этот груз состава нет вовсе
     const caches = new Map<string, OptimizerCache>();
     const [result] = runSupplyInputs({
-      game: { ...game, ironHorse: false },
+      game: { ...game, trainSet: 'vanilla' as const },
       calc,
       industryId: 'tyre_plant',
       inputs: [routed('CBLK', 100)],

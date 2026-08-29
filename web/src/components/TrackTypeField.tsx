@@ -3,7 +3,7 @@ import { Select } from '@mantine/core';
 import { fieldWidth } from '../skin';
 import { t } from '../i18n';
 import { railtypeOptions } from '../i18n/names';
-import { activeRailtype, selectableRailtypes } from '../dataset';
+import { activeRailtype, activeRailtypes, selectableRailtypes } from '../dataset';
 import { useSettingsStore } from '../state/settingsStore';
 
 /**
@@ -30,19 +30,18 @@ export function TrackTypeField({
     value: option.railtype.label,
     label: option.name,
   }));
-  // The list has to show the track the calculation is actually using, so the fallback is
-  // the engine's own (`activeRailtype`) and not a second rule of this component's.
+  // The list has to show the track the calculation is actually using, so the value is
+  // the engine's own (`activeRailtype`) and not a second rule of this component's — it
+  // already searches the selectable list and falls back to its first entry.
   const selected = activeRailtype(game, trackType);
-  const offered = options.some((o) => o.value === selected.label)
-    ? selected.label
-    : options[0]?.value;
-  // A track of the active set that the set hides is a dead choice: nothing will ever offer
-  // it again, so the stored value is moved on. A track of *another* set is a different
-  // case — the user picked it for a game they may switch back to, so it is only read as
-  // plain rail (`activeRailtype`) and left where it is.
+  // A track of the active set that the set hides is a dead choice: nothing will ever
+  // offer it again, so the stored value is moved on. A track of *another* set is a
+  // different case — the user picked it for a game they may switch back to, so it is
+  // only read as the fallback and left where it is.
+  const storedIsHidden = activeRailtypes(game).some((rt) => rt.label === trackType && rt.hidden);
   useEffect(() => {
-    if (selected.hidden && offered && offered !== trackType) setCalc('trackType', offered);
-  }, [selected.hidden, offered, trackType, setCalc]);
+    if (storedIsHidden) setCalc('trackType', selected.label);
+  }, [storedIsHidden, selected.label, setCalc]);
 
   return (
     <Select
@@ -50,7 +49,7 @@ export function TrackTypeField({
       label={withLabel ? t('settings.trackType') : undefined}
       aria-label={withLabel ? undefined : t('settings.trackType')}
       allowDeselect={false}
-      value={offered}
+      value={selected.label}
       onChange={(value) => value && setCalc('trackType', value)}
       data={options}
     />

@@ -4,7 +4,7 @@
  * Гружёное плечо и порожний обратный ход считаются с разной скоростью.
  */
 import type { Cargo, ConsistEntry, Train, TrainsMeta } from '../types';
-import { activeRailtype, activeRailtypes, canCarryIn } from '../dataset';
+import { activeRailtype, activeRailtypes, canCarryIn, trainCapacity } from '../dataset';
 import { canRunOn, poweredOutputOn, vehicleSpeedOn } from './tracktypes';
 import { balancingSpeed } from './physics';
 import { cargoPaymentRate } from './income';
@@ -303,7 +303,7 @@ export function optimizeConsists(
       isAvailable(t, year) &&
       !excluded.has(t.id) &&
       canCarryIn(game, t, cargo) &&
-      (t.capacities[capacityIndex] ?? 0) > 0,
+      trainCapacity(t, cargo, capacityIndex) > 0,
   );
 
   // Wagons that agree on every number the calculation reads give identical rows, and Iron
@@ -319,7 +319,7 @@ export function optimizeConsists(
   const wagonProfile = (t: Train) => {
     const speed = vehicleSpeedOn(t, track);
     return [
-      t.capacities[capacityIndex] ?? t.capacities[2],
+      trainCapacity(t, cargo, capacityIndex),
       t.weight_t, t.length, poweredOutputOn(t, track, railtypes), t.te_coefficient,
       speed.mph, speed.internal, t.units.length,
       t.cost_factor, t.running_cost_base, t.running_cost_factor, t.loading_speed,

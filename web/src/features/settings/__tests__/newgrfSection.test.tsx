@@ -43,11 +43,12 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('the NewGRF section', () => {
-  it('holds all three sets, and none of them in a section of its own', () => {
+  it('holds the train-set choice and both switches, none in a section of its own', () => {
     draw();
 
     const section = screen.getByText('NewGRF sets').closest('fieldset')!;
-    for (const set of ['Iron Horse', 'FIRS 5', BASE_COSTS]) {
+    // the roster is one per game, so it is a select; the coexisting sets are switches
+    for (const set of ['Train set', 'FIRS 5', BASE_COSTS]) {
       expect(section.textContent).toContain(set);
     }
     // the switches are siblings of one rank: no set carries a fieldset of its own
@@ -72,12 +73,27 @@ describe('the NewGRF section', () => {
     expect(rowOf('FIRS 5').className).not.toContain('setting-row--nested');
   });
 
-  it('shows the Iron Horse capacity parameter as a parameter of Iron Horse', () => {
-    useSettingsStore.setState({ game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true } });
+  it('shows the Iron Horse capacity parameter as a parameter of the roster choice', () => {
+    useSettingsStore.setState({ game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' } });
     draw();
 
     expect(rowOf('Wagon capacity GRF parameter').className).toContain('setting-row--nested');
-    expect(rowOf('Iron Horse').className).not.toContain('setting-row--nested');
+    expect(rowOf('Train set').className).not.toContain('setting-row--nested');
+  });
+
+  it('the roster choice changes the roster without touching the other sets', () => {
+    useSettingsStore.setState({
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr', firs: true, basecostGrf: true },
+    });
+    draw();
+
+    // the select shows the chosen roster by its untranslated proper name
+    expect(screen.getByDisplayValue('xUSSR Railway Set')).toBeTruthy();
+    // FIRS and Base Costs keep their own switches and their own state
+    expect(useSettingsStore.getState().game.firs).toBe(true);
+    expect(useSettingsStore.getState().game.basecostGrf).toBe(true);
+    // the capacity parameter belongs to Iron Horse and is not offered for xUSSR
+    expect(screen.queryByText('Wagon capacity GRF parameter')).toBeNull();
   });
 
   it('nests the Base Costs multipliers the same way', () => {
@@ -90,7 +106,7 @@ describe('the NewGRF section', () => {
 
   it('puts each parameter under the set it belongs to, not merely somewhere nested', () => {
     useSettingsStore.setState({
-      game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true, basecostGrf: true },
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse', firs: true, basecostGrf: true },
     });
     draw();
 

@@ -129,6 +129,15 @@ function SavegameDiff({
   const changes = [...diff.game, ...diff.calc];
   return (
     <div className="savegame-diff">
+      {/* what the calculator recognised the game as, before what it proposes to change:
+          the roster is concluded from these, so the conclusion is shown with its grounds */}
+      {diff.recognisedSets.length > 0 && (
+        <Text className="savegame-recognised">
+          {t('savegame.recognisedSets', {
+            sets: diff.recognisedSets.map((key) => t(key)).join(', '),
+          })}
+        </Text>
+      )}
       {diff.identical ? (
         <Text>{t('savegame.identical')}</Text>
       ) : (

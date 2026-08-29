@@ -51,6 +51,11 @@ def bootstrap_firs():
     )
 
 
+def display_mph(internal):
+    """Speed the game shows for an internal speed (strings.cpp ConvertKmhishSpeedToDisplaySpeed)."""
+    return (10 * internal) // 16
+
+
 def load_json(filename):
     """Read one of the generated web/src/data/*.json files."""
     with open(os.path.join(DATA_DIR, filename)) as f:

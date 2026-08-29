@@ -11,7 +11,7 @@ const base = {
   economyId: 'STEELTOWN',
   maxLengthTiles: 6,
   // Steeltown и составы Iron Horse: наборы по умолчанию выключены, здесь они нужны
-  game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true },
+  game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const, firs: true },
   calc: DEFAULT_CALC_SETTINGS,
 };
 
@@ -227,7 +227,7 @@ describe('цель «Снабжение»', () => {
 describe('получатель из данных', () => {
   const game = {
     ...DEFAULT_GAME_SETTINGS,
-    ironHorse: true,
+    trainSet: 'iron_horse' as const,
     firs: true,
     firsEconomy: DEFAULT_FIRS_ECONOMY,
   };

@@ -1,14 +1,55 @@
 import { describe, expect, it } from 'vitest';
-import { trains } from '../../dataset';
+import { activeTrains, trains } from '../../dataset';
 import { vanillaTrains } from '../../vanilla';
 import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../settings';
 import { purchaseEntries, purchaseKey, purchaseRepresentatives } from '../purchase';
 
 const CAPACITY_INDEX = DEFAULT_CALC_SETTINGS.capacityIndex;
 // файл считает по машинам Iron Horse, а наборы по умолчанию выключены — включаем их явно
-const GAME = { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true };
+const GAME = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const, firs: true };
 /** Единственный режим, где расчёт читает грузы по умолчанию (`canCarryIn`). */
 const NO_FIRS = { ...GAME, firs: false };
+
+describe('purchaseKey capacity component', () => {
+  it('xUSSR: wagons differing only in capacity stay separate entries', () => {
+    // the set states capacity as a per-cargo table and leaves `capacities` at zero, so a
+    // key reading only the parametric column would collapse wagons the game lists apart
+    const xussr = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const };
+    const catalogue = activeTrains(xussr);
+    const withTable = catalogue.filter((t) => t.capacity_by_cargo != null);
+    expect(withTable.length).toBeGreaterThan(0);
+    // the wagons of the set leave the parametric column at zero (an articulated
+    // multiple unit fills it, because the buy menu states one number for the whole train)
+    expect(withTable.some((t) => t.capacities[CAPACITY_INDEX] === 0)).toBe(true);
+    const pair = withTable.find((t) =>
+      withTable.some(
+        (other) =>
+          other.id !== t.id &&
+          other.name === t.name &&
+          other.length === t.length &&
+          other.weight_t === t.weight_t &&
+          JSON.stringify(other.capacity_by_cargo) !== JSON.stringify(t.capacity_by_cargo),
+      ),
+    );
+    if (pair) {
+      const other = withTable.find(
+        (o) =>
+          o.id !== pair.id &&
+          o.name === pair.name &&
+          JSON.stringify(o.capacity_by_cargo) !== JSON.stringify(pair.capacity_by_cargo),
+      )!;
+      expect(purchaseKey(pair, CAPACITY_INDEX, xussr)).not.toBe(
+        purchaseKey(other, CAPACITY_INDEX, xussr),
+      );
+    }
+    // whatever the catalogue holds today, the table has to reach the key at all
+    const sample = withTable[0];
+    const stripped = { ...sample, capacity_by_cargo: null };
+    expect(purchaseKey(sample, CAPACITY_INDEX, xussr)).not.toBe(
+      purchaseKey(stripped, CAPACITY_INDEX, xussr),
+    );
+  });
+});
 
 describe('purchase entries', () => {
   it('collapses a family of visual variants into one entry', () => {

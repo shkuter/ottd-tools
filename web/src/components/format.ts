@@ -1,4 +1,5 @@
 import { intlLocale, t } from '../i18n';
+import { trainName } from '../i18n/names';
 import { internalToKmh, internalToMph } from '../engine/units';
 import { CURRENCIES, useSettingsStore } from '../state/settingsStore';
 
@@ -45,17 +46,25 @@ export function percent(share: number): string {
  * is never spelled two ways: the count sits in front of the name, and a single engine carries
  * no count at all.
  */
-export function engineLabel(row: { engine: { name: string }; engineCount: number }): string {
-  return row.engineCount > 1 ? `${row.engineCount}× ${row.engine.name}` : row.engine.name;
+export function engineLabel(
+  row: { engine: { id: string; name: string }; engineCount: number },
+): string {
+  const name = trainName(row.engine);
+  return row.engineCount > 1 ? `${row.engineCount}× ${name}` : name;
 }
 
-export function wagonLabel(row: { wagon: { name: string }; wagonCount: number }): string {
-  return `${row.wagonCount}× ${row.wagon.name}`;
+export function wagonLabel(row: { wagon: { id: string; name: string }; wagonCount: number }): string {
+  return `${row.wagonCount}× ${trainName(row.wagon)}`;
 }
 
 /** Both halves in one line, for places that name a consist outside a table. */
 export function consistLabel(
-  row: { engine: { name: string }; engineCount: number; wagon: { name: string }; wagonCount: number },
+  row: {
+    engine: { id: string; name: string };
+    engineCount: number;
+    wagon: { id: string; name: string };
+    wagonCount: number;
+  },
 ): string {
   return row.wagonCount > 0 ? `${engineLabel(row)} + ${wagonLabel(row)}` : engineLabel(row);
 }

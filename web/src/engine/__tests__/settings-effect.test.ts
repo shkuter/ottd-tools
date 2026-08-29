@@ -31,7 +31,7 @@ const cargo = cargoByLabel.get('COAL')!;
  * грузы этих наборов (экономика FIRS, классы содержания Iron Horse). Поэтому эталон и кейсы
  * стоят на включённых наборах, а кейс, которому нужна именно ваниль, гасит их сам.
  */
-const SETS: Partial<GameSettings> = { ironHorse: true, firs: true };
+const SETS: Partial<GameSettings> = { trainSet: 'iron_horse' as const, firs: true };
 
 function baseParams(game: GameSettings, calc: CalcSettings): OptimizeParams {
   return {
@@ -114,8 +114,10 @@ const CASES: {
    */
   baseCalc?: Partial<CalcSettings>;
 }[] = [
-  // сам набор машин: без Iron Horse считаются ванильные поезда, а это другие числа целиком
-  { name: 'ironHorse', game: { ironHorse: false } },
+  // сам набор машин: против эталонного Iron Horse и ваниль, и xUSSR — другие числа целиком.
+  // Свои базы не нужны: эталон отличается от каждого кейса ровно этой настройкой
+  { name: 'trainSet: vanilla', game: { trainSet: 'vanilla' as const } },
+  { name: 'trainSet: xussr', game: { trainSet: 'xussr' as const } },
   // без FIRS активен ванильный набор грузов, и оплата берётся по ключу VANILLA
   { name: 'firs', game: { firs: false } },
   // экономика решает не числа, а состав набора: тот же груз оплачивается в них одинаково
@@ -141,8 +143,8 @@ const CASES: {
   // линию только под контактной сетью — отсюда путь ELRL в обоих снимках
   {
     name: 'basecostTrainRunningElectric',
-    game: { ironHorse: false, basecostGrf: true, basecostTrainRunningElectric: 4 },
-    base: { ironHorse: false, basecostGrf: true },
+    game: { trainSet: 'vanilla' as const, basecostGrf: true, basecostTrainRunningElectric: 4 },
+    base: { trainSet: 'vanilla' as const, basecostGrf: true },
     calc: { priceYear: 1990, trackType: 'ELRL' },
     baseCalc: { priceYear: 1990, trackType: 'ELRL' },
     params: { year: 1990 },
@@ -265,7 +267,7 @@ describe('paymentAlgorithm (JGRPP)', () => {
 
 describe('переключение наборов NewGRF', () => {
   it('без Iron Horse берутся ванильные машины', () => {
-    const game = { ...DEFAULT_GAME_SETTINGS, ironHorse: false };
+    const game = { ...DEFAULT_GAME_SETTINGS, trainSet: 'vanilla' as const };
     const results = optimizeConsists(
       trains,
       baseParams(game, DEFAULT_CALC_SETTINGS),

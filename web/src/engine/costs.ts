@@ -26,6 +26,7 @@ export const BASE_PRICES = {
   running_steam: 5600, // PR_RUNNING_TRAIN_STEAM, в год
   running_diesel: 5200, // PR_RUNNING_TRAIN_DIESEL
   running_electric: 4800, // PR_RUNNING_TRAIN_ELECTRIC
+  running_roadveh: 1600, // PR_RUNNING_ROADVEH: what xUSSR bases its wagons' upkeep on
 } as const;
 
 export type BasePriceKey = keyof typeof BASE_PRICES;
@@ -85,10 +86,11 @@ export function runningCostPerYear(
   return price(baseKey, costFactor, grfShift, year, inflationOn, difficultyFactor, inflationInterest, inflationFixedDates, startingYear);
 }
 
-/** Iron Horse: running_cost_base из trains.json -> running-класс игры. */
+/** running_cost_base набора (RUNNING_COST_*) -> running-класс игры. */
 export function runningClassOf(runningCostBase: string): RunningClass {
   if (runningCostBase.includes('STEAM')) return 'steam';
   if (runningCostBase.includes('ELECTRIC')) return 'electric';
+  if (runningCostBase.includes('ROADVEH')) return 'roadveh';
   return 'diesel';
 }
 
@@ -125,11 +127,13 @@ export function trainBuyCost(
 }
 
 /**
- * Yearly running cost of one vehicle. The base price follows the vehicle's running class
- * (steam/diesel/electric), while the NewGRF shift only distinguishes steam from the rest —
- * Iron Horse ships no separate electric shift. Running cost is charged per tick against a
- * fixed 365-day divisor, so a longer day (JGRPP) stretches a calendar year over proportionally
- * more ticks, while a wallclock economy year (360 days) collects proportionally less.
+ * Yearly running cost of one vehicle. The base price and the NewGRF shift both follow the
+ * vehicle's running class: a set states a shift per base price, and a class it states none
+ * for gets zero, not a neighbour's (newgrf.cpp action 0x08, economy.cpp RecomputePrices) —
+ * an electric engine of a set with only steam and diesel shifts pays the unshifted electric
+ * base. Running cost is charged per tick against a fixed 365-day divisor, so a longer day
+ * (JGRPP) stretches a calendar year over proportionally more ticks, while a wallclock
+ * economy year (360 days) collects proportionally less.
  */
 export function trainRunningCostPerYear(
   train: Train,
@@ -138,10 +142,7 @@ export function trainRunningCostPerYear(
   calc: CalcSettings = DEFAULT_CALC_SETTINGS,
 ): number {
   const runningClass = runningClassOf(train.running_cost_base);
-  const shift =
-    runningClass === 'steam'
-      ? meta.basecost_shifts.running_steam
-      : meta.basecost_shifts.running_diesel;
+  const shift = meta.basecost_shifts[`running_${runningClass}`] ?? 0;
   return (
     runningCostPerYear(
       runningBaseKey(train.running_cost_base),

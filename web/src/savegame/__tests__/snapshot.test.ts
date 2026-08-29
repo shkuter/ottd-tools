@@ -10,6 +10,12 @@ async function raw(): Promise<RawSavegame> {
   return cached;
 }
 
+let cachedXussr: RawSavegame | undefined;
+async function xussrRaw(): Promise<RawSavegame> {
+  cachedXussr ??= await readSavegame(fixture('xussr-1872'));
+  return cachedXussr;
+}
+
 describe('снапшот партии Londworth', () => {
   it('92 поезда, все составы опознаны как машины Iron Horse', async () => {
     const snapshot = buildSnapshot(await raw());
@@ -213,5 +219,28 @@ describe('снапшот партии Londworth', () => {
     expect(snapshot.routes.every((r) => r.legTiles.length === 0)).toBe(true);
     // остальное на месте: расстояние — не то, без чего снапшот бессмыслен
     expect(snapshot.trains).toHaveLength(92);
+  });
+});
+
+describe('снапшот партии на xUSSR', () => {
+  it('машины набора опознаются по GRF и его локальному id', async () => {
+    // у набора девять GRF, и локальные id в каждом начинаются заново: пары
+    // (grfid, localId) достаточно, одного localId — нет
+    const snapshot = buildSnapshot(await xussrRaw());
+    const entries = snapshot.trains.flatMap((t) => t.consist);
+    const known = entries.filter((e) => e.catalogueId !== null);
+    expect(known.length).toBeGreaterThan(0);
+    expect(known.every((e) => e.catalogueId!.startsWith('xussr_'))).toBe(true);
+    expect(known.map((e) => e.catalogueId)).toContain('xussr_steam_a');
+  });
+
+  it('машины монолитного xussr.grf 0.7.1 остаются неопознанными, а состав целым', async () => {
+    // объединённый набор до разделения в данных не покрыт (см. README): его машины
+    // сохраняются в составе как неопознанные, число машин при этом не теряется
+    const snapshot = buildSnapshot(await xussrRaw());
+    const entries = snapshot.trains.flatMap((t) => t.consist);
+    expect(entries.some((e) => e.catalogueId === null)).toBe(true);
+    const total = entries.reduce((sum, e) => sum + e.count, 0);
+    expect(total).toBeGreaterThan(100);
   });
 });

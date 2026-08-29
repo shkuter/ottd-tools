@@ -16,7 +16,7 @@ type SettingKey = keyof GameSettings | keyof CalcSettings;
 export const SETTING_LABEL_KEYS: Record<SettingKey, string> = {
   // game settings
   jgrpp: 'settings.jgrpp',
-  ironHorse: 'settings.ironHorse',
+  trainSet: 'settings.trainSet',
   firs: 'settings.firs',
   firsEconomy: 'settings.firsEconomy',
   freightTrains: 'settings.freightTrains',

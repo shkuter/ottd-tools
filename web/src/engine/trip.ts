@@ -6,7 +6,7 @@
  * this module, so the same consist on the same route can only produce one set of numbers.
  */
 import type { Cargo, ConsistEntry, TrainsMeta } from '../types';
-import { activeRailtype, canCarryIn } from '../dataset';
+import { activeRailtype, canCarryIn, trainCapacity } from '../dataset';
 import { consistPhysics } from './consist';
 import type { ConsistPhysics } from './physics';
 import { consistMoney } from './costs';
@@ -87,7 +87,7 @@ export function tripLoadingDays(
     .filter((e) => e.count > 0 && e.train.kind === 'wagon' && canCarryIn(game, e.train, cargo))
     .map((e) =>
       loadingTicks(
-        e.train.capacities[capacityIndex] ?? e.train.capacities[2] ?? 0,
+        trainCapacity(e.train, cargo, capacityIndex),
         e.train.loading_speed ?? 0,
         game,
       ),

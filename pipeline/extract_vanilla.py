@@ -268,6 +268,9 @@ def parse_railtypes():
             # RailTypeFlag::Catenary (rail.h): the track carries overhead wires, which is
             # what decides whether an electric vehicle draws power on it
             "catenary": "Catenary" in flags,
+            # what the track feeds a vehicle with: the game's electrified rail is
+            # overhead wire with no current system stated (Iron Horse calls it OHLE)
+            "power_source": ["OHLE"] if "Catenary" in flags else [],
             # the game hides no track type of its own; a set can (RailTypeFlag::Hidden)
             "hidden": "Hidden" in flags,
             # the string id the type declares, so a translation is matched by what the

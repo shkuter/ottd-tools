@@ -28,6 +28,8 @@ import {
   trains,
   trainsMeta,
   cargoByLabel,
+  xussrTrains,
+  xussrTrainsMeta,
 } from '../../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
@@ -63,6 +65,65 @@ describe('costs', () => {
 
   it('ванильный running cost: Kirby 5600 * 50 / 256 = £1093', () => {
     expect(price('running_steam', 50)).toBe(1093);
+  });
+});
+
+describe('running-класс и шифты набора', () => {
+  it('электрокласс без шифта набора берёт ноль, а не дизельный', () => {
+    // спека pricing: не заданный шифт означает ноль — подстановка чужого класса запрещена
+    const meta = {
+      ...trainsMeta,
+      basecost_shifts: {
+        build_engine: 0, build_wagon: 0,
+        running_steam: -2, running_diesel: -4, running_electric: 0,
+      },
+    };
+    const electric = {
+      ...trains.find((t) => t.kind === 'engine')!,
+      running_cost_base: 'RUNNING_COST_ELECTRIC',
+      running_cost_factor: 440,
+    };
+    expect(trainRunningCostPerYear(electric, meta)).toBe(
+      runningCostPerYear('running_electric', 440, 0, 1950, false, DEF_RUN_FACTOR),
+    );
+  });
+
+  // Эталоны — числа меню покупки, посчитанные по формуле самой игры, а не нашей.
+  // Engine::GetRunningCost (engine.cpp) зовёт GetPrice(base, factor, grf, -8), а тот
+  // делает (_price[base] × factor) одним сдвигом на (8 − шифт набора); базу перед этим
+  // масштабирует RecomputePrices (economy.cpp): у PCAT_RUNNING множитель — difficulty
+  // .vehicle_costs, 0 → ×6/8. Сверять trainRunningCostPerYear с runningCostPerYear
+  // значило бы сверять формулу с собой, поэтому здесь стоят числа, а обе настройки
+  // сложности взяты обе — так виден и сам множитель.
+  it('вагоны xUSSR считают содержание от дорожной базы с шифтом набора', () => {
+    // полувагон 22-4024: running_cost_base ROADVEH (1600), factor 65, шифт набора 0
+    const gondola = xussrTrains.find((t) => t.id === 'xussr_gondola_22_4024')!;
+    expect(gondola.running_cost_base).toBe('RUNNING_COST_ROADVEH');
+    expect(gondola.running_cost_factor).toBe(65);
+    // дефолт калькулятора — vehicle_costs 0: (⌊1600 × 6/8⌋ × 65) >> 8 = £304
+    expect(trainRunningCostPerYear(gondola, xussrTrainsMeta)).toBe(304);
+    // «обычное» содержание, vehicle_costs 1: (1600 × 65) >> 8 = £406
+    expect(
+      trainRunningCostPerYear(gondola, xussrTrainsMeta, {
+        ...DEFAULT_GAME_SETTINGS,
+        vehicleCosts: 1,
+      }),
+    ).toBe(406);
+  });
+
+  it('электровоз xUSSR: электрическая база и нулевой шифт набора', () => {
+    const chs2 = xussrTrains.find((t) => t.id === 'xussr_chs2_25e0')!;
+    expect(chs2.running_cost_base).toBe('RUNNING_COST_ELECTRIC');
+    expect(chs2.running_cost_factor).toBe(440);
+    // vehicle_costs 0: (⌊4800 × 6/8⌋ × 440) >> 8 = £6187
+    expect(trainRunningCostPerYear(chs2, xussrTrainsMeta)).toBe(6187);
+    // vehicle_costs 1: (4800 × 440) >> 8 = £8250
+    expect(
+      trainRunningCostPerYear(chs2, xussrTrainsMeta, {
+        ...DEFAULT_GAME_SETTINGS,
+        vehicleCosts: 1,
+      }),
+    ).toBe(8250);
   });
 });
 
@@ -445,7 +506,7 @@ describe('optimizer', () => {
     // строка считается по машинам Iron Horse и грузу Steeltown — наборы включаем явно
     const game = {
       ...DEFAULT_GAME_SETTINGS,
-      ironHorse: true,
+      trainSet: 'iron_horse' as const,
       firs: true,
       jgrpp: true,
       dayLengthFactor,

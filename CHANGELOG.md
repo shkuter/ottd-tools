@@ -20,13 +20,39 @@ of what users see):
 
 ### Added
 
+- The **xUSSR Railway Set** is a third train roster beside Iron Horse and vanilla: 926
+  vehicles, 28 track types and the set's own capacity tables, extracted from its NML sources
+  (`pipeline/extract_xussr.py`) and shown with its own buy-menu sprites and Russian names.
+  Track types now carry the current systems they feed a vehicle with, so a dual-system engine
+  makes its 25 kV figure under AC wires and its 3 kV figure under DC, exactly as the game
+  computes them — and where the set states a speed per system as well, that follows the
+  track too: the TGV Atlantique runs 300 km/h under 25 kV and 250 on DC. A wagon's capacity
+  follows the cargo it carries, as the set states it, and an articulated vehicle is counted
+  whole, the number its buy menu shows.
+  Importing a savegame recognises the set and names every NewGRF it recognised above the list
+  of proposed changes, and the trains of a saved game are matched to the catalogue by the GRF
+  that defined them together with the id local to it — a set spread over several files needs
+  both halves.
 - Savegames compressed with zstd are read as well. JGR's Patchpack writes its autosaves that
   way, so the file that is already on disk can be imported instead of one saved by hand. The
   decoder is fetched only when a save is actually loaded, so it costs the rest of the app
   nothing.
 
+### Changed
+
+- **BREAKING** The "Iron Horse on/off" switch became a **train set** choice with three values
+  (vanilla, Iron Horse, xUSSR): the sets swap the whole catalogue, the track table and the
+  basecost shifts, so only one can be active. A saved setting migrates without losing the
+  choice — the switch on becomes Iron Horse, off becomes vanilla — and the old field leaves
+  the stored state. Rolling back to an earlier version of the app reads the vanilla default:
+  the roster choice is lost, no other setting is.
+
 ### Fixed
 
+- Running cost now takes the basecost shift of the vehicle's own running class. A set that
+  states no shift for a class gets zero for it rather than a neighbouring class's shift, as
+  the game does. No number moves on the data shipped today; the rule matters for sets that
+  state shifts per class.
 - A savegame whose compressed stream is damaged now reports that the file cannot be read.
   Only the LZO branch used to say so; the others let the decoder's own error through.
 

@@ -9,7 +9,7 @@ import { trains, trainsMeta, cargoByLabel } from '../../../dataset';
 import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../../engine/settings';
 
 // файл считает по машинам Iron Horse, а наборы по умолчанию выключены
-const GAME = { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true };
+const GAME = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const, firs: true };
 
 const params: OptimizeParams = {
   year: 1961,
@@ -23,7 +23,9 @@ const params: OptimizeParams = {
 
 const results = optimizeConsists(trains, params, trainsMeta, 50);
 const groups = (excluded: string[] = [], rows = results) =>
-  doubtfulGroups(rows, trains, excluded, 1961, GAME, DEFAULT_CALC_SETTINGS.capacityIndex);
+  doubtfulGroups(rows, trains, excluded, 1961, GAME, DEFAULT_CALC_SETTINGS.capacityIndex, {
+    locale: 'en',
+  });
 
 /** Выдача после того, как игрок выключил контейнерные и платформенные вагоны. */
 function afterExcludingContainers() {
@@ -80,6 +82,7 @@ describe('doubtfulGroups', () => {
     const withoutIt = optimizeConsists(trains, { ...params, excludedIds: target.ids }, trainsMeta, 50);
     const after = doubtfulGroups(
       withoutIt, trains, target.ids, 1961, GAME, DEFAULT_CALC_SETTINGS.capacityIndex,
+      { locale: 'en' },
     );
     expect(after.some((g) => g.ids.includes(target.ids[0]))).toBe(true);
     expect(withoutIt.some((r) => target.ids.includes(r.wagon.id))).toBe(false);

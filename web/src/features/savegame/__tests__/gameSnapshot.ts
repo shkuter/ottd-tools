@@ -23,7 +23,7 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
   savedAt: Date.UTC(2026, 7, 25),
   // партия играна с Iron Horse и FIRS — в ней ходят их машины и грузы (Quicklime и прочие);
   // по умолчанию наборы выключены, поэтому фикстура называет их явно
-  settings: snapshotSettings({ ironHorse: true, firs: true }, {}),
+  settings: snapshotSettings({ trainSet: 'iron_horse', firs: true }, {}),
   snapshot: {
     companies: [
       { id: 0, name: 'Checks & Co', isAi: false },

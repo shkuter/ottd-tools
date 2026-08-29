@@ -10,7 +10,10 @@
  * Пункт и его представитель — общие для всего приложения (`engine/purchase.ts`), поэтому
  * чекбокс называет ту же машину, что показана строкой выдачи и каталогом конструктора.
  */
-import type { Train } from '../../types';
+import { trainName } from '../../i18n/names';
+import type { Locale } from '../../state/localeStore';
+import type { Cargo, Train } from '../../types';
+import { trainCapacity } from '../../dataset';
 import type { GameSettings } from '../../engine/settings';
 import { introAvailability, type IntroAvailability } from '../../engine/availability';
 import { purchaseEntries, purchaseKey } from '../../engine/purchase';
@@ -32,6 +35,19 @@ export interface DoubtfulGroup {
  * Машины, которых в выбранном году может ещё не быть: помеченные `?` в выдаче
  * плюс уже исключённые — иначе исключённую машину нечем было бы вернуть.
  */
+export interface DoubtfulOptions {
+  /**
+   * Язык подписей. Обязателен и передаётся, а не читается из стора: список строится в
+   * `useMemo`, и из стора локаль не попала бы в массив зависимостей — забытая, она молча
+   * оставила бы порядок и счёт одноимённых в языке первой отрисовки.
+   */
+  locale: Locale;
+  /** Груз, под который считается вместимость-различитель. */
+  cargo?: Cargo | null;
+  /** Сравнение имён при сортировке; без него порядок решают вид и дата. */
+  collator?: Intl.Collator;
+}
+
 export function doubtfulGroups(
   results: OptimizeResult[],
   trains: Train[],
@@ -39,7 +55,7 @@ export function doubtfulGroups(
   year: number,
   game: GameSettings,
   capacityIndex: number,
-  collator?: Intl.Collator,
+  { locale, cargo = null, collator }: DoubtfulOptions,
 ): DoubtfulGroup[] {
   const keys = new Set<string>();
   for (const r of results) {
@@ -54,9 +70,13 @@ export function doubtfulGroups(
   // иначе выключать пришлось бы каждое всплывающее семейство по отдельности
   const groups = purchaseEntries(trains, capacityIndex, game).filter((entry) => keys.has(entry.key));
 
+  // счёт идёт по имени, которое читает игрок: подпись двоится, когда одинаково
+  // выглядит, а не когда совпадает английский оригинал под переводом
+  const displayName = (train: Train) => trainName(train, locale);
   const nameCounts = new Map<string, number>();
   for (const entry of groups) {
-    nameCounts.set(entry.train.name, (nameCounts.get(entry.train.name) ?? 0) + 1);
+    const name = displayName(entry.train);
+    nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
   }
 
   return groups
@@ -64,8 +84,8 @@ export function doubtfulGroups(
       ids: members.map((t) => t.id),
       train,
       intro: introAvailability(train, year, game),
-      capacity: train.capacities[capacityIndex] ?? 0,
-      ambiguous: (nameCounts.get(train.name) ?? 0) > 1,
+      capacity: trainCapacity(train, cargo, capacityIndex),
+      ambiguous: (nameCounts.get(displayName(train)) ?? 0) > 1,
     }))
     .sort((a, b) =>
       a.train.kind !== b.train.kind
@@ -74,7 +94,7 @@ export function doubtfulGroups(
           : 1
         : a.intro.year - b.intro.year ||
           a.intro.month - b.intro.month ||
-          (collator ? collator.compare(a.train.name, b.train.name) : 0) ||
+          (collator ? collator.compare(displayName(a.train), displayName(b.train)) : 0) ||
           a.capacity - b.capacity,
     );
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sortRows } from '../../../components/table/sorting';
 import { catalogueSortValues, DEFAULT_SORT } from '../sorting';
-import { activeTrains, trainsMeta } from '../../../dataset';
+import { activeTrains, cargoByLabel, trainCapacity, trainsMeta } from '../../../dataset';
 import { topSpeedOn } from '../../../engine/tracktypes';
 import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../../engine/settings';
 
@@ -13,7 +13,7 @@ import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../../engine/se
  */
 
 const collator = new Intl.Collator('ru', { numeric: true });
-const values = catalogueSortValues(DEFAULT_GAME_SETTINGS, DEFAULT_CALC_SETTINGS);
+const values = catalogueSortValues(DEFAULT_GAME_SETTINGS, DEFAULT_CALC_SETTINGS, 'en');
 const rows = activeTrains(DEFAULT_GAME_SETTINGS);
 
 /**
@@ -65,10 +65,10 @@ describe('catalogue columns', () => {
 });
 
 describe('the columns follow the chosen track', () => {
-  const ironHorse = { ...DEFAULT_GAME_SETTINGS, ironHorse: true };
+  const ironHorseGame = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const };
   const valuesOn = (trackType: string) =>
-    catalogueSortValues(ironHorse, { ...DEFAULT_CALC_SETTINGS, trackType });
-  const train = (id: string) => activeTrains(ironHorse).find((t) => t.id === id)!;
+    catalogueSortValues(ironHorseGame, { ...DEFAULT_CALC_SETTINGS, trackType }, 'en');
+  const train = (id: string) => activeTrains(ironHorseGame).find((t) => t.id === id)!;
 
   it('ranks an electro-diesel by the power it makes on this line', () => {
     // Shoebox: 950hp on diesel away from the wires, 2500hp under them
@@ -91,14 +91,14 @@ describe('the columns follow the chosen track', () => {
 });
 
 describe("the track's own limit reaches the catalogue too", () => {
-  const ironHorse = { ...DEFAULT_GAME_SETTINGS, ironHorse: true };
+  const ironHorseGame = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const };
   const plainRail = trainsMeta.railtypes[0];
 
   it('the speed column promises no more than the line gives', () => {
     // neither vanilla nor Iron Horse states a limit; sets with a grid of them (xUSSR) are
     // the whole point of the feature, and the catalogue must not show 250 where the consist
     // is computed at 60
-    const fast = activeTrains(ironHorse).find((t) => (t.speed_internal ?? 0) > 200)!;
+    const fast = activeTrains(ironHorseGame).find((t) => (t.speed_internal ?? 0) > 200)!;
     const limited = { ...plainRail, speed_limit_internal: 96 };
     expect(topSpeedOn(fast, limited)).toBe(96);
     expect(topSpeedOn(fast, plainRail)).toBe(fast.speed_internal);
@@ -107,11 +107,43 @@ describe("the track's own limit reaches the catalogue too", () => {
   it('does not hand the line\'s limit to a vehicle that states no speed of its own', () => {
     // the limit belongs to the train a wagon ends up in, not to the wagon: printing it in
     // the wagon's own column would invent a figure the data never gave it
-    const wagon = activeTrains(ironHorse).find(
+    const wagon = activeTrains(ironHorseGame).find(
       (t) => t.kind === 'wagon' && t.speed_internal === null,
     )!;
     const limited = { ...plainRail, speed_limit_internal: 96 };
     expect(topSpeedOn(wagon, plainRail)).toBeNull();
     expect(topSpeedOn(wagon, limited)).toBeNull();
+  });
+});
+
+describe('capacity follows the chosen cargo', () => {
+  // xUSSR states capacity per cargo: the same gondola takes 64 t of coal but only 38 t of
+  // coke (the lighter cargo runs into the wagon's volume), so the capacity column must
+  // reorder when the cargo filter changes — the cells already do.
+  const game = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const, firs: true };
+  const coal = cargoByLabel.get('COAL')!;
+  const coke = cargoByLabel.get('COKE')!;
+  const gondola = activeTrains(game).find((t) => t.id === 'xussr_gondola_22_4024')!;
+
+  it('the column value is the figure for the cargo, same as the cell', () => {
+    const byCoal = catalogueSortValues(game, DEFAULT_CALC_SETTINGS, 'en', coal);
+    const byCoke = catalogueSortValues(game, DEFAULT_CALC_SETTINGS, 'en', coke);
+    expect(byCoal.capacity(gondola)).toBe(trainCapacity(gondola, coal, 2));
+    expect(byCoke.capacity(gondola)).toBe(trainCapacity(gondola, coke, 2));
+    expect(byCoal.capacity(gondola)).not.toBe(byCoke.capacity(gondola));
+  });
+
+  it('the order of two wagons can flip with the cargo', () => {
+    // a tank-vs-gondola style pair: find any two wagons whose capacity comparison flips
+    const wagons = activeTrains(game).filter(
+      (t) => t.kind === 'wagon' && t.capacity_by_cargo,
+    );
+    const cap = (t: (typeof wagons)[number], c: typeof coal) => trainCapacity(t, c, 2);
+    const flipped = wagons.some((a) =>
+      wagons.some(
+        (b) => cap(a, coal) > cap(b, coal) && cap(a, coke) < cap(b, coke),
+      ),
+    );
+    expect(flipped).toBe(true);
   });
 });

@@ -8,7 +8,7 @@ import type { ConsistPhysics } from './physics';
 import { balancingSpeed } from './physics';
 import { poweredOutputOn, trackSpeedLimit, vehicleSpeedOn } from './tracktypes';
 import { internalToMphExact, mphToInternal } from './units';
-import { activeRailtype, activeRailtypes, canCarryIn } from '../dataset';
+import { activeRailtype, activeRailtypes, canCarryIn, trainCapacity } from '../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
@@ -83,7 +83,7 @@ export function consistPhysics(
       speedLimitInternal = minOf(speedLimitInternal, speed.internal ?? mphToInternal(speed.mph));
     }
     if (cargo && canCarryIn(game, train, cargo)) {
-      const capacity = count * (train.capacities[capacityIndex] ?? train.capacities[2]);
+      const capacity = count * trainCapacity(train, cargo, capacityIndex);
       capacityForCargo += capacity;
       // вес груза: units × weight/16 т; множитель freight_trains — только для
       // грузовых (cargotype.cpp:254 WeightOfNUnitsInTrain)

@@ -211,8 +211,13 @@ xUSSR держит его скрытым, поиск его находит, до
 ### D8. Спрайты и имена
 
 Спрайты: buy-menu режется из png исходников по `purchase_sprites(name, x, y)` из AST
-(Pillow уже в venv), в `web/public/icons/xussr/`. Имена: `game_name`-аналог — строка
-`STR_NAME_*` из `lang/english.lng`; русский словарь `trains_xussr.ru.json` из
+(Pillow уже в venv), в `web/public/icons/xussr/`. Имена: строка локали набора, но **та,
+которую машина носит в игре**. Набор объявляет её коротким именем, а следом переобъявляет
+длинным (`long_name_template` → `STR_LONGNAME_*`), если включён `enable_long_names`; его
+дефолт — 1, и в партиях он тоже включён, поэтому в меню покупки стоит длинное имя:
+«VL80ᵀ-702 "Vylo" (Electric)», а не «VL80ᵀ-702». `merged_items` кладёт позднее объявление
+поверх раннего, как это делает игра, — по короткой метке машину в игре не найти, а поиск
+именно за этим. Русский словарь `trains_xussr.ru.json` из
 `lang/russian.lng` пишет `extract_firs_ru.py`-соседний шаг в `make data`; подстановка —
 `i18n/names.ts`, полноту стережёт `locales.test.ts`.
 

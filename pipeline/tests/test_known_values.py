@@ -55,6 +55,8 @@ class IronHorseKnownValues(unittest.TestCase):
             "build_wagon": 1,
             "running_steam": -2,
             "running_diesel": -4,
+            # the set states no shift for the electric class; unstated means zero
+            "running_electric": 0,
         })
 
     def test_counts(self):

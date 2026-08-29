@@ -4,8 +4,8 @@
 
 *Читать по-русски: [Русский](README.ru.md).*
 
-Calculator for OpenTTD, with optional support for the Iron Horse (Pony roster) and FIRS 5
-NewGRF sets. Out of the box it computes vanilla OpenTTD: the calculator assumes nothing about
+Calculator for OpenTTD, with optional support for the Iron Horse (Pony roster), xUSSR Railway
+Set and FIRS 5 NewGRF sets. Out of the box it computes vanilla OpenTTD: the calculator assumes nothing about
 your game until you tell it — switch the sets on in the settings, or import a savegame and let
 it read them off your game.
 
@@ -37,7 +37,8 @@ it read them off your game.
 
 - `pipeline/` — Python extractors: import Iron Horse and FIRS sources directly (no NewGRF
   compilation) and emit static JSON into `web/src/data/` + cargo icons into
-  `web/public/icons/`. `extract_vanilla.py` also parses OpenTTD's own tables, so the
+  `web/public/icons/`. xUSSR is NML behind the C preprocessor, so `extract_xussr.py` expands
+  its sources with `cc -E` and reads them with the `nml` package's own parser. `extract_vanilla.py` also parses OpenTTD's own tables, so the
   calculator keeps working with either NewGRF set switched off, and `extract_opengfx2.py`
   reads the base set's GRF for vanilla sprites and the interface palette. Generated JSON is
   committed, so the web app builds without Python.
@@ -51,16 +52,19 @@ it read them off your game.
   [firs](https://github.com/andythenorth/firs) — industry/cargo data;
   [OpenTTD](https://github.com/OpenTTD/OpenTTD) — economy & physics formulas, locale;
   [OpenTTD-patches](https://github.com/JGRennison/OpenTTD-patches) — JGR's Patchpack,
-  reference for patchpack-specific behaviour.
+  reference for patchpack-specific behaviour, pinned at the release players run;
+  [xussrset](https://github.com/George-VB/xussrset) — xUSSR vehicle, track and capacity data.
 
 ## Commands
 
 ```sh
 make fetch   # clone iron-horse (pinned tag), firs, openttd, openttd-patches into vendor/
-make venv    # python venv + Pillow + Chameleon
+make venv    # python venv + Pillow + Chameleon + nml
 make data    # regenerate JSON from vendor sources + validate
+make data-xussr   # the xUSSR catalogue and its Russian names alone (the slow part)
 make check-i18n   # do the committed name dictionaries still match their sources?
-make data-images  # render Iron Horse spritesheets + cut per-vehicle sprites (slow-ish)
+make data-images  # render Iron Horse spritesheets + cut per-vehicle sprites, xUSSR included
+                  # (slow-ish)
 make data-opengfx2  # vanilla sprites, cargo icons and the GUI palette from OpenGFX2 Classic
 make dev     # vite dev server
 make test    # pipeline regression tests + vitest formula tests
@@ -74,7 +78,8 @@ make deploy  # republish the site from the current branch (a v* tag deploys on i
 
 ## Data update
 
-Bump `IRON_HORSE_REF` / `FIRS_REF` / `OPENTTD_REF` in the Makefile, **delete the matching
+Bump `IRON_HORSE_REF` / `FIRS_REF` / `OPENTTD_REF` / `OPENTTD_PATCHES_REF` / `XUSSR_REF` in the
+Makefile, **delete the matching
 `vendor/` clone** (`make fetch` skips a directory that already exists), then
 `make fetch && make data && make test`. Regression tests in `pipeline/tests/` pin known values
 (checked against https://grf.farm/iron-horse/ docs) and will flag unexpected changes;
@@ -90,6 +95,35 @@ Bump `IRON_HORSE_REF` / `FIRS_REF` / `OPENTTD_REF` in the Makefile, **delete the
   is 16 (verified against the game).
 - Inflation is off by default: Iron Horse refuses to load with inflation enabled.
 
+### xUSSR coverage
+
+The data covers the nine GRFs the set builds today (`compile-all.bat`): steamers, diesels,
+electrics, DMUs, EMUs, wagons, cars, the addon and the rails. Numbers are extracted at the
+set's own default parameters, which are recorded in the data beside them.
+
+Not covered:
+
+- **xUSSR Railway Set 0.7.1**, the combined `xussr.grf` from before the set was split. Its
+  vehicles all reappear in the nine sets above, often detailed into per-year variants
+  (`l150` → `l_type1950`, `l_bz_type1946/1947`, `p32_*`), so loading it alongside them only
+  puts every vehicle in the buy menu twice, on an older revision. The calculator recognises
+  it in a savegame — it still says the game runs xUSSR — but its catalogue is the current
+  sets.
+- **Subways Set** and **Ivolga Addon**: the repository ships no sources for them. Recognised
+  in a savegame, absent from the catalogue.
+
+Mechanics of the set the calculator does not model: speed falling with a vehicle's age,
+wagon speed depending on how loaded it is, and the consist rules (coupling norms and the
+speed penalty for breaking them). Their absence does not distort the other figures — each is
+a rule applied on top of them.
+
+Loading speed is a separate gap, and it is not specific to this set: only Iron Horse states
+one in the data, so a round trip on xUSSR or on the game's own roster is reported without
+the stop under the crane or the chute. The set does state loading speeds — per cargo and per
+era for wagons, as a property for passenger stock — so this is a figure to extract, not one
+the sets withhold. Every other number of the trip is unaffected: the stop is added to the
+journey, not computed from it.
+
 ## License
 
 GPL-2.0-only — see [LICENSE](LICENSE). The calculator redistributes data and artwork derived
@@ -99,6 +133,8 @@ Derived material and its sources:
 
 - Vehicle stats and buy-menu sprites — [Iron Horse](https://github.com/andythenorth/iron-horse)
   4.29.0, © andythenorth and contributors.
+- xUSSR vehicle, track and capacity data, buy-menu sprites and Russian vehicle names —
+  [xUSSR Railway Set](https://github.com/George-VB/xussrset), © the xUSSR Set developers team.
 - Industry, cargo and economy data — [FIRS](https://github.com/andythenorth/firs) 5.2.0,
   © andythenorth and contributors.
 - Vanilla vehicle/cargo tables, economy and physics formulas, savegame format, town and

@@ -55,7 +55,7 @@ beforeEach(() => {
   // track names are data, so the case reads them in one language rather than both
   useLocaleStore.getState().setLocale('ru');
   useSettingsStore.setState({
-    game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true },
+    game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse', firs: true },
     calc: { ...DEFAULT_CALC_SETTINGS },
   });
 });
@@ -158,7 +158,7 @@ describe('what the catalogue shows on a track', () => {
   it('offers no pure electric where the line carries no wires', async () => {
     // Stalwart is on sale from 1959 to 1992
     useSettingsStore.setState({
-      game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true },
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse', firs: true },
       calc: { ...DEFAULT_CALC_SETTINGS, priceYear: 1990 },
     });
     const user = userEvent.setup();
@@ -170,7 +170,7 @@ describe('what the catalogue shows on a track', () => {
 
   it('keeps the vanilla gauges apart, monorail and maglev included', async () => {
     useSettingsStore.setState({
-      game: { ...DEFAULT_GAME_SETTINGS, ironHorse: false, firs: false },
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'vanilla', firs: false },
       // a year both the monorail X2001 (1998-2048) and the maglev Leviathan (2020-) sell in
       calc: { ...DEFAULT_CALC_SETTINGS, priceYear: 2040 },
     });
@@ -190,13 +190,13 @@ describe('the best-train list states the power its own figures came from', () =>
     // A Tornado states 750hp in the data — its diesel figure — and makes 1900 under the
     // wires. The row's profit and speed are computed from the latter, so printing the field
     // would have the line promise one number while being ranked by another.
-    const tornado = activeTrains({ ...DEFAULT_GAME_SETTINGS, ironHorse: true })
+    const tornado = activeTrains({ ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' })
       .find((train) => train.id === 'tornado')!;
     expect(tornado.power_by_source).toEqual({ DIESEL: 750, OHLE: 1900 });
     expect(tornado.power_hp).toBe(750);
 
     useSettingsStore.setState({
-      game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true },
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse', firs: true },
       calc: { ...DEFAULT_CALC_SETTINGS, priceYear: 2000, trackType: 'ELRL' },
     });
     draw(<OptimizerPage />);
@@ -231,7 +231,7 @@ describe('a saved choice outlives a change of set', () => {
     // narrow gauge was picked with Iron Horse on; the user turned the set off, and the
     // choice waits for them to come back to it
     useSettingsStore.setState({
-      game: { ...DEFAULT_GAME_SETTINGS, ironHorse: false, firs: false },
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'vanilla', firs: false },
       calc: { ...DEFAULT_CALC_SETTINGS, trackType: 'NAAN' },
     });
     draw(<OptimizerPage />);
@@ -243,7 +243,7 @@ describe('a saved choice outlives a change of set', () => {
   it('a hidden track of the active set is a dead choice and gives way', async () => {
     // LGVN is in the set but the game never lays it: there is nothing to come back to
     useSettingsStore.setState({
-      game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true },
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse', firs: true },
       calc: { ...DEFAULT_CALC_SETTINGS, trackType: 'LGVN' },
     });
     draw(<OptimizerPage />);
@@ -253,14 +253,14 @@ describe('a saved choice outlives a change of set', () => {
 });
 
 describe('the consist says when a vehicle is not for this track', () => {
-  const stalwart = () => activeTrains({ ...DEFAULT_GAME_SETTINGS, ironHorse: true })
+  const stalwart = () => activeTrains({ ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' })
     .find((train) => train.name === 'Stalwart')!;
 
   beforeEach(() => {
     // an electric engine, put together on an electrified line
     useConsistStore.setState({ entries: [{ train: stalwart(), count: 1 }] });
     useSettingsStore.setState({
-      game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true },
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse', firs: true },
       calc: { ...DEFAULT_CALC_SETTINGS, trackType: 'ELRL', priceYear: 1990 },
     });
   });

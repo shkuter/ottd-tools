@@ -27,7 +27,7 @@ const UPGRADE_VERSION = 1;
  * when this module writes a settings key that did not exist; a test keeps it equal to the
  * store's own `SETTINGS_VERSION`.
  */
-const SETTINGS_VERSION = 3;
+const SETTINGS_VERSION = 4;
 
 type Persisted = { state?: Record<string, unknown>; version?: number };
 

@@ -33,7 +33,14 @@ const multiplier = (value: unknown): string => `×${value}`;
 /** Order follows the settings screen so the list reads top to bottom the same way. */
 const GAME_LABELS: Partial<Record<keyof GameSettings, Described<GameSettings>>> = {
   jgrpp: { labelKey: 'settings.jgrpp', format: onOff },
-  ironHorse: { labelKey: 'settings.ironHorse', format: onOff },
+  trainSet: {
+    labelKey: 'settings.trainSet',
+    // roster names are proper nouns; only "vanilla" is a word of ours to translate
+    format: (v) =>
+      v === 'iron_horse' ? 'Iron Horse'
+      : v === 'xussr' ? 'xUSSR Railway Set'
+      : t('settings.trainSetVanilla'),
+  },
   firs: { labelKey: 'settings.firs', format: onOff },
   firsEconomy: {
     labelKey: 'settings.firsEconomy',
@@ -91,6 +98,8 @@ export interface ImportDiff {
   /** Inflation the game has accumulated, shown next to the informational settings. */
   inflation?: SavedInflation;
   unreadBaseCostSets: string[];
+  /** Label keys of the NewGRF sets recognised in the file, named above the changes. */
+  recognisedSets: string[];
   /** True when nothing the savegame states differs from the current settings. */
   identical: boolean;
 }
@@ -109,6 +118,7 @@ export function diffImport(
     info: proposal.info,
     inflation: proposal.inflation,
     unreadBaseCostSets: proposal.unreadBaseCostSets,
+    recognisedSets: proposal.recognisedSets,
     identical: gameChanges.length === 0 && calcChanges.length === 0,
   };
 }

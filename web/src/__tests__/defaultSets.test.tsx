@@ -34,7 +34,7 @@ afterEach(cleanup);
 
 describe('a fresh calculator', () => {
   it('has every NewGRF switched off', () => {
-    expect(DEFAULT_GAME_SETTINGS.ironHorse).toBe(false);
+    expect(DEFAULT_GAME_SETTINGS.trainSet).toBe('vanilla');
     expect(DEFAULT_GAME_SETTINGS.firs).toBe(false);
     expect(DEFAULT_GAME_SETTINGS.basecostGrf).toBe(false);
   });
@@ -57,7 +57,7 @@ describe('a fresh calculator', () => {
 
   it('warns about it once Iron Horse is switched on', async () => {
     useSettingsStore.setState({
-      game: { ...DEFAULT_GAME_SETTINGS, inflation: true, ironHorse: true },
+      game: { ...DEFAULT_GAME_SETTINGS, inflation: true, trainSet: 'iron_horse' },
     });
     draw();
 

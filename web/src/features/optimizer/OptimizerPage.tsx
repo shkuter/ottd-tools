@@ -36,7 +36,7 @@ import {
 } from '../../dataset';
 import { poweredOutputOn } from '../../engine/tracktypes';
 import { intlLocale, t, useLocale } from '../../i18n';
-import { cargoName, cargoUnits, industryName, sortCargos } from '../../i18n/names';
+import { cargoName, cargoUnits, matchesTrainName, trainName, industryName, sortCargos } from '../../i18n/names';
 import {
   engineLabel, num, percent, speedUnitLabel, speedValue, unitSuffix, wagonLabel, withUnit,
 } from '../../components/format';
@@ -49,7 +49,7 @@ import { waitTimeThresholdDays, type StationRating } from '../../engine/rating';
 import { effectiveDayLength } from '../../engine/settings';
 import { introRandomisationActive, type IntroAvailability } from '../../engine/availability';
 import { doubtfulGroups } from './doubtful';
-import { SORT_VALUES, type OptimizerSort } from './sorting';
+import { optimizerSortValues, type OptimizerSort } from './sorting';
 import { sortRows } from '../../components/table/sorting';
 import { SortableTh } from '../../components/table/SortableTh';
 import { TableFrame } from '../../components/table/TableFrame';
@@ -319,16 +319,20 @@ export default function OptimizerPage() {
   // машины, которые в выбранном году могут ещё не появиться, — их можно выключить
   const collator = useMemo(() => new Intl.Collator(intlLocale(locale)), [locale]);
   const doubtful = useMemo(
-    () => doubtfulGroups(results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, collator),
-    [results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, collator],
+    () => doubtfulGroups(results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, {
+        cargo,
+        collator,
+        locale,
+      }),
+    [results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, cargo, collator, locale],
   );
 
   const matching = useMemo(
-    () =>
-      engineFilter
-        ? results.filter((r) => r.engine.name.toLowerCase().includes(engineFilter.toLowerCase()))
-        : results,
-    [results, engineFilter],
+    () => {
+      if (!engineFilter) return results;
+      return results.filter((r) => matchesTrainName(r.engine, engineFilter, locale));
+    },
+    [results, engineFilter, locale],
   );
   // Drawing fifty rows of sprites costs more than the search itself, and the answer is in
   // the first few anyway — the rest is one click away. The page resets on a new set of rows,
@@ -337,7 +341,10 @@ export default function OptimizerPage() {
   useEffect(() => setVisibleCount(PAGE_SIZE), [matching]);
   // Sorting is a view over the rows the search returned, not a second ranking: it reorders
   // what is on screen and leaves the set and the numbers alone.
-  const ordered = useMemo(() => sortRows(matching, sort, SORT_VALUES, collator), [matching, sort, collator]);
+  const ordered = useMemo(
+    () => sortRows(matching, sort, optimizerSortValues(locale), collator),
+    [matching, sort, collator, locale],
+  );
 
   const shown = ordered.slice(0, visibleCount);
   const hiddenCount = ordered.length - shown.length;
@@ -482,8 +489,8 @@ export default function OptimizerPage() {
                 onChange={() => toggleExcluded(ids)}
                 label={
                   ambiguous
-                    ? `${train.name} (${num(capacity)} ${cargoUnits(cargo?.units)})`
-                    : train.name
+                    ? `${trainName(train)} (${num(capacity)} ${cargoUnits(cargo?.units)})`
+                    : trainName(train)
                 }
               />
             ))}

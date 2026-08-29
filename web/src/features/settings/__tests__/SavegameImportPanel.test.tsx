@@ -66,6 +66,7 @@ describe('savegame import panel', () => {
         calc: { priceYear: 1975 },
         info: [],
         unreadBaseCostSets: [],
+        recognisedSets: [],
       },
       snapshot: SNAPSHOT,
       fileName: 'londworth.sav',
@@ -94,6 +95,37 @@ describe('savegame import panel', () => {
     expect(useSettingsStore.getState().game.dayLengthFactor).toBe(1);
     resetSnapshotStateForTests();
     expect((await loadSnapshot()).record).toBeNull();
+  });
+
+  it('names the recognised sets above the differences', async () => {
+    // из чего калькулятор сделал вывод о наборе — видно, а не угадывается
+    result = {
+      ...result,
+      proposal: {
+        ...result.proposal,
+        game: { ...result.proposal.game, trainSet: 'xussr' },
+        recognisedSets: ['savegame.grf.xussr', 'savegame.grf.firs'],
+      },
+    };
+    panel();
+    await chooseFile();
+
+    const banner = await screen.findByText(/Обнаружены NewGRF/);
+    expect(banner.textContent).toContain('xUSSR Railway Set');
+    expect(banner.textContent).toContain('FIRS');
+    // баннер стоит выше таблицы различий
+    const diff = banner.closest('.savegame-diff')!;
+    const rows = [...diff.querySelectorAll('*')];
+    expect(rows.indexOf(banner)).toBeLessThan(
+      rows.findIndex((el) => el.tagName === 'TABLE'),
+    );
+  });
+
+  it('without a recognised set there is no banner', async () => {
+    panel();
+    await chooseFile();
+    await screen.findByText(/Коэффициент уменьшения скорости экономики/);
+    expect(screen.queryByText(/Обнаружены NewGRF/)).toBeNull();
   });
 
   it('with the settings already matching, the confirmation still stores the snapshot', async () => {

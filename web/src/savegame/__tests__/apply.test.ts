@@ -24,6 +24,7 @@ const PROPOSAL: SavegameImport = {
   calc: { priceYear: 1860, capacityIndex: 2 },
   info: [],
   unreadBaseCostSets: [],
+  recognisedSets: [],
 };
 
 const SNAPSHOT: Snapshot = {
@@ -144,7 +145,7 @@ describe('импорт доезжает до вкладок', () => {
     const { activeTrains } = await import('../../dataset');
     const { introAvailability } = await import('../../engine/availability');
     await applyImport(
-      { ...CONFIRMED, proposal: { ...PROPOSAL, game: { ...PROPOSAL.game, ironHorse: true }, calc: { priceYear: 1975 } } },
+      { ...CONFIRMED, proposal: { ...PROPOSAL, game: { ...PROPOSAL.game, trainSet: 'iron_horse' as const }, calc: { priceYear: 1975 } } },
       1,
     );
 
@@ -174,7 +175,7 @@ describe('импорт доезжает до вкладок', () => {
     const { fixture } = await import('./fixture');
 
     // до импорта пользователь играл с наборами — иначе тест сравнивал бы дефолт с дефолтом
-    useSettingsStore.getState().applySettings({ ironHorse: true, firs: true }, {});
+    useSettingsStore.getState().applySettings({ trainSet: 'iron_horse' as const, firs: true }, {});
     expect(activeTrains(useSettingsStore.getState().game).some((t) => !t.id.startsWith('vanilla_')))
       .toBe(true);
 
@@ -183,7 +184,7 @@ describe('импорт доезжает до вкладок', () => {
     await applyImport({ ...CONFIRMED, proposal }, 1);
 
     const { game } = useSettingsStore.getState();
-    expect(game.ironHorse).toBe(false);
+    expect(game.trainSet).toBe('vanilla');
     expect(game.firs).toBe(false);
     expect(activeTrains(game).every((t) => t.id.startsWith('vanilla_'))).toBe(true);
   });

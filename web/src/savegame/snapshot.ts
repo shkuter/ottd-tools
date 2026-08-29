@@ -8,11 +8,11 @@
  * economy's slot order, or the climate's vanilla table when FIRS is absent.
  */
 
-import { industries, trains as catalogue } from '../dataset';
+import { industries, trains as catalogue, xussrTrains } from '../dataset';
 import type { Economy, Industry } from '../types';
 import { vanillaTrains, vanillaClimateSlots, vanillaIndustryByType } from '../vanilla';
 import { economyFromGrfs } from './import';
-import { FIRS_GRFID, IRON_HORSE_GRFID } from './registry';
+import { FIRS_GRFID, IRON_HORSE_GRFID, XUSSR_GRFIDS } from './registry';
 import type { RawSavegame, RawStation, RawTrainUnit } from './read';
 import {
   isFullLoad,
@@ -210,11 +210,25 @@ function cargoSlots(raw: RawSavegame): (string | null)[] {
   return vanillaClimateSlots[climate] ?? [];
 }
 
+/**
+ * Vehicles of sets built as several GRFs, keyed by GRF id and the id local to it: the
+ * local ids restart in every file of the set, so neither half identifies a vehicle alone.
+ */
+const multiFileIds = new Map<string, string>();
+for (const train of xussrTrains) {
+  // grf может не быть вовсе (машина без файла) — тогда пары «GRFID + номер» нет
+  const grfid = train.grf == null ? undefined : XUSSR_GRFIDS[train.grf];
+  if (grfid === undefined) continue;
+  for (const numericId of train.numeric_ids) {
+    multiFileIds.set(`${grfid}:${numericId}`, train.id);
+  }
+}
+
 /** Engine pool index → catalogue id, resolved through EIDS. */
 function engineMatcher(raw: RawSavegame): (engineType: number) => string | null {
-  const ironHorse = new Map<number, string>();
+  const ironHorseIds = new Map<number, string>();
   for (const train of catalogue) {
-    for (const numericId of train.numeric_ids) ironHorse.set(numericId, train.id);
+    for (const numericId of train.numeric_ids) ironHorseIds.set(numericId, train.id);
   }
   const vanilla = new Map<number, string>(
     vanillaTrains.flatMap((t) => t.numeric_ids.map((id): [number, string] => [id, t.id])),
@@ -228,8 +242,8 @@ function engineMatcher(raw: RawSavegame): (engineType: number) => string | null 
     if (!mapped) return vanilla.get(engineType) ?? null;
     if (mapping === undefined) return null;
     if (isBaseSet(mapping)) return vanilla.get(mapping.localId) ?? null;
-    if (mapping.grfid === IRON_HORSE_GRFID) return ironHorse.get(mapping.localId) ?? null;
-    return null;
+    if (mapping.grfid === IRON_HORSE_GRFID) return ironHorseIds.get(mapping.localId) ?? null;
+    return multiFileIds.get(`${mapping.grfid}:${mapping.localId}`) ?? null;
   };
 }
 

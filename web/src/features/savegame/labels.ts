@@ -5,7 +5,7 @@
 
 import { activeCargoByLabel, trainByAnyId } from '../../dataset';
 import { t } from '../../i18n';
-import { cargoName } from '../../i18n/names';
+import { cargoName, trainName } from '../../i18n/names';
 import type { GameSettings } from '../../engine/settings';
 import type { Cargo } from '../../types';
 import type { SnapshotConsistEntry, SnapshotTown, SnapshotTrain } from '../../savegame/snapshot';
@@ -28,7 +28,8 @@ export function consistText(consist: readonly SnapshotConsistEntry[]): string {
 function vehicleName(entry: SnapshotConsistEntry): string {
   if (entry.catalogueId === null) return t('game.unknownVehicle');
   const train = trainByAnyId.get(entry.catalogueId);
-  return train?.name ?? t('game.unknownVehicle');
+  // the catalogue's own name, so the tab reads in the same language as the rest of the app
+  return train ? trainName(train) : t('game.unknownVehicle');
 }
 
 /**

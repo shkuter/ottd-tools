@@ -38,7 +38,7 @@ function yearField(): HTMLInputElement {
 beforeEach(() => {
   useSettingsStore.setState({
     // both sets: the supply tab is hidden without FIRS, and its industry list would be empty
-    game: { ...DEFAULT_GAME_SETTINGS, ironHorse: true, firs: true },
+    game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse', firs: true },
     calc: { ...DEFAULT_CALC_SETTINGS },
   });
 });

@@ -1,7 +1,9 @@
-import type { Train } from '../../types';
+import { trainName } from '../../i18n/names';
+import type { Locale } from '../../state/localeStore';
+import type { Cargo, Train } from '../../types';
 import type { CalcSettings, GameSettings } from '../../engine/settings';
 import type { SortState, SortValues } from '../../components/table/sorting';
-import { activeRailtype, activeRailtypes, activeTrainsMeta } from '../../dataset';
+import { activeRailtype, activeRailtypes, activeTrainsMeta, trainCapacity } from '../../dataset';
 import { poweredOutputOn, topSpeedOn } from '../../engine/tracktypes';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 
@@ -38,16 +40,25 @@ export const DEFAULT_SORT: SortState<CatalogueColumn> = {
 export function catalogueSortValues(
   game: GameSettings,
   calc: CalcSettings,
+  /**
+   * The language the name column sorts in. Required rather than read from the store,
+   * because this is built inside `useMemo`: from the store it would be invisible to the
+   * dependency array, and the order would stay in the language it was first built in.
+   */
+  locale: Locale,
+  cargo: Cargo | null = null,
 ): SortValues<Train, CatalogueColumn> {
   const track = activeRailtype(game, calc.trackType);
   const railtypes = activeRailtypes(game);
   return {
-    name: (train) => train.name,
+    name: (train) => trainName(train, locale),
     intro_year: (train) => train.intro_year,
     power_hp: (train) => poweredOutputOn(train, track, railtypes) || null,
     speed: (train) => topSpeedOn(train, track) || null,
     weight_t: (train) => train.weight_t,
-    capacity: (train) => train.capacities[calc.capacityIndex] || null,
+    // the capacity for the cargo the catalogue is filtered by: a set that states
+    // capacity per cargo (xUSSR) reorders when the cargo changes, like the cells do
+    capacity: (train) => trainCapacity(train, cargo, calc.capacityIndex) || null,
     cost: (train) => trainBuyCost(train, activeTrainsMeta(game), game, calc),
     running: (train) => trainRunningCostPerYear(train, activeTrainsMeta(game), game, calc),
   };

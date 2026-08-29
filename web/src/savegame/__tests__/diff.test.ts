@@ -9,6 +9,7 @@ const EMPTY: SavegameImport = {
   calc: {},
   info: [],
   unreadBaseCostSets: [],
+  recognisedSets: [],
 };
 
 describe('различия между сейвом и настройками', () => {

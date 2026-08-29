@@ -1,3 +1,5 @@
 Chameleon==4.6.0
 Markdown==3.10.3
 pillow==12.3.0
+# xUSSR sources are NML: extract_xussr reads them with the language's own parser
+nml==0.9.0

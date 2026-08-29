@@ -4,7 +4,7 @@ import { activeTrainsMeta } from '../dataset';
 import { trainRunningCostPerYear, trainBuyCost } from '../engine/costs';
 import { DEFAULT_GAME_SETTINGS } from '../engine/settings';
 
-const vanillaGame = { ...DEFAULT_GAME_SETTINGS, ironHorse: false, firs: false };
+const vanillaGame = { ...DEFAULT_GAME_SETTINGS, trainSet: 'vanilla' as const, firs: false };
 const vanillaMeta = activeTrainsMeta(vanillaGame);
 /** Prices below show the bare formula, so difficulty stays at the neutral ×8/8. */
 const neutralGame = { ...vanillaGame, constructionCost: 1 as const, vehicleCosts: 1 as const };

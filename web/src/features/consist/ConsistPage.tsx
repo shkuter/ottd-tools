@@ -27,9 +27,10 @@ import {
   activeTrains,
   activeTrainsMeta,
   canCarryIn,
+  trainCapacity,
 } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
-import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
+import { cargoName, cargoUnits, matchesTrainName, sortCargos, trainName } from '../../i18n/names';
 import { money, num, speed, speedUnitLabel, speedValue, withUnit } from '../../components/format';
 import { CargoIcon } from '../../components/CargoIcon';
 import { fieldWidth } from '../../skin';
@@ -98,8 +99,17 @@ export default function ConsistPage() {
     () => purchaseRepresentatives(activeTrains(game), calc.capacityIndex, game),
     [game, calc.capacityIndex],
   );
+  const filterCargo = useMemo(
+    () => (cargoFilter ? activeCargoByLabel(game).get(cargoFilter) ?? null : null),
+    [cargoFilter, game],
+  );
+  const cargo = cargoLabel ? (activeCargoByLabel(game).get(cargoLabel) ?? null) : null;
+  // Вместимость колонки — под груз, о котором сейчас речь: фильтр каталога, если он
+  // выставлен, иначе груз собираемого состава. У набора, объявившего вместимость по
+  // грузу, без груза её нет вовсе, и колонка стояла бы в прочерках, пока сводка ниже
+  // считает тот же вагон под свой груз.
+  const capacityCargo = filterCargo ?? cargo;
   const filtered = useMemo(() => {
-    const cargo = cargoFilter ? activeCargoByLabel(game).get(cargoFilter) : null;
     return catalogue.filter((train) => {
       if (kindFilter !== 'all' && train.kind !== kindFilter) return false;
       // the shared track choice, under the same rule the optimizer searches by
@@ -109,13 +119,16 @@ export default function ConsistPage() {
       // single unit lasts before wearing out, which does not gate the catalogue
       // (same rule as the optimizer applies, see engine/optimize.ts)
       if (train.model_life != null && year >= train.intro_year + train.model_life) return false;
-      if (search && !train.name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (cargo && !canCarryIn(game, train, cargo)) return false;
+      if (search && !matchesTrainName(train, search, locale)) return false;
+      if (filterCargo && !canCarryIn(game, train, filterCargo)) return false;
       return true;
     });
-  }, [catalogue, kindFilter, search, year, track, railtypes, cargoFilter, game]);
+  }, [catalogue, kindFilter, search, year, track, railtypes, filterCargo, game, locale]);
 
-  const sortValue = useMemo(() => catalogueSortValues(game, calc), [game, calc]);
+  const sortValue = useMemo(
+    () => catalogueSortValues(game, calc, locale, capacityCargo),
+    [game, calc, capacityCargo, locale],
+  );
 
   const sorted = useMemo(() => {
     const collator = new Intl.Collator(intlLocale(locale), { numeric: true });
@@ -130,7 +143,6 @@ export default function ConsistPage() {
     [sorted, currentPage],
   );
 
-  const cargo = cargoLabel ? (activeCargoByLabel(game).get(cargoLabel) ?? null) : null;
   const stats = useMemo(
     () => consistStats(entries, cargo, calc.capacityIndex, activeTrainsMeta(game), game, calc),
     [entries, cargo, calc, game],
@@ -210,12 +222,13 @@ export default function ConsistPage() {
             {records.map((train) => {
               const power = poweredOutputOn(train, track, railtypes);
               const topSpeed = topSpeedOn(train, track);
+              const capacity = trainCapacity(train, capacityCargo, calc.capacityIndex);
               return (
                 <Table.Tr key={train.id}>
                   {/* one cell, the way a line of the game's purchase list is: the sprite and the
                       name identify the row together, and the pinned first column keeps both */}
                   <Table.Td className="cell-vehicle">
-                    <TrainImage trainId={train.id} /> {train.name}
+                    <TrainImage trainId={train.id} /> {trainName(train)}
                   </Table.Td>
                   <Table.Td className="cell-num">{train.intro_year}</Table.Td>
                   {/* the figures for the chosen track: an electro-diesel shows the power it
@@ -226,9 +239,7 @@ export default function ConsistPage() {
                   </Table.Td>
                   <Table.Td className="cell-num">{num(train.weight_t)}</Table.Td>
                   <Table.Td className="cell-num">
-                    {train.capacities[calc.capacityIndex]
-                      ? num(train.capacities[calc.capacityIndex])
-                      : '—'}
+                    {capacity ? num(capacity) : '—'}
                   </Table.Td>
                   <Table.Td className="cell-money">
                     {money(trainBuyCost(train, activeTrainsMeta(game), game, calc))}
@@ -275,7 +286,7 @@ export default function ConsistPage() {
             {entries.map(({ train, count }) => (
               <Group key={train.id} gap={6} wrap="nowrap">
                 <TrainImage trainId={train.id} />
-                <Text className="consist-name">{train.name}</Text>
+                <Text className="consist-name">{trainName(train)}</Text>
                 <NumberInput
                   min={0}
                   value={count}

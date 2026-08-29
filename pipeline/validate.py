@@ -32,11 +32,20 @@ def main():
         if t["kind"] == "engine":
             check(t["power_hp"] > 0, f"trains/{t['id']}: движок без мощности")
     shifts = trains["meta"]["basecost_shifts"]
-    check(set(shifts) == {"build_engine", "build_wagon", "running_steam", "running_diesel"},
+    check(set(shifts) == {"build_engine", "build_wagon", "running_steam", "running_diesel",
+                          "running_electric"},
           "trains: basecost_shifts неполные")
 
-    # --- railtypes (оба набора) ---
-    for source in ("trains.json", "vanilla_trains.json"):
+    # Рода тока, которые умеет разбирать расчёт. Список ведётся руками — как и
+    # POWER_SOURCES в engine/tracktypes.ts, откуда он и списан: новый род тока
+    # надо назвать в обоих местах, и эта проверка о том напомнит.
+    KNOWN_POWER_SOURCES = {
+        "OHLE", "METRO", "BATTERY_HYBRID", "DIESEL", "STEAM", "MONORAIL", "MAGLEV",
+        "AC25", "AC15", "DC3", "DC1_5", "SELF",
+    }
+
+    # --- railtypes (все наборы) ---
+    for source in ("trains.json", "vanilla_trains.json", "xussr_trains.json"):
         payload = trains if source == "trains.json" else load_json(source)
         railtypes = payload["meta"].get("railtypes")
         check(bool(railtypes), f"{source}: нет таблицы railtypes")
@@ -46,15 +55,66 @@ def main():
             check(len(rt["label"]) == 4, f"{where}: лейбл не 4 символа")
             check(bool(rt["name"]), f"{where}: без имени")
             check(rt["speed_limit_internal"] >= 0, f"{where}: отрицательный лимит скорости")
+            # рода тока, которыми путь питает машину: по ним расходятся и мощность,
+            # и предел скорости. Мало проверить форму — род тока, которого расчёт не
+            # знает, не назван в его иерархии (POWER_SOURCES, engine/tracktypes.ts)
+            # и выбирается молча по порядку ключей JSON, поэтому опечатка обязана падать
+            check(isinstance(rt.get("power_source"), list), f"{where}: нет power_source")
+            for src in rt["power_source"]:
+                check(
+                    src in KNOWN_POWER_SOURCES,
+                    f"{where}: неизвестный род тока {src!r} — добавьте его в "
+                    f"POWER_SOURCES (engine/tracktypes.ts) и сюда",
+                )
             for mask in ("powered", "compatible"):
                 # normalised on extraction: a type always relates to itself, and every
                 # label resolves — otherwise no vehicle is admitted onto its own track
                 check(rt["label"] in rt[mask], f"{where}: {mask} без своего типа")
                 check(set(rt[mask]) <= known, f"{where}: {mask} ссылается за пределы набора")
         for t in payload["items"]:
-            labels = t["track_types"] if source == "trains.json" else [t["railtype"]]
+            labels = [t["railtype"]] if source == "vanilla_trains.json" else t["track_types"]
             check(set(labels) <= known,
                   f"{source}/{t['id']}: track type вне таблицы: {sorted(set(labels) - known)}")
+
+    # --- xussr ---
+    xussr = load_json("xussr_trains.json")
+    xussr_items = xussr["items"]
+    xussr_meta = xussr["meta"]
+    counts_x = xussr_meta["counts"]
+    check(counts_x["engines"] + counts_x["wagons"] == len(xussr_items), "xussr: counts mismatch")
+    check(counts_x["engines"] > 400, f"xussr: подозрительно мало движков: {counts_x['engines']}")
+    check(set(xussr_meta["basecost_shifts"]) ==
+          {"build_engine", "build_wagon", "running_steam", "running_diesel",
+           "running_electric", "running_roadveh"},
+          "xussr: basecost_shifts неполные")
+    # каждый Item либо извлечён, либо поимённо пропущен с причиной
+    check(all(s.get("reason") for s in xussr_meta["skipped"]), "xussr: пропуск без причины")
+    for t in xussr_items:
+        check(t["intro_year"] > 1800, f"xussr/{t['id']}: intro_year {t['intro_year']}")
+        check(len(t["capacities"]) == 5, f"xussr/{t['id']}: capacities != 5")
+        if t["kind"] == "engine":
+            check(t["power_hp"] > 0, f"xussr/{t['id']}: движок без мощности")
+        if t["capacity_by_cargo"]:
+            # значение груза — список по секциям: секция либо готовым числом мест, либо
+            # парой [X, Y] массовой формулы. Складывает их расчёт, деля каждую отдельно
+            # (trainCapacity в dataset.ts), поэтому пустой список — не «ноль мест», а
+            # потерянная секция
+            for label, sections in t["capacity_by_cargo"].items():
+                where = f"xussr/{t['id']}: вместимость {label}"
+                check(isinstance(sections, list) and sections, f"{where}: не список секций")
+                for section in sections:
+                    ok = (isinstance(section, int) and section > 0) or (
+                        isinstance(section, list)
+                        and len(section) == 2
+                        and all(isinstance(v, int) and v > 0 for v in section)
+                    )
+                    check(ok, f"{where}: секция не число и не пара: {section}")
+    # id не сталкиваются ни внутри набора, ни с другими наборами
+    ids_x = [t["id"] for t in xussr_items]
+    check(len(ids_x) == len(set(ids_x)), "xussr: дубли id")
+    other_ids = {t["id"] for t in items} | {t["id"] for t in load_json("vanilla_trains.json")["items"]}
+    clash = set(ids_x) & other_ids
+    check(not clash, f"xussr: id пересекаются с другими наборами: {sorted(clash)[:5]}")
 
     # --- cargos ---
     cargo_labels = {c["label"] for c in cargos["items"]}
@@ -167,6 +227,7 @@ def main():
         # names of vanilla cargos and of everything FIRS delegates to the game come from
         # this checkout's locale, so its version belongs next to the NewGRF ones
         "openttd": vendor_meta("openttd")["describe"],
+        "xussr": xussr_meta["describe"] or xussr_meta["commit"],
         "schema_version": 1,
     })
     print("validate: OK")

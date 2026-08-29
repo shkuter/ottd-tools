@@ -5,6 +5,7 @@ import { readNewGrfs } from '../extract/ngrf';
 import { readGameYear, yearOfDate } from '../extract/date';
 import { readInflation } from '../extract/ecmy';
 import { fixture } from './fixture';
+import type { RawSavegame } from '../read';
 
 const IRON_HORSE = 0x23124143;
 const FIRS = 0x100025f1;
@@ -63,6 +64,29 @@ describe('перевод даты в год', () => {
   });
 });
 
+/** Минимальный разобранный сейв: список GRF — единственное, что здесь важно. */
+function rawWithGrfs(grfids: number[]): RawSavegame {
+  return {
+    jgrpp: false,
+    version: 0,
+    settings: new Map(),
+    grfs: grfids.map((grfid) => ({
+      grfid, params: [], name: '', filename: '', version: 0,
+    })),
+    network: {
+      engineIds: new Map(),
+      industryTypeIds: new Map(),
+      trains: new Map(),
+      orderLists: new Map(),
+      stations: new Map(),
+      industries: new Map(),
+      towns: new Map(),
+      groups: new Map(),
+      companies: new Map(),
+    },
+  };
+}
+
 describe('сборка предложения импорта', () => {
   it('из партии Londworth складывается её настоящая конфигурация', async () => {
     const { buildImport } = await import('../import');
@@ -80,7 +104,7 @@ describe('сборка предложения импорта', () => {
       timekeeping: 'calendar',
       accelerationModel: 'realistic',
       paymentAlgorithm: 'modern',
-      ironHorse: true,
+      trainSet: 'iron_horse',
       firs: true,
       basecostGrf: true,
       // BaseCosts Mod: покупка вдвое дороже, содержание не тронуто
@@ -102,7 +126,64 @@ describe('сборка предложения импорта', () => {
     // такое же её свойство, как присутствие
     const proposal = buildImport(await readSavegame(fixture('vanilla-1951')));
 
-    expect(proposal.game).toMatchObject({ ironHorse: false, firs: false, basecostGrf: false });
+    expect(proposal.game).toMatchObject({ trainSet: 'vanilla', firs: false, basecostGrf: false });
+  });
+
+  it('настоящая партия xUSSR читается целиком', async () => {
+    // партия пользователя на JGRPP: девять GRF набора 0.8.1, базовый Railway Set 0.7.1,
+    // Subways и Ivolga, FIRS Steeltown. Проверяется то, что видно в самой игре
+    const { buildImport } = await import('../import');
+    const { readSavegame } = await import('../read');
+    const proposal = buildImport(await readSavegame(fixture('xussr-1872')));
+
+    expect(proposal.game).toMatchObject({
+      trainSet: 'xussr',
+      firs: true,
+      firsEconomy: 'STEELTOWN',
+      jgrpp: true,
+      dayLengthFactor: 5,
+      startingYear: 1850,
+      inflation: true,
+      vehicleCosts: 2,
+      constructionCost: 2,
+      basecostGrf: false,
+    });
+    expect(proposal.calc).toMatchObject({ priceYear: 1872 });
+    // над списком различий назван и сам набор, и его аддоны без данных
+    expect(proposal.recognisedSets).toEqual([
+      'savegame.grf.xussr',
+      'savegame.grf.xussrIvolga',
+      'savegame.grf.xussrSubways',
+      'savegame.grf.firs',
+    ]);
+  });
+
+  it('сейв с наборами xUSSR предлагает набор xUSSR', async () => {
+    const { buildImport } = await import('../import');
+    const { XUSSR_GRFIDS, IRON_HORSE_GRFID } = await import('../registry');
+    // девять файлов одного набора: любой из них означает, что игрок играет xUSSR
+    const proposal = buildImport(rawWithGrfs([
+      XUSSR_GRFIDS.rails, XUSSR_GRFIDS.electric, XUSSR_GRFIDS.wagons,
+    ]));
+    expect(proposal.game.trainSet).toBe('xussr');
+    // и над списком различий набор назван один раз, а не девять
+    expect(proposal.recognisedSets).toEqual(['savegame.grf.xussr']);
+    // Iron Horse в той же таблице остаётся собой
+    expect(buildImport(rawWithGrfs([IRON_HORSE_GRFID])).game.trainSet).toBe('iron_horse');
+  });
+
+  it('сейв без набора машин даёт ваниль, даже когда другие наборы есть', async () => {
+    const { buildImport } = await import('../import');
+    const { FIRS_GRFID } = await import('../registry');
+    const proposal = buildImport(rawWithGrfs([FIRS_GRFID]));
+    expect(proposal.game.trainSet).toBe('vanilla');
+    expect(proposal.game.firs).toBe(true);
+    expect(proposal.recognisedSets).toEqual(['savegame.grf.firs']);
+  });
+
+  it('нераспознанный GRF в баннер не попадает', async () => {
+    const { buildImport } = await import('../import');
+    expect(buildImport(rawWithGrfs([0xdeadbeef])).recognisedSets).toEqual([]);
   });
 
   it('настройки без модели попадают в справочный список', async () => {

@@ -30,6 +30,12 @@ export interface SavegameImport {
   inflation?: SavedInflation;
   /** Sets recognised as changing base costs whose parameters have never been read. */
   unreadBaseCostSets: string[];
+  /**
+   * Label keys of the NewGRF sets recognised in the file, each named once. Shown to the
+   * player above the differences, so what the calculator concluded about the game — the
+   * roster above all — is visible rather than guessed at.
+   */
+  recognisedSets: string[];
 }
 
 export function buildImport(raw: RawSavegame): SavegameImport {
@@ -60,18 +66,35 @@ export function buildImport(raw: RawSavegame): SavegameImport {
       .map((grf) => knownGrf(grf.grfid))
       .filter((known) => known?.role === 'baseCosts' && !known.baseCosts)
       .map((known) => known!.labelKey),
+    recognisedSets: recognisedSets(grfs),
   };
+}
+
+/**
+ * Names of the sets the file's GRF list is recognised as, each set once however many
+ * files it is spread over, in the order the game loads them.
+ */
+function recognisedSets(grfs: readonly SavedGrf[]): string[] {
+  const seen: string[] = [];
+  for (const grf of grfs) {
+    const known = knownGrf(grf.grfid);
+    if (known && !seen.includes(known.labelKey)) seen.push(known.labelKey);
+  }
+  return seen;
 }
 
 /** Which sets are loaded, and what their parameters say about prices. */
 function grfSettings(grfs: readonly SavedGrf[]): Partial<GameSettings> {
+  const known = grfs.map((grf) => knownGrf(grf.grfid));
   const roles = new Set(
-    grfs
-      .map((grf) => knownGrf(grf.grfid)?.role)
-      .filter((role): role is GrfRole => role != null),
+    known.map((entry) => entry?.role).filter((role): role is GrfRole => role != null),
   );
   const patch: Partial<GameSettings> = {
-    ironHorse: roles.has('trains'),
+    // the roster comes from the recognised entry rather than from the bare role: with
+    // three sets "a train set is loaded" no longer says which one. A file naming none
+    // is a vanilla game — a set absent from the save is as much a fact about it as one
+    // present (spec savegame-import).
+    trainSet: known.find((entry) => entry?.trainSet)?.trainSet ?? 'vanilla',
     firs: roles.has('industries'),
     basecostGrf: roles.has('baseCosts'),
   };

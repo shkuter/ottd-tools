@@ -125,7 +125,7 @@ describe('a game played without Iron Horse', () => {
     const proposal = buildImport(base);
     const settings = snapshotSettings(proposal.game, proposal.calc);
     const snapshot = buildSnapshot(base);
-    expect(settings.game.ironHorse, 'the fixture is a vanilla game').toBe(false);
+    expect(settings.game.trainSet, 'the fixture is a vanilla game').toBe('vanilla');
 
     const company = snapshot.routes[0]?.companyId ?? 0;
     const row = routeRows(snapshot, settings, company).find((r) => r.entries !== null);

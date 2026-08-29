@@ -44,7 +44,7 @@ beforeEach(() => {
   useSettingsStore.getState().reset();
   // заметка сравнивает состав, а он из Iron Horse: без набора состав не активен и сравнение
   // идёт по пустому списку (`activeEntries`). По умолчанию наборы выключены.
-  useSettingsStore.getState().applySettings({ ironHorse: true, firs: true }, {});
+  useSettingsStore.getState().applySettings({ trainSet: 'iron_horse', firs: true }, {});
   useLocaleStore.getState().setLocale('en');
   useConsistStore.setState({ entries: [] });
   useRouteStore.setState({
@@ -140,7 +140,7 @@ describe('a consist left over from another vehicle set', () => {
     const vanillaEngine = vanillaTrains.find((t) => t.kind === 'engine')!;
     // an imported vanilla game, and Iron Horse switched on afterwards: the store still holds
     // the vanilla consist, and Iron Horse's shifts would state money no game charges
-    useSettingsStore.getState().setGame('ironHorse', true);
+    useSettingsStore.getState().setGame('trainSet', 'iron_horse');
     useConsistStore.setState({ entries: [{ train: vanillaEngine, count: 1 }] });
     useRouteStore.setState({ cargoLabel: 'COAL', distanceTiles: 100, manualDays: null });
 

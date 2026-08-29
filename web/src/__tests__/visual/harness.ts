@@ -98,7 +98,7 @@ async function openHarness(): Promise<Harness> {
    */
   await context.addInitScript(
     ({ key, version }) => {
-      const game = { ironHorse: true, firs: true, basecostGrf: true };
+      const game = { trainSet: 'iron_horse', firs: true, basecostGrf: true };
       window.localStorage.setItem(key, JSON.stringify({ state: { game }, version }));
     },
     { key: SETTINGS_KEY, version: SETTINGS_VERSION },

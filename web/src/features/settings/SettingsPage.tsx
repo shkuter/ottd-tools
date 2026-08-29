@@ -3,13 +3,14 @@ import { activeEconomy, economies, trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
 import { unitSuffix } from '../../components/format';
 import { t } from '../../i18n';
+import { trainSetName } from '../../i18n/names';
 import {
   CURRENCIES,
   useSettingsStore,
   type CurrencyCode,
   type SpeedUnit,
 } from '../../state/settingsStore';
-import { BASECOST_MULTIPLIERS } from '../../engine/settings';
+import { BASECOST_MULTIPLIERS, TRAIN_SETS, type GameSettings } from '../../engine/settings';
 import { resetPersistedState } from '../../state';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 import { SavegameImportPanel } from './SavegameImportPanel';
@@ -156,14 +157,20 @@ export default function SettingsPage() {
 
       <Fieldset className="settings-group" legend={t('settings.newgrf')}>
         <p className="hint">{t('settings.newgrfHint')}</p>
-        <Row label={t('settings.ironHorse')} hint={t('settings.ironHorseHint')}>
-          <Switch
-            checked={game.ironHorse}
-            onChange={(e) => setGame('ironHorse', e.currentTarget.checked)}
-            label={game.ironHorse ? t('settings.on') : t('settings.off')}
+        {/* The train roster is one per game — the sets swap the whole catalogue, the
+            track table and the basecost shifts — so it is a choice, not switches. */}
+        <Row label={t('settings.trainSet')} hint={t('settings.trainSetHint')}>
+          <Select
+            allowDeselect={false}
+            value={game.trainSet}
+            onChange={(v) => v && setGame('trainSet', v as GameSettings['trainSet'])}
+            data={TRAIN_SETS.map((set) => ({
+              value: set,
+              label: trainSetName(set),
+            }))}
           />
         </Row>
-        {game.ironHorse && (
+        {game.trainSet === 'iron_horse' && (
           <NestedRow label={t('consist.capacityParam')} hint={t('settings.capacityHint')}>
             <Select
               allowDeselect={false}
@@ -342,7 +349,7 @@ export default function SettingsPage() {
           />
         </Row>
         {/* the fatal error is Iron Horse's; without it inflation is an ordinary setting */}
-        {game.inflation && game.ironHorse && (
+        {game.inflation && game.trainSet === 'iron_horse' && (
           <Warning>
             <strong>{t('settings.inflationWarnTitle')}</strong>
             <p className="grf-error">{t('settings.inflationGrfError')}</p>

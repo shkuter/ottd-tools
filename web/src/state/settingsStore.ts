@@ -22,7 +22,7 @@ export type CurrencyCode = keyof typeof CURRENCIES;
 
 /** Where the settings live, and at which version; exported so checks seed the real thing. */
 export const SETTINGS_KEY = 'ottd-tools-settings';
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 4;
 
 /**
  * Gauge families the track setting used to hold → the label of the track each stood for.
@@ -104,7 +104,7 @@ export const useSettingsStore = create<SettingsState>()(
       migrate: (persisted, version) => {
         if (version >= SETTINGS_VERSION) return persisted as SettingsState;
         type Persisted = Omit<Partial<SettingsState>, 'game'> & {
-          game?: Partial<GameSettings> & { basecostTrainRunning?: number };
+          game?: Partial<GameSettings> & { basecostTrainRunning?: number; ironHorse?: boolean };
         };
         let p = (persisted ?? {}) as Persisted;
 
@@ -146,6 +146,20 @@ export const useSettingsStore = create<SettingsState>()(
         if (version < 3 && p.calc?.trackType) {
           const label = TRACK_FAMILY_LABELS[p.calc.trackType] ?? p.calc.trackType;
           p = { ...p, calc: { ...p.calc, trackType: label } };
+        }
+
+        /*
+         * v4 turned the Iron Horse switch into the train-set choice: with xUSSR there are
+         * three rosters, and two booleans could claim two sets at once. The saved flag
+         * carries over losslessly — on means Iron Horse, off means vanilla — and the old
+         * field leaves the saved state.
+         */
+        if (version < 4 && p.game) {
+          const { ironHorse, ...game } = p.game;
+          p = {
+            ...p,
+            game: { ...game, trainSet: ironHorse ? 'iron_horse' : 'vanilla' },
+          };
         }
 
         return p as SettingsState;

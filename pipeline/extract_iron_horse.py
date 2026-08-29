@@ -3,7 +3,7 @@
 Импортирует модель данных Iron Horse напрямую (без компиляции NewGRF):
 рецепт — как в vendor/iron-horse/src/id_report.py.
 """
-from common import bootstrap_iron_horse, vendor_meta, write_json
+from common import bootstrap_iron_horse, display_mph, vendor_meta, write_json
 # imported before the bootstrap below, which puts the set's own src/ first on sys.path
 from extract_vanilla import parse_railtypes as vanilla_railtypes
 
@@ -12,11 +12,6 @@ iron_horse = ih.iron_horse
 global_constants = ih.global_constants
 DocHelper = ih.DocHelper
 polar_fox_constants = ih.polar_fox_constants
-
-
-def display_mph(internal):
-    """Speed the game shows for an internal speed (strings.cpp ConvertKmhishSpeedToDisplaySpeed)."""
-    return (10 * internal) // 16
 
 
 def speed_internal(mph):
@@ -154,6 +149,16 @@ def railtypes_payload(dh):
                 borrowed["catenary"] if borrowed
                 else "RAILTYPE_FLAG_CATENARY" in (rt.railtype_flags or [])
             ),
+            # Iron Horse states no current systems: wires are OHLE, metro is its
+            # third rail; sets that do state them (xUSSR) fill this per system
+            "power_source": (
+                ["METRO"] if rt.label == "MTRO"
+                else ["OHLE"] if (
+                    borrowed["catenary"] if borrowed
+                    else "RAILTYPE_FLAG_CATENARY" in (rt.railtype_flags or [])
+                )
+                else []
+            ),
             # RAILTYPE_FLAG_HIDDEN: the set defines the type but the game keeps it out of
             # the build menu (rail.h: "hiding from selection"). Iron Horse hides plain LGV,
             # which exists so high speed vehicles stay compatible with ordinary track — the
@@ -233,6 +238,10 @@ def main():
                 "build_wagon": global_constants.PR_BUILD_VEHICLE_WAGON,
                 "running_steam": global_constants.PR_RUNNING_TRAIN_STEAM,
                 "running_diesel": global_constants.PR_RUNNING_TRAIN_DIESEL,
+                # Iron Horse has no electric running-cost vehicles and states no
+                # shift for the class; an unstated shift is zero, not a neighbour's
+                # (economy.cpp RecomputePrices)
+                "running_electric": 0,
             },
             "capacity_param_multipliers": global_constants.capacity_multipliers,
             "refit_groups": refit_groups,

@@ -144,6 +144,14 @@ identical rows, so the optimizer searches one per profile. Deliberately blind to
 groups harder than a **purchase entry** — that one is for lists a human reads, this one is for
 the search.
 
+## Sets
+
+**Train set** (_набор машин_) — the roster a game runs: vanilla, Iron Horse or xUSSR. Exactly
+one is active, because the catalogue, the **track type** table and the basecost shifts all come
+from it — a vehicle of one set priced by another's shifts would be priced wrong. Unlike FIRS and
+Base Costs, which the game loads independently and the calculator switches on and off, the
+roster is a choice of one. _Avoid_: NewGRF (that is any set, not the roster); vehicle set.
+
 ## Track types
 
 **Track type** (_тип путей_) — the kind of track a route is built with: a railtype in NewGRF
@@ -170,9 +178,12 @@ would move at zero power.
 
 **Power source** (_род тока_) — what a **track type** feeds a vehicle with: overhead wires of a
 given current (25 kV / 15 kV AC, 3 kV / 1.5 kV DC), third rail, or nothing — the vehicle then
-runs on its own fuel. The track names its source; a vehicle states a power per source it
-accepts, so a dual-system engine makes different power under different wires. Generalises the
-old "OHLE where there is catenary" rule — catenary stays a fact about wires, not about current.
+runs on its own fuel. A track names the sources it carries, in the order its set checks them:
+usually one, but a set may build a **multi-system line** — xUSSR's AC 25 kV + DC 3 kV trunk is
+a track a player lays like any other. A vehicle states a power per source it accepts, so a
+dual-system engine makes different power under different wires, and on a multi-system line it
+takes the first source it accepts. Generalises the old "OHLE where there is catenary" rule —
+catenary stays a fact about wires, not about current.
 
 ## Consist rules
 
