@@ -168,6 +168,31 @@ powered on several types, with a different power on each.
 **track type**", towed if need be. Enough for wagons; an engine that is merely compatible
 would move at zero power.
 
+**Power source** (_род тока_) — what a **track type** feeds a vehicle with: overhead wires of a
+given current (25 kV / 15 kV AC, 3 kV / 1.5 kV DC), third rail, or nothing — the vehicle then
+runs on its own fuel. The track names its source; a vehicle states a power per source it
+accepts, so a dual-system engine makes different power under different wires. Generalises the
+old "OHLE where there is catenary" rule — catenary stays a fact about wires, not about current.
+
+## Consist rules
+
+Vocabulary settled with the xUSSR design session; the model itself arrives with the
+`xussr-consist-rules` change, so nothing in the calculator prices these yet.
+
+**Coupling norm** (_норма сцепки_) — how many sections a multi-section locomotive is meant to
+run as (xUSSR: two for most, four for some). A consist short of the norm still runs, but every
+vehicle in it is slowed and charged by the set's **consist penalty** — a worse consist, not a
+forbidden one.
+
+**Consist penalty** (_штраф составности_) — the speed-and-cost malus a set applies to a consist
+that breaks its **coupling norm**. The only consist rule that changes numbers; the calculator
+prices it like any other number, so a properly coupled consist wins on merit. _Avoid_: consist
+ban (the game allows the consist; it is merely penalised).
+
+**Consist warning** (_предупреждение о составе_) — the set's verdict a player sees in the
+vehicle window: wrong consist, inadmissible cargo, a section that must not run last. Changes no
+numbers; the builder shows the same wording the game would.
+
 ## Industry supply
 
 **Supply window** (_окно поставок_) — the stretch FIRS looks back over when it decides whether
