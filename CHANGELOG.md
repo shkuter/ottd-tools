@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-29
+
 ### Added
 
 - The **xUSSR Railway Set** is a third train roster beside Iron Horse and vanilla: 926
