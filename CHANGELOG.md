@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-29
+
 ### Added
 
 - The track a route is built with is now a choice of its own, offered wherever a search runs
