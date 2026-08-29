@@ -1,3 +1,6 @@
+import { createZstdCompress } from 'node:zlib';
+import { buffer } from 'node:stream/consumers';
+import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import { lzo1xCompress } from 'lzo1x';
 import { decompressSavegame, readHeader } from '../decompress';
@@ -28,6 +31,16 @@ async function deflate(bytes: Uint8Array): Promise<Uint8Array> {
     .stream()
     .pipeThrough(new CompressionStream('deflate'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+/**
+ * Compresses the way ZSTDSaveFilter does — as a stream, without pledging the source size — so
+ * the frame header carries no content size and the decoder has to grow its own buffer. The
+ * synchronous zstdCompressSync would state the size and skip that branch.
+ */
+async function zstd(bytes: Uint8Array): Promise<Uint8Array> {
+  const packed = await buffer(Readable.from([bytes]).pipe(createZstdCompress()));
+  return new Uint8Array(packed);
 }
 
 function adler32(...parts: Uint8Array[]): number {
@@ -62,6 +75,7 @@ describe('заголовок', () => {
     expect(readHeader(header('OTTZ', 295)).compression).toBe('zlib');
     expect(readHeader(header('OTTX', 295)).compression).toBe('xz');
     expect(readHeader(header('OTTD', 295)).compression).toBe('lzo');
+    expect(readHeader(header('OTTS', 295)).compression).toBe('zstd');
   });
 
   it('снимает флаг патчпака с номера версии', () => {
@@ -100,5 +114,33 @@ describe('распаковка', () => {
     const file = join(header('OTTD', 295), lzoBlocks(PAYLOAD));
     file[file.length - 1] ^= 0xff;
     await expect(decompressSavegame(file)).rejects.toThrow(SavegameFormatError);
+  });
+
+  it('zstd — автосохранение патчпака', async () => {
+    const file = join(header('OTTS', 295, true), await zstd(PAYLOAD));
+    const { header: head, data } = await decompressSavegame(file);
+    expect(data).toEqual(PAYLOAD);
+    expect(head).toMatchObject({ compression: 'zstd', version: 295, jgrpp: true });
+  });
+
+  it('zlib — испорченный поток тоже идёт ошибкой сейва', async () => {
+    const packed = await deflate(PAYLOAD);
+    packed[packed.length >> 1] ^= 0xff;
+    await expect(decompressSavegame(join(header('OTTZ', 295), packed))).rejects.toThrow(
+      SavegameFormatError,
+    );
+  });
+
+  it('zstd — обрезанный поток идёт ошибкой сейва, а не библиотеки', async () => {
+    const packed = await zstd(PAYLOAD);
+    const file = join(header('OTTS', 295), packed.subarray(0, packed.length >> 1));
+    await expect(decompressSavegame(file)).rejects.toThrow(SavegameFormatError);
+  });
+
+  it('неизвестный тег остаётся «не сохранение»', async () => {
+    const file = join(header('OTTQ', 295), await zstd(PAYLOAD));
+    await expect(decompressSavegame(file)).rejects.toMatchObject({
+      messageKey: 'savegame.error.notASavegame',
+    });
   });
 });

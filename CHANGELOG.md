@@ -18,6 +18,18 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- Savegames compressed with zstd are read as well. JGR's Patchpack writes its autosaves that
+  way, so the file that is already on disk can be imported instead of one saved by hand. The
+  decoder is fetched only when a save is actually loaded, so it costs the rest of the app
+  nothing.
+
+### Fixed
+
+- A savegame whose compressed stream is damaged now reports that the file cannot be read.
+  Only the LZO branch used to say so; the others let the decoder's own error through.
+
 ## [0.15.0] - 2026-08-29
 
 ### Added

@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.15.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.15"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -17,6 +20,7 @@
     "@mantine/hooks": "^9.5.1",
     "@mantine/notifications": "^9.5.1",
     "clsx": "^2.1.1",
+    "fzstd": "^0.1.1",
     "lzo1x": "^1.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

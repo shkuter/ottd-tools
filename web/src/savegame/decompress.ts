@@ -9,13 +9,14 @@
 import { lzo1xDecompress } from 'lzo1x';
 import { SavegameFormatError } from './reader';
 
-export type SavegameCompression = 'none' | 'zlib' | 'xz' | 'lzo';
+export type SavegameCompression = 'none' | 'zlib' | 'xz' | 'lzo' | 'zstd';
 
 const TAGS: Record<string, SavegameCompression> = {
   OTTN: 'none',
   OTTZ: 'zlib',
   OTTX: 'xz',
   OTTD: 'lzo',
+  OTTS: 'zstd',
 };
 
 /** Bit the patchpack sets in the version word to flag its extended format. */
@@ -53,15 +54,26 @@ export async function decompressSavegame(
 ): Promise<{ header: SavegameHeader; data: Uint8Array }> {
   const header = readHeader(bytes);
   const body = bytes.subarray(8);
-  switch (header.compression) {
-    case 'none':
-      return { header, data: body };
-    case 'zlib':
-      return { header, data: await inflate(body) };
-    case 'xz':
-      return { header, data: await unxz(body) };
-    case 'lzo':
-      return { header, data: unlzo(body) };
+  try {
+    switch (header.compression) {
+      case 'none':
+        return { header, data: body };
+      case 'zlib':
+        return { header, data: await inflate(body) };
+      case 'xz':
+        return { header, data: await unxz(body) };
+      case 'lzo':
+        return { header, data: unlzo(body) };
+      case 'zstd':
+        return { header, data: await unzstd(body) };
+    }
+  } catch (err) {
+    if (err instanceof SavegameFormatError) throw err;
+    // whatever the branch threw — a decoder refusing a broken stream, or the dynamic import
+    // of one failing — the player is looking at a file that cannot be read, not at a library
+    throw new SavegameFormatError(
+      `cannot decompress ${header.compression} stream: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 
@@ -79,6 +91,21 @@ async function unxz(body: Uint8Array): Promise<Uint8Array> {
   const { XzReadableStream } = await import('xz-decompress');
   const source = new Blob([body as BlobPart]).stream();
   return new Uint8Array(await new Response(new XzReadableStream(source)).arrayBuffer());
+}
+
+/**
+ * zstd stream, written by JGR's Patchpack. Only its autosaves, exit.sav, the world generator
+ * save and network transfer get the flag that allows the format (SMF_ZSTD_OK,
+ * sl/saveload.cpp); a manual save is still xz. The decoder is plain JavaScript, fetched only
+ * once a save turns out to be zstd, so it stays out of the main bundle.
+ *
+ * The game compresses as it writes (ZSTD_e_continue, then ZSTD_e_end on Finish) and never
+ * pledges the source size, so the frame header states no content size and the decoder has to
+ * grow its own buffer.
+ */
+async function unzstd(body: Uint8Array): Promise<Uint8Array> {
+  const { decompress } = await import('fzstd');
+  return decompress(body);
 }
 
 /**
