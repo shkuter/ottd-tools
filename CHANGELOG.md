@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-08-30
+
 ### Added
 
 - **Vehicles never expire** joined the game settings, where it switches the withdrawal off
