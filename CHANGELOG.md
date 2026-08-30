@@ -20,6 +20,11 @@ of what users see):
 
 ### Added
 
+- xUSSR wagons carry the FIRS 5.2 cargo range. Upstream the set still declares the FIRS 4
+  labels, so in Steeltown 18 cargoes had no wagon at all — ferroalloys, the entire steel
+  range, concrete products, hardware and the rest — and the catalogue, agreeing with the
+  game, could only offer an empty list. Data is now built from a fork that adds those
+  labels, offered back upstream (George-VB/xussrset#257).
 - **RUR**, the game's other rouble, joins the currency list: OpenTTD ships two, RUR at 50 to
   the pound and RUB at 80, and only RUB was offered.
 - A savegame import now carries the display settings the game was played with — its currency

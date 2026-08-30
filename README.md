@@ -53,7 +53,9 @@ it read them off your game.
   [OpenTTD](https://github.com/OpenTTD/OpenTTD) — economy & physics formulas, locale;
   [OpenTTD-patches](https://github.com/JGRennison/OpenTTD-patches) — JGR's Patchpack,
   reference for patchpack-specific behaviour, pinned at the release players run;
-  [xussrset](https://github.com/George-VB/xussrset) — xUSSR vehicle, track and capacity data.
+  [xussrset](https://github.com/shkuter/xussrset) — xUSSR vehicle, track and capacity data,
+  pinned at a fork of [George-VB/xussrset](https://github.com/George-VB/xussrset) that adds
+  the FIRS 5.2 cargo labels (offered back upstream, George-VB/xussrset#257).
 
 ## Commands
 
@@ -134,7 +136,8 @@ Derived material and its sources:
 - Vehicle stats and buy-menu sprites — [Iron Horse](https://github.com/andythenorth/iron-horse)
   4.29.0, © andythenorth and contributors.
 - xUSSR vehicle, track and capacity data, buy-menu sprites and Russian vehicle names —
-  [xUSSR Railway Set](https://github.com/George-VB/xussrset), © the xUSSR Set developers team.
+  [xUSSR Railway Set](https://github.com/George-VB/xussrset), © the xUSSR Set developers team,
+  read from a [fork](https://github.com/shkuter/xussrset) adding the FIRS 5.2 cargo labels.
 - Industry, cargo and economy data — [FIRS](https://github.com/andythenorth/firs) 5.2.0,
   © andythenorth and contributors.
 - Vanilla vehicle/cargo tables, economy and physics formulas, savegame format, town and

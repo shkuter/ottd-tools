@@ -52,7 +52,9 @@ xUSSR Railway Set и FIRS 5. Из коробки он считает ванил�
   [OpenTTD](https://github.com/OpenTTD/OpenTTD) — формулы экономики и физики, локаль;
   [OpenTTD-patches](https://github.com/JGRennison/OpenTTD-patches) — JGR's Patchpack,
   справочник по поведению патчпака, пиннут на релиз, в который играют;
-  [xussrset](https://github.com/George-VB/xussrset) — данные машин, путей и вместимостей xUSSR.
+  [xussrset](https://github.com/shkuter/xussrset) — данные машин, путей и вместимостей xUSSR,
+  пиннут на форк [George-VB/xussrset](https://github.com/George-VB/xussrset), добавляющий
+  метки грузов FIRS 5.2 (предложены апстриму, George-VB/xussrset#257).
 
 ## Команды
 
@@ -134,7 +136,8 @@ GPL-2.0-only — см. [LICENSE](LICENSE). Калькулятор распрос
 - Характеристики машин и спрайты из списка покупки —
   [Iron Horse](https://github.com/andythenorth/iron-horse) 4.29.0, © andythenorth и участники.
 - Данные машин, путей и вместимостей xUSSR, спрайты из списка покупки и русские названия машин —
-  [xUSSR Railway Set](https://github.com/George-VB/xussrset), © команда разработчиков xUSSR Set.
+  [xUSSR Railway Set](https://github.com/George-VB/xussrset), © команда разработчиков xUSSR Set;
+  читаются из [форка](https://github.com/shkuter/xussrset) с метками грузов FIRS 5.2.
 - Данные о предприятиях, грузах и экономике — [FIRS](https://github.com/andythenorth/firs)
   5.2.0, © andythenorth и участники.
 - Ванильные таблицы машин и грузов, формулы экономики и физики, формат сейвов, генераторы
