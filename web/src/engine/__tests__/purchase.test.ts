@@ -167,3 +167,34 @@ describe('purchase entries', () => {
     expect(purchaseKey(train, CAPACITY_INDEX, GAME)).toContain(String(train.weight_t));
   });
 });
+
+describe('representative follows what the game sells', () => {
+  const twins = (id: string, over: Partial<(typeof trains)[number]> = {}) => ({
+    ...trains[0],
+    id,
+    randomised: false,
+    ...over,
+  });
+
+  it('an entry is faced by a vehicle still on sale', () => {
+    // both halves of the entry look the same to the key; only availability tells them apart
+    const pair = [twins('a_withdrawn'), twins('b_on_sale')];
+    const [entry] = purchaseEntries(pair, CAPACITY_INDEX, GAME, (t) => t.id === 'b_on_sale');
+    expect(entry.members).toHaveLength(2);
+    expect(entry.train.id).toBe('b_on_sale');
+  });
+
+  it('with nothing on sale the entry keeps its usual face', () => {
+    // the caller drops such an entry by asking about the representative, so the choice here
+    // only has to stay stable rather than invent an answer
+    const pair = [twins('a_first'), twins('b_second')];
+    const [entry] = purchaseEntries(pair, CAPACITY_INDEX, GAME, () => false);
+    expect(entry.train.id).toBe('a_first');
+  });
+
+  it('without the predicate the old rule stands', () => {
+    const pair = [twins('a_randomised', { randomised: true }), twins('b_plain')];
+    const [entry] = purchaseEntries(pair, CAPACITY_INDEX, GAME);
+    expect(entry.train.id).toBe('b_plain');
+  });
+});

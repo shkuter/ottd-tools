@@ -22,6 +22,7 @@ import type { Snapshot } from '../../../savegame/snapshot';
 import { useSettingsStore } from '../../../state/settingsStore';
 
 const SNAPSHOT: Snapshot = {
+  soldIds: null,
   companies: [{ id: 0, name: '', isAi: false }],
   towns: [],
   stations: [],

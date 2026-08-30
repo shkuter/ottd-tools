@@ -11,6 +11,7 @@ import { readGameYear } from './extract/date';
 import { readInflation, type SavedInflation } from './extract/ecmy';
 import { readGroups, type SavedGroup } from './extract/grps';
 import { readEngineIds, readIndustryTypeIds, type GrfEntityId } from './extract/ids';
+import { readEngineStates, type SavedEngineState } from './extract/engn';
 import { readIndustries, type SavedIndustry } from './extract/indy';
 import { readMapSize, type SavedMapSize } from './extract/maps';
 import { readNewGrfs, type SavedGrf } from './extract/ngrf';
@@ -47,6 +48,8 @@ export interface RawNetwork {
   /** Absent where the save states no map size; distances cannot be measured without it. */
   mapSize?: SavedMapSize;
   engineIds: Map<number, GrfEntityId>;
+  /** What the game says about each engine of the pool — chiefly who may buy it. */
+  engineStates: Map<number, SavedEngineState>;
   industryTypeIds: Map<number, GrfEntityId>;
   trains: Map<number, RawTrainUnit>;
   orderLists: Map<number, SavedOrder[]>;
@@ -107,6 +110,7 @@ function readNetwork(chunks: Map<string, Chunk>): RawNetwork {
   return {
     mapSize: readMapSize(chunks.get('MAPS')),
     engineIds: readEngineIds(chunks.get('EIDS')),
+    engineStates: readEngineStates(chunks.get('ENGN')),
     industryTypeIds: readIndustryTypeIds(chunks.get('IIDS')),
     trains,
     orderLists: readOrderLists(chunks.get('ORDL'), chunks.get('ORDR')),

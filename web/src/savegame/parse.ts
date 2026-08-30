@@ -22,6 +22,9 @@ export const WANTED_CHUNKS = [
   // network of the game, for the snapshot; MAPS states how wide the map is, which is what
   // turns a station's stored tile into coordinates
   'MAPS', 'EIDS', 'IIDS', 'VEHS', 'ORDL', 'ORDR', 'STNN', 'CAPA', 'INDY', 'CITY', 'GRPS', 'PLYR',
+  // what the game sells on its own date: it decides availability from rolled dates and
+  // ages the data files cannot state, so its answer beats any recomputation
+  'ENGN',
 ] as const;
 
 export interface ParsedSavegame {

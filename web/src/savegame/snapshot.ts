@@ -22,7 +22,8 @@ import {
   type SavedOrder,
 } from './extract/ordl';
 import { isRearDualheaded, TS_ARTICULATED_PART, TS_FRONT } from './extract/vehs';
-import { isBaseSet } from './extract/ids';
+import { isBaseSet, VEHICLE_TYPE_TRAIN } from './extract/ids';
+import { enginesOnSale } from './extract/engn';
 import { areasTouch } from './extract/area';
 import stationNamesJson from '../data/station_names.json';
 import { TOWNNAME_ENGLISH_ORIGINAL } from './extract/city';
@@ -156,6 +157,13 @@ export interface SnapshotIndustry {
 }
 
 export interface Snapshot {
+  /**
+   * Catalogue ids the game sells on the date of the save, as the game itself answers it: the
+   * ENGN chunk carries that answer per engine. `null` when the save states nothing about its
+   * engines — which is not the same as a game selling nothing, and the lists must not read
+   * the one as the other.
+   */
+  soldIds: string[] | null;
   companies: SnapshotCompany[];
   towns: SnapshotTown[];
   stations: SnapshotStation[];
@@ -179,6 +187,7 @@ export function buildSnapshot(raw: RawSavegame): Snapshot {
   const trains = buildTrains(raw, engineCatalogue, label);
   const routes = buildRoutes(raw, trains);
   return {
+    soldIds: buildSoldIds(raw, engineCatalogue),
     companies: [...raw.network.companies.values()].map((c) => ({
       id: c.index,
       name: c.name,
@@ -222,6 +231,39 @@ for (const train of xussrTrains) {
   for (const numericId of train.numeric_ids) {
     multiFileIds.set(`${grfid}:${numericId}`, train.id);
   }
+}
+
+/**
+ * The company a snapshot speaks for: the first one a human plays, since that is whose game
+ * the user came to look at. A game of AIs only still answers with something rather than
+ * nothing. Availability is the same for every company bar hiding, which is personal.
+ */
+export function shownCompany(companies: readonly SnapshotCompany[]): SnapshotCompany | undefined {
+  return companies.find((company) => !company.isAi) ?? companies[0];
+}
+
+/** Catalogue ids the game sells, taken from its own per-engine answer. */
+function buildSoldIds(
+  raw: RawSavegame,
+  engineCatalogue: (engineType: number) => string | null,
+): string[] | null {
+  if (raw.network.engineStates.size === 0) return null;
+  const shown = shownCompany(
+    [...raw.network.companies.values()].map((c) => ({ id: c.index, name: c.name, isAi: c.isAi })),
+  );
+  const onSale = enginesOnSale(raw.network.engineStates, shown?.id ?? null);
+  const ids = new Set<string>();
+  for (const index of onSale) {
+    // road vehicles, ships and aircraft number their ids from zero again, so a bus would
+    // otherwise be read as whatever train shares its number
+    const mapping = raw.network.engineIds.get(index);
+    if (mapping && mapping.type !== undefined && mapping.type !== VEHICLE_TYPE_TRAIN) continue;
+    const id = engineCatalogue(index);
+    // an engine of a GRF the calculator has no catalogue for cannot be named, and a list
+    // that silently dropped it would read as "the game does not sell it"
+    if (id !== null) ids.add(id);
+  }
+  return [...ids].sort();
 }
 
 /** Engine pool index → catalogue id, resolved through EIDS. */

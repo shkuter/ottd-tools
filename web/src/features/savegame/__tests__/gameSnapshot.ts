@@ -25,6 +25,7 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
   // по умолчанию наборы выключены, поэтому фикстура называет их явно
   settings: snapshotSettings({ trainSet: 'iron_horse', firs: true }, {}),
   snapshot: {
+    soldIds: null,
     companies: [
       { id: 0, name: 'Checks & Co', isAi: false },
       { id: 1, name: '', isAi: true },

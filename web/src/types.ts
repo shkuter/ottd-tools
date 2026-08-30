@@ -75,6 +75,21 @@ export interface Train {
   intro_month: number;
   vehicle_life: number;
   model_life: number | null;
+  /**
+   * Head of the variant series this vehicle ages with, keyed as `meta.variant_groups` keys
+   * it; `null` when it ages by its own intro date. The game takes the age off the head
+   * rather than the vehicle (engine.cpp CalcEngineReliability), walking the chain up while
+   * each link asks for reliability syncing — so a set that folds vehicles into a group
+   * without that flag (xUSSR's `vehicle_group_pre`) leaves them ageing alone, and they
+   * carry no head here. Vanilla declares no series at all, hence optional.
+   */
+  variant_group?: string | null;
+  /**
+   * Years the set brings the retirement forward by, negative to push it back — Iron Horse
+   * states −10 for every vehicle. Non-zero fixes the last of the three buy-menu phases at
+   * its minimum instead of leaving it to the game's dice (engine.cpp CalcEngineReliability).
+   */
+  retire_early?: number;
   power_hp: number;
   power_by_source: Record<string, number> | null;
   te_coefficient: number;
@@ -124,6 +139,16 @@ export interface RefitGroup {
   disallowed: string[];
 }
 
+/** The vehicle a variant series ages by. */
+export interface VariantGroupHead {
+  /** Item name inside the set, kept so the data can be traced back to its source. */
+  item: string;
+  intro_year: number | null;
+  intro_month: number | null;
+  /** A head the player can buy ages from its own intro date; a placeholder from game start. */
+  buyable: boolean;
+}
+
 export interface TrainsMeta {
   roster: string;
   describe: string;
@@ -146,6 +171,13 @@ export interface TrainsMeta {
    */
   capacity_param_multipliers?: number[];
   refit_groups?: Record<string, RefitGroup>;
+  /**
+   * Heads of the variant series the set declares, by the key its vehicles name them with.
+   * A head the player cannot buy is a menu-only placeholder, and the game marks such a
+   * vehicle introduced on the first day of the game — which is what ages a whole xUSSR
+   * series by the age of the game rather than by its own dates.
+   */
+  variant_groups?: Record<string, VariantGroupHead>;
   counts: { engines: number; wagons: number };
 }
 

@@ -18,6 +18,30 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- **Vehicles never expire** joined the game settings, where it switches the withdrawal off
+  the way the game does; it used to be listed as a read-only fact of an imported game.
+
+### Changed
+
+- **BREAKING** The lists of vehicles now follow the game's own buy menu rather than a
+  vehicle's stated dates. A model is offered for a year and a half longer than its stated
+  model life on average, is not for sale for a year after it appears, and leaves the menu
+  together with the rest of its variant series — the game ages a series by its head, and a
+  head the player cannot buy starts ageing on the first day of the game. A vehicle the
+  active cargo set leaves nothing to carry is not offered at all, as the game switches such
+  a vehicle off entirely. Where the answer cannot be certain — the game rolls both the
+  introduction date and the selling life out of the map's seed — the row carries a question
+  mark saying which end of the vehicle's life the doubt is about.
+- The xUSSR data now names the version of the set it was built from (`0.8-11-g3c6d382`)
+  rather than a bare commit: the sources are fetched with the set's tags.
+- An imported savegame now answers this for itself: the game stores per engine whether a
+  company may buy it, and while the year being calculated is the game's own, the catalogue,
+  the search and the supply list show exactly what that game sells.
+- An imported savegame has to be loaded again after this release: it is now read for one more
+  thing, and a snapshot taken before does not carry it.
+
 ## [0.17.0] - 2026-08-30
 
 ### Added

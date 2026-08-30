@@ -92,6 +92,12 @@ export interface GameSettings {
    * поэтому настройка читается только при jgrpp.
    */
   vehicleIntroRandomisation: boolean;
+  /**
+   * vehicle.never_expire_vehicles ("Транспорт не будет выходить из эксплуатации"): a
+   * vehicle stays in the buy menu forever. Otherwise the game withdraws it once its age
+   * outgrows the selling life it rolled (engine.cpp CalcEngineReliability).
+   */
+  neverExpireVehicles: boolean;
 }
 
 /** Economy a game runs unless it says otherwise; also the fallback for an id the data lost. */
@@ -127,6 +133,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   costsWhenStopped: 1,
   inflationFixedDates: true,
   vehicleIntroRandomisation: true,
+  neverExpireVehicles: false,
 };
 
 /**

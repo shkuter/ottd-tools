@@ -21,7 +21,8 @@ describe('маппинги id из сейва', () => {
     ], [(w) => { w.u32(0x23124143); w.u16(30080); w.u8(0); w.u8(0); }]));
     const chunks = readChunks(bytes.subarray(8), ['EIDS']);
     const ids = readEngineIds(chunks.get('EIDS'));
-    expect(ids.get(0)).toEqual({ grfid: IRON_HORSE, localId: 30080 });
+    // тип нужен вместе с id: игра нумерует машины каждого типа заново с нуля
+    expect(ids.get(0)).toEqual({ grfid: IRON_HORSE, localId: 30080, type: 0 });
   });
 
   it('вложенная структура читается по заголовку с детьми', () => {

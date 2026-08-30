@@ -305,3 +305,24 @@ _Avoid_: line, service
 **Savegame tab** (_вкладка «Партия»_) — the tab presenting the **snapshot**, titled with the
 savegame's file name. It states the game's own figures beside what the calculator computes for
 the same thing — fact next to forecast, with no promise they match.
+
+**Buy menu availability** (_доступность в списке покупки_, `engine/availability.ts`) — whether
+a vehicle stands in the game's buy menu in the year being calculated. Three answers, because
+the game rolls both the introduction date and the selling life out of the map's seed: on sale,
+gone, or **uncertain** — the honest answer for the stretch of a vehicle's life where the map
+decides. Not the same word as **offered per year**, which is cargo, not vehicles: the code says
+`standsInBuyMenu` and `BuyMenuNote`.
+_Avoid_: offered (taken by cargo), available (says nothing about the doubt)
+
+**Series head** (_голова серии_, `variant_group`) — the vehicle whose age decides when the
+whole variant series leaves the buy menu. The game ages a variant by its head rather than by
+itself, walking up the chain while each link asks for it, so a series is withdrawn at once. A
+head the player cannot buy is a menu-only placeholder the game marks introduced on the first
+day of the game — which is why an xUSSR series ages with the game rather than with its own
+dates. Vehicles carrying no head age by themselves.
+_Avoid_: variant group (that is the buy-menu fold, which can exist without the ageing)
+
+**Sold ids** (_что продаёт партия_, `Snapshot.soldIds`) — the catalogue ids an imported game
+sells on the date of its save, read from the savegame's own per-engine answer. Beats the model
+while the year and the roster being calculated are the game's own; `null` means the file said
+nothing, which is not the same as a game selling nothing.

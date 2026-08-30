@@ -102,6 +102,31 @@ class IronHorseKnownValues(unittest.TestCase):
         )
         self.assertFalse([t for t in self.by_id.values() if "Random" in t["name"]])
 
+    def test_retire_early_is_ten_years_late(self):
+        """Набор снимает машину на десять лет ПОЗЖЕ (`retire_early = -10`).
+
+        Знак важен: отрицательное значение отодвигает границу, и третья фаза срока
+        продажи перестаёт разыгрываться — граница встаёт ровно на её минимум.
+        """
+        self.assertEqual({t["retire_early"] for t in self.by_id.values()}, {-10})
+
+    def test_variant_group_head_is_a_real_vehicle(self):
+        """Средняя секция стареет по кабине: игра берёт возраст у головы группы.
+
+        В отличие от xUSSR голова Iron Horse — обычная покупаемая машина, поэтому серия
+        стареет от её даты появления, а не от начала партии.
+        """
+        middle = self.by_id["blaze_middle_passenger"]
+        self.assertEqual(middle["variant_group"], "blaze_cab")
+
+        head = self.meta["variant_groups"]["blaze_cab"]
+        self.assertTrue(head["buyable"])
+        self.assertEqual(head["intro_year"], self.by_id["blaze_cab"]["intro_year"])
+
+    def test_head_of_its_own_series_has_no_group(self):
+        """Машина, которая сама ведёт группу, стареет по себе — синхронизировать не с кем."""
+        self.assertIsNone(self.by_id["blaze_cab"]["variant_group"])
+
 
 class FirsKnownValues(unittest.TestCase):
     @classmethod

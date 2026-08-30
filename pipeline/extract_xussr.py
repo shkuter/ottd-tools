@@ -70,6 +70,19 @@ LOST_TRACK_MACROS = {
 VEHICLE_NEVER_EXPIRES = 0xFF
 CLIMATES_NONE = 0
 
+# The flag that makes the game age a vehicle by its variant group's head rather than
+# by its own intro date (ExtraEngineFlag::SyncReliability, engine.cpp CalcEngineReliability).
+# The set declares groups both with it (`vehicle_group`) and without (`vehicle_group_pre`),
+# and only the former ages as a series.
+SYNC_RELIABILITY_FLAG = "VEHICLE_FLAG_SYNC_VARIANT_RELIABILITY"
+
+
+def intro_parts(packed):
+    """Year and month of the set's packed introduction date (`yyyymmdd`)."""
+    if not packed:
+        return None, None
+    return packed // 10000, (packed // 100) % 100 or 1
+
 
 def display_kmh(internal):
     """Скорость в км/ч, как её показывает игра (strings.cpp, усечение)."""
@@ -453,6 +466,91 @@ def articulated_units(grf, merged, graphics):
     return parts
 
 
+def variant_groups(grfs, merged_by_grf, items):
+    """The heads of the groups the extracted vehicles belong to.
+
+    A head the player cannot buy is a menu-only placeholder: the game marks such a vehicle
+    introduced on the first day of the game (StartupOneEngine, climate branch) and ages it
+    from there, which is what drags a whole series out of the buy menu at once.
+    """
+    heads = {}
+    for train in items:
+        key = train["variant_group"]
+        if not key or key in heads:
+            continue
+        grf_name, head_name = key.split(":", 1)
+        props = merged_by_grf[grf_name][head_name]["props"]
+        scope = grfs[grf_name].scope
+        intro = nml.const(props["introduction_date"].value, scope) \
+            if "introduction_date" in props else None
+        climates = nml.const(props["climates_available"].value, scope) \
+            if "climates_available" in props else None
+        intro_year, intro_month = intro_parts(intro)
+        heads[key] = {
+            "item": head_name,
+            "intro_year": intro_year,
+            "intro_month": intro_month,
+            "buyable": climates != CLIMATES_NONE,
+        }
+    return dict(sorted(heads.items()))
+
+
+def group_key(grf_name, item_name):
+    """Group id unique across the set's GRFs; item names are only unique within one."""
+    return f"{grf_name}:{item_name}" if item_name else None
+
+
+def series_head(grf, name, item, merged):
+    """The vehicle whose age the game uses for this one, at the root of the variant chain.
+
+    The game walks up while the vehicle it stands on asks for reliability syncing
+    (engine.cpp CalcEngineReliability), and the chain runs through ordinary vehicles, not
+    only through the group items: EM of 1933 is a variant of EM of 1931, which is itself a
+    variant of the steam E series. Stopping at the first link would age the series from
+    1930 instead of from the game's start.
+    """
+    seen, current, head = {name}, item, None
+    while syncs_reliability(current["props"]):
+        parent = variant_group(grf, current["props"], merged)
+        if parent is None or parent in seen:
+            break
+        seen.add(parent)
+        head, current = parent, merged[parent]
+    return head
+
+
+def variant_group(grf, props, merged):
+    """Item name of the variant group this vehicle belongs to, or None.
+
+    The set writes the property as `disable_groups == 0 ? group : INVALID_ENGINE`, so the
+    parameter decides; at its default (0) the group stands. `INVALID_ENGINE` is not an item,
+    which is what tells the two branches apart.
+    """
+    prop = props.get("variant_group")
+    if prop is None:
+        return None
+    value = prop.value
+    if type(value).__name__ == "TernaryOp":
+        try:
+            value = value.expr1 if nml.const(value.guard, grf.scope) else value.expr2
+        except nml.Unknown:
+            return None
+    if type(value).__name__ != "Identifier":
+        return None
+    return value.value if value.value in merged else None
+
+
+def syncs_reliability(props):
+    """Does the vehicle ask the game to age it by its group's head?"""
+    prop = props.get("extra_flags")
+    if prop is None:
+        return False
+    value = prop.value
+    # `bitmask(FLAG, …)` parses as a call, `[FLAG, …]` as a bitmask node — the set writes both
+    flags = getattr(value, "params", None) or getattr(value, "values", None) or []
+    return any(type(f).__name__ == "Identifier" and f.value == SYNC_RELIABILITY_FLAG for f in flags)
+
+
 def refit_labels(grf, props):
     prop = props.get("cargo_allow_refit")
     if prop is None:
@@ -533,8 +631,7 @@ def train_payload(grf, name, item, merged, english, railtype_labels):
             return default
         return nml.const(props[key].value, scope)
 
-    intro = prop_const("introduction_date")
-    intro_year, intro_month = intro // 10000, (intro // 100) % 100
+    intro_year, intro_month = intro_parts(prop_const("introduction_date"))
 
     # состав на момент покупки: сама машина и её сочленённые секции — формулы МВПС
     # пересчитывают юниты состава (num_vehs_in_consist, count_veh_id)
@@ -646,9 +743,11 @@ def train_payload(grf, name, item, merged, english, railtype_labels):
         ),
         "lgv_capable": False,
         "intro_year": intro_year,
-        "intro_month": intro_month or 1,
+        "intro_month": intro_month,
         "vehicle_life": prop_const("vehicle_life", 0),
         "model_life": None if model_life in (None, VEHICLE_NEVER_EXPIRES) else model_life,
+        "variant_group": group_key(grf.name, series_head(grf, name, item, merged)),
+        "retire_early": prop_const("retire_early", 0),
         "power_hp": power_hp,
         "power_by_source": power_by_source(grf, graphics, just_built),
         "speed_by_source": speed_by_source(grf, graphics, just_built),
@@ -690,12 +789,13 @@ def main():
         for name, item in merged.items():
             for part in articulated_units(grf, merged, item["graphics"]):
                 part_names.add((grf_name, part))
+    merged_by_grf = {}
     for grf_name in GRFS[1:]:
         grf = grfs[grf_name]
         # T_* имена должны сворачиваться в evaluate: даём им индексы
         track_index = {alias: i for i, alias in enumerate(grf.track_aliases)}
         grf.scope.update(track_index)
-        merged = grf.merged_items()
+        merged = merged_by_grf[grf_name] = grf.merged_items()
         for name, item in merged.items():
             climates = nml.const(item["props"]["climates_available"].value, grf.scope) \
                 if "climates_available" in item["props"] else None
@@ -717,6 +817,7 @@ def main():
         raise SystemExit(f"extract_xussr: duplicate ids: {dupes}")
 
     items.sort(key=lambda i: (i["kind"], i["intro_year"], i["id"]))
+    groups = variant_groups(grfs, merged_by_grf, items)
     payload = {
         "meta": {
             **vendor_meta("xussrset"),
@@ -733,6 +834,7 @@ def main():
                 # вагоны набора считают содержание от дорожной базы (PR_RUNNING_ROADVEH)
                 "running_roadveh": 0,
             },
+            "variant_groups": groups,
             "grf_parameters": {name: grfs[name].parameters for name in GRFS},
             "grfids": {name: grfs[name].grfid for name in GRFS},
             "skipped": [

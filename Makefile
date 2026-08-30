@@ -49,7 +49,7 @@ fetch-xussr:
 		mkdir -p vendor/xussrset && \
 		git -C vendor/xussrset init -q && \
 		git -C vendor/xussrset remote add origin $(XUSSR_REPO) && \
-		git -C vendor/xussrset fetch -q --depth 1 origin $(XUSSR_REF) && \
+		git -C vendor/xussrset fetch -q --depth 20 --tags origin $(XUSSR_REF) && \
 		git -C vendor/xussrset checkout -q FETCH_HEAD; }
 
 venv:

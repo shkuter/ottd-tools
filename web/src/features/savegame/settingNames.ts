@@ -42,6 +42,7 @@ export const SETTING_LABEL_KEYS: Record<SettingKey, string> = {
   costsWhenStopped: 'settings.costsWhenStopped',
   inflationFixedDates: 'settings.inflationFixedDates',
   vehicleIntroRandomisation: 'settings.introRandomisation',
+  neverExpireVehicles: 'settings.neverExpire',
   // calculator settings
   // the settings page labels it from the consist section, and so does this
   capacityIndex: 'consist.capacityParam',

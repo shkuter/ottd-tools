@@ -18,6 +18,7 @@ import { engineLabel, num, unitSuffix, wagonLabel, withUnit } from '../../compon
 import { CargoIcon } from '../../components/CargoIcon';
 import { fieldWidth } from '../../skin';
 import { TrainImage } from '../../components/TrainImage';
+import { BuyMenuNote } from '../../components/BuyMenuNote';
 import { Warning } from '../../components/Warning';
 import {
   assessIndustrySupply,
@@ -31,6 +32,7 @@ import { TrackTypeField } from '../../components/TrackTypeField';
 import { EMPTY_INPUT, inputKey, useIndustrySupplyStore } from '../../state/industrySupplyStore';
 import type { OptimizerCache } from '../../engine/optimizeCache';
 import { runSupplyInputs, type InputRun } from './inputs';
+import { useSoldIds } from '../savegame/soldIds';
 import { summaryLines } from './summary';
 
 export default function IndustrySupplyPage() {
@@ -71,6 +73,9 @@ export default function IndustrySupplyPage() {
   // the route length and every input has a length of its own.
   const caches = useRef(new Map<string, OptimizerCache>());
 
+  // what the imported game sells decides this list too, see engine/availability.ts
+  const soldIds = useSoldIds(settled.year, game);
+
   const runs: InputRun[] = useMemo(() => {
     if (!industry) return [];
     return runSupplyInputs({
@@ -86,8 +91,9 @@ export default function IndustrySupplyPage() {
       stationTiles: settled.stationTiles,
       maxTrains: settled.maxTrains,
       caches: caches.current,
+      soldIds,
     });
-  }, [game, calc, industry, inputs, settled]);
+  }, [game, calc, industry, inputs, settled, soldIds]);
 
   const summary = useMemo(
     () => (industry ? assessIndustrySupply(industry, runs) : null),
@@ -102,6 +108,7 @@ export default function IndustrySupplyPage() {
     <div className="page-industry-supply">
       <Title order={2}>{t('supply.title')}</Title>
       <Text className="subtitle">{t('supply.intro', { window: num(windowDays, 1) })}</Text>
+      {soldIds && <p className="hint">{t('vehicle.listFromGame')}</p>}
 
       <Group className="filters" align="flex-end" gap="xs">
         <Select
@@ -236,14 +243,24 @@ export default function IndustrySupplyPage() {
                     <Table.Td>
                       {run.best && <TrainImage trainId={run.best.engine.id} />}
                     </Table.Td>
-                    <Table.Td>{run.best ? engineLabel(run.best) : '—'}</Table.Td>
+                    <Table.Td>
+                      {run.best ? (
+                        <>
+                          {engineLabel(run.best)}
+                          <BuyMenuNote availability={run.best.engineBuyMenu} />
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </Table.Td>
                     <Table.Td>
                       {run.best && <TrainImage trainId={run.best.wagon.id} />}
                     </Table.Td>
                     <Table.Td>
                       {run.best ? (
                         <>
-                          {wagonLabel(run.best)}{' '}
+                          {wagonLabel(run.best)}
+                          <BuyMenuNote availability={run.best.wagonBuyMenu} />{' '}
                           <span className="dim">
                             · {num(run.best.lengthTiles, 1)} {t('units.tiles')}
                           </span>

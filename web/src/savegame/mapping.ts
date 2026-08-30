@@ -51,6 +51,7 @@ export const GAME_SETTING_SOURCES: readonly SettingSource[] = [
     name: 'vehicle.vehicle_intro_randomisation',
     read: (v) => ({ vehicleIntroRandomisation: v !== 0 }),
   },
+  { name: 'vehicle.never_expire_vehicles', read: (v) => ({ neverExpireVehicles: v !== 0 }) },
 ];
 
 /** Builds the game settings a savegame implies, leaving out anything it does not state. */
@@ -166,11 +167,6 @@ export const INFO_SETTINGS: readonly InfoSetting[] = [
     name: 'economy.industry_cargo_scale',
     labelKey: 'savegame.info.industryCargoScale',
     kind: 'percent',
-  },
-  {
-    name: 'vehicle.never_expire_vehicles',
-    labelKey: 'savegame.info.neverExpireVehicles',
-    kind: 'flag',
   },
   { name: 'vehicle.extend_vehicle_life', labelKey: 'savegame.info.extendVehicleLife', kind: 'number' },
   { name: 'station.station_spread', labelKey: 'savegame.info.stationSpread', kind: 'number' },

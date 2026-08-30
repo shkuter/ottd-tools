@@ -16,7 +16,7 @@ import {
 import type { Snapshot } from './snapshot';
 
 /** Bump when the Snapshot shape changes; an old record is dropped, not migrated. */
-export const SNAPSHOT_SCHEMA_VERSION = 3;
+export const SNAPSHOT_SCHEMA_VERSION = 4;
 
 /**
  * The settings of the game the snapshot was taken from — what the savegame itself stated,
@@ -171,4 +171,26 @@ export async function deleteSnapshot(): Promise<void> {
 /** Test hook: forget the in-memory state without touching the database. */
 export function resetSnapshotStateForTests(): void {
   state = { loading: true, record: null, droppedOutdated: false };
+}
+
+/**
+ * Vehicles the imported game sells, when the year and the roster being calculated are its own.
+ *
+ * The answer belongs to the date of the save: at another year the calculator is asking about
+ * a game that has not happened, and the model takes over.
+ */
+export function soldIdsFor(
+  record: SnapshotRecord | null,
+  year: number,
+  game: Pick<GameSettings, 'trainSet' | 'firs' | 'firsEconomy'>,
+): ReadonlySet<string> | null {
+  if (!record || record.settings.calc.priceYear !== year) return null;
+  // The answer belongs to that game's sets as much as to its date: ids name vehicles of its
+  // roster, and what a vehicle may carry — which decides whether the game offers it at all —
+  // follows the cargo set. Under different sets the list describes a game that never was.
+  const its = record.settings.game;
+  if (its.trainSet !== game.trainSet) return null;
+  if (its.firs !== game.firs || (game.firs && its.firsEconomy !== game.firsEconomy)) return null;
+  const ids = record.snapshot.soldIds;
+  return ids ? new Set(ids) : null;
 }

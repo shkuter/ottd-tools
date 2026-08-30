@@ -13,9 +13,13 @@
 import { trainName } from '../../i18n/names';
 import type { Locale } from '../../state/localeStore';
 import type { Cargo, Train } from '../../types';
-import { trainCapacity } from '../../dataset';
+import { availabilityContext, trainCapacity } from '../../dataset';
 import type { GameSettings } from '../../engine/settings';
-import { introAvailability, type IntroAvailability } from '../../engine/availability';
+import {
+  standsInBuyMenu,
+  vehicleAvailability,
+  type VehicleAvailability,
+} from '../../engine/availability';
 import { purchaseEntries, purchaseKey } from '../../engine/purchase';
 import type { OptimizeResult } from '../../engine/optimize';
 
@@ -24,7 +28,8 @@ export interface DoubtfulGroup {
   ids: string[];
   /** Представитель для имени и подсказки — тот, который в игре виден в списке покупки. */
   train: Train;
-  intro: IntroAvailability;
+  /** Стоит ли машина в списке покупки, какая граница под вопросом и даты появления. */
+  availability: VehicleAvailability;
   /** Вместимость при текущем множителе — различитель для одноимённых вагонов. */
   capacity: number;
   /** Имя в списке встречается больше одного раза: подписи нужна вместимость. */
@@ -46,6 +51,12 @@ export interface DoubtfulOptions {
   cargo?: Cargo | null;
   /** Сравнение имён при сортировке; без него порядок решают вид и дата. */
   collator?: Intl.Collator;
+  /**
+   * Машины, которые продаёт импортированная партия, если её год и ростер — те же. Отсюда
+   * же берётся, какой машиной показать пункт: иначе чекбокс называл бы одну машину, а
+   * строка выдачи другую.
+   */
+  soldIds?: ReadonlySet<string> | null;
 }
 
 export function doubtfulGroups(
@@ -55,20 +66,27 @@ export function doubtfulGroups(
   year: number,
   game: GameSettings,
   capacityIndex: number,
-  { locale, cargo = null, collator }: DoubtfulOptions,
+  { locale, cargo = null, collator, soldIds = null }: DoubtfulOptions,
 ): DoubtfulGroup[] {
+  // отмечена в выдаче — значит и в списке: строка ставит «?» по обеим границам жизни
+  // машины, и выключать надо ровно то, что помечено
+  const buyMenu = availabilityContext(game, soldIds);
+  const availabilityOf = (train: Train) => vehicleAvailability(train, year, buyMenu);
   const keys = new Set<string>();
   for (const r of results) {
-    if (!r.engineIntro.certain) keys.add(purchaseKey(r.engine, capacityIndex, game));
-    if (!r.wagonIntro.certain) keys.add(purchaseKey(r.wagon, capacityIndex, game));
+    if (r.engineBuyMenu.state === 'uncertain') keys.add(purchaseKey(r.engine, capacityIndex, game));
+    if (r.wagonBuyMenu.state === 'uncertain') keys.add(purchaseKey(r.wagon, capacityIndex, game));
   }
   for (const t of trains) {
     if (excludedIds.includes(t.id)) keys.add(purchaseKey(t, capacityIndex, game));
   }
 
   // в пункт входят все модели с теми же ТТХ, даже если в выдачу попала одна:
-  // иначе выключать пришлось бы каждое всплывающее семейство по отдельности
-  const groups = purchaseEntries(trains, capacityIndex, game).filter((entry) => keys.has(entry.key));
+  // иначе выключать пришлось бы каждое всплывающее семейство по отдельности.
+  // Представитель — продающаяся машина, как и в каталоге: чекбокс называет ту же
+  const groups = purchaseEntries(trains, capacityIndex, game, (train) =>
+    standsInBuyMenu(train, year, buyMenu),
+  ).filter((entry) => keys.has(entry.key));
 
   // счёт идёт по имени, которое читает игрок: подпись двоится, когда одинаково
   // выглядит, а не когда совпадает английский оригинал под переводом
@@ -83,7 +101,7 @@ export function doubtfulGroups(
     .map(({ train, members }) => ({
       ids: members.map((t) => t.id),
       train,
-      intro: introAvailability(train, year, game),
+      availability: availabilityOf(train),
       capacity: trainCapacity(train, cargo, capacityIndex),
       ambiguous: (nameCounts.get(displayName(train)) ?? 0) > 1,
     }))
@@ -92,8 +110,8 @@ export function doubtfulGroups(
         ? a.train.kind === 'engine'
           ? -1
           : 1
-        : a.intro.year - b.intro.year ||
-          a.intro.month - b.intro.month ||
+        : a.availability.intro.year - b.availability.intro.year ||
+          a.availability.intro.month - b.availability.intro.month ||
           (collator ? collator.compare(displayName(a.train), displayName(b.train)) : 0) ||
           a.capacity - b.capacity,
     );

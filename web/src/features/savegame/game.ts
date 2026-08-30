@@ -6,13 +6,11 @@
 import type { SnapshotCompany, SnapshotGroup, SnapshotTrain } from '../../savegame/snapshot';
 import type { SnapshotSettings } from '../../savegame/snapshotStore';
 import { SETTING_LABEL_KEYS } from './settingNames';
+import { shownCompany } from '../../savegame/snapshot';
 
-/**
- * The company the tab opens on: the first one a human plays, since that is whose network the
- * user came to look at. A game of AIs only still opens on something rather than nothing.
- */
+/** The company the tab opens on — the one the snapshot itself speaks for. */
 export function defaultCompanyId(companies: readonly SnapshotCompany[]): number {
-  return (companies.find((company) => !company.isAi) ?? companies[0])?.id ?? 0;
+  return shownCompany(companies)?.id ?? 0;
 }
 
 /**

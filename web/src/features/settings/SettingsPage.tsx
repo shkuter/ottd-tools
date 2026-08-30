@@ -386,6 +386,13 @@ export default function SettingsPage() {
       </Fieldset>
 
       <Fieldset className="settings-group" legend={t('settings.vehicles')}>
+        <Row label={t('settings.neverExpire')} hint={t('settings.neverExpireHint')}>
+          <Switch
+            checked={game.neverExpireVehicles}
+            onChange={(e) => setGame('neverExpireVehicles', e.currentTarget.checked)}
+            label={game.neverExpireVehicles ? t('settings.on') : t('settings.off')}
+          />
+        </Row>
         <Row label={t('settings.accelModel')} hint={t('settings.accelModelHint')}>
           <Select
             allowDeselect={false}

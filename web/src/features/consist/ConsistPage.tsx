@@ -26,9 +26,13 @@ import {
   activeRailtypes,
   activeTrains,
   activeTrainsMeta,
+  availabilityContext,
   canCarryIn,
   trainCapacity,
 } from '../../dataset';
+import { standsInBuyMenu, vehicleAvailability } from '../../engine/availability';
+import { BuyMenuNote } from '../../components/BuyMenuNote';
+import { useSoldIds } from '../savegame/soldIds';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, matchesTrainName, sortCargos, trainName } from '../../i18n/names';
 import { money, num, speed, speedUnitLabel, speedValue, withUnit } from '../../components/format';
@@ -95,9 +99,14 @@ export default function ConsistPage() {
    */
   const railtypes = activeRailtypes(game);
   const track = activeRailtype(game, calc.trackType);
+  const soldIds = useSoldIds(year, game);
+  const buyMenu = useMemo(() => availabilityContext(game, soldIds), [game, soldIds]);
   const catalogue = useMemo(
-    () => purchaseRepresentatives(activeTrains(game), calc.capacityIndex, game),
-    [game, calc.capacityIndex],
+    () =>
+      purchaseRepresentatives(activeTrains(game), calc.capacityIndex, game, (train) =>
+        standsInBuyMenu(train, year, buyMenu),
+      ),
+    [game, calc.capacityIndex, year, buyMenu],
   );
   const filterCargo = useMemo(
     () => (cargoFilter ? activeCargoByLabel(game).get(cargoFilter) ?? null : null),
@@ -109,21 +118,24 @@ export default function ConsistPage() {
   // грузу, без груза её нет вовсе, и колонка стояла бы в прочерках, пока сводка ниже
   // считает тот же вагон под свой груз.
   const capacityCargo = filterCargo ?? cargo;
+  // asked once per catalogue entry: the filter drops what the game does not sell and the row
+  // marks what is uncertain, and both want the same answer rather than two computations of it
+  const availability = useMemo(
+    () => new Map(catalogue.map((train) => [train.id, vehicleAvailability(train, year, buyMenu)])),
+    [catalogue, year, buyMenu],
+  );
   const filtered = useMemo(() => {
     return catalogue.filter((train) => {
       if (kindFilter !== 'all' && train.kind !== kindFilter) return false;
       // the shared track choice, under the same rule the optimizer searches by
       if (!canRunOn(train, track, railtypes)) return false;
-      if (train.intro_year > year) return false;
-      // a model is on sale until intro + model_life; vehicle_life is how long a
-      // single unit lasts before wearing out, which does not gate the catalogue
-      // (same rule as the optimizer applies, see engine/optimize.ts)
-      if (train.model_life != null && year >= train.intro_year + train.model_life) return false;
+      // one buy-menu rule for every list, see engine/availability.ts
+      if (availability.get(train.id)!.state === 'unavailable') return false;
       if (search && !matchesTrainName(train, search, locale)) return false;
       if (filterCargo && !canCarryIn(game, train, filterCargo)) return false;
       return true;
     });
-  }, [catalogue, kindFilter, search, year, track, railtypes, filterCargo, game, locale]);
+  }, [catalogue, kindFilter, search, track, railtypes, filterCargo, game, locale, availability]);
 
   const sortValue = useMemo(
     () => catalogueSortValues(game, calc, locale, capacityCargo),
@@ -154,6 +166,7 @@ export default function ConsistPage() {
     <div className="page-consist">
       <section className="catalogue">
         <Title order={2}>{t('consist.catalogue')}</Title>
+        {soldIds && <p className="hint">{t('vehicle.listFromGame')}</p>}
         <Group className="filters" align="flex-end" gap="xs">
           <Select
             {...fieldWidth('normal')}
@@ -229,6 +242,7 @@ export default function ConsistPage() {
                       name identify the row together, and the pinned first column keeps both */}
                   <Table.Td className="cell-vehicle">
                     <TrainImage trainId={train.id} /> {trainName(train)}
+                    <BuyMenuNote availability={availability.get(train.id)!} />
                   </Table.Td>
                   <Table.Td className="cell-num">{train.intro_year}</Table.Td>
                   {/* the figures for the chosen track: an electro-diesel shows the power it

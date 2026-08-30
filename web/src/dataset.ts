@@ -10,6 +10,7 @@ import type {
 import { vanillaCanCarry, vanillaCargos, vanillaRailtypes, vanillaTrains } from './vanilla';
 import { DEFAULT_FIRS_ECONOMY, type GameSettings, type TrainSet } from './engine/settings';
 import type { SupplyTarget } from './engine/supply';
+import type { AvailabilityContext } from './engine/availability';
 
 export const trains = (trainsJson as { items: unknown }).items as Train[];
 export const xussrTrains = (xussrTrainsJson as { items: unknown }).items as Train[];
@@ -219,6 +220,49 @@ export function trainCapacity(
 /** Проверка перевозки с учётом того, какие наборы включены. */
 export function canCarryIn(game: GameSettings, train: Train, cargo: Cargo): boolean {
   return SETS[game.trainSet].canCarry(train, cargo, game);
+}
+
+/**
+ * Everything the buy-menu rule needs about the active sets and the imported game.
+ *
+ * Built in one place so every list asks the same question: the catalogue, the optimizer and
+ * the supply list must not disagree about which vehicles the game sells.
+ */
+export function availabilityContext(
+  game: GameSettings,
+  sold?: ReadonlySet<string> | null,
+): AvailabilityContext {
+  return {
+    game,
+    groups: activeTrainsMeta(game).variant_groups,
+    sold: sold ?? null,
+    carries: (train) => !hasNothingToCarry(game, train),
+  };
+}
+
+/**
+ * Does the active cargo set leave this vehicle nothing to carry?
+ *
+ * The game switches off a vehicle whose refit mask comes out empty — it clears the climates
+ * it is available in, so the vehicle never reaches the buy menu (newgrf.cpp). A cargo set
+ * that lacks what a wagon was built for does exactly that: the food tankers of xUSSR have
+ * no cargo in Steeltown. An engine carries nothing by design and is never switched off for
+ * it, so the question is only asked of vehicles that state a capacity.
+ */
+function hasNothingToCarry(game: GameSettings, train: Train): boolean {
+  const carrier = train.capacity_by_cargo != null || train.capacities.some((c) => c !== 0);
+  if (!carrier) return false;
+  // A vehicle that states no cargo at all is one the data cannot judge, not one the game
+  // switched off: Iron Horse declares the refit of a combine engine on its sections, and
+  // the model this catalogue entry carries has none of it. Absence of an answer is not the
+  // answer "nothing".
+  const states =
+    train.capacity_by_cargo != null ||
+    train.default_cargos.length > 0 ||
+    train.refit.classes.length > 0 ||
+    train.refit.labels_allowed.length > 0;
+  if (!states) return false;
+  return !activeCargos(game).some((cargo) => canCarryIn(game, train, cargo));
 }
 
 /**

@@ -343,6 +343,36 @@ class XussrKnownValues(unittest.TestCase):
             self.by_id["xussr_vl80t"]["string_id"].startswith("STR_LONGNAME_")
         )
 
+    # --- серии вариантов ---
+
+    def test_series_shares_one_head(self):
+        """Четыре типа Тᴷ — одна серия, и она стареет по своей голове.
+
+        Голова серии сама не покупается: набор держит её ради строки меню, поэтому в
+        каталоге её нет, а игра считает такую машину введённой с первого дня партии.
+        """
+        types = [f"xussr_tk030_type{y}" for y in (1870, 1873, 1875, 1892)]
+        keys = {self.by_id[i]["variant_group"] for i in types}
+        self.assertEqual(keys, {"steam:group_steam_tk030"})
+        self.assertNotIn("xussr_group_steam_tk030", self.by_id)
+
+        head = self.meta["variant_groups"]["steam:group_steam_tk030"]
+        self.assertFalse(head["buyable"])
+        self.assertEqual(head["intro_year"], 1873)
+
+    def test_group_without_reliability_syncing(self):
+        """`vehicle_group_pre` даёт группу без синхронизации — такая машина стареет сама.
+
+        Отличать обязательно: `CalcEngineReliability` идёт к голове только по флагу, и без
+        этой проверки ЧМЭ3 сняли бы с продажи по возрасту чужой серии. В данных это видно
+        по пустой голове: поле называет ту машину, по которой считается возраст.
+        """
+        self.assertIsNone(self.by_id["xussr_chme3"]["variant_group"])
+
+    def test_retire_early_is_zero(self):
+        """Набор раннего ухода не задаёт (`get_retire_early` возвращает 0)."""
+        self.assertEqual({t["retire_early"] for t in self.items}, {0})
+
 
 if __name__ == "__main__":
     unittest.main()

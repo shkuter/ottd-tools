@@ -31,6 +31,25 @@ def main():
         check(1 <= t["intro_month"] <= 12, f"trains/{t['id']}: intro_month {t['intro_month']}")
         if t["kind"] == "engine":
             check(t["power_hp"] > 0, f"trains/{t['id']}: движок без мощности")
+    # серии вариантов: голова, названная машиной, должна быть описана в meta — иначе
+    # расчёт возраста серии молча свалится на собственную дату машины
+    rosters = {
+        "trains.json": trains,
+        "xussr_trains.json": load_json("xussr_trains.json"),
+        "vanilla_trains.json": load_json("vanilla_trains.json"),
+    }
+    for source, payload in rosters.items():
+        heads = payload["meta"].get("variant_groups", {})
+        for head in heads.values():
+            check(set(head) == {"item", "intro_year", "intro_month", "buyable"},
+                  f"{source}: у головы серии {head.get('item')} не те поля")
+            check(head["intro_year"] is None or head["intro_year"] > 1800,
+                  f"{source}: голова серии {head['item']}: intro_year {head['intro_year']}")
+        for t in payload["items"]:
+            key = t.get("variant_group")
+            check(key is None or key in heads,
+                  f"{source}/{t['id']}: голова серии {key} не описана в meta.variant_groups")
+
     shifts = trains["meta"]["basecost_shifts"]
     check(set(shifts) == {"build_engine", "build_wagon", "running_steam", "running_diesel",
                           "running_electric"},

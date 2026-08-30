@@ -16,10 +16,13 @@ import {
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useOptimizerStore } from '../../state/optimizerStore';
+import { useSoldIds } from '../savegame/soldIds';
 import { useSettingsStore } from '../../state/settingsStore';
 import { Field } from '../../components/Field';
 import { fieldWidth } from '../../skin';
 import { IconSwitch } from '../../components/IconSwitch';
+import { BuyMenuNote } from '../../components/BuyMenuNote';
+import { buyMenuNoteTitle } from '../../components/buyMenuTitle';
 import { YearField } from '../../components/YearField';
 import { TrackTypeField } from '../../components/TrackTypeField';
 import { useNavigate } from 'react-router';
@@ -47,7 +50,7 @@ import { createOptimizerCache } from '../../engine/optimizeCache';
 import { cargoPaymentRate } from '../../engine/income';
 import { waitTimeThresholdDays, type StationRating } from '../../engine/rating';
 import { effectiveDayLength } from '../../engine/settings';
-import { introRandomisationActive, type IntroAvailability } from '../../engine/availability';
+import { introRandomisationActive } from '../../engine/availability';
 import { doubtfulGroups } from './doubtful';
 import { optimizerSortValues, type OptimizerSort } from './sorting';
 import { sortRows } from '../../components/table/sorting';
@@ -107,28 +110,6 @@ function LoadingBranchMark({ row }: { row: OptimizeResult }) {
       }
     >
       {t('opt.fullLoadMark')}
-    </sup>
-  );
-}
-
-/** «Май 1960» на языке интерфейса. */
-function monthYear(year: number, month: number): string {
-  return new Intl.DateTimeFormat(intlLocale(), {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(year, month - 1, 1)));
-}
-
-/**
- * Отметка у машины, которой в выбранном году может ещё не быть в списке покупки:
- * дата появления в игре точнее года и вдобавок рандомизируется (engine/availability.ts).
- */
-function IntroNote({ intro }: { intro: IntroAvailability }) {
-  if (intro.certain) return null;
-  return (
-    <sup className="intro-warn" title={introTitle(intro)}>
-      ?
     </sup>
   );
 }
@@ -210,15 +191,6 @@ function SupplyCell({ row, target }: { row: OptimizeResult; target: SupplyTarget
   );
 }
 
-/** Ранняя и поздняя даты появления машины — подсказка для «?» и для чекбоксов. */
-function introTitle(intro: IntroAvailability): string {
-  const lines = [`${t('opt.introFrom')}: ${monthYear(intro.year, intro.month)}`];
-  if (intro.randomised) {
-    lines.push(`${t('opt.introLatest')}: ${monthYear(intro.latestYear, intro.latestMonth)}`);
-  }
-  return lines.join('\n');
-}
-
 export default function OptimizerPage() {
   const {
     cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, goal, maxTrains,
@@ -291,6 +263,9 @@ export default function OptimizerPage() {
   // only redoes the money. The cache belongs to the tab: the search stays a pure function.
   const searchCache = useRef(createOptimizerCache());
 
+  // what the imported game sells on its own date beats the model, see engine/availability.ts
+  const soldIds = useSoldIds(searchInput.year, game);
+
   const results = useMemo(() => {
     if (!cargo) return [];
     return optimizeConsists(
@@ -307,6 +282,7 @@ export default function OptimizerPage() {
         maxTrains: searchInput.maxTrains,
         subsidised,
         excludedIds,
+        soldIds,
         game,
         calc,
       },
@@ -314,7 +290,7 @@ export default function OptimizerPage() {
       50,
       searchCache.current,
     );
-  }, [trains, cargo, economyId, searchInput, activeGoal, supplyTarget, subsidised, excludedIds, game, calc]);
+  }, [trains, cargo, economyId, searchInput, activeGoal, supplyTarget, subsidised, excludedIds, soldIds, game, calc]);
 
   // машины, которые в выбранном году могут ещё не появиться, — их можно выключить
   const collator = useMemo(() => new Intl.Collator(intlLocale(locale)), [locale]);
@@ -323,8 +299,9 @@ export default function OptimizerPage() {
         cargo,
         collator,
         locale,
+        soldIds,
       }),
-    [results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, cargo, collator, locale],
+    [results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, cargo, collator, locale, soldIds],
   );
 
   const matching = useMemo(
@@ -473,18 +450,25 @@ export default function OptimizerPage() {
           {productionPerMonth > 0 ? t('opt.assumptionProduction') : t('opt.assumption')}
         </p>
       )}
+      {soldIds && <p className="hint">{t('vehicle.listFromGame')}</p>}
       {doubtful.length > 0 && (
         <>
           <p className="hint">
             <span className="intro-warn">?</span>{' '}
-            {introRandomisationActive(game) ? t('opt.introLegend') : t('opt.introLegendExact')}
+            {doubtful.some((d) => d.availability.reason === 'retire')
+              ? t('vehicle.doubtLegend')
+              : introRandomisationActive(game)
+                ? t('opt.introLegend')
+                : t('opt.introLegendExact')}
           </p>
           <Group className="intro-toggles" gap="xs">
             <Text className="hint">{t('opt.introInclude')}</Text>
-            {doubtful.map(({ ids, train, intro, capacity, ambiguous }) => (
+            {doubtful.map(({ ids, train, availability, capacity, ambiguous }) => (
               <Checkbox
                 key={ids[0]}
-                title={introTitle(intro)}
+                // the label follows the end of the vehicle's life the doubt is about; the
+                // withdrawal has no date to name, so there the rule itself is explained
+                title={buyMenuNoteTitle(availability, intlLocale(locale))}
                 checked={!ids.every((id) => excludedIds.includes(id))}
                 onChange={() => toggleExcluded(ids)}
                 label={
@@ -614,7 +598,7 @@ export default function OptimizerPage() {
               <Table.Td className="cell-sprite"><TrainImage trainId={r.engine.id} /></Table.Td>
               <Table.Td>
                 {engineLabel(r)}
-                <IntroNote intro={r.engineIntro} />
+                <BuyMenuNote availability={r.engineBuyMenu} />
                 {/* the power the engine makes on the line being planned, which is what the
                     row's own figures were computed from: an electro-diesel states its
                     diesel power in the data and gives more than that under the wires */}
@@ -623,7 +607,7 @@ export default function OptimizerPage() {
                 </span>
               </Table.Td>
               <Table.Td className="cell-sprite"><TrainImage trainId={r.wagon.id} /></Table.Td>
-              <Table.Td>{wagonLabel(r)}<IntroNote intro={r.wagonIntro} /></Table.Td>
+              <Table.Td>{wagonLabel(r)}<BuyMenuNote availability={r.wagonBuyMenu} /></Table.Td>
               <Table.Td className="cell-num">
                 {num(r.cargoPerTrip)}
                 {r.cargoPerTrip < r.capacity - 0.5 && (

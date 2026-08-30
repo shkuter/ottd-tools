@@ -21,12 +21,22 @@ export interface GrfEntityId {
   grfid: number;
   /** The id inside the defining GRF: `internal_id` for engines, `entity_id` for industries. */
   localId: number;
+  /**
+   * Vehicle type of an engine entry (`VehicleType`: 0 train, 1 road, 2 ship, 3 aircraft).
+   * The game numbers `internal_id` from zero again for every type
+   * (`EngineOverrideManager::ResetToDefaultMapping`), so a GRF and a local id name a
+   * vehicle only together with this. Absent for industry mappings.
+   */
+  type?: number;
 }
 
 /** Engine pool index → defining GRF and id; empty map when the chunk is absent. */
 export function readEngineIds(chunk: Chunk | undefined): Map<number, GrfEntityId> {
   return readMapping(chunk, 'internal_id');
 }
+
+/** The `type` of a train entry — road vehicles, ships and aircraft repeat the same ids. */
+export const VEHICLE_TYPE_TRAIN = 0;
 
 /** Industry type → defining GRF and id; empty map when the chunk is absent. */
 export function readIndustryTypeIds(chunk: Chunk | undefined): Map<number, GrfEntityId> {
@@ -37,6 +47,7 @@ function readMapping(chunk: Chunk | undefined, idField: string): Map<number, Grf
   return readTable(chunk, (values) => {
     const grfid = asNumber(values.get('grfid'));
     const localId = asNumber(values.get(idField));
-    return grfid === undefined || localId === undefined ? undefined : { grfid, localId };
+    if (grfid === undefined || localId === undefined) return undefined;
+    return { grfid, localId, type: asNumber(values.get('type')) };
   });
 }

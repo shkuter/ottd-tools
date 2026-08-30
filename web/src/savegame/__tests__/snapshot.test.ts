@@ -3,6 +3,10 @@ import { buildSnapshot } from '../snapshot';
 import { OWNER_NONE } from '../extract/stnn';
 import { readSavegame, type RawSavegame } from '../read';
 import { fixture } from './fixture';
+import { activeTrains, availabilityContext } from '../../dataset';
+import { vanillaTrains } from '../../vanilla';
+import { standsInBuyMenu } from '../../engine/availability';
+import { DEFAULT_GAME_SETTINGS } from '../../engine/settings';
 
 let cached: RawSavegame | undefined;
 async function raw(): Promise<RawSavegame> {
@@ -242,5 +246,63 @@ describe('снапшот партии на xUSSR', () => {
     expect(entries.some((e) => e.catalogueId === null)).toBe(true);
     const total = entries.reduce((sum, e) => sum + e.count, 0);
     expect(total).toBeGreaterThan(100);
+  });
+});
+
+describe('что партия продаёт', () => {
+  it('список берётся из ответа самой игры, а не из дат набора', async () => {
+    const raw = await xussrRaw();
+    const snapshot = buildSnapshot(raw);
+    // 926 машин в каталоге, тринадцать в продаже: игра решает это сама
+    expect(snapshot.soldIds).toHaveLength(13);
+    expect(snapshot.soldIds).toContain('xussr_steam_a');
+
+    // и решает иначе, чем расчёт по данным набора: Тᴷ 13-го типа введён в этом же году,
+    // но продажу игра откроет только через год после своей даты появления
+    const game = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const, startingYear: 1860 };
+    const byModel = activeTrains(game)
+      .filter((train) => standsInBuyMenu(train, raw.year!, availabilityContext(game)))
+      .map((train) => train.id);
+    expect(byModel).toContain('xussr_tk030_type1873');
+    expect(snapshot.soldIds).not.toContain('xussr_tk030_type1873');
+  });
+
+  it('ответ партии главнее формулы, пока год тот же', async () => {
+    const raw = await xussrRaw();
+    const snapshot = buildSnapshot(raw);
+    const game = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const, startingYear: 1860 };
+    const sold = new Set(snapshot.soldIds);
+    const tk = activeTrains(game).find((t) => t.id === 'xussr_tk030_type1873')!;
+    // с ответом партии машины нет, без него — есть
+    expect(standsInBuyMenu(tk, raw.year!, availabilityContext(game, sold))).toBe(false);
+    expect(standsInBuyMenu(tk, raw.year!, availabilityContext(game))).toBe(true);
+  });
+
+  it('в списке только поезда: автобусы и корабли нумеруются заново', async () => {
+    // игра ведёт свой отсчёт internal_id для каждого типа транспорта, поэтому пара
+    // (GRF, id) называет машину только вместе с типом — иначе автобус прочитался бы
+    // как поезд с тем же номером
+    const vanilla = buildSnapshot(await readSavegame(fixture('vanilla-1951')));
+    const byId = new Map(vanillaTrains.map((t) => [t.id, t]));
+    // тридцать шесть поездов; читая пул целиком, сюда попадали бы и автобусы с кораблями —
+    // их номера совпадают с номерами поездов, и список раздувался до сорока пяти
+    expect(vanilla.soldIds).toHaveLength(36);
+    for (const id of vanilla.soldIds!) expect(byId.has(id)).toBe(true);
+  });
+
+  it('машины неизвестных GRF в список не попадают', async () => {
+    const snapshot = buildSnapshot(await xussrRaw());
+    // монолитный xussr.grf каталогу неизвестен: назвать его машины нечем
+    expect(snapshot.soldIds!.every((id) => id.startsWith('xussr_'))).toBe(true);
+  });
+
+  it('сейв без сведений о машинах разбирается по-прежнему', async () => {
+    const source = await xussrRaw();
+    const withoutEngines = { ...source, network: { ...source.network, engineStates: new Map() } };
+    const snapshot = buildSnapshot(withoutEngines);
+    // не пустой список, а «ответа нет»: пустой значил бы «партия не продаёт ничего»
+    expect(snapshot.soldIds).toBeNull();
+    // остальное на месте: список доступности — добавка, а не условие разбора
+    expect(snapshot.trains.length).toBeGreaterThan(0);
   });
 });

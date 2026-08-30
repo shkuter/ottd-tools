@@ -4,12 +4,22 @@
  * Гружёное плечо и порожний обратный ход считаются с разной скоростью.
  */
 import type { Cargo, ConsistEntry, Train, TrainsMeta } from '../types';
-import { activeRailtype, activeRailtypes, canCarryIn, trainCapacity } from '../dataset';
+import {
+  activeRailtype,
+  activeRailtypes,
+  availabilityContext,
+  canCarryIn,
+  trainCapacity,
+} from '../dataset';
 import { canRunOn, poweredOutputOn, vehicleSpeedOn } from './tracktypes';
 import { balancingSpeed } from './physics';
 import { cargoPaymentRate } from './income';
 import { ratingPeriods, speedRating, visitClearsFlow, type StationRating } from './rating';
-import { introAvailability, type IntroAvailability } from './availability';
+import {
+  standsInBuyMenu,
+  vehicleAvailability,
+  type VehicleAvailability,
+} from './availability';
 import { preferTrain } from './purchase';
 import { tripBranches, tripMoney, tripSetup, type TripEconomics } from './trip';
 import {
@@ -55,6 +65,11 @@ export interface OptimizeParams {
   /** Машины, выброшенные из перебора (например, которых в игре ещё может не быть). */
   excludedIds?: readonly string[];
   /**
+   * Catalogue ids the imported game sells on its own date. Where it is known it decides
+   * which vehicles the search may pick — the game already answered the question.
+   */
+  soldIds?: ReadonlySet<string> | null;
+  /**
    * Cargo produced per economy month at the source industry (0 = unlimited).
    * Caps what a train can actually haul, so extra capacity stops paying for itself
    * and the optimizer picks the wagon count that matches the flow.
@@ -90,10 +105,12 @@ export interface OptimizeResult {
   engineCount: number;
   wagon: Train;
   wagonCount: number;
-  /** Когда локомотив появляется в игре: год выбран, а дата в игре точнее и плавает. */
-  engineIntro: IntroAvailability;
-  /** То же для вагона. */
-  wagonIntro: IntroAvailability;
+  /**
+   * Whether the vehicle stands in the buy menu, which end of its life is in doubt, and the
+   * dates behind the introduction end of that answer.
+   */
+  engineBuyMenu: VehicleAvailability;
+  wagonBuyMenu: VehicleAvailability;
   capacity: number;
   /** Cargo actually hauled per trip: the capacity, or the production flow share when smaller. */
   cargoPerTrip: number;
@@ -250,12 +267,6 @@ function goalStrategy(goal: OptimizeGoal): GoalStrategy {
   };
 }
 
-function isAvailable(train: Train, year: number): boolean {
-  if (train.intro_year > year) return false;
-  if (train.model_life != null && year >= train.intro_year + train.model_life) return false;
-  return true;
-}
-
 export function optimizeConsists(
   trains: Train[],
   params: OptimizeParams,
@@ -286,6 +297,8 @@ export function optimizeConsists(
   // pure electric is powered nowhere on it.
   const railtypes = activeRailtypes(game);
   const track = activeRailtype(game, trackType);
+  // one rule for every list of vehicles — see engine/availability.ts
+  const buyMenu = availabilityContext(game, params.soldIds);
   const engines = trains.filter(
     (t) =>
       t.kind === 'engine' &&
@@ -293,14 +306,14 @@ export function optimizeConsists(
       // nothing where the track does not power it, so asking `canRunOn` first would be the
       // same question twice
       poweredOutputOn(t, track, railtypes) > 0 &&
-      isAvailable(t, year) &&
+      standsInBuyMenu(t, year, buyMenu) &&
       !excluded.has(t.id),
   );
   const wagons = trains.filter(
     (t) =>
       t.kind === 'wagon' &&
       canRunOn(t, track, railtypes) &&
-      isAvailable(t, year) &&
+      standsInBuyMenu(t, year, buyMenu) &&
       !excluded.has(t.id) &&
       canCarryIn(game, t, cargo) &&
       trainCapacity(t, cargo, capacityIndex) > 0,
@@ -523,8 +536,8 @@ export function optimizeConsists(
           engineCount,
           wagon,
           wagonCount,
-          engineIntro: introAvailability(engine, year, game),
-          wagonIntro: introAvailability(wagon, year, game),
+          engineBuyMenu: vehicleAvailability(engine, year, buyMenu),
+          wagonBuyMenu: vehicleAvailability(wagon, year, buyMenu),
           capacity,
           cargoPerTrip: trip.cargoPerTrip,
           trainsNeeded,

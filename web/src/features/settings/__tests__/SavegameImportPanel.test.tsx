@@ -17,6 +17,7 @@ import { useSettingsStore } from '../../../state/settingsStore';
 import { useLocaleStore } from '../../../state/localeStore';
 
 const SNAPSHOT: Snapshot = {
+  soldIds: null,
   companies: [{ id: 0, name: '', isAi: false }],
   towns: [],
   stations: [],

@@ -65,11 +65,19 @@ export function preferTrain(a: Train, b: Train): number {
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
+/**
+ * Whether the vehicle stands in the buy menu. Given, it outranks every other rule for
+ * choosing which vehicle represents an entry: a row shown by a vehicle the game no longer
+ * sells promises the player something their buy menu does not have.
+ */
+export type BuyMenuPredicate = (train: Train) => boolean;
+
 /** Пункты в порядке первого появления машин на входе. */
 export function purchaseEntries(
   trains: readonly Train[],
   capacityIndex: number,
   game: GameSettings,
+  inBuyMenu?: BuyMenuPredicate,
 ): PurchaseEntry[] {
   const entries = new Map<string, PurchaseEntry>();
   for (const train of trains) {
@@ -80,15 +88,25 @@ export function purchaseEntries(
       continue;
     }
     entry.members.push(train);
-    if (preferTrain(train, entry.train) < 0) entry.train = train;
+    if (preferInBuyMenu(train, entry.train, inBuyMenu) < 0) entry.train = train;
   }
   return [...entries.values()];
+}
+
+/** Like `preferTrain`, but a vehicle still on sale outranks a withdrawn one. */
+function preferInBuyMenu(a: Train, b: Train, inBuyMenu?: BuyMenuPredicate): number {
+  if (inBuyMenu) {
+    const soldA = inBuyMenu(a);
+    if (soldA !== inBuyMenu(b)) return soldA ? -1 : 1;
+  }
+  return preferTrain(a, b);
 }
 
 export function purchaseRepresentatives(
   trains: readonly Train[],
   capacityIndex: number,
   game: GameSettings,
+  inBuyMenu?: BuyMenuPredicate,
 ): Train[] {
-  return purchaseEntries(trains, capacityIndex, game).map((entry) => entry.train);
+  return purchaseEntries(trains, capacityIndex, game, inBuyMenu).map((entry) => entry.train);
 }

@@ -7,12 +7,19 @@ import {
   saveSnapshot,
   SNAPSHOT_SCHEMA_VERSION,
   snapshotSettings,
+  soldIdsFor,
   subscribeSnapshot,
+  type SnapshotRecord,
 } from '../snapshotStore';
 import type { Snapshot } from '../snapshot';
-import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../engine/settings';
+import {
+  DEFAULT_CALC_SETTINGS,
+  DEFAULT_GAME_SETTINGS,
+  type GameSettings,
+} from '../../engine/settings';
 
 const EMPTY: Snapshot = {
+  soldIds: null,
   companies: [],
   towns: [],
   stations: [],
@@ -102,5 +109,37 @@ describe('настройки партии в записи', () => {
     for (const [key, value] of Object.entries(settings.calc)) {
       expect(value, `calc.${key}`).not.toBeUndefined();
     }
+  });
+});
+
+describe('что продаёт партия — только своей партии', () => {
+  const SETS = { trainSet: 'xussr' as const, firs: true, firsEconomy: 'STEELTOWN' };
+  const record = (year: number, sets: Partial<GameSettings> = {}): SnapshotRecord => ({
+    schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+    fileName: 'game.sav',
+    savedAt: 0,
+    snapshot: { ...EMPTY, soldIds: ['xussr_steam_a'] },
+    settings: snapshotSettings({ ...SETS, ...sets }, { priceYear: year }),
+  });
+
+  it('в свой год и на своих наборах список отдаётся', () => {
+    expect([...(soldIdsFor(record(1875), 1875, SETS) ?? [])]).toEqual(['xussr_steam_a']);
+  });
+
+  it('в другой год — не отдаётся: ответ относится к дате сейва', () => {
+    expect(soldIdsFor(record(1875), 1900, SETS)).toBeNull();
+  });
+
+  it('под другим ростером — не отдаётся: id той партии там ничего не значат', () => {
+    expect(soldIdsFor(record(1875), 1875, { ...SETS, trainSet: 'iron_horse' })).toBeNull();
+  });
+
+  it('под другой экономикой — не отдаётся: она решает, что машине возить', () => {
+    expect(soldIdsFor(record(1875), 1875, { ...SETS, firsEconomy: 'BASIC_TEMPERATE' })).toBeNull();
+    expect(soldIdsFor(record(1875), 1875, { ...SETS, firs: false })).toBeNull();
+  });
+
+  it('без записи — не отдаётся', () => {
+    expect(soldIdsFor(null, 1875, SETS)).toBeNull();
   });
 });

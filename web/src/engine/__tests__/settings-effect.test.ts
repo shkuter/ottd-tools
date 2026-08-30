@@ -6,10 +6,12 @@ import { describe, expect, it } from 'vitest';
 import { optimizeConsists, type OptimizeParams } from '../optimize';
 import { consistStats } from '../consist';
 import { transportedGoodsIncome } from '../income';
+import { standsInBuyMenu } from '../availability';
 import {
   activeCargos,
   activeTrains,
   activeTrainsMeta,
+  availabilityContext,
   economyIdForPayment,
   trains,
   trainsMeta,
@@ -62,12 +64,8 @@ function snapshot(
   const calc = { ...DEFAULT_CALC_SETTINGS, ...calcOverrides };
   // набор машин следует настройкам: без Iron Horse считаются ванильные поезда
   const meta = activeTrainsMeta(game);
-  const results = optimizeConsists(
-    activeTrains(game),
-    { ...baseParams(game, calc), ...paramOverrides },
-    meta,
-    5,
-  );
+  const params = { ...baseParams(game, calc), ...paramOverrides };
+  const results = optimizeConsists(activeTrains(game), params, meta, 5);
   const top = results[0];
   const entries = top
     ? [
@@ -90,7 +88,12 @@ function snapshot(
     statsGrade: stats.balancingSpeedOnGradeInternal,
     statsWeight: stats.loadedWeightT,
     // машина может ещё не появиться в игре: настройки влияют не только на числа
-    introCertain: top ? top.engineIntro.certain && top.wagonIntro.certain : null,
+    introCertain: top ? top.engineBuyMenu.intro.certain && top.wagonBuyMenu.intro.certain : null,
+    // сколько машин игра вообще продаёт в этот год: настройка может менять состав
+    // списка, не трогая победителя — списывают обычно тех, кто и так не выигрывает
+    inBuyMenu: activeTrains(game).filter((train) =>
+      standsInBuyMenu(train, params.year, availabilityContext(game)),
+    ).length,
     cargos: activeCargos(game).map((c) => c.label),
   });
 }
@@ -181,10 +184,17 @@ const CASES: {
   },
   { name: 'costsWhenStopped (JGRPP)', game: { jgrpp: true, costsWhenStopped: 8 } },
   {
-    // без рандомизации машина доступна с даты из GRF, с ней — на срок до 1,5 года позже
+    // без рандомизации машина доступна с даты из GRF, с ней — на срок до 1,5 года позже;
+    // год берётся такой, где разница ещё не съедена годом ожидания продажи
     name: 'vehicleIntroRandomisation (JGRPP)',
     game: { jgrpp: true, vehicleIntroRandomisation: false },
-    params: { year: 1961 },
+    params: { year: 1962 },
+  },
+  {
+    // машина, чей срок продажи вышел, остаётся в списке покупки
+    name: 'neverExpireVehicles',
+    game: { neverExpireVehicles: true },
+    params: { year: 1990 },
   },
   { name: 'capacityIndex', calc: { capacityIndex: 4 } },
   { name: 'hillTiles', calc: { hillTiles: 40 } },

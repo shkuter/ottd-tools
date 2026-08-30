@@ -62,8 +62,72 @@ def game_name(catalogue, dh):
     return " ".join(dh.lang_strings[part] for part in parts if part is not None)
 
 
+def group_leader(model_variant):
+    """The model variant this one is a variant *of*, or None when it leads its own group.
+
+    Mirrors get_variant_group_prop_for_model_variant (roster.py): the leader is the first
+    member of the group, except that the group's own first member points at the parent
+    group instead.
+    """
+    group = model_variant.variant_group
+    leader = group[0]
+    if group.parent_group is not None and model_variant == group[0]:
+        leader = group.parent_group[0]
+    return None if leader == model_variant else leader
+
+
+def syncs_reliability(model_variant):
+    """Does the vehicle ask the game to age it by its group's head?
+
+    Iron Horse adds the flag to every vehicle that sits in a group (train/units.py
+    extra_flags), and the game only walks up while the vehicle it stands on carries it
+    (engine.cpp CalcEngineReliability).
+    """
+    return "VEHICLE_FLAG_SYNC_VARIANT_RELIABILITY" in model_variant.units[0].extra_flags
+
+
+def series_head(model_variant):
+    """Head of the variant chain, the vehicle whose age the game uses for this one.
+
+    The game walks the chain up to its root, so a TGV middle car ages by its cab engine.
+    """
+    head, seen = None, {model_variant.id}
+    current = model_variant
+    while syncs_reliability(current):
+        leader = group_leader(current)
+        if leader is None or leader.id in seen:
+            return head
+        seen.add(leader.id)
+        head, current = leader, leader
+    return head
+
+
+def variant_groups(roster, items):
+    """Heads of the series the extracted vehicles belong to, by catalogue id.
+
+    Every head here is a vehicle the player can buy — Iron Horse leads a group with a real
+    model (a cab engine), unlike xUSSR, whose heads are menu-only placeholders — so the
+    series ages from the head's own intro date.
+    """
+    catalogues = {c.model_id: c for c in roster.catalogues}
+    heads = {}
+    for train in items:
+        key = train["variant_group"]
+        if not key or key in heads:
+            continue
+        catalogue = catalogues[key]
+        heads[key] = {
+            "item": key,
+            "intro_year": catalogue.intro_year,
+            "intro_month": 1 + catalogue.example_model_variant.intro_date_months_offset,
+            "buyable": True,
+        }
+    return dict(sorted(heads.items()))
+
+
 def catalogue_payload(catalogue, dh):
     mv = catalogue.example_model_variant
+    head = series_head(mv)
     is_engine = catalogue.engine_quacker.quack
     units = list(mv.units)
     capacities = [sum(u.capacities[i] for u in units) for i in range(5)]
@@ -89,6 +153,13 @@ def catalogue_payload(catalogue, dh):
         "intro_month": 1 + mv.intro_date_months_offset,
         "vehicle_life": mv.vehicle_life,
         "model_life": mv.model_life if mv.model_life != "VEHICLE_NEVER_EXPIRES" else None,
+        # the vehicle whose age decides when this one leaves the buy menu; None when the
+        # vehicle ages by itself — either it heads its own series or the set did not ask
+        # for reliability syncing
+        "variant_group": head.catalogue.model_id if head else None,
+        # the set retires every vehicle 10 years *late* (train/schemas.py retire_early),
+        # which fixes the last phase of the buy-menu life at its minimum
+        "retire_early": mv.retire_early,
         "power_hp": mv.power or 0,
         "power_by_source": mv.power_by_power_source or None,
         "te_coefficient": mv.tractive_effort_coefficient,
@@ -194,7 +265,9 @@ def railtypes_payload(dh):
 
 
 def main():
-    iron_horse.main()
+    # variant groups are a post-validation step, and the buy-menu life of a vehicle
+    # depends on them: the game ages a variant by its group's head
+    iron_horse.main(run_post_validation_steps=True)
     roster = iron_horse.roster_manager.active_roster
     dh = DocHelper(roster.get_lang_data("english", context="docs"))
 
@@ -230,6 +303,7 @@ def main():
         "meta": {
             **vendor_meta("iron-horse"),
             "roster": roster.id,
+            "variant_groups": variant_groups(roster, items),
             "railtypes": railtypes_payload(dh),
             # basecost-шифты GRF (см. vendor/iron-horse/src/templates/header.pynml);
             # цена = base << shift * factor / 256

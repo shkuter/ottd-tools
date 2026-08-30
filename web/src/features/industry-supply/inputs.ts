@@ -50,6 +50,12 @@ export interface RunOptions {
   maxTrains: number;
   /** One cache per cargo: the caches key on the route length, which differs per input. */
   caches: Map<string, OptimizerCache>;
+  /**
+   * Catalogue ids the imported game sells, when the year is its own. The tab searches with
+   * the same sweep as the other two, so it has to ask the same question about what is on
+   * sale — a supply figure built from a vehicle the game withdrew is advice nobody can take.
+   */
+  soldIds?: ReadonlySet<string> | null;
 }
 
 /** An input the user has given both a distance and a source output. */
@@ -88,6 +94,7 @@ export function runSupplyInputs(options: RunOptions): InputRun[] {
         goal: 'supply',
         supplyTarget: supplyTargetFor(game, cargoLabel, industryId),
         maxTrains,
+        soldIds: options.soldIds,
         game,
         calc,
       },

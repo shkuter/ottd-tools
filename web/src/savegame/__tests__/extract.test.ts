@@ -75,6 +75,7 @@ function rawWithGrfs(grfids: number[]): RawSavegame {
     })),
     network: {
       engineIds: new Map(),
+      engineStates: new Map(),
       industryTypeIds: new Map(),
       trains: new Map(),
       orderLists: new Map(),
@@ -147,6 +148,9 @@ describe('сборка предложения импорта', () => {
       vehicleCosts: 2,
       constructionCost: 2,
       basecostGrf: false,
+      // флаг решает, снимает ли игра машины с продажи, поэтому он приходит настройкой,
+      // а не строкой справки
+      neverExpireVehicles: false,
     });
     expect(proposal.calc).toMatchObject({ priceYear: 1872 });
     // над списком различий назван и сам набор, и его аддоны без данных
