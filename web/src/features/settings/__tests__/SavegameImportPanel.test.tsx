@@ -67,6 +67,7 @@ describe('savegame import panel', () => {
         info: [],
         unreadBaseCostSets: [],
         recognisedSets: [],
+        display: {},
       },
       snapshot: SNAPSHOT,
       fileName: 'londworth.sav',
@@ -119,6 +120,30 @@ describe('savegame import panel', () => {
     expect(rows.indexOf(banner)).toBeLessThan(
       rows.findIndex((el) => el.tagName === 'TABLE'),
     );
+  });
+
+  it('shows the display settings as a group of their own', async () => {
+    // валюта меняет вид сумм, а не расчёт: в одном списке с длиной дня она читалась бы
+    // как настройка, двигающая числа
+    result = {
+      ...result,
+      proposal: { ...result.proposal, display: { currency: 'RUR' } },
+    };
+    panel();
+    await chooseFile();
+
+    const table = (await screen.findAllByRole('table'))[0];
+    const rows = [...table.querySelectorAll('tbody tr')].map((row) => row.textContent ?? '');
+    const gameGroup = rows.indexOf('Настройки игры');
+    const displayGroup = rows.indexOf('Отображение');
+    const currency = rows.findIndex((text) => text.startsWith('Валюта'));
+
+    expect(gameGroup).toBe(0);
+    expect(displayGroup).toBeGreaterThan(gameGroup);
+    expect(currency).toBe(displayGroup + 1);
+    // курс назван рядом с кодом — им валюты и различаются
+    expect(rows[currency]).toContain('GBP (£) ×1');
+    expect(rows[currency]).toContain('RUR (p) ×50');
   });
 
   it('without a recognised set there is no banner', async () => {

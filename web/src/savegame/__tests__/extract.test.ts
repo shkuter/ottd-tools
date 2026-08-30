@@ -158,6 +158,30 @@ describe('сборка предложения импорта', () => {
     ]);
   });
 
+  it('валюта и единицы скорости переносятся из партии', async () => {
+    // у игры два рубля, и это не синонимы: RUR идёт по 50 к фунту, RUB по 80. Партия на
+    // RUR, прочитанная как RUB, завысила бы каждую сумму в 1.6 раза — доход рейса 2300 p
+    // читался бы как 3680. Настройка не про расчёт, но про совпадение с игрой
+    const { buildImport } = await import('../import');
+    const { readSavegame } = await import('../read');
+    const proposal = buildImport(await readSavegame(fixture('xussr-1872')));
+
+    expect(proposal.display).toEqual({ currency: 'RUR', speedUnit: 'metric' });
+  });
+
+  it('валюта, которой у калькулятора нет, выбор не трогает', async () => {
+    const { displaySettingsFrom } = await import('../mapping');
+    // 4 = австрийский шиллинг (currency.h: 4 ATS, 5 BEF): в списке калькулятора его нет,
+    // и молча подставлять другую валюту хуже, чем оставить выбранную пользователем
+    expect(displaySettingsFrom(new Map([['locale.currency', 4]]))).toEqual({});
+    expect(displaySettingsFrom(new Map([['locale.currency', 21]]))).toEqual({ currency: 'RUR' });
+    expect(displaySettingsFrom(new Map([['locale.currency', 34]]))).toEqual({ currency: 'RUB' });
+    // 2 = SI, 4 = узлы: тоже не наши, выбор остаётся прежним
+    expect(displaySettingsFrom(new Map([['locale.units_velocity', 2]]))).toEqual({});
+    expect(displaySettingsFrom(new Map([['locale.units_velocity', 0]])))
+      .toEqual({ speedUnit: 'imperial' });
+  });
+
   it('сейв с наборами xUSSR предлагает набор xUSSR', async () => {
     const { buildImport } = await import('../import');
     const { XUSSR_GRFIDS, IRON_HORSE_GRFID } = await import('../registry');

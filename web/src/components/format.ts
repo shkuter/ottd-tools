@@ -1,13 +1,23 @@
 import { intlLocale, t } from '../i18n';
 import { trainName } from '../i18n/names';
 import { internalToKmh, internalToMph } from '../engine/units';
-import { CURRENCIES, useSettingsStore } from '../state/settingsStore';
+import { CURRENCIES, useSettingsStore, type CurrencyCode } from '../state/settingsStore';
 
 /** Деньги: базовая валюта расчётов — фунт, конвертация по курсам игры. */
 export function money(value: number): string {
   const { rate, symbol, position } = CURRENCIES[useSettingsStore.getState().currency];
   const formatted = Math.round(value * rate).toLocaleString(intlLocale());
   return position === 'prefix' ? symbol + formatted : formatted + symbol;
+}
+
+/**
+ * How a currency is named wherever it is chosen or compared: code, sign and rate. The rate
+ * is part of the name because two currencies can differ by nothing else the player sees —
+ * the game's two roubles convert at 50 and 80 to the pound under three letters each.
+ */
+export function currencyLabel(code: CurrencyCode): string {
+  const { symbol, rate } = CURRENCIES[code];
+  return `${code} (${symbol.trim() || code}) ×${rate}`;
 }
 
 /**

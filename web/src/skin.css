@@ -996,7 +996,8 @@ body {
 h2,
 h3,
 h4,
-.settings-group h3 {
+.settings-group h3,
+.savegame-diff-group th {
   color: var(--skin-heading);
   text-shadow: var(--skin-text-shadow);
 }

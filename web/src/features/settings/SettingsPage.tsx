@@ -1,7 +1,7 @@
 import { Button, Fieldset, Group, NumberInput, Select, Switch } from '@mantine/core';
 import { activeEconomy, economies, trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
-import { unitSuffix } from '../../components/format';
+import { currencyLabel, unitSuffix } from '../../components/format';
 import { t } from '../../i18n';
 import { trainSetName } from '../../i18n/names';
 import {
@@ -284,9 +284,9 @@ export default function SettingsPage() {
             allowDeselect={false}
             value={currency}
             onChange={(v) => v && setCurrency(v as CurrencyCode)}
-            data={Object.entries(CURRENCIES).map(([code, c]) => ({
+            data={Object.keys(CURRENCIES).map((code) => ({
               value: code,
-              label: `${code} (${c.symbol.trim() || code}) ×${c.rate}`,
+              label: currencyLabel(code as CurrencyCode),
             }))}
           />
         </Row>

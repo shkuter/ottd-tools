@@ -10,6 +10,7 @@
  */
 
 import type { GameSettings } from '../engine/settings';
+import type { CurrencyCode, DisplaySettings } from '../state/settingsStore';
 import type { FieldValue } from './values';
 
 type Patch = Partial<GameSettings>;
@@ -60,6 +61,46 @@ export function gameSettingsFrom(saved: ReadonlyMap<string, FieldValue>): Patch 
     if (typeof value !== 'number') continue;
     patch = { ...patch, ...source.read(value) };
   }
+  return patch;
+}
+
+/**
+ * Currencies by the index the game stores in `locale.currency` — its own enum order
+ * (currency.h `CURRENCY_*`). Only the ones the calculator offers are listed; a game on
+ * any other currency keeps whatever the user picked, since the figures would be in a
+ * unit the calculator cannot state.
+ *
+ * The two roubles are the reason this is imported at all: RUR (21) converts at 50 to the
+ * pound and RUB (34) at 80, so reading a game played on RUR as RUB overstates every sum
+ * by 1.6.
+ */
+const CURRENCY_BY_INDEX: Readonly<Record<number, CurrencyCode>> = {
+  0: 'GBP',
+  1: 'USD',
+  2: 'EUR',
+  3: 'JPY',
+  21: 'RUR',
+  34: 'RUB',
+};
+
+/**
+ * How the game shows its numbers. Not a matter of calculation — the engine works in pounds
+ * and the game's internal speed unit — but of whether what the player reads here matches
+ * what they read there, so it travels with the rest of the settings.
+ */
+export function displaySettingsFrom(
+  saved: ReadonlyMap<string, FieldValue>,
+): Partial<DisplaySettings> {
+  const patch: Partial<DisplaySettings> = {};
+  const currency = saved.get('locale.currency');
+  if (typeof currency === 'number' && CURRENCY_BY_INDEX[currency]) {
+    patch.currency = CURRENCY_BY_INDEX[currency];
+  }
+  // locale.units_velocity: 0 imperial, 1 metric, 2 SI, 3 gameunits, 4 knots (settings.ini).
+  // Only the two the calculator shows are read; the rest leave the choice alone.
+  const velocity = saved.get('locale.units_velocity');
+  if (velocity === 0) patch.speedUnit = 'imperial';
+  if (velocity === 1) patch.speedUnit = 'metric';
   return patch;
 }
 

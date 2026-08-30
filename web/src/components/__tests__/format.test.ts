@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useLocaleStore } from '../../state/localeStore';
 import { useSettingsStore } from '../../state/settingsStore';
-import { engineLabel, consistLabel, speed, wagonLabel } from '../format';
+import { consistLabel, engineLabel, money, speed, wagonLabel } from '../format';
 import { xussrTrains } from '../../dataset';
 import { trainName } from '../../i18n/names';
 
@@ -27,6 +27,28 @@ describe('format.speed', () => {
     expect(speed(64)).toBe('64 км/ч');
     useSettingsStore.setState({ speedUnit: 'imperial' });
     expect(speed(64)).toBe('40 миль/ч');
+  });
+});
+
+describe('format.money', () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: 'ru' });
+  });
+
+  it('два рубля игры считаются по своим курсам и не подменяют друг друга', () => {
+    // сверено с игрой: рейс, дающий 46 £, в партии на RUR стоит ровно 2300 p, а та же
+    // партия на RUB показала бы 3680 — разница в 1.6 раза на каждой сумме
+    // пробелы в числе — те, что ставит Intl (неразрывные), поэтому сверяем нормализованно
+    const plain = (value: number) => money(value).replace(/\s/g, ' ');
+    useSettingsStore.setState({ currency: 'RUR' });
+    expect(plain(46)).toBe('2 300 p');
+    useSettingsStore.setState({ currency: 'RUB' });
+    expect(plain(46)).toBe('3 680 ₽');
+  });
+
+  it('фунт — базовая валюта: пересчёта нет', () => {
+    useSettingsStore.setState({ currency: 'GBP' });
+    expect(money(46)).toBe('£46');
   });
 });
 

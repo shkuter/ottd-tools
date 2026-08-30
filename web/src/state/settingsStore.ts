@@ -9,16 +9,38 @@ import {
   type GameSettings,
 } from '../engine/settings';
 
-/** Валюты OpenTTD: курс от базового фунта и позиция символа — как в игре (currency.cpp). */
+/**
+ * OpenTTD currencies: rate against the base pound and where the sign goes, as in the game
+ * (currency.cpp).
+ *
+ * The game ships two roubles, and they are not synonyms: RUR, the "Russian Rouble", at 50
+ * to the pound, and RUB, the "New Russian Ruble", at 80. A game played on RUR shows sums
+ * 1.6 times smaller than the same game on RUB, so both belong here, and a savegame import
+ * carries whichever the game is set to.
+ */
 export const CURRENCIES = {
   GBP: { rate: 1, symbol: '£', position: 'prefix' },
   USD: { rate: 2, symbol: '$', position: 'prefix' },
   EUR: { rate: 2, symbol: '€', position: 'prefix' },
   JPY: { rate: 220, symbol: '¥', position: 'prefix' },
+  RUR: { rate: 50, symbol: ' p', position: 'suffix' },
   RUB: { rate: 80, symbol: ' ₽', position: 'suffix' },
 } as const;
 
 export type CurrencyCode = keyof typeof CURRENCIES;
+
+/** Speed units of the game's Localisation settings (locale.units_velocity), metric by default. */
+export type SpeedUnit = 'imperial' | 'metric';
+
+/**
+ * How the numbers are shown. Not a matter of calculation — that works in pounds and the
+ * game's internal speed unit — but of whether what the player reads here matches what they
+ * read in the game, which is why a savegame import carries it.
+ */
+export interface DisplaySettings {
+  currency: CurrencyCode;
+  speedUnit: SpeedUnit;
+}
 
 /** Where the settings live, and at which version; exported so checks seed the real thing. */
 export const SETTINGS_KEY = 'ottd-tools-settings';
@@ -34,12 +56,7 @@ const TRACK_FAMILY_LABELS: Record<string, string> = {
   MAGLEV: 'MGLV',
 };
 
-/** Speed units of the game's Localisation settings (locale.units_velocity), metric by default. */
-export type SpeedUnit = 'imperial' | 'metric';
-
-interface SettingsState {
-  currency: CurrencyCode;
-  speedUnit: SpeedUnit;
+interface SettingsState extends DisplaySettings {
   game: GameSettings;
   calc: CalcSettings;
   setCurrency: (currency: CurrencyCode) => void;
@@ -47,7 +64,11 @@ interface SettingsState {
   setGame: <K extends keyof GameSettings>(key: K, value: GameSettings[K]) => void;
   setCalc: <K extends keyof CalcSettings>(key: K, value: CalcSettings[K]) => void;
   /** Applies several settings at once, e.g. everything a savegame states. */
-  applySettings: (game: Partial<GameSettings>, calc: Partial<CalcSettings>) => void;
+  applySettings: (
+    game: Partial<GameSettings>,
+    calc: Partial<CalcSettings>,
+    display?: Partial<DisplaySettings>,
+  ) => void;
   reset: () => void;
 }
 
@@ -82,8 +103,12 @@ export const useSettingsStore = create<SettingsState>()(
       setSpeedUnit: (speedUnit) => set({ speedUnit }),
       setGame: (key, value) => set((s) => ({ game: { ...s.game, [key]: value } })),
       setCalc: (key, value) => set((s) => ({ calc: { ...s.calc, [key]: value } })),
-      applySettings: (game, calc) =>
-        set((s) => ({ game: { ...s.game, ...game }, calc: { ...s.calc, ...calc } })),
+      applySettings: (game, calc, display) =>
+        set((s) => ({
+          ...display,
+          game: { ...s.game, ...game },
+          calc: { ...s.calc, ...calc },
+        })),
       reset: () =>
         set({
           currency: 'GBP',

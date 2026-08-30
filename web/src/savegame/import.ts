@@ -6,9 +6,12 @@
 import { economies } from '../dataset';
 import type { Economy } from '../types';
 import type { CalcSettings, GameSettings } from '../engine/settings';
+import type { DisplaySettings } from '../state/settingsStore';
 import type { SavedInflation } from './extract/ecmy';
 import type { SavedGrf } from './extract/ngrf';
-import { gameSettingsFrom, INFO_SETTINGS, type InfoSetting } from './mapping';
+import {
+  displaySettingsFrom, gameSettingsFrom, INFO_SETTINGS, type InfoSetting,
+} from './mapping';
 import type { RawSavegame } from './read';
 import { knownGrf, multiplierFromParam, type BaseCostParams, type GrfRole } from './registry';
 import type { FieldValue } from './values';
@@ -24,6 +27,8 @@ export interface SavegameImport {
   /** Game settings the savegame states; anything it does not state is absent. */
   game: Partial<GameSettings>;
   calc: Partial<CalcSettings>;
+  /** How the game shows its numbers: currency and speed units it was played with. */
+  display: Partial<DisplaySettings>;
   /** Settings without a model in the calculator, shown for information only. */
   info: InfoValue[];
   /** Inflation the game has accumulated so far, shown for information only. */
@@ -47,6 +52,7 @@ export function buildImport(raw: RawSavegame): SavegameImport {
     ...grfSettings(grfs),
   };
   const calc: Partial<CalcSettings> = {};
+  const display = displaySettingsFrom(settings);
 
   if (raw.year != null) calc.priceYear = raw.year;
 
@@ -60,6 +66,7 @@ export function buildImport(raw: RawSavegame): SavegameImport {
     jgrpp: raw.jgrpp,
     game,
     calc,
+    display,
     info: informationalValues(settings),
     inflation: raw.inflation,
     unreadBaseCostSets: grfs

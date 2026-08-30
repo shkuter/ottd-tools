@@ -18,6 +18,19 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- **RUR**, the game's other rouble, joins the currency list: OpenTTD ships two, RUR at 50 to
+  the pound and RUB at 80, and only RUB was offered.
+- A savegame import now carries the display settings the game was played with — its currency
+  and its speed units — listed as a group of their own beside the game and calculator
+  settings. They change how the figures read, not what they are.
+
+### Fixed
+
+- Every sum in a game played on RUR read 1.6 times too high, since the calculator could only
+  price it as RUB: a trip the game paid 2 300 p for was reported as 3 680.
+
 ## [0.16.0] - 2026-08-29
 
 ### Added

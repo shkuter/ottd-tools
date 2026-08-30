@@ -7,7 +7,10 @@
 
 import { economyById } from '../dataset';
 import { t } from '../i18n';
-import type { CalcSettings, GameSettings } from '../engine/settings';
+import { trainSetName } from '../i18n/names';
+import type { CalcSettings, GameSettings, TrainSet } from '../engine/settings';
+import { currencyLabel } from '../components/format';
+import type { CurrencyCode, DisplaySettings } from '../state/settingsStore';
 import type { SavedInflation } from './extract/ecmy';
 import type { InfoValue, SavegameImport } from './import';
 
@@ -35,11 +38,7 @@ const GAME_LABELS: Partial<Record<keyof GameSettings, Described<GameSettings>>> 
   jgrpp: { labelKey: 'settings.jgrpp', format: onOff },
   trainSet: {
     labelKey: 'settings.trainSet',
-    // roster names are proper nouns; only "vanilla" is a word of ours to translate
-    format: (v) =>
-      v === 'iron_horse' ? 'Iron Horse'
-      : v === 'xussr' ? 'xUSSR Railway Set'
-      : t('settings.trainSetVanilla'),
+    format: (v) => trainSetName(v as TrainSet),
   },
   firs: { labelKey: 'settings.firs', format: onOff },
   firsEconomy: {
@@ -94,6 +93,8 @@ const CALC_LABELS: Partial<Record<keyof CalcSettings, Described<CalcSettings>>> 
 export interface ImportDiff {
   game: SettingChange[];
   calc: SettingChange[];
+  /** Currency and speed units the game was played with, when they differ from the current. */
+  display: SettingChange[];
   info: InfoValue[];
   /** Inflation the game has accumulated, shown next to the informational settings. */
   inflation?: SavedInflation;
@@ -104,22 +105,43 @@ export interface ImportDiff {
   identical: boolean;
 }
 
+/** Order follows the Display section of the settings screen. */
+const DISPLAY_LABELS: Partial<Record<keyof DisplaySettings, Described<DisplaySettings>>> = {
+  currency: {
+    labelKey: 'settings.currency',
+    // named the same way the settings screen names it, rate included: the rate is what
+    // makes two currencies differ, and reading a game played on one as the other
+    // silently rescales every sum
+    format: (v) => currencyLabel(v as CurrencyCode),
+  },
+  speedUnit: {
+    labelKey: 'settings.speedUnit',
+    format: (v) => t(v === 'imperial' ? 'settings.speedUnit.imperial' : 'settings.speedUnit.metric'),
+  },
+};
+
 export function diffImport(
   proposal: SavegameImport,
   game: GameSettings,
   calc: CalcSettings,
+  // required, unlike an optional argument that could quietly omit a group: applying an
+  // import carries the display settings whether or not the caller asked to see them
+  display: DisplaySettings,
 ): ImportDiff {
   const gameChanges = changesOf(proposal.game, game, GAME_LABELS);
   const calcChanges = changesOf(proposal.calc, calc, CALC_LABELS);
+  const displayChanges = changesOf(proposal.display, display, DISPLAY_LABELS);
 
   return {
     game: gameChanges,
     calc: calcChanges,
+    display: displayChanges,
     info: proposal.info,
     inflation: proposal.inflation,
     unreadBaseCostSets: proposal.unreadBaseCostSets,
     recognisedSets: proposal.recognisedSets,
-    identical: gameChanges.length === 0 && calcChanges.length === 0,
+    identical:
+      gameChanges.length === 0 && calcChanges.length === 0 && displayChanges.length === 0,
   };
 }
 

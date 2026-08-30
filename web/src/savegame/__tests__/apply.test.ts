@@ -25,6 +25,7 @@ const PROPOSAL: SavegameImport = {
   info: [],
   unreadBaseCostSets: [],
   recognisedSets: [],
+  display: {},
 };
 
 const SNAPSHOT: Snapshot = {
@@ -81,6 +82,29 @@ describe('применение импорта', () => {
     expect(calc).toMatchObject({ priceYear: 1860, capacityIndex: 2 });
     // настройки, которых в сейве нет, остаются прежними
     expect(game.freightTrains).toBe(1);
+  });
+
+  it('валюта партии применяется вместе с остальным', async () => {
+    // курс валюты пересчитывает каждую показанную сумму, поэтому подтверждение
+    // переносит и её: партия на RUR, оставленная на RUB, завышала бы деньги в 1.6 раза
+    useSettingsStore.setState({ currency: 'RUB', speedUnit: 'imperial' });
+    await applyImport(
+      {
+        ...CONFIRMED,
+        proposal: { ...PROPOSAL, display: { currency: 'RUR', speedUnit: 'metric' } },
+      },
+      1,
+    );
+
+    const s = useSettingsStore.getState();
+    expect(s.currency).toBe('RUR');
+    expect(s.speedUnit).toBe('metric');
+  });
+
+  it('сейв без валюты выбор не трогает', async () => {
+    useSettingsStore.setState({ currency: 'JPY' });
+    await applyImport({ ...CONFIRMED, proposal: { ...PROPOSAL, display: {} } }, 1);
+    expect(useSettingsStore.getState().currency).toBe('JPY');
   });
 
   it('год партии становится годом всего калькулятора', async () => {

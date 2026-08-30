@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react';
+import { Fragment, useState, useSyncExternalStore } from 'react';
 import { Button, Group, Table, Text } from '@mantine/core';
 import { t } from '../../i18n';
 import { useSettingsStore } from '../../state/settingsStore';
@@ -39,7 +39,7 @@ function infoValue(kind: string, value: number, choiceKeys?: readonly string[]):
  */
 export function SavegameImportPanel() {
   const [state, setState] = useState<State>({ phase: 'idle' });
-  const { game, calc } = useSettingsStore();
+  const { game, calc, currency, speedUnit } = useSettingsStore();
 
   async function readFile(file: File) {
     setState({ phase: 'reading' });
@@ -47,7 +47,7 @@ export function SavegameImportPanel() {
     const savegame = await import('../../savegame/client');
     try {
       const result = await savegame.importSavegame(file);
-      const diff = diffImport(result.proposal, game, calc);
+      const diff = diffImport(result.proposal, game, calc, { currency, speedUnit });
       setState({ phase: 'ready', result, diff });
     } catch (error) {
       setState({
@@ -126,7 +126,16 @@ function SavegameDiff({
   onApply: () => void;
   onCancel: () => void;
 }) {
-  const changes = [...diff.game, ...diff.calc];
+  /*
+   * Grouped the way the settings screen groups them, and named with its own headings: the
+   * display settings change what the figures look like, not what they are, and a flat list
+   * would offer them as if they moved the calculation like the rest.
+   */
+  const groups = [
+    { labelKey: 'settings.game', changes: diff.game },
+    { labelKey: 'settings.calc', changes: diff.calc },
+    { labelKey: 'settings.display', changes: diff.display },
+  ].filter((group) => group.changes.length > 0);
   return (
     <div className="savegame-diff">
       {/* what the calculator recognised the game as, before what it proposes to change:
@@ -152,12 +161,19 @@ function SavegameDiff({
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {changes.map((change) => (
-                <Table.Tr key={change.label}>
-                  <Table.Td>{change.label}</Table.Td>
-                  <Table.Td>{change.current}</Table.Td>
-                  <Table.Td>{change.incoming}</Table.Td>
-                </Table.Tr>
+              {groups.map((group) => (
+                <Fragment key={group.labelKey}>
+                  <Table.Tr className="savegame-diff-group">
+                    <Table.Th colSpan={3}>{t(group.labelKey)}</Table.Th>
+                  </Table.Tr>
+                  {group.changes.map((change) => (
+                    <Table.Tr key={change.label}>
+                      <Table.Td>{change.label}</Table.Td>
+                      <Table.Td>{change.current}</Table.Td>
+                      <Table.Td>{change.incoming}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Fragment>
               ))}
             </Table.Tbody>
           </Table>
