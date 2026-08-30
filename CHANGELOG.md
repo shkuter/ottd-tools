@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-08-30
+
 ### Added
 
 - xUSSR wagons carry the FIRS 5.2 cargo range. Upstream the set still declares the FIRS 4
