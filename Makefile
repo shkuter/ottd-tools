@@ -11,8 +11,12 @@ OPENGFX2_REF ?= 0.8.1
 # Russian FIRS translation players actually run (fork of FIRS 5.2.0), pinned by commit
 FIRS_RU_REF ?= 61a0f0973cce43c41e156f7809782e7567279330
 # xUSSR Railway Set. The project is abandoned and carries no release holding the state
-# of its add-ons, so the pin is the final commit rather than a tag.
-XUSSR_REF ?= 100716f917112b146bd0f75741f85dc2dbfb86d6
+# of its add-ons, so the pin is the final commit rather than a tag. The pin is a fork:
+# upstream still declares the FIRS 4 cargo range, so with FIRS 5.2 no wagon of the set
+# takes ferroalloys, steel products or chemicals at all. The fork adds those labels and
+# is offered back upstream (George-VB/xussrset#257); once it lands, the pin moves back.
+XUSSR_REPO ?= https://github.com/shkuter/xussrset.git
+XUSSR_REF ?= 3c6d382b87713261a2139197268ac016c22c2002
 VENV = pipeline/.venv
 PY = $(VENV)/bin/python
 
@@ -44,7 +48,7 @@ fetch-xussr:
 	@[ -d vendor/xussrset ] || { \
 		mkdir -p vendor/xussrset && \
 		git -C vendor/xussrset init -q && \
-		git -C vendor/xussrset remote add origin https://github.com/George-VB/xussrset.git && \
+		git -C vendor/xussrset remote add origin $(XUSSR_REPO) && \
 		git -C vendor/xussrset fetch -q --depth 1 origin $(XUSSR_REF) && \
 		git -C vendor/xussrset checkout -q FETCH_HEAD; }
 
