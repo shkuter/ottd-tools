@@ -186,14 +186,49 @@ describe('миграция до v4: флаг Iron Horse становится в�
     expect(useSettingsStore.getState().game.trainSet).toBe('vanilla');
   });
 
-  it('сохранение v4 не трогается: выбранный xUSSR остаётся выбранным', async () => {
+  it('сохранение v4 с Iron Horse не трогается', async () => {
     const storage = memoryStorage({
-      [KEY]: JSON.stringify({ state: { game: { trainSet: 'xussr' } }, version: 4 }),
+      [KEY]: JSON.stringify({ state: { game: { trainSet: 'iron_horse' } }, version: 4 }),
     });
     useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
     await useSettingsStore.persist.rehydrate();
 
-    expect(useSettingsStore.getState().game.trainSet).toBe('xussr');
+    expect(useSettingsStore.getState().game.trainSet).toBe('iron_horse');
+  });
+});
+
+describe('миграция до v5: выбранный xUSSR переезжает на ваниль', () => {
+  it('ростера больше нет — выбор становится ванильным, путь тоже', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({
+        state: { game: { trainSet: 'xussr' }, calc: { trackType: 'ER2D' } },
+        version: 4,
+      }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    // живой стор, а не localStorage: каталога у 'xussr' больше нет, и оставленный лейбл
+    // пути ванильная таблица не знает
+    const s = useSettingsStore.getState();
+    expect(s.game.trainSet).toBe('vanilla');
+    expect(s.calc.trackType).toBe('RAIL');
+  });
+
+  it('остальные настройки шага не замечают', async () => {
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({
+        state: { game: { trainSet: 'iron_horse', firs: true }, calc: { trackType: 'ELRL' } },
+        version: 4,
+      }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+
+    const s = useSettingsStore.getState();
+    expect(s.game.trainSet).toBe('iron_horse');
+    expect(s.game.firs).toBe(true);
+    expect(s.calc.trackType).toBe('ELRL');
   });
 });
 

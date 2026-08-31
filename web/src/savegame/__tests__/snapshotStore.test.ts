@@ -88,6 +88,37 @@ describe('хранилище снапшота', () => {
     expect(again.droppedOutdated).toBe(false);
     expect(getSnapshotState().loading).toBe(false);
   });
+
+  it('партия на ростере, которого больше нет, удаляется так же', async () => {
+    // схема та же, а набор из калькулятора удалён (xUSSR): каталога для его машин нет,
+    // и вкладка «Партия» разложила бы такую запись в undefined вместо ростера
+    await saveSnapshot('old.sav', EMPTY, 1, SETTINGS);
+    const db = await new Promise<IDBDatabase>((resolve) => {
+      const req = indexedDB.open('ottd-tools', 1);
+      req.onsuccess = () => resolve(req.result);
+    });
+    const tx = db.transaction('snapshot', 'readwrite');
+    tx.objectStore('snapshot').put(
+      {
+        schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+        fileName: 'xussr.sav',
+        savedAt: 1,
+        snapshot: EMPTY,
+        settings: {
+          ...SETTINGS,
+          game: { ...SETTINGS.game, trainSet: 'xussr' as unknown as GameSettings['trainSet'] },
+        },
+      },
+      'current',
+    );
+    await new Promise((r) => (tx.oncomplete = r));
+    db.close();
+
+    resetSnapshotStateForTests();
+    const state = await loadSnapshot();
+    expect(state.record).toBeNull();
+    expect(state.droppedOutdated).toBe(true);
+  });
 });
 
 describe('настройки партии в записи', () => {
@@ -113,17 +144,17 @@ describe('настройки партии в записи', () => {
 });
 
 describe('что продаёт партия — только своей партии', () => {
-  const SETS = { trainSet: 'xussr' as const, firs: true, firsEconomy: 'STEELTOWN' };
+  const SETS = { trainSet: 'iron_horse' as const, firs: true, firsEconomy: 'STEELTOWN' };
   const record = (year: number, sets: Partial<GameSettings> = {}): SnapshotRecord => ({
     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     fileName: 'game.sav',
     savedAt: 0,
-    snapshot: { ...EMPTY, soldIds: ['xussr_steam_a'] },
+    snapshot: { ...EMPTY, soldIds: ['abernant'] },
     settings: snapshotSettings({ ...SETS, ...sets }, { priceYear: year }),
   });
 
   it('в свой год и на своих наборах список отдаётся', () => {
-    expect([...(soldIdsFor(record(1875), 1875, SETS) ?? [])]).toEqual(['xussr_steam_a']);
+    expect([...(soldIdsFor(record(1875), 1875, SETS) ?? [])]).toEqual(['abernant']);
   });
 
   it('в другой год — не отдаётся: ответ относится к дате сейва', () => {
@@ -131,7 +162,7 @@ describe('что продаёт партия — только своей пар�
   });
 
   it('под другим ростером — не отдаётся: id той партии там ничего не значат', () => {
-    expect(soldIdsFor(record(1875), 1875, { ...SETS, trainSet: 'iron_horse' })).toBeNull();
+    expect(soldIdsFor(record(1875), 1875, { ...SETS, trainSet: 'vanilla' })).toBeNull();
   });
 
   it('под другой экономикой — не отдаётся: она решает, что машине возить', () => {

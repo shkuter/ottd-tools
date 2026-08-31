@@ -34,7 +34,7 @@ import { standsInBuyMenu, vehicleAvailability } from '../../engine/availability'
 import { BuyMenuNote } from '../../components/BuyMenuNote';
 import { useSoldIds } from '../savegame/soldIds';
 import { intlLocale, t, useLocale } from '../../i18n';
-import { cargoName, cargoUnits, matchesTrainName, sortCargos, trainName } from '../../i18n/names';
+import { cargoName, cargoUnits, matchesTrainName, sortCargos } from '../../i18n/names';
 import { money, num, speed, speedUnitLabel, speedValue, withUnit } from '../../components/format';
 import { CargoIcon } from '../../components/CargoIcon';
 import { fieldWidth } from '../../skin';
@@ -113,11 +113,6 @@ export default function ConsistPage() {
     [cargoFilter, game],
   );
   const cargo = cargoLabel ? (activeCargoByLabel(game).get(cargoLabel) ?? null) : null;
-  // Вместимость колонки — под груз, о котором сейчас речь: фильтр каталога, если он
-  // выставлен, иначе груз собираемого состава. У набора, объявившего вместимость по
-  // грузу, без груза её нет вовсе, и колонка стояла бы в прочерках, пока сводка ниже
-  // считает тот же вагон под свой груз.
-  const capacityCargo = filterCargo ?? cargo;
   // asked once per catalogue entry: the filter drops what the game does not sell and the row
   // marks what is uncertain, and both want the same answer rather than two computations of it
   const availability = useMemo(
@@ -131,16 +126,13 @@ export default function ConsistPage() {
       if (!canRunOn(train, track, railtypes)) return false;
       // one buy-menu rule for every list, see engine/availability.ts
       if (availability.get(train.id)!.state === 'unavailable') return false;
-      if (search && !matchesTrainName(train, search, locale)) return false;
+      if (search && !matchesTrainName(train, search)) return false;
       if (filterCargo && !canCarryIn(game, train, filterCargo)) return false;
       return true;
     });
-  }, [catalogue, kindFilter, search, track, railtypes, filterCargo, game, locale, availability]);
+  }, [catalogue, kindFilter, search, track, railtypes, filterCargo, game, availability]);
 
-  const sortValue = useMemo(
-    () => catalogueSortValues(game, calc, locale, capacityCargo),
-    [game, calc, capacityCargo, locale],
-  );
+  const sortValue = useMemo(() => catalogueSortValues(game, calc), [game, calc]);
 
   const sorted = useMemo(() => {
     const collator = new Intl.Collator(intlLocale(locale), { numeric: true });
@@ -235,13 +227,13 @@ export default function ConsistPage() {
             {records.map((train) => {
               const power = poweredOutputOn(train, track, railtypes);
               const topSpeed = topSpeedOn(train, track);
-              const capacity = trainCapacity(train, capacityCargo, calc.capacityIndex);
+              const capacity = trainCapacity(train, calc.capacityIndex);
               return (
                 <Table.Tr key={train.id}>
                   {/* one cell, the way a line of the game's purchase list is: the sprite and the
                       name identify the row together, and the pinned first column keeps both */}
                   <Table.Td className="cell-vehicle">
-                    <TrainImage trainId={train.id} /> {trainName(train)}
+                    <TrainImage trainId={train.id} /> {train.name}
                     <BuyMenuNote availability={availability.get(train.id)!} />
                   </Table.Td>
                   <Table.Td className="cell-num">{train.intro_year}</Table.Td>
@@ -300,7 +292,7 @@ export default function ConsistPage() {
             {entries.map(({ train, count }) => (
               <Group key={train.id} gap={6} wrap="nowrap">
                 <TrainImage trainId={train.id} />
-                <Text className="consist-name">{trainName(train)}</Text>
+                <Text className="consist-name">{train.name}</Text>
                 <NumberInput
                   min={0}
                   value={count}

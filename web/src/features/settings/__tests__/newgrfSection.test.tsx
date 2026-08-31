@@ -83,16 +83,16 @@ describe('the NewGRF section', () => {
 
   it('the roster choice changes the roster without touching the other sets', () => {
     useSettingsStore.setState({
-      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr', firs: true, basecostGrf: true },
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'vanilla', firs: true, basecostGrf: true },
     });
     draw();
 
     // the select shows the chosen roster by its untranslated proper name
-    expect(screen.getByDisplayValue('xUSSR Railway Set')).toBeTruthy();
+    expect(screen.getByDisplayValue('Vanilla OpenTTD')).toBeTruthy();
     // FIRS and Base Costs keep their own switches and their own state
     expect(useSettingsStore.getState().game.firs).toBe(true);
     expect(useSettingsStore.getState().game.basecostGrf).toBe(true);
-    // the capacity parameter belongs to Iron Horse and is not offered for xUSSR
+    // the capacity parameter belongs to Iron Horse and is not offered for vanilla
     expect(screen.queryByText('Wagon capacity GRF parameter')).toBeNull();
   });
 

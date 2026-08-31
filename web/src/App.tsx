@@ -138,7 +138,7 @@ export default function App() {
       </Box>
       <Box component="footer" className="app-footer">
         {t('footer.version')} {__APP_VERSION__} · {t('footer.data')}: Iron Horse{' '}
-        {datasetMeta.iron_horse} · xUSSR {datasetMeta.xussr} · FIRS {datasetMeta.firs} ·{' '}
+        {datasetMeta.iron_horse} · FIRS {datasetMeta.firs} ·{' '}
         OpenTTD {datasetMeta.openttd}
         {/* The translation revision only matters where names actually come from it. */}
         {locale !== 'en' && ` (${t('footer.translation')} ${datasetMeta.firs_ru})`} ·{' '}

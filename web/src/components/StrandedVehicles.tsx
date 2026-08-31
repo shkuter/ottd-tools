@@ -1,6 +1,6 @@
 import { Warning } from './Warning';
 import { t } from '../i18n';
-import { railtypeName, trainName } from '../i18n/names';
+import { railtypeName } from '../i18n/names';
 import { activeRailtype, activeRailtypes } from '../dataset';
 import { canRunOn } from '../engine/tracktypes';
 import type { ConsistEntry } from '../types';
@@ -32,7 +32,7 @@ export function StrandedVehicles({
   const railtypes = activeRailtypes(game);
   const stranded = entries
     .filter(({ count, train }) => count > 0 && !canRunOn(train, track, railtypes))
-    .map(({ train }) => trainName(train));
+    .map(({ train }) => train.name);
 
   if (!stranded.length) return null;
   return (

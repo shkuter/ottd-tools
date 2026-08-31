@@ -1,16 +1,12 @@
 import { Image } from '@mantine/core';
 
 /**
- * Vehicle sprite: from the Iron Horse docs, cut out of the xUSSR set's own png
- * sources, or from the OpenGFX2 Classic base set for vanilla vehicles. The set a
- * vehicle belongs to is told by its id, which is how the sprites are filed too.
- * Hidden when there is no image for the model.
+ * Vehicle sprite: from the Iron Horse docs, or from the OpenGFX2 Classic base set for
+ * vanilla vehicles. The set a vehicle belongs to is told by its id, which is how the
+ * sprites are filed too. Hidden when there is no image for the model.
  */
 export function TrainImage({ trainId }: { trainId: string }) {
-  const dir =
-    trainId.startsWith('vanilla_') ? 'vanilla_trains'
-    : trainId.startsWith('xussr_') ? 'xussr'
-    : 'trains';
+  const dir = trainId.startsWith('vanilla_') ? 'vanilla_trains' : 'trains';
   return (
     <Image
       className="train-sprite"

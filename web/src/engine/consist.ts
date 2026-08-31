@@ -83,7 +83,7 @@ export function consistPhysics(
       speedLimitInternal = minOf(speedLimitInternal, speed.internal ?? mphToInternal(speed.mph));
     }
     if (cargo && canCarryIn(game, train, cargo)) {
-      const capacity = count * trainCapacity(train, cargo, capacityIndex);
+      const capacity = count * trainCapacity(train, capacityIndex);
       capacityForCargo += capacity;
       // вес груза: units × weight/16 т; множитель freight_trains — только для
       // грузовых (cargotype.cpp:254 WeightOfNUnitsInTrain)
@@ -93,8 +93,8 @@ export function consistPhysics(
   }
 
   // the track's own limit binds the whole consist, so it is taken once over the finished
-  // train rather than per vehicle. Neither vanilla nor Iron Horse states one; sets that do
-  // (xUSSR-style track grids) cap the train here, exactly as the game does.
+  // train rather than per vehicle. Neither vanilla nor Iron Horse states one; a set that
+  // grades its track by speed caps the train here, exactly as the game does.
   const trackLimit = trackSpeedLimit(track);
   if (trackLimit != null) {
     speedLimitInternal = minOf(speedLimitInternal, trackLimit);

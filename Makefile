@@ -10,17 +10,10 @@ OPENTTD_PATCHES_REF ?= jgrpp-0.73.1
 OPENGFX2_REF ?= 0.8.1
 # Russian FIRS translation players actually run (fork of FIRS 5.2.0), pinned by commit
 FIRS_RU_REF ?= 61a0f0973cce43c41e156f7809782e7567279330
-# xUSSR Railway Set. The project is abandoned and carries no release holding the state
-# of its add-ons, so the pin is the final commit rather than a tag. The pin is a fork:
-# upstream still declares the FIRS 4 cargo range, so with FIRS 5.2 no wagon of the set
-# takes ferroalloys, steel products or chemicals at all. The fork adds those labels and
-# is offered back upstream (George-VB/xussrset#257); once it lands, the pin moves back.
-XUSSR_REPO ?= https://github.com/shkuter/xussrset.git
-XUSSR_REF ?= 3c6d382b87713261a2139197268ac016c22c2002
 VENV = pipeline/.venv
 PY = $(VENV)/bin/python
 
-.PHONY: fetch fetch-firs-ru fetch-xussr fetch-opengfx2 venv data data-xussr check-i18n data-images data-opengfx2 dev build test check-visual verify release release-auto deploy
+.PHONY: fetch fetch-firs-ru fetch-opengfx2 venv data check-i18n data-images data-opengfx2 dev build test check-visual verify release release-auto deploy
 
 # Shallow-клоны исходников в vendor/ (iron-horse и firs пинуются релизными тегами)
 fetch:
@@ -30,7 +23,6 @@ fetch:
 	[ -d vendor/openttd ] || git clone --depth 1 --branch $(OPENTTD_REF) https://github.com/OpenTTD/OpenTTD.git vendor/openttd
 	[ -d vendor/openttd-patches ] || git clone --depth 1 --branch $(OPENTTD_PATCHES_REF) https://github.com/JGRennison/OpenTTD-patches.git vendor/openttd-patches
 	$(MAKE) fetch-firs-ru
-	$(MAKE) fetch-xussr
 
 # Russian names of FIRS cargos and industries. A single 43 KiB file, so it is fetched
 # by raw URL at the pinned commit instead of cloning the whole 7400-commit fork.
@@ -42,21 +34,11 @@ fetch-firs-ru:
 			https://raw.githubusercontent.com/ChronosXYZ/firs-ru/$(FIRS_RU_REF)/src/grf/lang/russian.toml && \
 		echo $(FIRS_RU_REF) > vendor/firs-ru/.ref; }
 
-# xUSSR sources, pinned by commit: `git clone --branch` takes only names, so the
-# pinned object is fetched directly (GitHub serves a commit by sha at depth 1).
-fetch-xussr:
-	@[ -d vendor/xussrset ] || { \
-		mkdir -p vendor/xussrset && \
-		git -C vendor/xussrset init -q && \
-		git -C vendor/xussrset remote add origin $(XUSSR_REPO) && \
-		git -C vendor/xussrset fetch -q --depth 20 --tags origin $(XUSSR_REF) && \
-		git -C vendor/xussrset checkout -q FETCH_HEAD; }
-
 venv:
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install -r pipeline/requirements.txt
 
-data: fetch-firs-ru fetch-xussr data-xussr
+data: fetch-firs-ru
 	$(PY) pipeline/extract_iron_horse.py
 	$(PY) pipeline/extract_firs.py
 	$(PY) pipeline/extract_vanilla.py
@@ -65,16 +47,9 @@ data: fetch-firs-ru fetch-xussr data-xussr
 	$(PY) pipeline/extract_firs_ru.py
 	$(PY) pipeline/validate.py
 
-# The xUSSR catalogue and its Russian names on their own: the set parses from NML through
-# the C preprocessor and takes a while, and it is the one part worth re-running by itself.
-data-xussr: fetch-xussr
-	$(PY) pipeline/extract_xussr.py
-	$(PY) pipeline/extract_xussr_ru.py
-
 # Do the committed Russian name dictionaries still match the sources they came from?
 check-i18n:
 	$(PY) pipeline/extract_firs_ru.py --check
-	$(PY) pipeline/extract_xussr_ru.py --check
 	$(PY) pipeline/extract_station_names.py --check
 
 # OpenGFX2 Classic base set. Usually already downloaded by the game itself —
@@ -93,7 +68,6 @@ data-opengfx2:
 data-images:
 	cd vendor/iron-horse && ../../$(PY) src/render_graphics.py --grf-name=iron-horse --pool_workers=8
 	$(PY) pipeline/extract_train_images.py
-	$(PY) pipeline/extract_xussr_images.py
 
 dev:
 	cd web && npm run dev

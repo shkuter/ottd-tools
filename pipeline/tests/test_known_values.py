@@ -113,8 +113,8 @@ class IronHorseKnownValues(unittest.TestCase):
     def test_variant_group_head_is_a_real_vehicle(self):
         """Средняя секция стареет по кабине: игра берёт возраст у головы группы.
 
-        В отличие от xUSSR голова Iron Horse — обычная покупаемая машина, поэтому серия
-        стареет от её даты появления, а не от начала партии.
+        Голова Iron Horse — обычная покупаемая машина, а не заглушка меню покупки,
+        поэтому серия стареет от её даты появления, а не от начала партии.
         """
         middle = self.by_id["blaze_middle_passenger"]
         self.assertEqual(middle["variant_group"], "blaze_cab")

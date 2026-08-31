@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { intlLocale, t } from '..';
 import {
   cargoName, cargoUnits, industryName, localiseDot, railtypeName, railtypeOptions, sortCargos,
-  trainName, trainSetName,
+  trainSetName,
 } from '../names';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 import firsCargos from '../../data/cargos.json';
@@ -17,8 +17,6 @@ import stationsRu from '../stations.ru.json';
 import railtypesRu from '../railtypes.ru.json';
 import trainsJson from '../../data/trains.json';
 import vanillaTrainsJson from '../../data/vanilla_trains.json';
-import xussrTrainsJson from '../../data/xussr_trains.json';
-import trainsXussrRu from '../trains_xussr.ru.json';
 import en from '../en.json';
 import ru from '../ru.json';
 
@@ -44,9 +42,6 @@ const KEPT_IN_ENGLISH = new Set([
   'kit.sampleValue',
   // названия самих наборов NewGRF: в игре они тоже английские
   'savegame.grf.ironHorse',
-  'savegame.grf.xussr',
-  'savegame.grf.xussrSubways',
-  'savegame.grf.xussrIvolga',
   'savegame.grf.firs',
   'savegame.grf.baseCostsMod',
   'savegame.grf.alteredCosts',
@@ -307,76 +302,15 @@ describe('track type names', () => {
   });
 });
 
-describe('xussr vehicle names', () => {
-  const items = xussrTrainsJson.items;
-  const names = trainsXussrRu.trains as Record<string, string>;
-
-  it('the dictionary covers every vehicle of the set', () => {
-    // the set translates every name it shows in the buy menu, so nothing is left out;
-    // a vehicle added without a Russian string would surface here (spec: localisation)
-    expect(items.map((train) => train.id).filter((id) => !(id in names))).toEqual([]);
-  });
-
-  it('carries no entry the data has no vehicle for', () => {
-    const known = new Set(items.map((train) => train.id));
-    expect(Object.keys(names).filter((id) => !known.has(id))).toEqual([]);
-  });
-
-  it('shows the set name in Russian, the data name otherwise', () => {
-    // both are the names the game itself prints in its buy menu, each in its language
-    const vl80t = items.find((train) => train.id === 'xussr_vl80t')!;
-    useLocaleStore.setState({ locale: 'ru' });
-    expect(trainName(vl80t)).toBe('Электровоз ВЛ80ᵀ-702 «Выло»');
-    useLocaleStore.setState({ locale: 'en' });
-    expect(trainName(vl80t)).toBe('VL80ᵀ-702 "Vylo" (Electric)');
-  });
-
-  it('iron horse names stay english on the russian ui, like in the game', () => {
-    useLocaleStore.setState({ locale: 'ru' });
-    expect(trainName({ id: 'abernant', name: '0-8-4 Abernant' })).toBe('0-8-4 Abernant');
-  });
-});
-
 describe('roster names', () => {
   // подпись набора нужна и в настройках, и в списке различий импорта: держи её в двух
-  // местах — четвёртый ростер добавят в одно, и половину ничто не поймает
+  // местах — третий ростер добавят в одно, и половину ничто не поймает
   it('every roster is named, and only vanilla is translated', () => {
     useLocaleStore.setState({ locale: 'ru' });
     expect(trainSetName('iron_horse')).toBe('Iron Horse');
-    expect(trainSetName('xussr')).toBe('xUSSR Railway Set');
     expect(trainSetName('vanilla')).toBe(ru['settings.trainSetVanilla']);
     useLocaleStore.setState({ locale: 'en' });
     expect(trainSetName('vanilla')).toBe(en['settings.trainSetVanilla']);
-  });
-});
-
-describe('xussr track type names', () => {
-  const railtypes = xussrTrainsJson.meta.railtypes;
-  const names = trainsXussrRu.railtypes as Record<string, string>;
-
-  it('the dictionary covers every track of the set', () => {
-    // hidden RAIL/ELRL are named by the vanilla dictionary the sets share
-    const missing = railtypes
-      .map((rt) => rt.label)
-      .filter((label) => !(label in names) && !['RAIL', 'ELRL'].includes(label));
-    expect(missing).toEqual([]);
-  });
-
-  it('the set names only its own tracks, never the shared ones', () => {
-    // the shared dictionary holds names of ours (the game's own are adjectives that name
-    // nothing), so a set's translation adds to it rather than replacing entries in it.
-    // A set that started naming RAIL would rename it under every roster at once, and the
-    // merge in names.ts deliberately lets the shared dictionary win — this keeps the two
-    // from ever having to disagree.
-    const shared = Object.keys(railtypesRu);
-    const clashes = Object.keys(names).filter((label) => shared.includes(label));
-    expect(clashes).toEqual([]);
-  });
-
-  it('russian names come from the set locale', () => {
-    useLocaleStore.setState({ locale: 'ru' });
-    const era1 = railtypes.find((rt) => rt.label === 'ERA1')!;
-    expect(railtypeName(era1)).toBe('Ж/д перем. тока 25кВ');
   });
 });
 

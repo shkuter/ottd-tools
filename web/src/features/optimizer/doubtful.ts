@@ -10,9 +10,7 @@
  * Пункт и его представитель — общие для всего приложения (`engine/purchase.ts`), поэтому
  * чекбокс называет ту же машину, что показана строкой выдачи и каталогом конструктора.
  */
-import { trainName } from '../../i18n/names';
-import type { Locale } from '../../state/localeStore';
-import type { Cargo, Train } from '../../types';
+import type { Train } from '../../types';
 import { availabilityContext, trainCapacity } from '../../dataset';
 import type { GameSettings } from '../../engine/settings';
 import {
@@ -41,14 +39,6 @@ export interface DoubtfulGroup {
  * плюс уже исключённые — иначе исключённую машину нечем было бы вернуть.
  */
 export interface DoubtfulOptions {
-  /**
-   * Язык подписей. Обязателен и передаётся, а не читается из стора: список строится в
-   * `useMemo`, и из стора локаль не попала бы в массив зависимостей — забытая, она молча
-   * оставила бы порядок и счёт одноимённых в языке первой отрисовки.
-   */
-  locale: Locale;
-  /** Груз, под который считается вместимость-различитель. */
-  cargo?: Cargo | null;
   /** Сравнение имён при сортировке; без него порядок решают вид и дата. */
   collator?: Intl.Collator;
   /**
@@ -66,7 +56,7 @@ export function doubtfulGroups(
   year: number,
   game: GameSettings,
   capacityIndex: number,
-  { locale, cargo = null, collator, soldIds = null }: DoubtfulOptions,
+  { collator, soldIds = null }: DoubtfulOptions,
 ): DoubtfulGroup[] {
   // отмечена в выдаче — значит и в списке: строка ставит «?» по обеим границам жизни
   // машины, и выключать надо ровно то, что помечено
@@ -88,9 +78,9 @@ export function doubtfulGroups(
     standsInBuyMenu(train, year, buyMenu),
   ).filter((entry) => keys.has(entry.key));
 
-  // счёт идёт по имени, которое читает игрок: подпись двоится, когда одинаково
-  // выглядит, а не когда совпадает английский оригинал под переводом
-  const displayName = (train: Train) => trainName(train, locale);
+  // счёт идёт по подписи строки: пункт помечается неоднозначным, когда одноимённых
+  // в списке несколько
+  const displayName = (train: Train) => train.name;
   const nameCounts = new Map<string, number>();
   for (const entry of groups) {
     const name = displayName(entry.train);
@@ -102,7 +92,7 @@ export function doubtfulGroups(
       ids: members.map((t) => t.id),
       train,
       availability: availabilityOf(train),
-      capacity: trainCapacity(train, cargo, capacityIndex),
+      capacity: trainCapacity(train, capacityIndex),
       ambiguous: (nameCounts.get(displayName(train)) ?? 0) > 1,
     }))
     .sort((a, b) =>

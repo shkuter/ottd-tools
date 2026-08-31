@@ -28,8 +28,6 @@ import {
   trains,
   trainsMeta,
   cargoByLabel,
-  xussrTrains,
-  xussrTrainsMeta,
 } from '../../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
@@ -95,35 +93,19 @@ describe('running-класс и шифты набора', () => {
   // .vehicle_costs, 0 → ×6/8. Сверять trainRunningCostPerYear с runningCostPerYear
   // значило бы сверять формулу с собой, поэтому здесь стоят числа, а обе настройки
   // сложности взяты обе — так виден и сам множитель.
-  it('вагоны xUSSR считают содержание от дорожной базы с шифтом набора', () => {
-    // полувагон 22-4024: running_cost_base ROADVEH (1600), factor 65, шифт набора 0
-    const gondola = xussrTrains.find((t) => t.id === 'xussr_gondola_22_4024')!;
-    expect(gondola.running_cost_base).toBe('RUNNING_COST_ROADVEH');
-    expect(gondola.running_cost_factor).toBe(65);
-    // дефолт калькулятора — vehicle_costs 0: (⌊1600 × 6/8⌋ × 65) >> 8 = £304
-    expect(trainRunningCostPerYear(gondola, xussrTrainsMeta)).toBe(304);
-    // «обычное» содержание, vehicle_costs 1: (1600 × 65) >> 8 = £406
+  it('ванильный электровоз считает содержание от электрической базы', () => {
+    // SH '30': running_cost_class electric (4800), factor 180, шифтов у ванили нет
+    const vanilla = { ...DEFAULT_GAME_SETTINGS, trainSet: 'vanilla' as const };
+    const meta = activeTrainsMeta(vanilla);
+    const sh30 = activeTrains(vanilla).find((t) => t.id === 'vanilla_23')!;
+    expect(sh30.running_cost_base).toBe('RUNNING_COST_ELECTRIC');
+    expect(sh30.running_cost_factor).toBe(180);
+    // дефолт калькулятора — vehicle_costs 0: (⌊4800 × 6/8⌋ × 180) >> 8 = £2531
+    expect(trainRunningCostPerYear(sh30, meta, vanilla)).toBe(2531);
+    // «обычное» содержание, vehicle_costs 1: (4800 × 180) >> 8 = £3375
     expect(
-      trainRunningCostPerYear(gondola, xussrTrainsMeta, {
-        ...DEFAULT_GAME_SETTINGS,
-        vehicleCosts: 1,
-      }),
-    ).toBe(406);
-  });
-
-  it('электровоз xUSSR: электрическая база и нулевой шифт набора', () => {
-    const chs2 = xussrTrains.find((t) => t.id === 'xussr_chs2_25e0')!;
-    expect(chs2.running_cost_base).toBe('RUNNING_COST_ELECTRIC');
-    expect(chs2.running_cost_factor).toBe(440);
-    // vehicle_costs 0: (⌊4800 × 6/8⌋ × 440) >> 8 = £6187
-    expect(trainRunningCostPerYear(chs2, xussrTrainsMeta)).toBe(6187);
-    // vehicle_costs 1: (4800 × 440) >> 8 = £8250
-    expect(
-      trainRunningCostPerYear(chs2, xussrTrainsMeta, {
-        ...DEFAULT_GAME_SETTINGS,
-        vehicleCosts: 1,
-      }),
-    ).toBe(8250);
+      trainRunningCostPerYear(sh30, meta, { ...vanilla, vehicleCosts: 1 }),
+    ).toBe(3375);
   });
 });
 

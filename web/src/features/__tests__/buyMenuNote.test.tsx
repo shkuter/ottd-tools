@@ -24,7 +24,6 @@ import {
 import type { Snapshot } from '../../savegame/snapshot';
 import { activeTrains, availabilityContext } from '../../dataset';
 import { vehicleAvailability } from '../../engine/availability';
-import { trainName } from '../../i18n/names';
 
 function draw() {
   return render(
@@ -68,7 +67,7 @@ describe('the catalogue marks a vehicle the game may not be selling', () => {
     draw();
 
     const row = (await screen.findAllByRole('row')).find((r) =>
-      within(r).queryByText(trainName(train, 'en')),
+      within(r).queryByText(train.name),
     );
     expect(row, `no row for ${train.id} in the catalogue of ${year}`).toBeTruthy();
     const mark = within(row!).getByText('?');
@@ -80,7 +79,7 @@ describe('the catalogue marks a vehicle the game may not be selling', () => {
       (t) => vehicleAvailability(t, year, context).state === 'available',
     )!;
     const certainRow = screen.getAllByRole('row').find((r) =>
-      within(r).queryByText(trainName(certain, 'en')),
+      within(r).queryByText(certain.name),
     );
     if (certainRow) expect(within(certainRow).queryByText('?')).toBeNull();
   });

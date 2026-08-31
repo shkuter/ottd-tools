@@ -14,14 +14,14 @@
  * appearing in the menu — and `SETS` in dataset.ts then fails to compile until it is
  * described there too.
  */
-export const TRAIN_SETS = ['vanilla', 'iron_horse', 'xussr'] as const;
+export const TRAIN_SETS = ['vanilla', 'iron_horse'] as const;
 
 export type TrainSet = (typeof TRAIN_SETS)[number];
 
 export interface GameSettings {
   /** Играем на JGR's Patchpack: доступны специфичные для патчпака настройки. */
   jgrpp: boolean;
-  /** Активный набор машин: ванильные поезда OpenTTD, Iron Horse или xUSSR. */
+  /** Активный набор машин: ванильные поезда OpenTTD или Iron Horse. */
   trainSet: TrainSet;
   /** Подключён NewGRF FIRS 5 (иначе — ванильные грузы и индустрии). */
   firs: boolean;
@@ -207,12 +207,8 @@ export function basecostBuyFactor(settings: GameSettings, kind: 'engine' | 'wago
   return kind === 'engine' ? settings.basecostLocomotive : settings.basecostWagon;
 }
 
-/**
- * Running-cost classes a train can charge by. `roadveh` is xUSSR's wagons: the set bases
- * their upkeep on the road-vehicle price (PR_RUNNING_ROADVEH, 1600) — a legal NewGRF move,
- * any base price may be named.
- */
-export type RunningClass = 'steam' | 'diesel' | 'electric' | 'roadveh';
+/** Running-cost classes a train can charge by, one per base price the game keeps. */
+export type RunningClass = 'steam' | 'diesel' | 'electric';
 
 /**
  * Base Costs GRF multiplier for running costs. The game keeps a separate base price per
@@ -226,9 +222,6 @@ export function basecostRunningFactor(
   if (!settings.basecostGrf) return 1;
   if (runningClass === 'steam') return settings.basecostTrainRunningSteam;
   if (runningClass === 'electric') return settings.basecostTrainRunningElectric;
-  // the road-vehicle base xUSSR wagons charge by has no multiplier of its own here:
-  // the calculator's Base Costs settings model the train parameters of the set
-  if (runningClass === 'roadveh') return 1;
   return settings.basecostTrainRunningDiesel;
 }
 

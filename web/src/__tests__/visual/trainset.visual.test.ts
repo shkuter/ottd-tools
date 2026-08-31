@@ -5,7 +5,7 @@ import { harnessFixture } from './harness';
  * The catalogue with a set other than the one the checks seed.
  *
  * Every other check runs on Iron Horse, which is enough for the skin but says nothing
- * about a set whose data is filed elsewhere: the xUSSR sprites live in a directory of
+ * about a set whose data is filed elsewhere: the vanilla sprites live in a directory of
  * their own, and a catalogue that quietly hides every image because the path is wrong
  * looks exactly like a catalogue of vehicles that ship no sprite.
  */
@@ -29,7 +29,7 @@ function catalogueSprites() {
   };
 }
 
-describe('the consist catalogue on the xUSSR set', () => {
+describe('the consist catalogue on the vanilla set', () => {
   it('lists its vehicles and shows their sprites', async () => {
     // the roster is switched the way a player switches it: seeding localStorage would
     // not survive, the harness writes its own settings on every navigation
@@ -37,7 +37,7 @@ describe('the consist catalogue on the xUSSR set', () => {
     // the settings rows label their control with a plain span, not a <label>, so the
     // field is found through its row rather than by its label
     await page.locator('.setting-row', { hasText: 'Train set' }).locator('input').first().click();
-    await page.getByRole('option', { name: 'xUSSR Railway Set' }).click();
+    await page.getByRole('option', { name: 'Vanilla OpenTTD' }).click();
 
     // navigating inside the app, not through the address bar: the harness seeds its own
     // settings on every fresh navigation and would undo the choice
@@ -50,10 +50,10 @@ describe('the consist catalogue on the xUSSR set', () => {
     });
 
     const seen = await page.evaluate(catalogueSprites);
-    expect(seen.rows, 'the xUSSR catalogue is not empty').toBeGreaterThan(0);
+    expect(seen.rows, 'the vanilla catalogue is not empty').toBeGreaterThan(0);
     expect(seen.loaded, `sprites loaded, sources: ${seen.sources.join(', ')}`)
       .toBeGreaterThan(0);
     expect(seen.sources, 'sprites come from the set\'s own directory')
-      .toEqual(seen.sources.filter((path) => path.includes('/icons/xussr/')));
+      .toEqual(seen.sources.filter((path) => path.includes('/icons/vanilla_trains/')));
   });
 });

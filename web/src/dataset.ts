@@ -1,5 +1,4 @@
 import trainsJson from './data/trains.json';
-import xussrTrainsJson from './data/xussr_trains.json';
 import cargosJson from './data/cargos.json';
 import industriesJson from './data/industries.json';
 import economiesJson from './data/economies.json';
@@ -13,8 +12,6 @@ import type { SupplyTarget } from './engine/supply';
 import type { AvailabilityContext } from './engine/availability';
 
 export const trains = (trainsJson as { items: unknown }).items as Train[];
-export const xussrTrains = (xussrTrainsJson as { items: unknown }).items as Train[];
-export const xussrTrainsMeta = (xussrTrainsJson as { meta: unknown }).meta as TrainsMeta;
 export const trainsMeta = (trainsJson as { meta: unknown }).meta as IronHorseMeta;
 export const cargos = (cargosJson as { items: unknown }).items as Cargo[];
 export const industries = (industriesJson as { items: unknown }).items as Industry[];
@@ -26,7 +23,6 @@ export const datasetMeta = metaJson as {
   firs: string;
   firs_ru: string;
   openttd: string;
-  xussr: string;
 };
 
 export const trainById = new Map(trains.map((t) => [t.id, t]));
@@ -36,14 +32,13 @@ export const trainById = new Map(trains.map((t) => [t.id, t]));
  * game imported from a save played without Iron Horse.
  */
 export const trainByAnyId = new Map<string, Train>(
-  [...vanillaTrains, ...trains, ...xussrTrains].map((t) => [t.id, t]),
+  [...vanillaTrains, ...trains].map((t) => [t.id, t]),
 );
 export const cargoByLabel = new Map(cargos.map((c) => [c.label, c]));
 export const industryById = new Map(industries.map((i) => [i.id, i]));
 export const economyById = new Map(economies.map((e) => [e.id, e]));
 
 const vanillaTrainById = new Map(vanillaTrains.map((t) => [t.id, t]));
-const xussrTrainById = new Map(xussrTrains.map((t) => [t.id, t]));
 
 const vanillaTrainsMeta: TrainsMeta = {
   ...trainsMeta,
@@ -62,10 +57,6 @@ const SETS: Record<TrainSet, TrainSetData> = {
     trains, byId: trainById, meta: trainsMeta, railtypes: trainsMeta.railtypes,
     canCarry: ironHorseCarries,
   },
-  xussr: {
-    trains: xussrTrains, byId: xussrTrainById, meta: xussrTrainsMeta,
-    railtypes: xussrTrainsMeta.railtypes, canCarry: xussrCarries,
-  },
   vanilla: {
     trains: vanillaTrains, byId: vanillaTrainById, meta: vanillaTrainsMeta,
     // ванильные машины рефита не имеют — возят только свой груз по умолчанию
@@ -82,7 +73,7 @@ interface TrainSetData {
   canCarry: (train: Train, cargo: Cargo, game: GameSettings) => boolean;
 }
 
-/** Активный набор машин: ванильные поезда, Iron Horse или xUSSR. */
+/** Активный набор машин: ванильные поезда или Iron Horse. */
 export function activeTrains(game: GameSettings): Train[] {
   return SETS[game.trainSet].trains;
 }
@@ -110,9 +101,10 @@ export function selectableRailtypes(game: GameSettings): Railtype[] {
  * The chosen track type, or the set's first buildable track when the choice is a stranger.
  *
  * The search runs over `selectableRailtypes`, not the full table, and so does the
- * fallback: a saved label may name a track the active set keeps hidden — xUSSR defines
- * `RAIL` (the previous default) but keeps it out of its build menu — and a track nobody
- * can lay is no route to cost. A hidden match is discarded the same as a missing one.
+ * fallback: a saved label may name a track the active set keeps hidden — Iron Horse
+ * defines `LGVN` for compatibility but keeps it out of its build menu — and a track
+ * nobody can lay is no route to cost. A hidden match is discarded the same as a missing
+ * one.
  * This is the single home of the rule: `TrackTypeField` moves the selection with the
  * same list rather than a copy of its own.
  */
@@ -182,36 +174,11 @@ export function activeCargoByLabel(game: GameSettings): Map<string, Cargo> {
   return new Map(activeCargos(game).map((c) => [c.label, c]));
 }
 
-/**
- * Вместимость машины под конкретный груз — единственное правило на весь калькулятор.
- *
- * Набор, объявивший вместимость по грузу (xUSSR), решает её перевозимым грузом, и держит
- * её **по секциям**: список из готовых чисел мест либо пар [X, Y] массовой формулы
- * `min(X/uw, Y/uw/125)`, где uw — вес единицы груза активного набора грузов. Секции
- * складываются после деления, а не до: `floor` в игре берётся в каждой секции свой, и у
- * почтового TGV с восемью почтовыми вагонами сумма до деления дала бы другое число.
- * Груз без записи вагон не везёт (0). Остальные наборы держат вместимость параметром:
- * прежний `capacities[capacityIndex]`.
- */
+/** Вместимость машины: наборы держат её пятью столбцами, настройка выбирает один. */
 export function trainCapacity(
-  train: Pick<Train, 'capacities' | 'capacity_by_cargo'>,
-  cargo: Pick<Cargo, 'label' | 'weight_16ths'> | null | undefined,
+  train: Pick<Train, 'capacities'>,
   capacityIndex: number,
 ): number {
-  const byCargo = train.capacity_by_cargo;
-  if (byCargo != null) {
-    const sections = cargo ? byCargo[cargo.label] : undefined;
-    if (sections == null) return 0;
-    return sections.reduce((total: number, section) => {
-      if (typeof section === 'number') return total + section;
-      const [tonnage, volume] = section;
-      const uw = cargo!.weight_16ths;
-      return total + Math.min(
-        Math.floor(tonnage / uw),
-        Math.floor(Math.floor(volume / uw) / 125),
-      );
-    }, 0);
-  }
   // все наборы пишут ровно пять столбцов (validate.py это стережёт), но индекс приходит
   // из настроек, а те переживают смену набора — так что ответ есть и на чужой индекс
   return train.capacities[capacityIndex] ?? 0;
@@ -245,40 +212,23 @@ export function availabilityContext(
  *
  * The game switches off a vehicle whose refit mask comes out empty — it clears the climates
  * it is available in, so the vehicle never reaches the buy menu (newgrf.cpp). A cargo set
- * that lacks what a wagon was built for does exactly that: the food tankers of xUSSR have
- * no cargo in Steeltown. An engine carries nothing by design and is never switched off for
- * it, so the question is only asked of vehicles that state a capacity.
+ * that lacks what a wagon was built for does exactly that. An engine carries nothing by
+ * design and is never switched off for it, so the question is only asked of vehicles that
+ * state a capacity.
  */
 function hasNothingToCarry(game: GameSettings, train: Train): boolean {
-  const carrier = train.capacity_by_cargo != null || train.capacities.some((c) => c !== 0);
+  const carrier = train.capacities.some((c) => c !== 0);
   if (!carrier) return false;
   // A vehicle that states no cargo at all is one the data cannot judge, not one the game
   // switched off: Iron Horse declares the refit of a combine engine on its sections, and
   // the model this catalogue entry carries has none of it. Absence of an answer is not the
   // answer "nothing".
   const states =
-    train.capacity_by_cargo != null ||
     train.default_cargos.length > 0 ||
     train.refit.classes.length > 0 ||
     train.refit.labels_allowed.length > 0;
   if (!states) return false;
   return !activeCargos(game).some((cargo) => canCarryIn(game, train, cargo));
-}
-
-/**
- * xUSSR решает перевозку своей таблицей вместимостей: грузу без записи в ней вагон не
- * даёт места, что и значит «не везёт». Машина, чью вместимость набор объявил не таблицей
- * по грузам, а одним числом (у «Ласточек» каллбек смотрит на голову состава, а не на
- * груз), везёт свой груз по умолчанию: места у неё есть, и таблица молчит не о грузе, а
- * об устройстве состава. Без мест такого вывода нет — иначе всякий локомотив стал бы
- * возить свой default_cargo.
- */
-function xussrCarries(train: Train, cargo: Cargo): boolean {
-  if (train.capacity_by_cargo != null) return cargo.label in train.capacity_by_cargo;
-  // индекс здесь ни на что не влияет: параметра вместимости у набора нет, и все пять
-  // столбцов несут одно число — вопрос только «есть ли места вообще»
-  return train.capacities.some((seats) => seats > 0)
-    && train.default_cargos.includes(cargo.label);
 }
 
 /**

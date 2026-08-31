@@ -87,7 +87,7 @@ export function tripLoadingDays(
     .filter((e) => e.count > 0 && e.train.kind === 'wagon' && canCarryIn(game, e.train, cargo))
     .map((e) =>
       loadingTicks(
-        trainCapacity(e.train, cargo, capacityIndex),
+        trainCapacity(e.train, capacityIndex),
         e.train.loading_speed ?? 0,
         game,
       ),

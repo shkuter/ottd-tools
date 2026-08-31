@@ -39,7 +39,7 @@ import {
 } from '../../dataset';
 import { poweredOutputOn } from '../../engine/tracktypes';
 import { intlLocale, t, useLocale } from '../../i18n';
-import { cargoName, cargoUnits, matchesTrainName, trainName, industryName, sortCargos } from '../../i18n/names';
+import { cargoName, cargoUnits, matchesTrainName, industryName, sortCargos } from '../../i18n/names';
 import {
   engineLabel, num, percent, speedUnitLabel, speedValue, unitSuffix, wagonLabel, withUnit,
 } from '../../components/format';
@@ -296,20 +296,18 @@ export default function OptimizerPage() {
   const collator = useMemo(() => new Intl.Collator(intlLocale(locale)), [locale]);
   const doubtful = useMemo(
     () => doubtfulGroups(results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, {
-        cargo,
         collator,
-        locale,
         soldIds,
       }),
-    [results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, cargo, collator, locale, soldIds],
+    [results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, collator, soldIds],
   );
 
   const matching = useMemo(
     () => {
       if (!engineFilter) return results;
-      return results.filter((r) => matchesTrainName(r.engine, engineFilter, locale));
+      return results.filter((r) => matchesTrainName(r.engine, engineFilter));
     },
-    [results, engineFilter, locale],
+    [results, engineFilter],
   );
   // Drawing fifty rows of sprites costs more than the search itself, and the answer is in
   // the first few anyway — the rest is one click away. The page resets on a new set of rows,
@@ -319,8 +317,8 @@ export default function OptimizerPage() {
   // Sorting is a view over the rows the search returned, not a second ranking: it reorders
   // what is on screen and leaves the set and the numbers alone.
   const ordered = useMemo(
-    () => sortRows(matching, sort, optimizerSortValues(locale), collator),
-    [matching, sort, collator, locale],
+    () => sortRows(matching, sort, optimizerSortValues(), collator),
+    [matching, sort, collator],
   );
 
   const shown = ordered.slice(0, visibleCount);
@@ -473,8 +471,8 @@ export default function OptimizerPage() {
                 onChange={() => toggleExcluded(ids)}
                 label={
                   ambiguous
-                    ? `${trainName(train)} (${num(capacity)} ${cargoUnits(cargo?.units)})`
-                    : trainName(train)
+                    ? `${train.name} (${num(capacity)} ${cargoUnits(cargo?.units)})`
+                    : train.name
                 }
               />
             ))}

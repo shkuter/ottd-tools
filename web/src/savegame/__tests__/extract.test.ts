@@ -108,6 +108,9 @@ describe('сборка предложения импорта', () => {
       trainSet: 'iron_horse',
       firs: true,
       basecostGrf: true,
+      // флаг решает, снимает ли игра машины с продажи, поэтому он приходит настройкой,
+      // а не строкой справки
+      neverExpireVehicles: false,
       // BaseCosts Mod: покупка вдвое дороже, содержание не тронуто
       basecostLocomotive: 2,
       basecostWagon: 2,
@@ -130,45 +133,13 @@ describe('сборка предложения импорта', () => {
     expect(proposal.game).toMatchObject({ trainSet: 'vanilla', firs: false, basecostGrf: false });
   });
 
-  it('настоящая партия xUSSR читается целиком', async () => {
-    // партия пользователя на JGRPP: девять GRF набора 0.8.1, базовый Railway Set 0.7.1,
-    // Subways и Ivolga, FIRS Steeltown. Проверяется то, что видно в самой игре
-    const { buildImport } = await import('../import');
-    const { readSavegame } = await import('../read');
-    const proposal = buildImport(await readSavegame(fixture('xussr-1872')));
-
-    expect(proposal.game).toMatchObject({
-      trainSet: 'xussr',
-      firs: true,
-      firsEconomy: 'STEELTOWN',
-      jgrpp: true,
-      dayLengthFactor: 5,
-      startingYear: 1850,
-      inflation: true,
-      vehicleCosts: 2,
-      constructionCost: 2,
-      basecostGrf: false,
-      // флаг решает, снимает ли игра машины с продажи, поэтому он приходит настройкой,
-      // а не строкой справки
-      neverExpireVehicles: false,
-    });
-    expect(proposal.calc).toMatchObject({ priceYear: 1872 });
-    // над списком различий назван и сам набор, и его аддоны без данных
-    expect(proposal.recognisedSets).toEqual([
-      'savegame.grf.xussr',
-      'savegame.grf.xussrIvolga',
-      'savegame.grf.xussrSubways',
-      'savegame.grf.firs',
-    ]);
-  });
-
   it('валюта и единицы скорости переносятся из партии', async () => {
-    // у игры два рубля, и это не синонимы: RUR идёт по 50 к фунту, RUB по 80. Партия на
-    // RUR, прочитанная как RUB, завысила бы каждую сумму в 1.6 раза — доход рейса 2300 p
-    // читался бы как 3680. Настройка не про расчёт, но про совпадение с игрой
+    // у игры два рубля, и это не синонимы: RUR идёт по 50 к фунту, RUB по 80 — поэтому
+    // валюта берётся из сейва, а не остаётся на выборе пользователя. Настройка не про
+    // расчёт, но про совпадение с игрой
     const { buildImport } = await import('../import');
     const { readSavegame } = await import('../read');
-    const proposal = buildImport(await readSavegame(fixture('xussr-1872')));
+    const proposal = buildImport(await readSavegame(fixture('londworth-1975')));
 
     expect(proposal.display).toEqual({ currency: 'RUR', speedUnit: 'metric' });
   });
@@ -184,20 +155,6 @@ describe('сборка предложения импорта', () => {
     expect(displaySettingsFrom(new Map([['locale.units_velocity', 2]]))).toEqual({});
     expect(displaySettingsFrom(new Map([['locale.units_velocity', 0]])))
       .toEqual({ speedUnit: 'imperial' });
-  });
-
-  it('сейв с наборами xUSSR предлагает набор xUSSR', async () => {
-    const { buildImport } = await import('../import');
-    const { XUSSR_GRFIDS, IRON_HORSE_GRFID } = await import('../registry');
-    // девять файлов одного набора: любой из них означает, что игрок играет xUSSR
-    const proposal = buildImport(rawWithGrfs([
-      XUSSR_GRFIDS.rails, XUSSR_GRFIDS.electric, XUSSR_GRFIDS.wagons,
-    ]));
-    expect(proposal.game.trainSet).toBe('xussr');
-    // и над списком различий набор назван один раз, а не девять
-    expect(proposal.recognisedSets).toEqual(['savegame.grf.xussr']);
-    // Iron Horse в той же таблице остаётся собой
-    expect(buildImport(rawWithGrfs([IRON_HORSE_GRFID])).game.trainSet).toBe('iron_horse');
   });
 
   it('сейв без набора машин даёт ваниль, даже когда другие наборы есть', async () => {

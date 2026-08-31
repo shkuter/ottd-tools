@@ -11,21 +11,14 @@ import { LOCALES, useLocaleStore, type Locale } from '../state/localeStore';
 import cargosRu from './cargos.ru.json';
 import industriesRu from './industries.ru.json';
 import railtypesRu from './railtypes.ru.json';
-import trainsXussrRu from './trains_xussr.ru.json';
 import { t } from './index';
 
 const CARGO_NAMES: Record<string, Record<string, string>> = { ru: cargosRu.names };
 const CARGO_UNITS: Record<string, Record<string, string>> = { ru: cargosRu.units };
 const INDUSTRY_NAMES: Record<string, Record<string, string>> = { ru: industriesRu };
-const RAILTYPE_NAMES: Record<string, Record<string, string>> = {
-  // одна карта лейблов на все наборы: имена путей xUSSR приходят из локали самого
-  // набора, ванильные RAIL/ELRL остаются за словарём игры. Общий словарь идёт
-  // последним и побеждает: там имена наши собственные, и перевод набора им
-  // дополнение, а не замена — иначе набор, назвавший RAIL, переименовал бы
-  // ванильный путь во всех трёх ростерах разом (сторожит locales.test.ts)
-  ru: { ...trainsXussrRu.railtypes, ...railtypesRu },
-};
-const TRAIN_NAMES: Record<string, Record<string, string>> = { ru: trainsXussrRu.trains };
+// одна карта лейблов на все наборы: лейбл означает один и тот же путь, кто бы его ни
+// поставлял, и имена в словаре — наши собственные (сторожит locales.test.ts)
+const RAILTYPE_NAMES: Record<string, Record<string, string>> = { ru: railtypesRu };
 
 /** Translated cargo name, or the English one from the data. */
 export function cargoName(cargo: { id: string; name: string } | null | undefined): string {
@@ -54,38 +47,11 @@ export function industryName(
 }
 
 /**
- * Vehicle name, as the player's game shows it. Only xUSSR ships its own Russian
- * locale; Iron Horse and vanilla vehicles keep their English names on every UI
- * language, like the game itself does.
- *
- * The locale can be passed in, and callers inside `useMemo` do pass it — same reason
- * `sortCargos` takes one: read from the store it is invisible to the dependency array,
- * and a memoised list would stay in the language it was first built in.
+ * Does this vehicle answer to what the player typed? Shared, because the catalogue and the
+ * optimizer each offer this search and must agree on what matches.
  */
-export function trainName(
-  train: { id: string; name: string } | null | undefined,
-  locale: Locale = useLocaleStore.getState().locale,
-): string {
-  if (!train) return '';
-  return TRAIN_NAMES[locale]?.[train.id] ?? train.name;
-}
-
-/**
- * Does this vehicle answer to what the player typed? Both spellings count: the name they
- * see and the set's own English one, so a vehicle stays findable by the name in the data
- * even on a translated interface. Shared, because the catalogue and the optimizer each
- * offer this search and must agree on what matches.
- */
-export function matchesTrainName(
-  train: { id: string; name: string },
-  needle: string,
-  locale?: Locale,
-): boolean {
-  const lower = needle.toLowerCase();
-  return (
-    trainName(train, locale).toLowerCase().includes(lower) ||
-    train.name.toLowerCase().includes(lower)
-  );
+export function matchesTrainName(train: { name: string }, needle: string): boolean {
+  return train.name.toLowerCase().includes(needle.toLowerCase());
 }
 
 /**
@@ -97,7 +63,6 @@ export function matchesTrainName(
 export function trainSetName(set: TrainSet): string {
   switch (set) {
     case 'iron_horse': return 'Iron Horse';
-    case 'xussr': return 'xUSSR Railway Set';
     case 'vanilla': return t('settings.trainSetVanilla');
   }
 }

@@ -1,5 +1,3 @@
-import { trainName } from '../../i18n/names';
-import type { Locale } from '../../state/localeStore';
 import type { OptimizeResult } from '../../engine/optimize';
 import type { SortState, SortValues } from '../../components/table/sorting';
 import { supplyFigure } from '../../engine/supply';
@@ -7,17 +5,11 @@ import { supplyFigure } from '../../engine/supply';
 /**
  * What each sortable column of the optimizer compares by. The mechanics of sorting are shared
  * (components/table/sorting.ts); this map is what makes them specific to a result row.
- *
- * The language is an argument, as it is for the catalogue: the name columns sort by what the
- * player reads, and read from the store that would be invisible to the `useMemo` that builds
- * the order — leaving it in the language it was first built in.
  */
-export function optimizerSortValues(locale: Locale) {
+export function optimizerSortValues() {
   return {
-    // сортируется то, что читает игрок: у набора со своей локалью подпись строки — не
-    // английское имя из данных (каталог сортируется так же, features/consist/sorting.ts)
-    engine: (r: OptimizeResult) => trainName(r.engine, locale),
-    wagon: (r: OptimizeResult) => trainName(r.wagon, locale),
+    engine: (r: OptimizeResult) => r.engine.name,
+    wagon: (r: OptimizeResult) => r.wagon.name,
     cargoTrip: (r: OptimizeResult) => r.cargoPerTrip,
     speed: (r: OptimizeResult) => r.loadedSpeedInternal,
     gradeSpeed: (r: OptimizeResult) => r.gradeSpeedInternal,

@@ -105,15 +105,15 @@ describe('savegame import panel', () => {
       ...result,
       proposal: {
         ...result.proposal,
-        game: { ...result.proposal.game, trainSet: 'xussr' },
-        recognisedSets: ['savegame.grf.xussr', 'savegame.grf.firs'],
+        game: { ...result.proposal.game, trainSet: 'iron_horse' },
+        recognisedSets: ['savegame.grf.ironHorse', 'savegame.grf.firs'],
       },
     };
     panel();
     await chooseFile();
 
     const banner = await screen.findByText(/Обнаружены NewGRF/);
-    expect(banner.textContent).toContain('xUSSR Railway Set');
+    expect(banner.textContent).toContain('Iron Horse');
     expect(banner.textContent).toContain('FIRS');
     // баннер стоит выше таблицы различий
     const diff = banner.closest('.savegame-diff')!;

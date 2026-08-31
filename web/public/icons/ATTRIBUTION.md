@@ -26,11 +26,6 @@ sprites comes from OpenTTD itself (`src/table/palettes.h`), GPL-2.0.
 Vehicle sprites rendered from the Iron Horse train set by Andy (andythenorth):
 <https://github.com/andythenorth/iron-horse>, GPL-2.0.
 
-## xUSSR Railway Set — `icons/xussr/`
-
-Buy-menu sprites cut out of the set's own png sources:
-<https://github.com/George-VB/xussrset>, © the xUSSR Set developers team, GPL-2.0.
-
 ## FIRS — `icons/cargo/`
 
 Cargo icons from FIRS Industry Replacement Set by Andy (andythenorth):

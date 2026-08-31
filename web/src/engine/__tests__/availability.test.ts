@@ -226,25 +226,30 @@ describe('возраст считается с открытия продажи',
 });
 
 describe('машине нечего возить', () => {
-  const steeltown = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const, firs: true,
+  const steeltown = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const, firs: true,
     firsEconomy: 'STEELTOWN', startingYear: 1850 };
+  // скотовоз Iron Horse: в Steeltown скота нет вовсе, в умеренной экономике он есть
+  const livestock = (game: typeof steeltown) =>
+    activeTrains(game).find((t) => t.id === 'livestock_car_pony_gen_1A')!;
 
-  it('пищевая цистерна в Steeltown не показывается: возить ей нечего', () => {
-    const tanker = activeTrains(steeltown).find((t) => t.id === 'xussr_tanker_type1858w')!;
-    const ctx = availabilityContext(steeltown);
-    expect(standsInBuyMenu(tanker, 1870, ctx)).toBe(false);
+  it('скотовоз в Steeltown не показывается: возить ему нечего', () => {
+    const wagon = livestock(steeltown);
+    const year = wagon.intro_year + 2;
+    expect(standsInBuyMenu(wagon, year, availabilityContext(steeltown))).toBe(false);
   });
 
-  it('в экономике, где её груз есть, она возвращается', () => {
-    const withFood = { ...steeltown, firsEconomy: 'BASIC_TEMPERATE' };
-    const tanker = activeTrains(withFood).find((t) => t.id === 'xussr_tanker_type1858w')!;
-    expect(standsInBuyMenu(tanker, 1870, availabilityContext(withFood))).toBe(true);
+  it('в экономике, где его груз есть, он возвращается', () => {
+    const withLivestock = { ...steeltown, firsEconomy: 'BASIC_TEMPERATE' };
+    const wagon = livestock(withLivestock);
+    const year = wagon.intro_year + 2;
+    expect(standsInBuyMenu(wagon, year, availabilityContext(withLivestock))).toBe(true);
   });
 
   it('локомотив без вместимости правило не трогает', () => {
-    const engine = activeTrains(steeltown).find((t) => t.id === 'xussr_steam_a')!;
-    expect(engine.capacities.every((c) => c === 0)).toBe(true);
-    expect(standsInBuyMenu(engine, 1865, availabilityContext(steeltown))).toBe(true);
+    const engine = activeTrains(steeltown).find(
+      (t) => t.kind === 'engine' && t.capacities.every((c) => c === 0),
+    )!;
+    expect(standsInBuyMenu(engine, engine.intro_year + 2, availabilityContext(steeltown))).toBe(true);
   });
 
   it('машина, о грузах которой данные молчат, остаётся в списке', () => {

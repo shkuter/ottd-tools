@@ -23,9 +23,7 @@ const params: OptimizeParams = {
 
 const results = optimizeConsists(trains, params, trainsMeta, 50);
 const groups = (excluded: string[] = [], rows = results) =>
-  doubtfulGroups(rows, trains, excluded, 1961, GAME, DEFAULT_CALC_SETTINGS.capacityIndex, {
-    locale: 'en',
-  });
+  doubtfulGroups(rows, trains, excluded, 1961, GAME, DEFAULT_CALC_SETTINGS.capacityIndex, {});
 
 /** Выдача после того, как игрок выключил контейнерные и платформенные вагоны. */
 function afterExcludingContainers() {
@@ -82,7 +80,7 @@ describe('doubtfulGroups', () => {
     const withoutIt = optimizeConsists(trains, { ...params, excludedIds: target.ids }, trainsMeta, 50);
     const after = doubtfulGroups(
       withoutIt, trains, target.ids, 1961, GAME, DEFAULT_CALC_SETTINGS.capacityIndex,
-      { locale: 'en' },
+      {},
     );
     expect(after.some((g) => g.ids.includes(target.ids[0]))).toBe(true);
     expect(withoutIt.some((r) => target.ids.includes(r.wagon.id))).toBe(false);

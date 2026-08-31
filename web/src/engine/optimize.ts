@@ -316,7 +316,7 @@ export function optimizeConsists(
       standsInBuyMenu(t, year, buyMenu) &&
       !excluded.has(t.id) &&
       canCarryIn(game, t, cargo) &&
-      trainCapacity(t, cargo, capacityIndex) > 0,
+      trainCapacity(t, capacityIndex) > 0,
   );
 
   // Wagons that agree on every number the calculation reads give identical rows, and Iron
@@ -332,7 +332,7 @@ export function optimizeConsists(
   const wagonProfile = (t: Train) => {
     const speed = vehicleSpeedOn(t, track);
     return [
-      trainCapacity(t, cargo, capacityIndex),
+      trainCapacity(t, capacityIndex),
       t.weight_t, t.length, poweredOutputOn(t, track, railtypes), t.te_coefficient,
       speed.mph, speed.internal, t.units.length,
       t.cost_factor, t.running_cost_base, t.running_cost_factor, t.loading_speed,

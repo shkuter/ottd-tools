@@ -18,6 +18,24 @@ of what users see):
 
 ## [Unreleased]
 
+### Removed
+
+- **BREAKING** The xUSSR Railway Set is gone: its catalogue, sprites, Russian names,
+  extractors and savegame recognition are all removed, leaving vanilla and Iron Horse. The
+  set's sources are NML behind the C preprocessor, its upstream is abandoned, and four track
+  labels had to be guessed rather than read — numbers the calculator could not stand behind.
+  A saved choice of that roster migrates to vanilla, and the track selection resets with it;
+  every other setting is kept. A savegame of such a game still imports, with the set
+  unrecognised like any other unknown NewGRF.
+- An already imported game of that roster is dropped from storage on load, the way a
+  snapshot of an outdated schema is, with the same offer to load the savegame again;
+  imported games of vanilla and Iron Horse are untouched.
+- Mechanics that only that set fed: per-current-system speeds, capacity stated per cargo, the
+  road-vehicle running-cost class, and the matching of vehicles from sets built as several
+  GRFs. What vanilla and Iron Horse do state — power per source, powered/compatible masks,
+  hidden tracks, LGV speed, per-track speed limits — is untouched, and their numbers are
+  unchanged.
+
 ## [0.18.0] - 2026-08-30
 
 ### Added

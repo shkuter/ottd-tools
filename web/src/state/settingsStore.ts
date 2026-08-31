@@ -44,7 +44,7 @@ export interface DisplaySettings {
 
 /** Where the settings live, and at which version; exported so checks seed the real thing. */
 export const SETTINGS_KEY = 'ottd-tools-settings';
-export const SETTINGS_VERSION = 4;
+export const SETTINGS_VERSION = 5;
 
 /**
  * Gauge families the track setting used to hold → the label of the track each stood for.
@@ -129,7 +129,13 @@ export const useSettingsStore = create<SettingsState>()(
       migrate: (persisted, version) => {
         if (version >= SETTINGS_VERSION) return persisted as SettingsState;
         type Persisted = Omit<Partial<SettingsState>, 'game'> & {
-          game?: Partial<GameSettings> & { basecostTrainRunning?: number; ironHorse?: boolean };
+          game?: Omit<Partial<GameSettings>, 'trainSet'> & {
+            basecostTrainRunning?: number;
+            ironHorse?: boolean;
+            // the roster is read as a plain string: a state saved before v5 may name a set
+            // the type no longer has, which is exactly what that step is here to fix
+            trainSet?: string;
+          };
         };
         let p = (persisted ?? {}) as Persisted;
 
@@ -174,10 +180,9 @@ export const useSettingsStore = create<SettingsState>()(
         }
 
         /*
-         * v4 turned the Iron Horse switch into the train-set choice: with xUSSR there are
-         * three rosters, and two booleans could claim two sets at once. The saved flag
-         * carries over losslessly — on means Iron Horse, off means vanilla — and the old
-         * field leaves the saved state.
+         * v4 turned the Iron Horse switch into the train-set choice: two booleans could
+         * claim two sets at once. The saved flag carries over losslessly — on means Iron
+         * Horse, off means vanilla — and the old field leaves the saved state.
          */
         if (version < 4 && p.game) {
           const { ironHorse, ...game } = p.game;
@@ -185,6 +190,18 @@ export const useSettingsStore = create<SettingsState>()(
             ...p,
             game: { ...game, trainSet: ironHorse ? 'iron_horse' : 'vanilla' },
           };
+        }
+
+        /*
+         * v5 dropped the xUSSR roster. A state that names it has no catalogue to answer
+         * with, so it moves to vanilla — and the track goes with it: the labels of that
+         * set's tracks (ER2D, ER3a…) mean nothing in the vanilla table, and leaving one
+         * saved would only be written back on the next change.
+         */
+        if (version < 5 && p.game?.trainSet === 'xussr') {
+          p = { ...p, game: { ...p.game, trainSet: 'vanilla' } };
+          // nothing saved: the default is the vanilla track anyway
+          if (p.calc) p = { ...p, calc: { ...p.calc, trackType: 'RAIL' } };
         }
 
         return p as SettingsState;

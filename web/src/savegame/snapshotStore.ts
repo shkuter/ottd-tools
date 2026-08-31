@@ -10,6 +10,7 @@
 import {
   DEFAULT_CALC_SETTINGS,
   DEFAULT_GAME_SETTINGS,
+  TRAIN_SETS,
   type CalcSettings,
   type GameSettings,
 } from '../engine/settings';
@@ -115,13 +116,27 @@ async function withStore<T>(
   }
 }
 
-/** Reads the stored record once at startup; an outdated one is deleted right here. */
+/**
+ * Does the calculator still ship the sets this record was taken with?
+ *
+ * A record of a game played on a roster since removed is as unreadable as one of an older
+ * schema: every list on the tab resolves its vehicles through the active roster, and there
+ * is none to resolve them with — the lookup answers `undefined` and the tab throws. The
+ * roster is read as a plain string on purpose: its type no longer has the value a record
+ * written before the removal may hold.
+ */
+function knowsItsSets(record: SnapshotRecord): boolean {
+  const set: string | undefined = record.settings?.game?.trainSet;
+  return set !== undefined && (TRAIN_SETS as readonly string[]).includes(set);
+}
+
+/** Reads the stored record once at startup; one it cannot read is deleted right here. */
 export async function loadSnapshot(): Promise<SnapshotState> {
   try {
     const record = (await withStore('readonly', (s) => s.get(KEY))) as SnapshotRecord | undefined;
     if (record === undefined) {
       setState({ loading: false, record: null, droppedOutdated: false });
-    } else if (record.schemaVersion !== SNAPSHOT_SCHEMA_VERSION) {
+    } else if (record.schemaVersion !== SNAPSHOT_SCHEMA_VERSION || !knowsItsSets(record)) {
       await withStore('readwrite', (s) => s.delete(KEY));
       setState({ loading: false, record: null, droppedOutdated: true });
     } else {

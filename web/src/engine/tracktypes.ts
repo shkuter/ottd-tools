@@ -14,7 +14,6 @@
  * relates to a track when any of its types does.
  */
 import type { Railtype, Train } from '../types';
-import { internalToMph } from './units';
 
 type TrackTable = readonly Railtype[];
 
@@ -41,11 +40,6 @@ const POWER_SOURCES: readonly (readonly [source: string, external: boolean])[] =
   ['STEAM', false],
   // the vanilla set's own drives, which never share a vehicle with anything else
   ['MONORAIL', false], ['MAGLEV', false],
-  // xUSSR: current systems from strongest to weakest as the set's own branch order
-  // (is_ER*_ds chains check AC25 first), then the vehicle's own drive — the auxiliary
-  // diesel of a last-mile electric, or the set's 5 hp stub for a pure electric off the
-  // wires. A source missing here falls into the JSON key order and picks silently.
-  ['AC25', true], ['AC15', true], ['DC3', true], ['DC1_5', true], ['SELF', false],
 ];
 
 const POWER_SOURCE_ORDER = POWER_SOURCES.map(([source]) => source);
@@ -119,15 +113,14 @@ export function canRunOn(
  * Two ties are broken before the table order, both for the same reason: the calculator must
  * not saddle the player's train with a handicap the savegame never mentioned (ADR-0004).
  *
- * **Power first.** A mask lets a multi-system engine onto every line of its family, but the
- * set answers with a 5 hp stub on a current it has no branch for — xUSSR's VL19 makes
- * 2413 hp on 3 kV and the stub on 1.5 kV, and the build-menu order would hand it the stub.
- * Of tracks the consist can run on, those it makes the most power on are considered first.
+ * **Power first.** A mask lets an engine onto every line of its family, while the power it
+ * makes there differs by what the track carries — an electro-diesel gives its electric
+ * figure under wires and its diesel one away from them. Of tracks the consist can run on,
+ * those it makes the most power on are considered first.
  *
- * **Then the speed limit.** Where a set grades plain track by speed — xUSSR has four
- * classes of it, the slowest capped at 60 km/h — the table order alone would answer with
- * the slowest every time. Of the remaining tracks the calculator takes one that does not
- * cap the consist; where every candidate caps it, the fastest.
+ * **Then the speed limit.** Where a set grades plain track by speed, the table order alone
+ * would answer with the slowest every time. Of the remaining tracks the calculator takes
+ * one that does not cap the consist; where every candidate caps it, the fastest.
  *
  * Sets whose tracks state neither current systems nor limits — vanilla and Iron Horse —
  * are unaffected, and the build-menu order still decides between equals.
@@ -206,55 +199,28 @@ export function vehicleSpeedOn(
   train: Pick<
     Train,
     | 'speed_mph' | 'speed_internal' | 'speed_lgv_mph' | 'speed_lgv_internal' | 'lgv_capable'
-    | 'speed_by_source'
   >,
   track: Railtype | null | undefined,
 ): { mph: number | null; internal: number | null } {
   if (track?.lgv && train.lgv_capable && train.speed_lgv_mph) {
     return { mph: train.speed_lgv_mph, internal: train.speed_lgv_internal };
   }
-  // a set may state a speed per current system as well as a power: xUSSR holds the TGV
-  // Atlantique to 250 km/h on DC and lets it run 300 under 25 kV, and the game reads the
-  // same branch. Picked by the track's own systems, in the set's order, exactly as power is
-  const bySystem = speedForSystem(train.speed_by_source, track);
-  if (bySystem != null) return { mph: internalToMph(bySystem), internal: bySystem };
   return { mph: train.speed_mph, internal: train.speed_internal };
 }
 
 /**
  * What the vehicle answers on this track, reading the systems the track carries in the
- * order it names them (AC25 first) — the same reading for power and for speed.
- *
- * A figure equal to the off-the-wires one (`SELF`) is the set's placeholder for a system
- * the vehicle has no branch for, not an answer, so it is skipped: xUSSR models a pure DC
- * engine on AC-only track as a 5 hp stub, and on an AC+DC trunk the game still reads its
- * DC branch. `null` where the track names nothing the vehicle knows — what to do then is
- * the caller's, and it differs: power falls back to the set's source order, speed to the
- * set's own off-the-wires figure (`SELF`).
+ * order it names them. `null` where the track names nothing the vehicle knows — what to
+ * do then is the caller's.
  */
 function onTheTrack(
   values: Record<string, number>,
   track: Railtype | null | undefined,
 ): number | null {
   for (const source of track?.power_source ?? []) {
-    if (!(source in values)) continue;
-    if (!('SELF' in values) || values[source] !== values.SELF) return values[source];
+    if (source in values) return values[source];
   }
   return null;
-}
-
-/**
- * Speed the set states for the track's current systems, and its off-the-wires figure where
- * the track names none of them — not the vehicle's own limit, which is the figure the buy
- * menu prints: a last-mile electric runs 120 km/h under wires and 60 on its diesel, and
- * `SELF` is what the set answers for the second case.
- */
-function speedForSystem(
-  speeds: Train['speed_by_source'],
-  track: Railtype | null | undefined,
-): number | null {
-  if (!speeds) return null;
-  return onTheTrack(speeds, track) ?? speeds.SELF ?? null;
 }
 
 /**

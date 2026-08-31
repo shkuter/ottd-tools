@@ -146,7 +146,7 @@ the search.
 
 ## Sets
 
-**Train set** (_набор машин_) — the roster a game runs: vanilla, Iron Horse or xUSSR. Exactly
+**Train set** (_набор машин_) — the roster a game runs: vanilla or Iron Horse. Exactly
 one is active, because the catalogue, the **track type** table and the basecost shifts all come
 from it — a vehicle of one set priced by another's shifts would be priced wrong. Unlike FIRS and
 Base Costs, which the game loads independently and the calculator switches on and off, the
@@ -179,30 +179,11 @@ would move at zero power.
 **Power source** (_род тока_) — what a **track type** feeds a vehicle with: overhead wires of a
 given current (25 kV / 15 kV AC, 3 kV / 1.5 kV DC), third rail, or nothing — the vehicle then
 runs on its own fuel. A track names the sources it carries, in the order its set checks them:
-usually one, but a set may build a **multi-system line** — xUSSR's AC 25 kV + DC 3 kV trunk is
-a track a player lays like any other. A vehicle states a power per source it accepts, so a
+usually one, but a set may build a **multi-system line** — an AC + DC trunk is a track a
+player lays like any other. A vehicle states a power per source it accepts, so a
 dual-system engine makes different power under different wires, and on a multi-system line it
 takes the first source it accepts. Generalises the old "OHLE where there is catenary" rule —
 catenary stays a fact about wires, not about current.
-
-## Consist rules
-
-Vocabulary settled with the xUSSR design session; the model itself arrives with the
-`xussr-consist-rules` change, so nothing in the calculator prices these yet.
-
-**Coupling norm** (_норма сцепки_) — how many sections a multi-section locomotive is meant to
-run as (xUSSR: two for most, four for some). A consist short of the norm still runs, but every
-vehicle in it is slowed and charged by the set's **consist penalty** — a worse consist, not a
-forbidden one.
-
-**Consist penalty** (_штраф составности_) — the speed-and-cost malus a set applies to a consist
-that breaks its **coupling norm**. The only consist rule that changes numbers; the calculator
-prices it like any other number, so a properly coupled consist wins on merit. _Avoid_: consist
-ban (the game allows the consist; it is merely penalised).
-
-**Consist warning** (_предупреждение о составе_) — the set's verdict a player sees in the
-vehicle window: wrong consist, inadmissible cargo, a section that must not run last. Changes no
-numbers; the builder shows the same wording the game would.
 
 ## Industry supply
 
@@ -318,7 +299,7 @@ _Avoid_: offered (taken by cargo), available (says nothing about the doubt)
 whole variant series leaves the buy menu. The game ages a variant by its head rather than by
 itself, walking up the chain while each link asks for it, so a series is withdrawn at once. A
 head the player cannot buy is a menu-only placeholder the game marks introduced on the first
-day of the game — which is why an xUSSR series ages with the game rather than with its own
+day of the game — which is why such a series ages with the game rather than with its own
 dates. Vehicles carrying no head age by themselves.
 _Avoid_: variant group (that is the buy-menu fold, which can exist without the ageing)
 

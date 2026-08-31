@@ -5,7 +5,6 @@ import {
   activeRailtype,
   activeRailtypes,
   activeTrains,
-  activeTrainsMeta,
   inActiveSet,
   trainCapacity,
   canCarry,
@@ -39,63 +38,44 @@ describe('active dataset', () => {
     expect(activeCargos(sets).every((c) => c.initial_payment_by_economy.VANILLA != null)).toBe(false);
   });
 
-  it('the xUSSR roster swaps the catalogue, the tracks and the shifts together', () => {
-    const game = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const };
-    expect(activeTrains(game).every((t) => t.id.startsWith('xussr_'))).toBe(true);
-    expect(activeRailtypes(game).some((rt) => rt.label === 'ERA1')).toBe(true);
-    expect(activeTrainsMeta(game).basecost_shifts.build_engine).toBe(1);
-  });
-
-  it('capacity per cargo matches what the game recorded in a real party', () => {
-    // платформа обр. 1846 из партии пользователя (фикстура xussr-1872): игра записала
-    // ей cargoCap = 10, и формула набора даёт 10 на любом её грузе — грузоподъёмность
-    // 10 т упирается раньше объёма. Это сверка против самой игры, а не против исходников
-    const game = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const, firs: true };
-    const flatbed = activeTrains(game).find((t) => t.id === 'xussr_flatbed_type1846')!;
-    for (const label of Object.keys(flatbed.capacity_by_cargo!)) {
-      const cargo = cargoByLabel.get(label);
-      // сравнимо только с грузом в тонну за единицу: игра считает вместимость в
-      // единицах груза, и более лёгкого их влезает больше при той же массе
-      if (!cargo || cargo.weight_16ths !== 16) continue;
-      expect(trainCapacity(flatbed, cargo, 2), label).toBe(10);
-    }
-    // груз легче тонны за единицу: те же 10 т — больше единиц
-    const light = cargoByLabel.get('FMSP')!;
-    expect(light.weight_16ths).toBe(10);
-    expect(trainCapacity(flatbed, light, 2)).toBe(16);
-    // а там, где объём решает раньше тоннажа, числа расходятся по грузу
-    const gondola = activeTrains(game).find((t) => t.id === 'xussr_gondola_22_4024')!;
-    expect(trainCapacity(gondola, cargoByLabel.get('COAL')!, 2)).toBe(64);
-    expect(trainCapacity(gondola, cargoByLabel.get('COKE')!, 2)).toBe(38);
-  });
-
   it('a saved label the set hides falls back to buildable track, not to the hidden match', () => {
-    // спека track-types «Откат выбора на путь, который можно построить»: дефолтный RAIL
-    // у xUSSR существует, но скрыт из меню строительства — расчёт не должен идти по нему
-    const xussr = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const };
-    const fallback = activeRailtype(xussr, 'RAIL');
+    // спека track-types «Откат выбора на путь, который можно построить»: LGVN у Iron Horse
+    // существует ради совместимости, но скрыт из меню строительства — расчёт не должен
+    // идти по нему
+    const ih = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const };
+    expect(activeRailtypes(ih).find((rt) => rt.label === 'LGVN')!.hidden).toBe(true);
+    const fallback = activeRailtype(ih, 'LGVN');
     expect(fallback.hidden).toBe(false);
-    expect(fallback.label).not.toBe('RAIL');
+    expect(fallback.label).not.toBe('LGVN');
     // первый выбираемый путь набора — как велит спека
-    expect(fallback.label).toBe(activeRailtypes(xussr).filter((rt) => !rt.hidden)[0].label);
+    expect(fallback.label).toBe(activeRailtypes(ih).filter((rt) => !rt.hidden)[0].label);
   });
 
   it('a label of another set falls back the same way', () => {
-    const xussr = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const };
-    // LGVE — лейбл Iron Horse, у xUSSR его нет вовсе
-    expect(activeRailtype(xussr, 'LGVE').hidden).toBe(false);
+    const vanilla = { ...DEFAULT_GAME_SETTINGS, trainSet: 'vanilla' as const };
+    // LGVE — лейбл Iron Horse, у ванили его нет вовсе
+    expect(activeRailtypes(vanilla).some((rt) => rt.label === 'LGVE')).toBe(false);
+    expect(activeRailtype(vanilla, 'LGVE').hidden).toBe(false);
   });
 
   it('a consist entry from another set is dropped from the reading, not from the save', () => {
     // спека train-sets: состав хранится независимо от набора; чужая машина
     // отбрасывается при чтении и возвращается вместе со своим набором
     const ih = trains[0];
-    const xussr = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const };
-    expect(inActiveSet(ih, xussr)).toBe(false);
+    const vanilla = { ...DEFAULT_GAME_SETTINGS, trainSet: 'vanilla' as const };
+    expect(inActiveSet(ih, vanilla)).toBe(false);
     expect(inActiveSet(ih, { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const })).toBe(true);
-    const own = activeTrains(xussr)[0];
-    expect(inActiveSet(own, xussr)).toBe(true);
-    expect(activeEntries([{ train: ih }, { train: own }], xussr)).toEqual([{ train: own }]);
+    const own = activeTrains(vanilla)[0];
+    expect(inActiveSet(own, vanilla)).toBe(true);
+    expect(activeEntries([{ train: ih }, { train: own }], vanilla)).toEqual([{ train: own }]);
+  });
+
+  it('capacity follows the capacity parameter, and survives a stranger index', () => {
+    // параметр вместимости — настройка самого набора, и его значение переживает смену
+    // набора: индекс, которого у машины нет, не должен ронять расчёт в NaN
+    const wagon = trains.find((t) => t.kind === 'wagon' && t.capacities.some((c) => c > 0))!;
+    expect(trainCapacity(wagon, 2)).toBe(wagon.capacities[2]);
+    expect(trainCapacity(wagon, 99)).toBe(0);
   });
 
   it('active cargos are exactly the ones the chosen economy has', () => {
@@ -182,31 +162,6 @@ describe('canCarryIn', () => {
   it('full NewGRF refit: hopper takes coal, not passengers', () => {
     expect(canCarryIn(DEFAULT_GAME_SETTINGS, hopper, coal)).toBe(true);
     expect(canCarryIn(DEFAULT_GAME_SETTINGS, hopper, pass)).toBe(false);
-  });
-
-  it('xUSSR: a vehicle whose capacity is one number carries its default cargo', () => {
-    // «Ласточка» ЭС2Г: the set gates its capacity callback on the consist having the
-    // right head, not on the cargo, so no per-cargo table comes out of it — but the
-    // 94 seats the buy menu shows are real, and someone has to be able to sit in them
-    const xussr = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const };
-    const swallow = activeTrains(xussr).find((t) => t.id === 'xussr_es2g_mn')!;
-    expect(swallow.capacity_by_cargo).toBeNull();
-    expect(swallow.capacities[2]).toBeGreaterThan(0);
-    const xPass = activeCargos(xussr).find((c) => c.label === 'PASS')!;
-    const xCoal = activeCargos(xussr).find((c) => c.label === 'COAL')!;
-    expect(canCarryIn(xussr, swallow, xPass)).toBe(true);
-    expect(canCarryIn(xussr, swallow, xCoal)).toBe(false);
-  });
-
-  it('xUSSR: a locomotive with no seats carries nothing, default cargo or not', () => {
-    // the fallback needs the seats: every locomotive of the set names a default cargo
-    // it has no room for, and reading that alone would turn all of them into wagons
-    const xussr = { ...DEFAULT_GAME_SETTINGS, trainSet: 'xussr' as const };
-    const engine = activeTrains(xussr).find(
-      (t) => t.capacity_by_cargo == null && t.capacities[2] === 0 && t.default_cargos.length > 0,
-    )!;
-    const cargo = activeCargos(xussr).find((c) => c.label === engine.default_cargos[0])!;
-    expect(canCarryIn(xussr, engine, cargo)).toBe(false);
   });
 });
 

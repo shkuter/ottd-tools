@@ -2,8 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useLocaleStore } from '../../state/localeStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { consistLabel, engineLabel, money, speed, wagonLabel } from '../format';
-import { xussrTrains } from '../../dataset';
-import { trainName } from '../../i18n/names';
+import { trains } from '../../dataset';
 
 describe('format.speed', () => {
   beforeEach(() => {
@@ -54,26 +53,25 @@ describe('format.money', () => {
 
 describe('подписи состава называют машину так же, как её видит игрок', () => {
   // строки выдачи подбора и вкладка снабжения пишутся отсюда, а чекбоксы «под вопросом»
-  // и каталог — через trainName: разойдись они, одна машина звалась бы в подборе двояко
-  const engine = xussrTrains.find((t) => t.kind === 'engine')!;
-  const wagon = xussrTrains.find((t) => t.kind === 'wagon')!;
+  // и каталог берут то же имя: разойдись они, одна машина звалась бы в подборе двояко
+  const engine = trains.find((t) => t.kind === 'engine')!;
+  const wagon = trains.find((t) => t.kind === 'wagon')!;
   const row = { engine, engineCount: 2, wagon, wagonCount: 11 };
 
-  it('на русском берут имя из словаря набора', () => {
-    useLocaleStore.setState({ locale: 'ru' });
-    expect(trainName(engine)).not.toBe(engine.name);
-    expect(engineLabel(row)).toBe(`2× ${trainName(engine)}`);
-    expect(wagonLabel(row)).toBe(`11× ${trainName(wagon)}`);
+  it('счётчик стоит перед именем набора', () => {
+    expect(engineLabel(row)).toBe(`2× ${engine.name}`);
+    expect(wagonLabel(row)).toBe(`11× ${wagon.name}`);
     expect(consistLabel(row)).toBe(`${engineLabel(row)} + ${wagonLabel(row)}`);
   });
 
-  it('на английском — имя самого набора', () => {
+  it('имя одно на любом языке интерфейса: набор называет машины по-английски', () => {
+    useLocaleStore.setState({ locale: 'ru' });
+    expect(engineLabel(row)).toBe(`2× ${engine.name}`);
     useLocaleStore.setState({ locale: 'en' });
     expect(engineLabel(row)).toBe(`2× ${engine.name}`);
   });
 
   it('один локомотив идёт без счётчика', () => {
-    useLocaleStore.setState({ locale: 'ru' });
-    expect(engineLabel({ ...row, engineCount: 1 })).toBe(trainName(engine));
+    expect(engineLabel({ ...row, engineCount: 1 })).toBe(engine.name);
   });
 });

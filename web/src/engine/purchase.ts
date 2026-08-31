@@ -20,24 +20,13 @@ import type { GameSettings } from './settings';
  * вот `default_cargos` расходится (Coil Carrier: covered возит 3 метки, uncovered — 5,
  * рандомизированный — ни одной). Держать поле в ключе всегда значило бы показать три
  * «Coil Carrier» подряд там, где игра показывает один.
- *
- * Вместимость входит той же формой, какой её держит набор: у объявившего таблицу по грузу
- * (xUSSR) параметрического столбца по сути нет — у вагонов там нули, а у моторвагонных
- * секций одно число на весь поезд, — и он один склеил бы в пункт вагоны, которые игра
- * показывает порознь.
  */
 export function purchaseKey(train: Train, capacityIndex: number, game: GameSettings): string {
   return [
     train.kind,
     train.base_track_type,
     train.name,
-    train.capacity_by_cargo
-      ? JSON.stringify(
-          Object.entries(train.capacity_by_cargo).sort(([a], [b]) =>
-            a < b ? -1 : a > b ? 1 : 0,
-          ),
-        )
-      : train.capacities[capacityIndex] ?? 0,
+    train.capacities[capacityIndex] ?? 0,
     train.length,
     `${train.intro_year}-${train.intro_month}`,
     train.weight_t,

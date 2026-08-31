@@ -106,8 +106,8 @@ def variant_groups(roster, items):
     """Heads of the series the extracted vehicles belong to, by catalogue id.
 
     Every head here is a vehicle the player can buy — Iron Horse leads a group with a real
-    model (a cab engine), unlike xUSSR, whose heads are menu-only placeholders — so the
-    series ages from the head's own intro date.
+    model (a cab engine), not a menu-only placeholder — so the series ages from the head's
+    own intro date.
     """
     catalogues = {c.model_id: c for c in roster.catalogues}
     heads = {}
@@ -221,7 +221,7 @@ def railtypes_payload(dh):
                 else "RAILTYPE_FLAG_CATENARY" in (rt.railtype_flags or [])
             ),
             # Iron Horse states no current systems: wires are OHLE, metro is its
-            # third rail; sets that do state them (xUSSR) fill this per system
+            # third rail; a set that does state them fills this per system
             "power_source": (
                 ["METRO"] if rt.label == "MTRO"
                 else ["OHLE"] if (

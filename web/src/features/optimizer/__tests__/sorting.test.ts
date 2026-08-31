@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { sortRows } from '../../../components/table/sorting';
 import { optimizerSortValues } from '../sorting';
 
-const SORT_VALUES = optimizerSortValues('en');
+const SORT_VALUES = optimizerSortValues();
 import { cargoByLabel, industriesMeta, industryById, trains, trainsMeta } from '../../../dataset';
 import { optimizeConsists } from '../../../engine/optimize';
 import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../../engine/settings';

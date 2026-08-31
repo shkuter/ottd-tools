@@ -26,7 +26,6 @@ export const BASE_PRICES = {
   running_steam: 5600, // PR_RUNNING_TRAIN_STEAM, в год
   running_diesel: 5200, // PR_RUNNING_TRAIN_DIESEL
   running_electric: 4800, // PR_RUNNING_TRAIN_ELECTRIC
-  running_roadveh: 1600, // PR_RUNNING_ROADVEH: what xUSSR bases its wagons' upkeep on
 } as const;
 
 export type BasePriceKey = keyof typeof BASE_PRICES;
@@ -90,7 +89,6 @@ export function runningCostPerYear(
 export function runningClassOf(runningCostBase: string): RunningClass {
   if (runningCostBase.includes('STEAM')) return 'steam';
   if (runningCostBase.includes('ELECTRIC')) return 'electric';
-  if (runningCostBase.includes('ROADVEH')) return 'roadveh';
   return 'diesel';
 }
 
