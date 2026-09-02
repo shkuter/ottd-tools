@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-02
+
 ### Removed
 
 - **BREAKING** The xUSSR Railway Set is gone: its catalogue, sprites, Russian names,
