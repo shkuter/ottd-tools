@@ -21,6 +21,7 @@ export const SETTING_LABEL_KEYS: Record<SettingKey, string> = {
   firsEconomy: 'settings.firsEconomy',
   freightTrains: 'settings.freightTrains',
   slopeSteepness: 'settings.slopeSteepness',
+  wagonSpeedLimits: 'settings.wagonSpeedLimits',
   cargoAgingRate: 'settings.cargoAgingRate',
   dayLengthFactor: 'settings.dayLength',
   timekeeping: 'settings.timekeeping',

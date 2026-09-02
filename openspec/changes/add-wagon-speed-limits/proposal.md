@@ -76,7 +76,8 @@
   предела рядом со сводкой (единственное место, где показан сам предел);
   `web/src/features/optimizer` — пометка строки, где предел составу задают вагоны.
 - `web/src/savegame/mapping.ts` — перенос записи из `INFO_SETTINGS` в мост настроек;
-  `web/src/i18n/{en,ru}.json` — подписи.
+  `web/src/savegame/diff.ts` и `web/src/features/savegame/settingNames.ts` — та же настройка
+  в списке различий и её подпись; `web/src/i18n/{en,ru}.json` — строки.
 
 ## Источники истины
 

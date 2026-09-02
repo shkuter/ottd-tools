@@ -34,6 +34,13 @@ export interface GameSettings {
   freightTrains: number;
   /** vehicle.train_slope_steepness: крутизна уклона в % (0..10, def 3). */
   slopeSteepness: number;
+  /**
+   * vehicle.wagon_speed_limits ("Учитывать ограничение скорости у вагонов", def true):
+   * whether a wagon's own speed limit binds the consist. Engines always bind it; with this
+   * off, only they do (train_cmd.cpp:185 gates on `railveh_type != RAILVEH_WAGON ||
+   * wagon_speed_limits`, plus a wagon-override exclusion no set here uses).
+   */
+  wagonSpeedLimits: boolean;
   /** economy.cargo_aging_rate: скорость старения груза в % (def 100). */
   cargoAgingRate: number;
   /**
@@ -112,6 +119,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   firsEconomy: DEFAULT_FIRS_ECONOMY,
   freightTrains: 1,
   slopeSteepness: 3,
+  wagonSpeedLimits: true,
   cargoAgingRate: 100,
   dayLengthFactor: 1,
   inflation: false,

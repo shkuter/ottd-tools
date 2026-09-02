@@ -27,6 +27,7 @@ const clampChoice = <T extends number>(value: number, max: number): T =>
 export const GAME_SETTING_SOURCES: readonly SettingSource[] = [
   { name: 'vehicle.freight_trains', read: (v) => ({ freightTrains: v }) },
   { name: 'vehicle.train_slope_steepness', read: (v) => ({ slopeSteepness: v }) },
+  { name: 'vehicle.wagon_speed_limits', read: (v) => ({ wagonSpeedLimits: v !== 0 }) },
   { name: 'economy.cargo_aging_rate', read: (v) => ({ cargoAgingRate: v }) },
   { name: 'economy.day_length_factor', read: (v) => ({ dayLengthFactor: v }) },
   { name: 'economy.timekeeping_units', read: (v) => ({ timekeeping: v === 1 ? 'wallclock' : 'calendar' }) },
@@ -122,7 +123,6 @@ export interface InfoSetting {
  */
 export const INFO_SETTINGS: readonly InfoSetting[] = [
   { name: 'vehicle.max_train_length', labelKey: 'savegame.info.maxTrainLength', kind: 'number' },
-  { name: 'vehicle.wagon_speed_limits', labelKey: 'savegame.info.wagonSpeedLimits', kind: 'flag' },
   {
     name: 'vehicle.train_braking_model',
     labelKey: 'savegame.info.trainBrakingModel',

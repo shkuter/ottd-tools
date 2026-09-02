@@ -420,6 +420,13 @@ export default function SettingsPage() {
             onChange={(v) => setGame('slopeSteepness', asNumber(v, 0))}
           />
         </Row>
+        <Row label={t('settings.wagonSpeedLimits')} hint={t('settings.wagonSpeedLimitsHint')}>
+          <Switch
+            checked={game.wagonSpeedLimits}
+            onChange={(e) => setGame('wagonSpeedLimits', e.currentTarget.checked)}
+            label={game.wagonSpeedLimits ? t('settings.on') : t('settings.off')}
+          />
+        </Row>
         <Row label={t('settings.gradualLoading')} hint={t('settings.gradualLoadingHint')}>
           <Switch
             checked={game.gradualLoading}

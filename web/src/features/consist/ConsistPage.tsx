@@ -45,7 +45,7 @@ import { canRunOn, poweredOutputOn, topSpeedOn } from '../../engine/tracktypes';
 import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { YearField } from '../../components/YearField';
-import { consistStats } from '../../engine/consist';
+import { consistStats, type SpeedLimitSource } from '../../engine/consist';
 import { purchaseRepresentatives } from '../../engine/purchase';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 
@@ -349,7 +349,7 @@ export default function ConsistPage() {
               />
               <StatRow
                 label={t('consist.stats.speedLimit')}
-                value={stats.speedLimitInternal ? speed(stats.speedLimitInternal) : '—'}
+                value={speedLimitText(stats.speedLimitInternal, stats.speedLimitSource)}
               />
               <StatRow
                 label={t('consist.stats.balancing')}
@@ -371,6 +371,16 @@ export default function ConsistPage() {
       </Paper>
     </div>
   );
+}
+
+/**
+ * The limit and what handed it over. The source is a qualifier on the figure, not a column
+ * of its own: with two candidates tied there is nothing to name, and the figure stands alone.
+ */
+function speedLimitText(internal: number | null, source: SpeedLimitSource | null) {
+  if (!internal) return '—';
+  const shown = speed(internal);
+  return source ? `${shown} · ${t(`consist.stats.limitBy.${source}`)}` : shown;
 }
 
 function StatRow({ label, value }: { label: string; value: string }) {

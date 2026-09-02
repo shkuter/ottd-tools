@@ -28,6 +28,20 @@ describe('settingsStore persist', () => {
     expect(s.speedUnit).toBe('metric');
   });
 
+  it('настройка, добавленная позже, приходит со своим значением по умолчанию', async () => {
+    // не только «ключ есть»: значение решает, поедут ли числа у того, кто уже пользовался
+    // калькулятором. wagonSpeedLimits должен прийти включённым — при нём расчёт прежний
+    const storage = memoryStorage({
+      [KEY]: JSON.stringify({ state: { game: { freightTrains: 2 } }, version: 5 }),
+    });
+    useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+    await useSettingsStore.persist.rehydrate();
+    const s = useSettingsStore.getState();
+    expect(s.game.freightTrains).toBe(2);
+    expect(s.game.wagonSpeedLimits).toBe(DEFAULT_GAME_SETTINGS.wagonSpeedLimits);
+    expect(s.game.wagonSpeedLimits).toBe(true);
+  });
+
   it('выбранная система единиц скорости переживает перезагрузку', async () => {
     const storage = memoryStorage({
       [KEY]: JSON.stringify({ state: { speedUnit: 'imperial' }, version: 1 }),

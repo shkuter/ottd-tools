@@ -7,7 +7,7 @@
  */
 import type { Cargo, ConsistEntry, TrainsMeta } from '../types';
 import { activeRailtype, canCarryIn, trainCapacity } from '../dataset';
-import { consistPhysics } from './consist';
+import { consistPhysics, type SpeedLimitSource } from './consist';
 import type { ConsistPhysics } from './physics';
 import { consistMoney } from './costs';
 import { balancingSpeed } from './physics';
@@ -112,6 +112,8 @@ export interface TripSetup {
   loadingDays: number;
   roundTripDays: number;
   tripsPerYear: number;
+  /** What handed the consist its speed limit, for callers that flag a throttled consist. */
+  speedLimitSource: SpeedLimitSource | null;
   /** Buy cost and yearly running cost of a single consist. */
   buy: number;
   running: number;
@@ -172,6 +174,7 @@ export function tripSetup(params: TripParams): TripSetup {
     loadingDays,
     roundTripDays,
     tripsPerYear,
+    speedLimitSource: loaded.stats.speedLimitSource,
     buy,
     running,
   };

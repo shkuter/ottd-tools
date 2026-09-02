@@ -47,6 +47,7 @@ const GAME_LABELS: Partial<Record<keyof GameSettings, Described<GameSettings>>> 
   },
   freightTrains: { labelKey: 'settings.freightTrains' },
   slopeSteepness: { labelKey: 'settings.slopeSteepness' },
+  wagonSpeedLimits: { labelKey: 'settings.wagonSpeedLimits', format: onOff },
   cargoAgingRate: { labelKey: 'settings.cargoAgingRate' },
   dayLengthFactor: { labelKey: 'settings.dayLength' },
   timekeeping: {

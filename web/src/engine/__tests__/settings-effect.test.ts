@@ -126,6 +126,8 @@ const CASES: {
   { name: 'firsEconomy', game: { firsEconomy: 'BASIC_TEMPERATE' } },
   { name: 'freightTrains', game: { freightTrains: 4 } },
   { name: 'slopeSteepness', game: { slopeSteepness: 8 } },
+  // выключенная настройка снимает с состава предел его вагонов: едет он по локомотиву
+  { name: 'wagonSpeedLimits', game: { wagonSpeedLimits: false } },
   { name: 'cargoAgingRate', game: { cargoAgingRate: 400 } },
   { name: 'vehicleCosts', game: { vehicleCosts: 2 } },
   // дефолт теперь игровой (low, ×6/8) — сравниваем с high

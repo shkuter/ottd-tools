@@ -605,7 +605,16 @@ export default function OptimizerPage() {
                 </span>
               </Table.Td>
               <Table.Td className="cell-sprite"><TrainImage trainId={r.wagon.id} /></Table.Td>
-              <Table.Td>{wagonLabel(r)}<BuyMenuNote availability={r.wagonBuyMenu} /></Table.Td>
+              <Table.Td>
+                {wagonLabel(r)}
+                <BuyMenuNote availability={r.wagonBuyMenu} />
+                {/* the wagons hold the consist back: the engine is paid for a speed it
+                    never reaches. Marked here rather than beside the speed column, where
+                    the figures are settled speeds and not the limit itself */}
+                {r.speedLimitSource === 'wagon' && (
+                  <sup className="intro-warn" title={t('opt.wagonCapsSpeed')}>!</sup>
+                )}
+              </Table.Td>
               <Table.Td className="cell-num">
                 {num(r.cargoPerTrip)}
                 {r.cargoPerTrip < r.capacity - 0.5 && (

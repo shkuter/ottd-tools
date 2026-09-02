@@ -16,6 +16,9 @@ import {
   type GameSettings,
 } from './settings';
 
+/** What handed the consist its speed limit: an engine, a wagon, or the track itself. */
+export type SpeedLimitSource = 'engine' | 'wagon' | 'track';
+
 export interface ConsistStats {
   powerHp: number;
   maxTeN: number;
@@ -24,6 +27,12 @@ export interface ConsistStats {
   lengthTiles: number;
   /** Лимит скорости состава, внутренние единицы (null = не ограничен машинами). */
   speedLimitInternal: number | null;
+  /**
+   * Which of the three candidates the limit came from, or `null` when more than one sits at
+   * it — with the engines as slow as their wagons there is nothing to explain, and naming
+   * either would be a coin toss.
+   */
+  speedLimitSource: SpeedLimitSource | null;
   buyCostTotal: number;
   runningCostTotal: number;
   capacityForCargo: number;
@@ -32,8 +41,25 @@ export interface ConsistStats {
   numUnits: number;
 }
 
-function minOf(current: number | null, value: number): number {
-  return current == null ? value : Math.min(current, value);
+/** The lower of two limits, either of which may be absent — absent means "no limit". */
+function minOf(current: number | null, value: number | null): number | null {
+  if (current == null) return value;
+  if (value == null) return current;
+  return Math.min(current, value);
+}
+
+/**
+ * The candidate that alone sits at the consist's limit. Anything else — a tie between two
+ * of them, or no limit at all — answers `null`: the figure is then not one candidate's
+ * doing, and pointing at either would be arbitrary.
+ */
+function speedLimitSourceOf(
+  limit: number | null,
+  candidates: readonly { source: SpeedLimitSource; value: number | null }[],
+): SpeedLimitSource | null {
+  if (limit == null) return null;
+  const atLimit = candidates.filter((c) => c.value === limit);
+  return atLimit.length === 1 ? atLimit[0]!.source : null;
 }
 
 export function consistPhysics(
@@ -55,7 +81,10 @@ export function consistPhysics(
   let cargoWeightT = 0;
   let lengthUnits = 0;
   let speedLimitMph: number | null = null;
-  let speedLimitInternal: number | null = null;
+  // kept split by candidate rather than as one running minimum: the consist's own limit is
+  // the lower of the two, and the split is what lets the figure say which one produced it
+  let engineLimitInternal: number | null = null;
+  let wagonLimitInternal: number | null = null;
   let capacityForCargo = 0;
   let numUnits = 0;
 
@@ -78,9 +107,21 @@ export function consistPhysics(
     // both units are tracked: physics keeps using mph (see the note below), the display
     // takes the internal speed straight from the data so it matches the game
     const speed = vehicleSpeedOn(train, track);
-    if (speed.mph != null) {
+    // train_cmd.cpp:185 — a vehicle binds the consist when it is not a wagon or the setting
+    // is on (the game also excludes a wagon under a wagon override, which no set the
+    // calculator reads uses). It is the kind of vehicle that decides, not whether this track
+    // powers it: an electric loco under no wires makes no power and still caps the speed.
+    // The game derives that kind from declared power for a NewGRF vehicle
+    // (newgrf_act0_trains.cpp: `power == 0` makes it a wagon), which is what `kind` holds;
+    // `wagon-speed-limits.test.ts` ("the kind the gate reads") fails if a set ever disagrees.
+    if (speed.mph != null && (train.kind !== 'wagon' || game.wagonSpeedLimits)) {
       speedLimitMph = minOf(speedLimitMph, speed.mph);
-      speedLimitInternal = minOf(speedLimitInternal, speed.internal ?? mphToInternal(speed.mph));
+      const internal = speed.internal ?? mphToInternal(speed.mph);
+      if (train.kind === 'wagon') {
+        wagonLimitInternal = minOf(wagonLimitInternal, internal);
+      } else {
+        engineLimitInternal = minOf(engineLimitInternal, internal);
+      }
     }
     if (cargo && canCarryIn(game, train, cargo)) {
       const capacity = count * trainCapacity(train, capacityIndex);
@@ -95,6 +136,7 @@ export function consistPhysics(
   // the track's own limit binds the whole consist, so it is taken once over the finished
   // train rather than per vehicle. Neither vanilla nor Iron Horse states one; a set that
   // grades its track by speed caps the train here, exactly as the game does.
+  let speedLimitInternal = minOf(engineLimitInternal, wagonLimitInternal);
   const trackLimit = trackSpeedLimit(track);
   if (trackLimit != null) {
     speedLimitInternal = minOf(speedLimitInternal, trackLimit);
@@ -122,6 +164,13 @@ export function consistPhysics(
       loadedWeightT: emptyWeightT + cargoWeightT,
       lengthTiles: lengthUnits / 16, // тайл = 16 единиц длины
       speedLimitInternal,
+      // read from the same internal figures the limit itself is built from, so the label
+      // can never name a candidate the number did not come from
+      speedLimitSource: speedLimitSourceOf(speedLimitInternal, [
+        { source: 'engine', value: engineLimitInternal },
+        { source: 'wagon', value: wagonLimitInternal },
+        { source: 'track', value: trackLimit },
+      ]),
       buyCostTotal: 0,
       runningCostTotal: 0,
       capacityForCargo,

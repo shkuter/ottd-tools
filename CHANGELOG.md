@@ -18,6 +18,25 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- **Enable wagon speed limits** joined the game settings. The game gates a wagon's own speed
+  limit behind it (`train_cmd.cpp`: a vehicle caps the consist when it is not a wagon or the
+  setting is on, wagon overrides aside), and the calculator applied wagon limits
+  unconditionally — understating the speed of anyone playing with it off, and with it the
+  round trip, the trips per year and the delivered share. It is on by default, as in the
+  game, so figures are unchanged unless the setting is turned off. What decides is the kind
+  of vehicle, not whether the track powers it: an electric engine under no wires makes no
+  power and still caps the train.
+- The consist summary now says what handed the train its speed limit — an engine, a wagon or
+  the track — and names nothing when two of them sit at the same figure. A row in the picker
+  whose wagons hold a faster engine back is flagged beside the wagon.
+
+### Changed
+
+- `vehicle.wagon_speed_limits` travels with an imported savegame instead of being listed as
+  a read-only fact of the game: the calculator now has a model for it.
+
 ## [0.19.0] - 2026-09-02
 
 ### Removed

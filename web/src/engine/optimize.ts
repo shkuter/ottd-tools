@@ -22,6 +22,7 @@ import {
 } from './availability';
 import { preferTrain } from './purchase';
 import { tripBranches, tripMoney, tripSetup, type TripEconomics } from './trip';
+import type { SpeedLimitSource } from './consist';
 import {
   flowPerEngineDay,
   flowPerYearFromMonthly,
@@ -157,6 +158,11 @@ export interface OptimizeResult {
   lengthTiles: number;
   loadedSpeedInternal: number;
   emptySpeedInternal: number;
+  /**
+   * What handed the consist its speed limit. The row flags a consist its wagons hold back;
+   * the figures beside it are settled speeds, which the limit only caps.
+   */
+  speedLimitSource: SpeedLimitSource | null;
   /** Гружёным на подъёме (холм заданной длины: на уклоне часть состава). */
   gradeSpeedInternal: number;
   /** Дни стоянки под погрузку и разгрузку за рейс. */
@@ -577,6 +583,7 @@ export function optimizeConsists(
           lengthTiles,
           loadedSpeedInternal: trip.loadedSpeedInternal,
           emptySpeedInternal: trip.emptySpeedInternal,
+          speedLimitSource: setup.speedLimitSource,
           gradeSpeedInternal: gradeSpeed,
           loadingDays: trip.loadingDays,
           roundTripDays: trip.roundTripDays,
