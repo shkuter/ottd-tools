@@ -7,8 +7,10 @@ import { optimizeConsists, type OptimizeParams } from '../optimize';
 import { consistStats } from '../consist';
 import { transportedGoodsIncome } from '../income';
 import { standsInBuyMenu } from '../availability';
+import { networkMaintenance, type NetworkCounts } from '../infrastructure';
 import {
   activeCargos,
+  activeRailtypes,
   activeTrains,
   activeTrainsMeta,
   availabilityContext,
@@ -26,6 +28,20 @@ import {
 } from '../settings';
 
 const cargo = cargoByLabel.get('COAL')!;
+
+/**
+ * A network to price alongside the consist: the upkeep settings move no vehicle, so without
+ * it the snapshot would be blind to them. Both sets carry RAIL and ELRL, so the same counts
+ * are billable whichever roster a case runs on.
+ */
+const NETWORK: NetworkCounts = {
+  rail: { RAIL: 1200, ELRL: 400 },
+  signals: 250,
+  stations: 60,
+  road: { ROAD: 20 },
+  tram: { ELRL: 8 },
+  canals: 5,
+};
 
 /**
  * Наборы по умолчанию выключены — калькулятор ничего не знает о партии, пока ему не скажут.
@@ -95,6 +111,9 @@ function snapshot(
       standsInBuyMenu(train, params.year, availabilityContext(game)),
     ).length,
     cargos: activeCargos(game).map((c) => c.label),
+    // стоимость владения сетью: настройки обслуживания инфраструктуры не двигают ни одной
+    // машины, поэтому в снимке им отвечает только эта строка
+    network: networkMaintenance(NETWORK, activeRailtypes(game), game, calc.priceYear).yearly,
   });
 }
 
@@ -209,6 +228,22 @@ const CASES: {
   },
   // электрифицированная линия против обычной: те же машины, другой набор допущенных
   { name: 'trackType', calc: { trackType: 'ELRL' } },
+  // статья расходов целиком: с ней сеть стоит денег, без неё — ничего
+  { name: 'infrastructureMaintenance', game: { infrastructureMaintenance: true } },
+  {
+    // база уже со включённой статьёй: иначе кейс «прошёл» бы из-за неё, а не из-за модели
+    // роста — при выключенной статье сеть бесплатна при любой модели
+    name: 'linearMaintenance (JGRPP)',
+    game: { jgrpp: true, infrastructureMaintenance: true, linearMaintenance: true },
+    base: { jgrpp: true, infrastructureMaintenance: true },
+  },
+  {
+    // множитель Base Costs на цены инфраструктуры: своя база — со включённой статьёй и
+    // включённым GRF, иначе кейс прошёл бы за счёт любого из этих двух флагов
+    name: 'basecostInfrastructure',
+    game: { infrastructureMaintenance: true, basecostGrf: true, basecostInfrastructure: 8 },
+    base: { infrastructureMaintenance: true, basecostGrf: true },
+  },
 ];
 
 describe('каждая настройка влияет на расчёт', () => {

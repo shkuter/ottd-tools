@@ -42,6 +42,23 @@ describe('settingsStore persist', () => {
     expect(s.game.wagonSpeedLimits).toBe(true);
   });
 
+  it('настройки обслуживания инфраструктуры приходят выключенными в сохранении любой версии', async () => {
+    // расчёт у того, кто уже пользовался калькулятором, не должен поехать: до этой версии
+    // содержания сети не было вовсе, поэтому обе настройки обязаны прийти выключенными,
+    // как в игре по умолчанию (economy_settings.ini: def false у обеих)
+    for (const version of [0, 1, 2, 3, 4, 5]) {
+      const storage = memoryStorage({
+        [KEY]: JSON.stringify({ state: { game: { freightTrains: 2 } }, version }),
+      });
+      useSettingsStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
+      await useSettingsStore.persist.rehydrate();
+      const s = useSettingsStore.getState();
+      expect(s.game.infrastructureMaintenance, `v${version}`).toBe(false);
+      expect(s.game.linearMaintenance, `v${version}`).toBe(false);
+      expect(s.game.basecostInfrastructure, `v${version}`).toBe(1);
+    }
+  });
+
   it('выбранная система единиц скорости переживает перезагрузку', async () => {
     const storage = memoryStorage({
       [KEY]: JSON.stringify({ state: { speedUnit: 'imperial' }, version: 1 }),

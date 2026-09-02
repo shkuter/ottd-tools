@@ -24,7 +24,10 @@ export interface InfoValue {
 
 export interface SavegameImport {
   jgrpp: boolean;
-  /** Game settings the savegame states; anything it does not state is absent. */
+  /**
+   * Game settings the savegame states. A setting it does not state is absent — except where
+   * absence is an answer of its own (a game not on JGRPP grows upkeep the vanilla way).
+   */
   game: Partial<GameSettings>;
   calc: Partial<CalcSettings>;
   /** How the game shows its numbers: currency and speed units it was played with. */

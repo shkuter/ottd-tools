@@ -66,6 +66,12 @@ export interface GameSettings {
   basecostTrainRunningSteam: number;
   basecostTrainRunningDiesel: number;
   basecostTrainRunningElectric: number;
+  /**
+   * Base Costs GRF multiplier for the infrastructure base prices (PR_INFRASTRUCTURE_*).
+   * One knob for all four: the set scales them together, and the calculator models only
+   * what a rail network owns.
+   */
+  basecostInfrastructure: number;
   /** Инфляция включена (Iron Horse с ней несовместим — по умолчанию off). */
   inflation: boolean;
   /** difficulty.initial_interest: скорость инфляции (2..4, def 2). */
@@ -92,6 +98,18 @@ export interface GameSettings {
   costsWhenStopped: number;
   /** JGRPP economy.inflation_fixed_dates: инфляция только с 1920 по 2090. */
   inflationFixedDates: boolean;
+  /**
+   * economy.infrastructure_maintenance («Обслуживание инфраструктуры», def false): the
+   * yearly upkeep a company pays for the track, signals and stations it owns. Off means
+   * the network is free to keep, as in a game with the setting disabled.
+   */
+  infrastructureMaintenance: boolean;
+  /**
+   * JGRPP economy.linear_maintenance («Linear maintenance growth», def false): upkeep
+   * grows linearly with the size of the network instead of the vanilla `1 + IntSqrt(n)`.
+   * The vanilla game has no such setting, so a game that is not on JGRPP reads as off.
+   */
+  linearMaintenance: boolean;
   /**
    * JGRPP vehicle.vehicle_intro_randomisation («Randomise vehicle introduction
    * dates»): игра сдвигает дату появления машины вперёд на случайные 0…511 дней.
@@ -138,8 +156,11 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   basecostTrainRunningSteam: 1,
   basecostTrainRunningDiesel: 1,
   basecostTrainRunningElectric: 1,
+  basecostInfrastructure: 1,
   costsWhenStopped: 1,
   inflationFixedDates: true,
+  infrastructureMaintenance: false,
+  linearMaintenance: false,
   vehicleIntroRandomisation: true,
   neverExpireVehicles: false,
 };
@@ -233,6 +254,15 @@ export function basecostRunningFactor(
   return settings.basecostTrainRunningDiesel;
 }
 
+/**
+ * Base Costs GRF multiplier for infrastructure upkeep. The game applies a Base Costs set
+ * globally (it defines no vehicles of its own), so this scales the infrastructure base
+ * prices the same way the vehicle knobs scale theirs.
+ */
+export function basecostInfrastructureFactor(settings: GameSettings): number {
+  return settings.basecostGrf ? settings.basecostInfrastructure : 1;
+}
+
 /** Множитель дохода при действующей субсидии (economy.cpp DeliverGoods). */
 export function subsidyFactor(mod: 0 | 1 | 2 | 3): number {
   return mod === 0 ? 1.5 : mod === 1 ? 2 : mod === 2 ? 3 : 4;
@@ -287,6 +317,15 @@ export const DEFAULT_CALC_SETTINGS: CalcSettings = {
 /** Делитель расходов на стоянке (только JGRPP). */
 export function stoppedCostDivisor(settings: GameSettings): number {
   return settings.jgrpp ? Math.max(1, settings.costsWhenStopped) : 1;
+}
+
+/**
+ * Linear upkeep growth is a patchpack setting: a game that is not on JGRPP grows the cost by
+ * the vanilla square root whatever the switch holds. The saved value stays — an import from
+ * a JGRPP game keeps it — but it applies only where the game has it.
+ */
+export function linearMaintenanceApplies(settings: GameSettings): boolean {
+  return settings.jgrpp && settings.linearMaintenance;
 }
 
 /** Замедление экономики учитывается только на JGRPP (в ванили настройки нет). */

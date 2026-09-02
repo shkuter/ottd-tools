@@ -20,6 +20,14 @@ of what users see):
 
 ### Added
 
+- Infrastructure upkeep: what a network costs to own per year — track by type, signals and
+  stations — computed the way the game does it, with both growth models (vanilla
+  `1 + IntSqrt(n)` and JGRPP's linear one), and shown as a panel on the Route income tab.
+- Game settings for it: `Infrastructure maintenance` and `Linear maintenance growth`, both
+  read from an imported savegame (a game with no linear-growth setting reads as the vanilla
+  model), plus a Base Costs multiplier for the infrastructure base prices.
+- Track type data now carries the upkeep multiplier of each railtype, extracted from the set
+  (Iron Horse states it through `construction_cost`, which is what reaches the grf).
 - **Enable wagon speed limits** joined the game settings. The game gates a wagon's own speed
   limit behind it (`train_cmd.cpp`: a vehicle caps the consist when it is not a wagon or the
   setting is on, wagon overrides aside), and the calculator applied wagon limits
@@ -34,6 +42,8 @@ of what users see):
 
 ### Changed
 
+- `economy.infrastructure_maintenance` moved from the informational list of an imported
+  savegame into the settings that are carried over: the calculator now has a model for it.
 - `vehicle.wagon_speed_limits` travels with an imported savegame instead of being listed as
   a read-only fact of the game: the calculator now has a model for it.
 

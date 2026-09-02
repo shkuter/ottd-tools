@@ -262,6 +262,17 @@ export default function SettingsPage() {
                 data={numericData(BASECOST_MULTIPLIERS)}
               />
             </NestedRow>
+            <NestedRow
+              label={t('settings.basecostInfrastructure')}
+              hint={t('settings.basecostInfrastructureHint')}
+            >
+              <Select
+                allowDeselect={false}
+                value={String(game.basecostInfrastructure)}
+                onChange={(v) => v && setGame('basecostInfrastructure', Number(v))}
+                data={numericData(BASECOST_MULTIPLIERS)}
+              />
+            </NestedRow>
           </>
         )}
       </Fieldset>
@@ -341,6 +352,27 @@ export default function SettingsPage() {
             onChange={(v) => setGame('cargoAgingRate', asNumber(v, 1))}
           />
         </Row>
+        <Row
+          label={t('settings.infrastructureMaintenance')}
+          hint={t('settings.infrastructureMaintenanceHint')}
+        >
+          <Switch
+            checked={game.infrastructureMaintenance}
+            onChange={(e) => setGame('infrastructureMaintenance', e.currentTarget.checked)}
+            label={game.infrastructureMaintenance ? t('settings.on') : t('settings.off')}
+          />
+        </Row>
+        {/* the linear model is the patchpack's; a game without it grows upkeep by the
+            square root, which is what the switch off means */}
+        {game.jgrpp && (
+          <Row label={t('settings.linearMaintenance')} hint={t('settings.linearMaintenanceHint')}>
+            <Switch
+              checked={game.linearMaintenance}
+              onChange={(e) => setGame('linearMaintenance', e.currentTarget.checked)}
+              label={game.linearMaintenance ? t('settings.on') : t('settings.off')}
+            />
+          </Row>
+        )}
         <Row label={t('settings.inflation')} hint={t('settings.inflationHint')}>
           <Switch
             checked={game.inflation}

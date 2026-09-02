@@ -32,6 +32,7 @@ export const SETTING_LABEL_KEYS: Record<SettingKey, string> = {
   basecostTrainRunningSteam: 'settings.basecostRunningSteam',
   basecostTrainRunningDiesel: 'settings.basecostRunningDiesel',
   basecostTrainRunningElectric: 'settings.basecostRunningElectric',
+  basecostInfrastructure: 'settings.basecostInfrastructure',
   inflation: 'settings.inflation',
   inflationInterest: 'settings.interest',
   vehicleCosts: 'settings.vehicleCosts',
@@ -42,6 +43,8 @@ export const SETTING_LABEL_KEYS: Record<SettingKey, string> = {
   paymentAlgorithm: 'settings.paymentAlgorithm',
   costsWhenStopped: 'settings.costsWhenStopped',
   inflationFixedDates: 'settings.inflationFixedDates',
+  infrastructureMaintenance: 'settings.infrastructureMaintenance',
+  linearMaintenance: 'settings.linearMaintenance',
   vehicleIntroRandomisation: 'settings.introRandomisation',
   neverExpireVehicles: 'settings.neverExpire',
   // calculator settings

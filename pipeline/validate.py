@@ -72,6 +72,13 @@ def main():
             check(len(rt["label"]) == 4, f"{where}: лейбл не 4 символа")
             check(bool(rt["name"]), f"{where}: без имени")
             check(rt["speed_limit_internal"] >= 0, f"{where}: отрицательный лимит скорости")
+            # множитель месячного обслуживания куска пути (rail.h RailMaintenanceCost):
+            # нулевой означал бы бесплатный путь, которого в игре нет
+            check(
+                isinstance(rt.get("maintenance_multiplier"), int)
+                and rt["maintenance_multiplier"] > 0,
+                f"{where}: множитель обслуживания не задан или не положителен",
+            )
             # рода тока, которыми путь питает машину: по ним расходятся и мощность,
             # и предел скорости. Мало проверить форму — род тока, которого расчёт не
             # знает, не назван в его иерархии (POWER_SOURCES, engine/tracktypes.ts)

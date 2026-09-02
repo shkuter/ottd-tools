@@ -41,6 +41,12 @@ export interface Railtype {
    */
   hidden: boolean;
   speed_limit_internal: number;
+  /**
+   * What a piece of this track costs to own each month, before the infrastructure base price
+   * (rail.h RailMaintenanceCost). Stated by the set; a type the set leaves to the game
+   * carries the game's own figure.
+   */
+  maintenance_multiplier: number;
   powered: string[];
   compatible: string[];
   /** High speed track: vehicles able to run faster there use their LGV speed. */

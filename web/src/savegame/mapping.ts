@@ -19,6 +19,12 @@ interface SettingSource {
   /** Name of the setting as the game saves it. */
   name: string;
   read: (value: number) => Patch | undefined;
+  /**
+   * What the absence of this setting says. A game that has no such switch is not a game the
+   * calculator knows nothing about: it is one that behaves the way the switch off behaves,
+   * and leaving the field out of the patch would keep another game's answer instead.
+   */
+  whenAbsent?: Patch;
 }
 
 const clampChoice = <T extends number>(value: number, max: number): T =>
@@ -49,18 +55,36 @@ export const GAME_SETTING_SOURCES: readonly SettingSource[] = [
   { name: 'difficulty.vehicle_costs_when_stopped', read: (v) => ({ costsWhenStopped: v }) },
   { name: 'economy.inflation_fixed_dates', read: (v) => ({ inflationFixedDates: v !== 0 }) },
   {
+    name: 'economy.infrastructure_maintenance',
+    read: (v) => ({ infrastructureMaintenance: v !== 0 }),
+    // saved from version 166 on; older games charged nothing for infrastructure
+    whenAbsent: { infrastructureMaintenance: false },
+  },
+  {
+    name: 'economy.linear_maintenance',
+    read: (v) => ({ linearMaintenance: v !== 0 }),
+    // JGRPP-only: a game not on the patchpack grows upkeep the vanilla way
+    whenAbsent: { linearMaintenance: false },
+  },
+  {
     name: 'vehicle.vehicle_intro_randomisation',
     read: (v) => ({ vehicleIntroRandomisation: v !== 0 }),
   },
   { name: 'vehicle.never_expire_vehicles', read: (v) => ({ neverExpireVehicles: v !== 0 }) },
 ];
 
-/** Builds the game settings a savegame implies, leaving out anything it does not state. */
+/**
+ * Builds the game settings a savegame implies. A setting the file does not state is left out,
+ * unless its absence is itself an answer — see `whenAbsent`.
+ */
 export function gameSettingsFrom(saved: ReadonlyMap<string, FieldValue>): Patch {
   let patch: Patch = {};
   for (const source of GAME_SETTING_SOURCES) {
     const value = saved.get(source.name);
-    if (typeof value !== 'number') continue;
+    if (typeof value !== 'number') {
+      patch = { ...patch, ...(source.whenAbsent ?? {}) };
+      continue;
+    }
     patch = { ...patch, ...source.read(value) };
   }
   return patch;
@@ -136,11 +160,6 @@ export const INFO_SETTINGS: readonly InfoSetting[] = [
   },
   { name: 'order.improved_load', labelKey: 'savegame.info.improvedLoad', kind: 'flag' },
   { name: 'economy.feeder_payment_share', labelKey: 'savegame.info.feederShare', kind: 'percent' },
-  {
-    name: 'economy.infrastructure_maintenance',
-    labelKey: 'savegame.info.infrastructureMaintenance',
-    kind: 'flag',
-  },
   {
     name: 'difficulty.vehicle_breakdowns',
     labelKey: 'savegame.info.vehicleBreakdowns',

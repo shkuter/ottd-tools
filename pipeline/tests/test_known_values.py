@@ -268,6 +268,24 @@ class Railtypes(unittest.TestCase):
         self.assertEqual(sorted(self.vanilla["ELRL"]["compatible"]), ["ELRL", "RAIL"])
         self.assertEqual(self.vanilla["MGLV"]["powered"], ["MGLV"])
 
+    def test_vanilla_maintenance_multipliers_match_the_game(self):
+        # table/railtypes.h "maintenance cost multiplier": what a piece of this track
+        # costs to own each month, before the infrastructure base price
+        self.assertEqual(
+            [rt["maintenance_multiplier"] for rt in self.vanilla.values()], [8, 12, 16, 24]
+        )
+
+    def test_iron_horse_maintenance_multipliers_are_what_reaches_the_grf(self):
+        # railtype.py assigns `self.maintenance_cost = kwargs.get("construction_cost")`,
+        # so what the set declares as maintenance_cost never reaches the game: narrow
+        # gauge declares 7 and costs 5. Should the set fix that, this test says so.
+        self.assertEqual(self.iron_horse["NAAN"]["maintenance_multiplier"], 5)
+        self.assertEqual(self.iron_horse["MTRO"]["maintenance_multiplier"], 10)
+        self.assertEqual(self.iron_horse["LGVE"]["maintenance_multiplier"], 16)
+        # rail and electrified rail are the game's own types: the set leaves them to it
+        self.assertEqual(self.iron_horse["RAIL"]["maintenance_multiplier"], 8)
+        self.assertEqual(self.iron_horse["ELRL"]["maintenance_multiplier"], 12)
+
     def test_no_railtype_states_a_speed_limit(self):
         # neither set limits speed by track: the vehicle decides (max_speed 0 = no limit)
         for table in (self.vanilla, self.iron_horse):

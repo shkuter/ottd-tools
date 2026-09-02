@@ -193,6 +193,15 @@ def catalogue_payload(catalogue, dh):
     return item
 
 
+def vanilla_maintenance(vanilla, label):
+    """The game's upkeep multiplier for a type the set left to it."""
+    if label not in vanilla:
+        raise SystemExit(
+            f"railtype {label}: no maintenance multiplier, and the game has no such type"
+        )
+    return vanilla[label]["maintenance_multiplier"]
+
+
 def railtypes_payload(dh):
     """The set's track types, in the same shape as the vanilla table.
 
@@ -239,6 +248,17 @@ def railtypes_payload(dh):
                 else "RAILTYPE_FLAG_HIDDEN" in (rt.railtype_flags or [])
             ),
             "speed_limit_internal": rt.speed_limit,
+            # What the type costs to own, per piece of track per month (rail.h
+            # RailMaintenanceCost).
+            # Read off the object, not the kwarg: Iron Horse assigns
+            # `self.maintenance_cost = kwargs.get("construction_cost")` (railtype.py), so
+            # the declared maintenance_cost never reaches the grf — narrow gauge declares
+            # 7 and the game charges 5. The template writes this same attribute.
+            # None means the set leaves the type to the game (rail, electrified rail).
+            "maintenance_multiplier": (
+                rt.maintenance_cost if rt.maintenance_cost is not None
+                else vanilla_maintenance(vanilla, rt.label)
+            ),
             "powered": borrowed["powered"] if borrowed else list(rt.powered_railtype_list),
             "compatible": (
                 borrowed["compatible"] if borrowed

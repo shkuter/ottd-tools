@@ -26,9 +26,33 @@ export const BASE_PRICES = {
   running_steam: 5600, // PR_RUNNING_TRAIN_STEAM, в год
   running_diesel: 5200, // PR_RUNNING_TRAIN_DIESEL
   running_electric: 4800, // PR_RUNNING_TRAIN_ELECTRIC
+  // Infrastructure upkeep, per month before the type multiplier (table/pricebase.h).
+  // These sit in PCAT_RUNNING, so the difficulty knob over them is vehicle_costs — not
+  // construction_cost, despite what they pay for.
+  infrastructure_rail: 10, // PR_INFRASTRUCTURE_RAIL
+  infrastructure_road: 10, // PR_INFRASTRUCTURE_ROAD
+  infrastructure_water: 8, // PR_INFRASTRUCTURE_WATER
+  infrastructure_station: 100, // PR_INFRASTRUCTURE_STATION
 } as const;
 
 export type BasePriceKey = keyof typeof BASE_PRICES;
+
+/**
+ * A base price after the multipliers the game applies to every one of them: difficulty,
+ * inflation, and whatever a Base Costs GRF scales it by (economy.cpp RecomputePrices).
+ *
+ * The zero clamp is not here. The game applies it once, after every multiplier including the
+ * GRF shift, and vehicle prices reach that point later — `price()` shifts by the GRF after
+ * this call. Infrastructure, whose whole chain ends here, clamps in `infrastructure.ts`.
+ */
+export function basePriceAfterMultipliers(
+  baseKey: BasePriceKey,
+  difficultyFactor: number,
+  inflationPrice: number,
+  grfFactor = 1,
+): number {
+  return Math.floor(BASE_PRICES[baseKey] * difficultyFactor * inflationPrice * grfFactor);
+}
 
 export function price(
   baseKey: BasePriceKey,
@@ -42,11 +66,10 @@ export function price(
   inflationFixedDates = true,
   startingYear = 1950,
 ): number {
-  const base = Math.floor(
-    BASE_PRICES[baseKey] *
-      difficultyFactor *
-      inflationFactors(year, inflationOn, inflationInterest, inflationFixedDates, startingYear)
-        .price,
+  const base = basePriceAfterMultipliers(
+    baseKey,
+    difficultyFactor,
+    inflationFactors(year, inflationOn, inflationInterest, inflationFixedDates, startingYear).price,
   );
   // GetPrice: (base * factor) со сдвигом (grfShift - 8) одной операцией
   const totalShift = grfShift - 8;

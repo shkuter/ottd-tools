@@ -17,7 +17,8 @@ it read them off your game.
   (realistic acceleration physics reproduced from OpenTTD sources).
 - **Route income** — exact `GetTransportedGoodsIncome` reproduction with FIRS payment rates
   and time-penalty curve chart, plus profitability of the built consist on that route
-  (profit per year / per train tile, payback).
+  (profit per year / per train tile, payback) and what the network itself costs to own each
+  year — track by type, signals and stations, as the game's infrastructure window bills them.
 - **Industry supply** — every input of one industry at once: a fleet per input, the
   conversion they add up to, and the input to fix first.
 - **FIRS chains** — interactive cargo-flow graph per economy (graphviz WASM), industry and

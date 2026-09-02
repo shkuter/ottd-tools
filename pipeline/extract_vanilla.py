@@ -278,16 +278,21 @@ def parse_railtypes():
             "string_id": f"STR_RAIL_NAME_{name}",
             "name": names[f"STR_RAIL_NAME_{name}"],
             "speed_limit_internal": int(speed),
+            # rail.h RailMaintenanceCost: a piece of this track costs this multiplier times
+            # the infrastructure base price every month, so a set that redefines a type
+            # redefines what its track costs to own
+            "maintenance_multiplier": int(maintenance),
             "powered": powered,
             "compatible": compatible,
             "lgv": False,
             "sort": index,
         }
-        for index, (label, name, speed, flags, powered, compatible) in enumerate(zip(
+        for index, (label, name, speed, flags, maintenance, powered, compatible) in enumerate(zip(
             re.findall(r"/\* rail type label \*/\s*(RAILTYPE_LABEL_\w+)", block),
             re.findall(r"STR_RAIL_NAME_(\w+)", block),
             re.findall(r"/\* max speed \*/\s*(\d+)", block),
             re.findall(r"/\* flags \*/\s*\{([^}]*)\}", block),
+            re.findall(r"/\* maintenance cost multiplier \*/\s*(\d+)", block),
             mask("Powered"),
             mask("Compatible"),
             strict=True,

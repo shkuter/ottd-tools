@@ -15,15 +15,17 @@ const saved = (value: number): ReadonlyMap<string, FieldValue> =>
 
 describe('перенос ограничения скорости вагонов', () => {
   it('выключенная в партии настройка приходит выключенной', () => {
-    expect(gameSettingsFrom(saved(0))).toEqual({ wagonSpeedLimits: false });
+    // патч несёт и то, что читается из отсутствия настроек (обслуживание инфраструктуры),
+    // поэтому проверяется своё поле, а не весь объект целиком
+    expect(gameSettingsFrom(saved(0))).toMatchObject({ wagonSpeedLimits: false });
   });
 
   it('включённая — включённой', () => {
-    expect(gameSettingsFrom(saved(1))).toEqual({ wagonSpeedLimits: true });
+    expect(gameSettingsFrom(saved(1))).toMatchObject({ wagonSpeedLimits: true });
   });
 
   it('сохранение, которое о ней молчит, ничего не предлагает', () => {
-    expect(gameSettingsFrom(new Map())).toEqual({});
+    expect(gameSettingsFrom(new Map())).not.toHaveProperty('wagonSpeedLimits');
   });
 
   it('настройка ушла из справочного списка в переносимые', () => {
@@ -42,7 +44,7 @@ describe('настройка в списке различий', () => {
 
   it('расхождение показано среди переносимых настроек, а не справочных', () => {
     const diff = diffImport(
-      { ...EMPTY, game: gameSettingsFrom(saved(0)) },
+      { ...EMPTY, game: { wagonSpeedLimits: gameSettingsFrom(saved(0)).wagonSpeedLimits } },
       DEFAULT_GAME_SETTINGS,
       DEFAULT_CALC_SETTINGS,
       DISPLAY,

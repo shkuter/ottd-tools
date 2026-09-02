@@ -58,6 +58,8 @@ const GAME_LABELS: Partial<Record<keyof GameSettings, Described<GameSettings>>> 
   inflation: { labelKey: 'settings.inflation', format: onOff },
   inflationInterest: { labelKey: 'settings.interest' },
   inflationFixedDates: { labelKey: 'settings.inflationFixedDates', format: onOff },
+  infrastructureMaintenance: { labelKey: 'settings.infrastructureMaintenance', format: onOff },
+  linearMaintenance: { labelKey: 'settings.linearMaintenance', format: onOff },
   vehicleCosts: { labelKey: 'settings.vehicleCosts', format: difficulty },
   constructionCost: { labelKey: 'settings.constructionCost', format: difficulty },
   subsidyMultiplier: {

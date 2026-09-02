@@ -11,6 +11,7 @@ import { TrackTypeField } from '../../components/TrackTypeField';
 import { StrandedVehicles } from '../../components/StrandedVehicles';
 import { TableFrame } from '../../components/table/TableFrame';
 import { useRouteStore } from '../../state/routeStore';
+import { NetworkMaintenance } from './NetworkMaintenance';
 import { PrefillNote } from '../../components/PrefillNote';
 import { routePrefillState } from '../savegame/applyBridge';
 import { useSettingsStore } from '../../state/settingsStore';
@@ -337,6 +338,8 @@ export default function RoutePage() {
             </>
           )}
           </Paper>
+
+        <NetworkMaintenance />
       </div>
     </>
   );

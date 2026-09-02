@@ -56,8 +56,9 @@ describe('/settings — a set and its parameters', () => {
   });
 
   it('draws every parameter the switched-on sets have', () => {
-    // the Iron Horse capacity parameter, the FIRS economy, and the five Base Costs multipliers
-    expect(nested).toHaveLength(7);
+    // the Iron Horse capacity parameter, the FIRS economy, and the six Base Costs
+    // multipliers — two vehicle prices, three running classes, infrastructure upkeep
+    expect(nested).toHaveLength(8);
   });
 
   it('offsets a parameter from the setting it hangs from', () => {

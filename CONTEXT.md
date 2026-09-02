@@ -185,6 +185,29 @@ dual-system engine makes different power under different wires, and on a multi-s
 takes the first source it accepts. Generalises the old "OHLE where there is catenary" rule —
 catenary stays a fact about wires, not about current.
 
+## Network upkeep
+
+**Network upkeep** (_обслуживание сети_) — what a company pays every year simply for owning
+its track, signals and stations, whether or not anything runs on them. The game bills it
+monthly, per category, and shows the year as twelve of those; the calculator does the same,
+truncating the monthly figure exactly where the game truncates it. Turned off by default, as
+in the game. _Avoid_: maintenance cost of a train (that is **running cost**), содержание
+(the settings screen says «Обслуживание инфраструктуры», the game's own wording).
+
+**Track piece** (_кусок пути_) — the unit upkeep is billed in, and not the same thing as a
+tile: a tile carries one piece per track on it, squared where the tracks cross, four per tile
+of tunnel or bridge, two for a level crossing, and a rail station tile carries one of its own
+(`sl/company_sl.cpp` AfterLoadCompanyStats). Signals are counted by head, so a two-way signal
+is two. A figure typed in tiles understates a double-track line twofold, which is why the
+field names the unit. _Avoid_: клетка пути for this quantity; station tiles genuinely are
+tiles.
+
+**Growth model** (_модель роста_) — how upkeep grows with the size of a network. Vanilla
+raises the price of every piece as the network grows (`1 + IntSqrt(total)`); JGRPP's
+**linear maintenance growth** replaces that with a flat per-category scale, so cost stays
+proportional to what is owned. A game not on the patchpack has the setting nowhere, and
+grows by the root whatever the calculator holds saved.
+
 ## Industry supply
 
 **Supply window** (_окно поставок_) — the stretch FIRS looks back over when it decides whether

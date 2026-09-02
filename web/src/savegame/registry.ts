@@ -29,6 +29,11 @@ export interface KnownGrf {
   economyParam?: number;
 }
 
+/**
+ * Which parameter of a Base Costs set holds which multiplier. Infrastructure upkeep is not
+ * here: the set's parameter index for it is not known from any source in `vendor/`, and a
+ * guessed index would read a different knob's value. That multiplier is set by hand.
+ */
 export interface BaseCostParams {
   locomotive: number;
   wagon: number;

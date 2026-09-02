@@ -772,8 +772,8 @@ h4 {
 
 .route-controls {
   padding: 14px;
-  /* the controls span both rows, so profitability sits straight under the chart */
-  grid-row: 1 / span 2;
+  /* the controls span the whole column, so every panel sits under the chart in turn */
+  grid-row: 1 / span 3;
 }
 
 .route-controls .mantine-InputWrapper-root {
@@ -781,8 +781,21 @@ h4 {
 }
 
 .route-chart,
-.route-profit {
+.route-profit,
+.route-network {
   grid-column: 2;
+}
+
+/* the counts read as one row of small fields, the way the game's window lists them */
+.network-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--skin-hsep-normal);
+  margin-bottom: var(--skin-hsep-wide);
+}
+
+.network-inputs .field {
+  width: 140px;
 }
 
 /* what the marked trip comes to, right under the field it is marked on */
@@ -899,7 +912,8 @@ h4 {
   }
 
   .route-chart,
-  .route-profit {
+  .route-profit,
+  .route-network {
     grid-column: auto;
   }
 }
