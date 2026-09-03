@@ -1,13 +1,16 @@
 import { createJSONStorage } from 'zustand/middleware';
 import { describe, expect, it } from 'vitest';
-import { useRouteStore } from '../routeStore';
+import { EMPTY_CORRIDOR, useRouteStore } from '../routeStore';
 import { memoryStorage } from './memoryStorage';
 
 const KEY = 'ottd-tools-route';
 
 async function rehydrateFrom(json: unknown) {
   // merge() receives the live state, so start each case from the defaults
-  useRouteStore.setState({ network: { railPieces: {}, signals: 0, stations: 0 } });
+  useRouteStore.setState({
+    network: { railPieces: {}, signals: 0, stations: 0 },
+    corridor: EMPTY_CORRIDOR,
+  });
   const storage = memoryStorage({ [KEY]: JSON.stringify(json) });
   useRouteStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
   await useRouteStore.persist.rehydrate();
@@ -43,6 +46,31 @@ describe('routeStore persist', () => {
       railPieces: { RAIL: 12 },
       signals: 0,
       stations: 0,
+    });
+  });
+
+  it('keeps the corridor across a reload', async () => {
+    await rehydrateFrom({
+      state: { corridor: { target: 'ELRL', pieces: 10_000, trains: 7, engineId: 'stoat' } },
+      version: 0,
+    });
+    expect(useRouteStore.getState().corridor).toEqual({
+      target: 'ELRL',
+      pieces: 10_000,
+      trains: 7,
+      engineId: 'stoat',
+    });
+  });
+
+  it('fills back a field a partly saved corridor is missing', async () => {
+    // same merge trap as the network above: a state saved before `trains` existed would come
+    // back with it undefined, and the block would multiply by NaN
+    await rehydrateFrom({ state: { corridor: { target: 'ELRL', pieces: 40 } }, version: 0 });
+    expect(useRouteStore.getState().corridor).toEqual({
+      target: 'ELRL',
+      pieces: 40,
+      trains: 1,
+      engineId: null,
     });
   });
 });

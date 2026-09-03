@@ -273,6 +273,17 @@ export default function SettingsPage() {
                 data={numericData(BASECOST_MULTIPLIERS)}
               />
             </NestedRow>
+            <NestedRow
+              label={t('settings.basecostRailConstruction')}
+              hint={t('settings.basecostRailConstructionHint')}
+            >
+              <Select
+                allowDeselect={false}
+                value={String(game.basecostRailConstruction)}
+                onChange={(v) => v && setGame('basecostRailConstruction', Number(v))}
+                data={numericData(BASECOST_MULTIPLIERS)}
+              />
+            </NestedRow>
           </>
         )}
       </Fieldset>

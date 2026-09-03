@@ -33,6 +33,7 @@ export const SETTING_LABEL_KEYS: Record<SettingKey, string> = {
   basecostTrainRunningDiesel: 'settings.basecostRunningDiesel',
   basecostTrainRunningElectric: 'settings.basecostRunningElectric',
   basecostInfrastructure: 'settings.basecostInfrastructure',
+  basecostRailConstruction: 'settings.basecostRailConstruction',
   inflation: 'settings.inflation',
   inflationInterest: 'settings.interest',
   vehicleCosts: 'settings.vehicleCosts',

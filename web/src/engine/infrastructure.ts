@@ -8,8 +8,7 @@
  * visible: six tiles of plain track cost 1800 a tile a year where ten thousand cost 1856.25.
  */
 
-import { basePriceAfterMultipliers, type BasePriceKey } from './costs';
-import { inflationFactors } from './inflation';
+import { basePriceAfterMultipliers, priceInflation, type BasePriceKey } from './costs';
 import {
   basecostInfrastructureFactor,
   difficultyPriceFactor,
@@ -110,17 +109,10 @@ export function infrastructureBasePrice(
   game: GameSettings,
   year: number,
 ): number {
-  const inflation = inflationFactors(
-    year,
-    game.inflation,
-    game.inflationInterest,
-    game.inflationFixedDates,
-    game.startingYear,
-  ).price;
   const price = basePriceAfterMultipliers(
     BASE_PRICE[category],
     difficultyPriceFactor(game.vehicleCosts),
-    inflation,
+    priceInflation(game, year),
     basecostInfrastructureFactor(game),
   );
   // The game will not let a base price reach zero — a zero cost is how its commands tell

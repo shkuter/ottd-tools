@@ -5,13 +5,16 @@ FIRS — с исходниками и конверсией NML price_factor -> p
 """
 import os
 import pathlib
+import re
 import sys
 import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from common import load_json  # noqa: E402
+from common import VENDOR, load_json  # noqa: E402
 import extract_vanilla as vanilla  # noqa: E402
+
+IRON_HORSE_RAILTYPES = os.path.join(VENDOR, "iron-horse", "src", "railtypes")
 
 
 class IronHorseKnownValues(unittest.TestCase):
@@ -274,6 +277,55 @@ class Railtypes(unittest.TestCase):
         self.assertEqual(
             [rt["maintenance_multiplier"] for rt in self.vanilla.values()], [8, 12, 16, 24]
         )
+
+    @unittest.skipUnless(os.path.exists(vanilla.RAILTYPES_H), "нужен vendor/openttd (make fetch)")
+    def test_vanilla_reads_each_multiplier_from_its_own_field(self):
+        """The two multipliers must not be read off one field.
+
+        The game's four types state the same number for both (8/8, 12/12, 16/16, 24/24),
+        so comparing extracted values against the table proves nothing: an extractor
+        reading the maintenance field for both would pass. Feed it a table where they
+        differ instead.
+        """
+        text = vanilla.read(vanilla.RAILTYPES_H)
+        shifted = text.replace(
+            "/* cost multiplier */", "/* cost multiplier */ 100 +", 4
+        )
+        with tempfile.NamedTemporaryFile("w", suffix=".h", delete=False, encoding="utf-8") as f:
+            f.write(shifted)
+            path = f.name
+        original, vanilla.RAILTYPES_H = vanilla.RAILTYPES_H, path
+        try:
+            parsed = {rt["label"]: rt for rt in vanilla.parse_railtypes()}
+        finally:
+            vanilla.RAILTYPES_H = original
+            os.unlink(path)
+        self.assertEqual([rt["cost_multiplier"] for rt in parsed.values()], [100] * 4)
+        self.assertEqual(
+            [rt["maintenance_multiplier"] for rt in parsed.values()], [8, 12, 16, 24]
+        )
+
+    @unittest.skipUnless(
+        os.path.exists(IRON_HORSE_RAILTYPES), "нужен vendor/iron-horse (make fetch)"
+    )
+    def test_iron_horse_cost_multipliers_come_from_the_set(self):
+        """Compared against the set's own source, not against constants written here.
+
+        `railtype.py` assigns both attributes from `construction_cost`, so the two
+        multipliers come out equal for every type of this set; a test on the numbers
+        alone would not notice the extractor reading the other one.
+        """
+        declared = {}
+        for path in pathlib.Path(IRON_HORSE_RAILTYPES).glob("*.py"):
+            source = path.read_text(encoding="utf-8")
+            label = re.search(r"label=\"(\w{4})\"", source)
+            cost = re.search(r"construction_cost=(\d+|None)", source)
+            if label and cost:
+                declared[label.group(1)] = None if cost.group(1) == "None" else int(cost.group(1))
+        self.assertEqual(sorted(declared), sorted(self.iron_horse))
+        for label, cost in declared.items():
+            expected = self.vanilla[label]["cost_multiplier"] if cost is None else cost
+            self.assertEqual(self.iron_horse[label]["cost_multiplier"], expected, label)
 
     def test_iron_horse_maintenance_multipliers_are_what_reaches_the_grf(self):
         # railtype.py assigns `self.maintenance_cost = kwargs.get("construction_cost")`,

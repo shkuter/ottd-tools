@@ -12,6 +12,7 @@ import { StrandedVehicles } from '../../components/StrandedVehicles';
 import { TableFrame } from '../../components/table/TableFrame';
 import { useRouteStore } from '../../state/routeStore';
 import { NetworkMaintenance } from './NetworkMaintenance';
+import { CorridorUpgrade } from './CorridorUpgrade';
 import { PrefillNote } from '../../components/PrefillNote';
 import { routePrefillState } from '../savegame/applyBridge';
 import { useSettingsStore } from '../../state/settingsStore';
@@ -53,9 +54,9 @@ export default function RoutePage() {
   // optimizer uses, so a consist carried over with "→" shows the same figures here. The
   // optimizer picks the loading branch by its goal; this tab has no goal, so the branch is
   // the user's to set, and with it the source output the waiting branch accumulates from.
-  const routeTrip = useMemo(() => {
+  const routeParams = useMemo(() => {
     if (entries.length === 0 || !cargo) return null;
-    return routeWithFlow({
+    return {
       entries,
       cargo,
       payment,
@@ -66,11 +67,15 @@ export default function RoutePage() {
       loadedDaysOverride: route.manualDays,
       productionPerMonth: route.productionPerMonth,
       waitForFullLoad: route.waitForFullLoad,
-    });
+    };
   }, [
     entries, cargo, payment, route.distanceTiles, route.manualDays,
     route.productionPerMonth, route.waitForFullLoad, game, calc,
   ]);
+  const routeTrip = useMemo(
+    () => (routeParams ? routeWithFlow(routeParams) : null),
+    [routeParams],
+  );
   const consistDays =
     routeTrip && routeTrip.economics.loadedSpeedInternal > 0 ? routeTrip.economics.daysLoaded : null;
   const days = route.manualDays ?? consistDays ?? 0;
@@ -340,6 +345,8 @@ export default function RoutePage() {
           </Paper>
 
         <NetworkMaintenance />
+
+        <CorridorUpgrade route={routeParams} />
       </div>
     </>
   );

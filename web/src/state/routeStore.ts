@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { EMPTY_NETWORK, type NetworkCounts } from '../engine/infrastructure';
 import type { PrefillOrigin } from './prefill';
 
 /**
@@ -17,6 +18,35 @@ export interface NetworkInputs {
 }
 
 export const EMPTY_NETWORK_INPUTS: NetworkInputs = { railPieces: {}, signals: 0, stations: 0 };
+
+/**
+ * The corridor the tab prices below the upkeep: which track it would be converted to, how
+ * long it is in **track pieces** (a tile carries one per track on it), how many trains share
+ * it, and the engine that replaces the consist's leading vehicles. An empty target or no
+ * engine means "not asked yet" — the block computes nothing.
+ */
+export interface CorridorFields {
+  target: string;
+  pieces: number;
+  trains: number;
+  engineId: string | null;
+}
+
+export const EMPTY_CORRIDOR: CorridorFields = { target: '', pieces: 0, trains: 1, engineId: null };
+
+/**
+ * The counts as the engine bills them. Only the rail side is asked for: roads, trams and
+ * canals are priced so the total can be checked against the game's own window, but a rail
+ * calculator does not ask the player to keep count of them.
+ */
+export function networkCounts(network: NetworkInputs): NetworkCounts {
+  return {
+    ...EMPTY_NETWORK,
+    rail: network.railPieces,
+    signals: network.signals,
+    stations: network.stations,
+  };
+}
 
 /**
  * The inputs a bridge from the game tab fills in, and the shape the note compares against.
@@ -54,6 +84,8 @@ interface RouteState {
   waitForFullLoad: boolean;
   /** The network whose upkeep this tab prices; see NetworkInputs. */
   network: NetworkInputs;
+  /** The corridor upgrade the tab prices below the upkeep; see CorridorFields. */
+  corridor: CorridorFields;
   /** Set when a bridge filled the route's own inputs in; null when they were typed by hand. */
   prefillOrigin: PrefillOrigin<RoutePrefill> | null;
   /**
@@ -70,6 +102,7 @@ interface RouteState {
   setProductionPerMonth: (perMonth: number) => void;
   setWaitForFullLoad: (wait: boolean) => void;
   setNetwork: (network: NetworkInputs) => void;
+  setCorridor: (corridor: Partial<CorridorFields>) => void;
   setRailPieces: (label: string, pieces: number) => void;
   setPrefillOrigin: (origin: PrefillOrigin<RoutePrefill> | null) => void;
   setNetworkOrigin: (origin: PrefillOrigin<NetworkPrefill> | null) => void;
@@ -85,6 +118,7 @@ export const useRouteStore = create<RouteState>()(
       productionPerMonth: 0,
       waitForFullLoad: false,
       network: EMPTY_NETWORK_INPUTS,
+      corridor: EMPTY_CORRIDOR,
       prefillOrigin: null,
       networkOrigin: null,
       setCargoLabel: (cargoLabel) => set({ cargoLabel }),
@@ -94,6 +128,7 @@ export const useRouteStore = create<RouteState>()(
       setProductionPerMonth: (productionPerMonth) => set({ productionPerMonth }),
       setWaitForFullLoad: (waitForFullLoad) => set({ waitForFullLoad }),
       setNetwork: (network) => set({ network }),
+      setCorridor: (corridor) => set((s) => ({ corridor: { ...s.corridor, ...corridor } })),
       setRailPieces: (label, pieces) =>
         set((s) => ({ network: { ...s.network, railPieces: { ...s.network.railPieces, [label]: pieces } } })),
       setPrefillOrigin: (prefillOrigin) => set({ prefillOrigin }),
@@ -107,7 +142,12 @@ export const useRouteStore = create<RouteState>()(
       // the rest, which is what this fills back in
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<RouteState>;
-        return { ...current, ...saved, network: { ...EMPTY_NETWORK_INPUTS, ...(saved.network ?? {}) } };
+        return {
+          ...current,
+          ...saved,
+          network: { ...EMPTY_NETWORK_INPUTS, ...(saved.network ?? {}) },
+          corridor: { ...EMPTY_CORRIDOR, ...(saved.corridor ?? {}) },
+        };
       },
     },
   ),

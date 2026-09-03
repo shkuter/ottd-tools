@@ -5,12 +5,8 @@ import { railtypeOptions } from '../../i18n/names';
 import { num, unitSuffix } from '../../components/format';
 import { PrefillNote } from '../../components/PrefillNote';
 import { Money } from '../../components/Money';
-import {
-  EMPTY_NETWORK,
-  networkMaintenance,
-  type MaintenanceCategory,
-} from '../../engine/infrastructure';
-import { useRouteStore } from '../../state/routeStore';
+import { networkMaintenance, type MaintenanceCategory } from '../../engine/infrastructure';
+import { networkCounts, useRouteStore } from '../../state/routeStore';
 import { useSettingsStore } from '../../state/settingsStore';
 
 /**
@@ -33,13 +29,7 @@ export function NetworkMaintenance() {
   const options = railtypeOptions(selectableRailtypes(game));
   const railtypes = options.map((option) => option.railtype);
 
-  // only the rail side is asked for; the rest of a network stays at nothing
-  const result = networkMaintenance(
-    { ...EMPTY_NETWORK, rail: network.railPieces, signals: network.signals, stations: network.stations },
-    railtypes,
-    game,
-    calc.priceYear,
-  );
+  const result = networkMaintenance(networkCounts(network), railtypes, game, calc.priceYear);
 
   /** What a billed line is called. Only the rail side is asked for, so only it is named. */
   const lineName = (category: MaintenanceCategory, label?: string): string => {

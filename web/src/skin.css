@@ -772,8 +772,9 @@ h4 {
 
 .route-controls {
   padding: 14px;
-  /* the controls span the whole column, so every panel sits under the chart in turn */
-  grid-row: 1 / span 3;
+  /* the controls span the whole column, so every panel sits under the chart in turn: the
+     count is the panels listed below as grid-column 2, and grows with them */
+  grid-row: 1 / span 4;
 }
 
 .route-controls .mantine-InputWrapper-root {
@@ -782,11 +783,13 @@ h4 {
 
 .route-chart,
 .route-profit,
-.route-network {
+.route-network,
+.route-corridor {
   grid-column: 2;
 }
 
-/* the counts read as one row of small fields, the way the game's window lists them */
+/* the inputs of both network panels — the counts and the corridor — read as one row of small
+   fields, the way the game's own window lists them */
 .network-inputs {
   display: flex;
   flex-wrap: wrap;
@@ -913,7 +916,8 @@ h4 {
 
   .route-chart,
   .route-profit,
-  .route-network {
+  .route-network,
+  .route-corridor {
     grid-column: auto;
   }
 }

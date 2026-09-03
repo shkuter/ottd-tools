@@ -47,6 +47,13 @@ export interface Railtype {
    * carries the game's own figure.
    */
   maintenance_multiplier: number;
+  /**
+   * What a piece of this track costs to lay, before the construction base price (rail.h
+   * RailBuildCost). The price of converting a corridor from one type to another is built
+   * from it. Stated by the set, like the multiplier above, and equal to it in both sets we
+   * carry — that is their choice, not a rule.
+   */
+  cost_multiplier: number;
   powered: string[];
   compatible: string[];
   /** High speed track: vehicles able to run faster there use their LGV speed. */

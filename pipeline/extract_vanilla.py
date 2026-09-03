@@ -282,16 +282,22 @@ def parse_railtypes():
             # the infrastructure base price every month, so a set that redefines a type
             # redefines what its track costs to own
             "maintenance_multiplier": int(maintenance),
+            # rail.h RailBuildCost: what a piece costs to lay, the multiplier the price of
+            # a conversion is built from. Its own field of the table — the game's four types
+            # happen to state the same number for both, so reading the wrong one is invisible
+            # in the values alone
+            "cost_multiplier": int(cost),
             "powered": powered,
             "compatible": compatible,
             "lgv": False,
             "sort": index,
         }
-        for index, (label, name, speed, flags, maintenance, powered, compatible) in enumerate(zip(
+        for index, (label, name, speed, flags, cost, maintenance, powered, compatible) in enumerate(zip(
             re.findall(r"/\* rail type label \*/\s*(RAILTYPE_LABEL_\w+)", block),
             re.findall(r"STR_RAIL_NAME_(\w+)", block),
             re.findall(r"/\* max speed \*/\s*(\d+)", block),
             re.findall(r"/\* flags \*/\s*\{([^}]*)\}", block),
+            re.findall(r"/\* cost multiplier \*/\s*(\d+)", block),
             re.findall(r"/\* maintenance cost multiplier \*/\s*(\d+)", block),
             mask("Powered"),
             mask("Compatible"),

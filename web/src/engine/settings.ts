@@ -72,6 +72,16 @@ export interface GameSettings {
    * what a rail network owns.
    */
   basecostInfrastructure: number;
+  /**
+   * Base Costs GRF multiplier for the two rail construction prices (PR_BUILD_RAIL,
+   * PR_CLEAR_RAIL). One knob over both: the calculator exposes one thing here — what track
+   * costs to build — and the parameter indices a set holds these prices at are not known
+   * from anything in `vendor/` (`savegame/registry.ts` says the same of the infrastructure
+   * multiplier). A set that scales laying and clearing apart is approximated by this, and
+   * the difference shows only where the two prices meet: a conversion between types unrelated
+   * by power, which the game charges as clearing one and laying the other.
+   */
+  basecostRailConstruction: number;
   /** Инфляция включена (Iron Horse с ней несовместим — по умолчанию off). */
   inflation: boolean;
   /** difficulty.initial_interest: скорость инфляции (2..4, def 2). */
@@ -157,6 +167,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   basecostTrainRunningDiesel: 1,
   basecostTrainRunningElectric: 1,
   basecostInfrastructure: 1,
+  basecostRailConstruction: 1,
   costsWhenStopped: 1,
   inflationFixedDates: true,
   infrastructureMaintenance: false,
@@ -261,6 +272,11 @@ export function basecostRunningFactor(
  */
 export function basecostInfrastructureFactor(settings: GameSettings): number {
   return settings.basecostGrf ? settings.basecostInfrastructure : 1;
+}
+
+/** The same for the prices of laying and clearing track. */
+export function basecostRailConstructionFactor(settings: GameSettings): number {
+  return settings.basecostGrf ? settings.basecostRailConstruction : 1;
 }
 
 /** Множитель дохода при действующей субсидии (economy.cpp DeliverGoods). */

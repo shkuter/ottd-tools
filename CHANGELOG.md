@@ -20,6 +20,13 @@ of what users see):
 
 ### Added
 
+- Corridor upgrade payback on the Route income tab: what converting a stretch of track to
+  another type — electrifying it, usually — adds to the yearly upkeep, what it changes for the
+  trains, and the **load threshold**, the fewest trains at which it stops losing money every
+  year. Capital is priced with the game's own conversion formula (`RailConvertCost`), so the
+  panel also names the year the conversion pays for itself.
+- Track construction prices (`PR_BUILD_RAIL`, `PR_CLEAR_RAIL`) and the railtype construction
+  multiplier, extracted from both sets, with a Base Costs GRF multiplier of their own.
 - Infrastructure upkeep: what a network costs to own per year — track by type, signals and
   stations — computed the way the game does it, with both growth models (vanilla
   `1 + IntSqrt(n)` and JGRPP's linear one), and shown as a panel on the Route income tab.

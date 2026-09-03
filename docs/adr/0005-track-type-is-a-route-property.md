@@ -51,6 +51,9 @@ Iron Horse now; the xUSSR sets arrive later as data under the same schema.
 - Track construction and maintenance costs, and the curve-speed bonus, stay out of the model:
   the calculator knows the route's distance, not its geometry (ADR-0004 cuts the same way —
   no hand-entered track speed limit either; limits come from the set's data or not at all).
+  **Superseded for the costs by [ADR-0006](0006-owning-track-costs-what-the-player-counted.md):**
+  they are in the model, priced from counts the player states rather than from geometry the
+  calculator would have to infer. The curve-speed bonus stays out.
 - `purchaseKey()` and the catalogue keep grouping by **track family** — the family stays in
   the data as what Iron Horse states speeds and capacities by; it just no longer stands in
   for the track type.

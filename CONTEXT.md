@@ -211,6 +211,18 @@ than carrying zeroes — a company with no network and a network nobody could lo
 different answers. _Avoid_: "infrastructure" for the counts alone; that word is the cost
 category.
 
+**Corridor** (_коридор_) — a stretch of the network considered as one thing to convert: the
+length the player states when asking whether to electrify. Measured in **track pieces**, like
+everything else billed here, so a double-track corridor is twice its tiles. Not a route — a
+route is a distance between two industries; a corridor is track, and several routes may share
+one. _Avoid_: line, section.
+
+**Load threshold** (_порог загрузки_) — the fewest trains on a corridor at which converting it
+stops losing money every year: the added upkeep divided by what one train gains, plus one. It
+is not a payback time — the capital is not in it, and at the threshold itself the capital comes
+back arbitrarily slowly. _Avoid_: окупаемость for this number; that word belongs to the
+break-even year beside it.
+
 **Growth model** (_модель роста_) — how upkeep grows with the size of a network. Vanilla
 raises the price of every piece as the network grows (`1 + IntSqrt(total)`); JGRPP's
 **linear maintenance growth** replaces that with a flat per-category scale, so cost stays

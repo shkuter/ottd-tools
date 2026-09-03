@@ -193,13 +193,11 @@ def catalogue_payload(catalogue, dh):
     return item
 
 
-def vanilla_maintenance(vanilla, label):
-    """The game's upkeep multiplier for a type the set left to it."""
+def vanilla_multiplier(vanilla, label, key):
+    """The game's own multiplier for a type the set left to it."""
     if label not in vanilla:
-        raise SystemExit(
-            f"railtype {label}: no maintenance multiplier, and the game has no such type"
-        )
-    return vanilla[label]["maintenance_multiplier"]
+        raise SystemExit(f"railtype {label}: no {key}, and the game has no such type")
+    return vanilla[label][key]
 
 
 def railtypes_payload(dh):
@@ -257,7 +255,15 @@ def railtypes_payload(dh):
             # None means the set leaves the type to the game (rail, electrified rail).
             "maintenance_multiplier": (
                 rt.maintenance_cost if rt.maintenance_cost is not None
-                else vanilla_maintenance(vanilla, rt.label)
+                else vanilla_multiplier(vanilla, rt.label, "maintenance_multiplier")
+            ),
+            # What a piece costs to lay (rail.h RailBuildCost), the multiplier a conversion
+            # is priced from. This is the attribute the set actually declares — the one above
+            # is assigned from it — so both come out equal here; they need not stay that way
+            # in another set, hence two fields.
+            "cost_multiplier": (
+                rt.construction_cost if rt.construction_cost is not None
+                else vanilla_multiplier(vanilla, rt.label, "cost_multiplier")
             ),
             "powered": borrowed["powered"] if borrowed else list(rt.powered_railtype_list),
             "compatible": (

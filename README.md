@@ -19,6 +19,9 @@ it read them off your game.
   and time-penalty curve chart, plus profitability of the built consist on that route
   (profit per year / per train tile, payback) and what the network itself costs to own each
   year — track by type, signals and stations, as the game's infrastructure window bills them.
+  A corridor upgrade panel asks the other half of that question: what electrifying a stretch
+  of it would add to the upkeep, change for the trains, and cost to build, and from how many
+  trains on the corridor it stops losing money every year.
 - **Industry supply** — every input of one industry at once: a fleet per input, the
   conversion they add up to, and the input to fix first.
 - **FIRS chains** — interactive cargo-flow graph per economy (graphviz WASM), industry and

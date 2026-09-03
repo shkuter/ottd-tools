@@ -90,6 +90,7 @@ function normaliseGame(game: GameSettings): GameSettings {
     basecostTrainRunningDiesel: fix(game.basecostTrainRunningDiesel),
     basecostTrainRunningElectric: fix(game.basecostTrainRunningElectric),
     basecostInfrastructure: fix(game.basecostInfrastructure),
+    basecostRailConstruction: fix(game.basecostRailConstruction),
   };
 }
 

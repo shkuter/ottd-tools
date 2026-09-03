@@ -8,6 +8,7 @@ import { consistStats } from '../consist';
 import { transportedGoodsIncome } from '../income';
 import { standsInBuyMenu } from '../availability';
 import { networkMaintenance, type NetworkCounts } from '../infrastructure';
+import { railConvertCost } from '../costs';
 import {
   activeCargos,
   activeRailtypes,
@@ -15,6 +16,7 @@ import {
   activeTrainsMeta,
   availabilityContext,
   economyIdForPayment,
+  selectableRailtypes,
   trains,
   trainsMeta,
   cargoByLabel,
@@ -114,6 +116,14 @@ function snapshot(
     // стоимость владения сетью: настройки обслуживания инфраструктуры не двигают ни одной
     // машины, поэтому в снимке им отвечает только эта строка
     network: networkMaintenance(NETWORK, activeRailtypes(game), game, calc.priceYear).yearly,
+    // цена перевода куска пути: строительные цены не двигают ни машину, ни содержание,
+    // поэтому их множители видны только здесь. Типы берутся у самого набора, а не по
+    // лейблам: на незнакомый лейбл activeRailtype молча отдаёт первый путь, и строка
+    // сравнила бы тип сам с собой
+    convert: (() => {
+      const [from, to = from] = selectableRailtypes(game);
+      return from ? railConvertCost(from, to!, game, calc.priceYear) : 0;
+    })(),
   });
 }
 
@@ -236,6 +246,14 @@ const CASES: {
     name: 'linearMaintenance (JGRPP)',
     game: { jgrpp: true, infrastructureMaintenance: true, linearMaintenance: true },
     base: { jgrpp: true, infrastructureMaintenance: true },
+  },
+  {
+    // цены постройки и сноса пути: своя категория расходов (construction_cost) и свой
+    // множитель набора Base Costs. База — с уже включённым GRF, иначе кейс прошёл бы за
+    // счёт самого флага, а не за счёт множителя
+    name: 'basecostRailConstruction',
+    game: { basecostGrf: true, basecostRailConstruction: 8 },
+    base: { basecostGrf: true },
   },
   {
     // множитель Base Costs на цены инфраструктуры: своя база — со включённой статьёй и
