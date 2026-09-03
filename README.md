@@ -24,10 +24,11 @@ it read them off your game.
 - **FIRS chains** — interactive cargo-flow graph per economy (graphviz WASM), industry and
   cargo cards with input/output ratios.
 - **Game** — import a savegame (JGRPP and vanilla, read in a worker, never leaves the
-  browser) and the calculator reads your settings, trains, routes, stations and industries
-  out of it. The tab lists your routes with the profit the game recorded last year beside the
-  profit the calculator expects for the same route, and hands a route or a cargo over to the
-  tabs above.
+  browser) and the calculator reads your settings, trains, routes, stations and industries out
+  of it, and walks its map to count what each company owns — track by type, signals, station
+  tiles — the way the game counts it on load. The tab lists your routes with the profit the
+  game recorded last year beside the profit the calculator expects for the same route, and
+  hands a route, a cargo or a company's network over to the tabs above.
 - **Settings** — the game's own Advanced Settings, named as the game names them, plus the
   assumptions the calculator makes. English and Russian throughout; cargo, industry and
   setting names come from the game's and FIRS's own locales, so what you read here is what

@@ -25,6 +25,13 @@ export const WANTED_CHUNKS = [
   // what the game sells on its own date: it decides availability from rolled dates and
   // ages the data files cannot state, so its answer beats any recomputation
   'ENGN',
+  // the map, for the infrastructure counts: the game saves no counters and recomputes them
+  // by walking every tile on load (sl/company_sl.cpp AfterLoadCompanyStats). JGRPP writes
+  // the whole map as one chunk, upstream writes one chunk per field of a tile
+  'WMAP', 'MAPT', 'MAPH', 'MAPO', 'MAP2', 'M3LO', 'M3HI', 'MAP5', 'MAPE', 'MAP7', 'MAP8',
+  // what a rail or road type index in those tiles means: the game numbers them as the GRFs
+  // it loaded happen to fall, and writes the labels so a later load can remap
+  'RAIL', 'ROTT',
 ] as const;
 
 export interface ParsedSavegame {

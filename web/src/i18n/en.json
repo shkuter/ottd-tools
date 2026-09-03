@@ -481,12 +481,17 @@
   "game.blocker.mixedFleet": "trains differ",
   "game.blocker.noDistance": "distance unknown",
   "game.blocker.cargoNotCarried": "consist cannot carry it",
+  "game.blocker.noNetwork": "map of the save not read",
   "game.stopCount": "{count} stops",
   "game.noFinishedYear": "no finished year yet",
   "game.mixedConsists": "differing consists",
   "game.factThisYear": "The game, this year",
   "game.toIncome": "Route income",
+  "game.network": "Company network",
+  "game.networkSummary": "track {track} {trackUnit} · signals {signals} · station tiles {stations}",
+  "game.toNetwork": "Price this network on the Route income tab",
   "game.toOptimizerCargo": "Find the best train for this cargo",
   "prefill.fromRoute": "Values from route {label} of the imported game.",
-  "prefill.fromIndustry": "Values from {label} of the imported game."
+  "prefill.fromIndustry": "Values from {label} of the imported game.",
+  "prefill.fromCompany": "Counts from {label} of the imported game."
 }

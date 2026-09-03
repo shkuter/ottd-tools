@@ -481,12 +481,17 @@
   "game.blocker.mixedFleet": "поезда разные",
   "game.blocker.noDistance": "расстояние неизвестно",
   "game.blocker.cargoNotCarried": "состав не возит этот груз",
+  "game.blocker.noNetwork": "карта сохранения не разобрана",
   "game.stopCount": "остановок: {count}",
   "game.noFinishedYear": "полного года ещё не было",
   "game.mixedConsists": "составы разные",
   "game.factThisYear": "В игре, текущий год",
   "game.toIncome": "Доход рейса",
+  "game.network": "Сеть компании",
+  "game.networkSummary": "пути {track} {trackUnit} · сигналы {signals} · клетки станций {stations}",
+  "game.toNetwork": "Посчитать эту сеть на вкладке «Доход рейса»",
   "game.toOptimizerCargo": "Подобрать лучший поезд под этот груз",
   "prefill.fromRoute": "Значения из маршрута {label} импортированной партии.",
-  "prefill.fromIndustry": "Значения из «{label}» импортированной партии."
+  "prefill.fromIndustry": "Значения из «{label}» импортированной партии.",
+  "prefill.fromCompany": "Количества из компании {label} импортированной партии."
 }

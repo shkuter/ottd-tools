@@ -1,14 +1,22 @@
 import { t } from '../i18n';
-import { prefillMatches, type PrefillOrigin } from '../state/prefill';
+import { prefillMatches, type PrefillOrigin, type PrefillSource } from '../state/prefill';
+
+const SENTENCE: Record<PrefillSource, string> = {
+  route: 'prefill.fromRoute',
+  industry: 'prefill.fromIndustry',
+  company: 'prefill.fromCompany',
+};
 
 /**
  * "These figures came from your game." Shown while the tab still holds exactly what a bridge
  * wrote, and gone the moment any of it is edited — the comparison is the whole mechanism, so
  * nothing has to be told when the user starts typing.
  *
- * Which sentence to use follows the origin itself: a tab reached from two kinds of card
- * cannot know which one sent the values it is holding.
+ * Which sentence to use follows the origin itself: a tab reached from several kinds of card
+ * cannot know which one sent the values it is holding. A tab whose halves are filled by
+ * different cards keeps a note — and an origin — per half, so each sits beside its own fields.
  */
+
 export function PrefillNote<V extends object>({
   origin,
   current,
@@ -18,6 +26,5 @@ export function PrefillNote<V extends object>({
   current: V;
 }) {
   if (!prefillMatches(origin, current)) return null;
-  const key = origin.source === 'industry' ? 'prefill.fromIndustry' : 'prefill.fromRoute';
-  return <p className="hint prefill-note">{t(key, { label: origin.label })}</p>;
+  return <p className="hint prefill-note">{t(SENTENCE[origin.source], { label: origin.label })}</p>;
 }

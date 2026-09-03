@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ActionIcon, Table, Tooltip } from '@mantine/core';
+import { Table, Tooltip } from '@mantine/core';
 import { useNavigate } from 'react-router';
 import { SortableTh } from '../../components/table/SortableTh';
 import { TableFrame } from '../../components/table/TableFrame';
@@ -14,6 +14,7 @@ import type { SnapshotSettings } from '../../savegame/snapshotStore';
 import { routeRows, stationStops, type RouteRow } from './routeRows';
 import { routeToIncome, routeToOptimizer } from './bridge';
 import { applyIncomeBridge } from './applyBridge';
+import { BridgeButton } from './BridgeButton';
 import { hasFinishedYear } from './game';
 import { consistText, trainLabel, townsById } from './labels';
 import { CargoLabel } from './CargoLabel';
@@ -286,35 +287,18 @@ function RouteDetail({
 /**
  * The route's own action: price this very trip on the income tab. An arrow in the last
  * column, the way the optimizer's table already carries a row over to another tab.
- *
- * A bridge that cannot be taken stays in place and says what stops it. It is marked disabled
- * rather than made disabled: a truly disabled button drops out of the tab order, and the
- * reason would then be reachable by mouse alone.
  */
 function RouteBridge({ row, title, snapshot }: { row: RouteRow; title: string; snapshot: Snapshot }) {
   const navigate = useNavigate();
-  const { values, blocker } = routeToIncome(row, snapshot);
-  const name = blocker
-    ? `${t('game.toIncome')} — ${t(`game.blocker.${blocker}`)}`
-    : t('game.toIncome');
-
   return (
-    <ActionIcon
-      className="btn-add"
-      data-disabled={values === undefined || undefined}
-      aria-disabled={values === undefined || undefined}
-      title={name}
-      aria-label={name}
-      onClick={(event) => {
-        // the row underneath opens on click; taking a bridge is not opening a row
-        event.stopPropagation();
-        if (values === undefined) return;
+    <BridgeButton
+      action={t('game.toIncome')}
+      bridge={routeToIncome(row, snapshot)}
+      onTake={(values) => {
         applyIncomeBridge(values, title);
         void navigate('/income');
       }}
-    >
-      →
-    </ActionIcon>
+    />
   );
 }
 

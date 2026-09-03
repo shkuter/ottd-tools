@@ -5,10 +5,10 @@ import type { PrefillOrigin } from './prefill';
 /**
  * How much of a network a company owns, as the infrastructure window counts it: pieces of
  * track per railtype (a tile carries one per track on it), signals by the head, station
- * tiles. Typed in by hand — the question "is it worth
- * electrifying this line" is asked before the line exists. A savegame states none of this:
- * the game recomputes the counts by walking the map on load (sl/company_sl.cpp
- * AfterLoadCompanyStats), so reading them back is a change of its own.
+ * tiles. Typed in by hand — the question "is it worth electrifying this line" is asked
+ * before the line exists — or carried over from an imported game, whose map the import
+ * walks the way the game walks it on load (sl/company_sl.cpp AfterLoadCompanyStats),
+ * because a savegame stores no counters of its own.
  */
 export interface NetworkInputs {
   railPieces: Record<string, number>;
@@ -31,7 +31,12 @@ export interface RoutePrefill {
   productionPerMonth: number;
   waitForFullLoad: boolean;
   consist: { id: string; count: number }[];
+  /** Filled by the bridge from a company card; the rest of the tab is untouched by it. */
+  network: NetworkInputs;
 }
+
+/** The half of the tab a company card fills in: the counts, and nothing else. */
+export type NetworkPrefill = Pick<RoutePrefill, 'network'>;
 
 interface RouteState {
   cargoLabel: string;
@@ -49,8 +54,15 @@ interface RouteState {
   waitForFullLoad: boolean;
   /** The network whose upkeep this tab prices; see NetworkInputs. */
   network: NetworkInputs;
-  /** Set when a bridge filled these inputs in; null when they were typed by hand. */
+  /** Set when a bridge filled the route's own inputs in; null when they were typed by hand. */
   prefillOrigin: PrefillOrigin<RoutePrefill> | null;
+  /**
+   * The same, for the network counts. A slot of its own because the two halves of this tab
+   * are filled by different cards of the game tab — a route and a company — and neither may
+   * erase the other's note by arriving second. It speaks for the counts alone, so the note
+   * beside them compares those and not a consist the company card never mentioned.
+   */
+  networkOrigin: PrefillOrigin<NetworkPrefill> | null;
   setCargoLabel: (label: string) => void;
   setDistanceTiles: (tiles: number) => void;
   setAmount: (amount: number) => void;
@@ -60,6 +72,7 @@ interface RouteState {
   setNetwork: (network: NetworkInputs) => void;
   setRailPieces: (label: string, pieces: number) => void;
   setPrefillOrigin: (origin: PrefillOrigin<RoutePrefill> | null) => void;
+  setNetworkOrigin: (origin: PrefillOrigin<NetworkPrefill> | null) => void;
 }
 
 export const useRouteStore = create<RouteState>()(
@@ -73,6 +86,7 @@ export const useRouteStore = create<RouteState>()(
       waitForFullLoad: false,
       network: EMPTY_NETWORK_INPUTS,
       prefillOrigin: null,
+      networkOrigin: null,
       setCargoLabel: (cargoLabel) => set({ cargoLabel }),
       setDistanceTiles: (distanceTiles) => set({ distanceTiles }),
       setAmount: (amount) => set({ amount }),
@@ -83,6 +97,7 @@ export const useRouteStore = create<RouteState>()(
       setRailPieces: (label, pieces) =>
         set((s) => ({ network: { ...s.network, railPieces: { ...s.network.railPieces, [label]: pieces } } })),
       setPrefillOrigin: (prefillOrigin) => set({ prefillOrigin }),
+      setNetworkOrigin: (networkOrigin) => set({ networkOrigin }),
     }),
     {
       name: 'ottd-tools-route',

@@ -10,13 +10,23 @@
  */
 
 import type { Cargo, ConsistEntry } from '../../types';
-import type { Snapshot, SnapshotProduced } from '../../savegame/snapshot';
+import type { Snapshot, SnapshotCompany, SnapshotProduced } from '../../savegame/snapshot';
 import type { OptimizerPrefill } from '../../state/optimizerStore';
-import type { RoutePrefill } from '../../state/routeStore';
+import type { NetworkInputs, RoutePrefill } from '../../state/routeStore';
 import { routeObstacles, stationStops, type ForecastBlocker, type RouteRow } from './routeRows';
 
+/**
+ * Why a bridge may not be taken. Most reasons are a route's own — the forecast it cannot
+ * state is the same thing that stops it travelling — but a card that is not a route has
+ * reasons of its own, and they are named the same way (`game.blocker.*`).
+ */
+export type BridgeBlocker =
+  | ForecastBlocker
+  /** The map of the save could not be read, so nobody's network is known. */
+  | 'noNetwork';
+
 /** A bridge that may be taken, or the reason it may not. */
-export type Bridge<V> = { values: V; blocker?: never } | { blocker: ForecastBlocker; values?: never };
+export type Bridge<V> = { values: V; blocker?: never } | { blocker: BridgeBlocker; values?: never };
 
 export interface IncomeBridge {
   /** Catalogue rows for the consist builder, from the set the imported game was played with. */
@@ -158,4 +168,19 @@ export function incomePrefillValues(bridge: IncomeBridge): Partial<RoutePrefill>
     // whatever was being worked out before
     manualDays: null,
   };
+}
+
+/**
+ * Company → the network upkeep block of Route income. What the company owns, counted off the
+ * map of the save the way the game counts it on load.
+ *
+ * Refused rather than zeroed where the map could not be read: a network of nothing is an
+ * answer the block would price, and the company may well own a thousand tiles of track.
+ */
+export function companyToNetwork(company: SnapshotCompany): Bridge<NetworkInputs> {
+  if (company.network === undefined) return { blocker: 'noNetwork' };
+  const { rail, signals, stations } = company.network;
+  // only what the block asks for: roads, trams and canals are counted so the yearly total can
+  // be checked against the game's window, and the block has no fields for them
+  return { values: { railPieces: { ...rail }, signals, stations } };
 }

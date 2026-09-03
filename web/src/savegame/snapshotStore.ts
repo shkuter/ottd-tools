@@ -17,7 +17,7 @@ import {
 import type { Snapshot } from './snapshot';
 
 /** Bump when the Snapshot shape changes; an old record is dropped, not migrated. */
-export const SNAPSHOT_SCHEMA_VERSION = 4;
+export const SNAPSHOT_SCHEMA_VERSION = 5;
 
 /**
  * The settings of the game the snapshot was taken from — what the savegame itself stated,

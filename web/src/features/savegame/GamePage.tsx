@@ -8,7 +8,9 @@ import { RoutesTab } from './RoutesTab';
 import { TrainsTab } from './TrainsTab';
 import { StationsTab } from './StationsTab';
 import { IndustriesTab } from './IndustriesTab';
+import { CompanyNetworkCard } from './CompanyNetworkCard';
 import { defaultCompanyId, differingSettings } from './game';
+import { companyLabel } from './labels';
 
 /**
  * The imported game. Four lists over one snapshot, all of them for the company picked at the
@@ -24,13 +26,12 @@ export default function GamePage({ record }: { record: SnapshotRecord }) {
   const { snapshot, settings } = record;
 
   const [companyId, setCompanyId] = useState(() => defaultCompanyId(snapshot.companies));
+  const company = snapshot.companies.find((c) => c.id === companyId);
   // built during render, not memoised: the labels are translated strings, and a memo would
   // hold the old language until something else changed (see the i18n note in CLAUDE.md)
-  const companies = snapshot.companies.map((company) => ({
-    value: String(company.id),
-    label:
-      company.name ||
-      t(company.isAi ? 'game.companyAi' : 'game.companyStub', { id: company.id + 1 }),
+  const companies = snapshot.companies.map((each) => ({
+    value: String(each.id),
+    label: companyLabel(each),
   }));
 
   // what the user has changed since importing; the forecasts ignore it, and say so.
@@ -60,6 +61,8 @@ export default function GamePage({ record }: { record: SnapshotRecord }) {
           })}
         </Text>
       </Group>
+
+      {company && <CompanyNetworkCard company={company} />}
 
       {driftedKeys.length > 0 && (
         <Text className="hint game-drift">

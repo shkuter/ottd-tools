@@ -11,7 +11,7 @@ import { activeEntries } from '../../dataset';
 import type { GameSettings } from '../../engine/settings';
 import { useConsistStore } from '../../state/consistStore';
 import { useOptimizerStore } from '../../state/optimizerStore';
-import { useRouteStore } from '../../state/routeStore';
+import { useRouteStore, type NetworkInputs } from '../../state/routeStore';
 import type { OptimizerPrefill } from '../../state/optimizerStore';
 import { incomePrefillValues, type IncomeBridge } from './bridge';
 
@@ -54,6 +54,19 @@ export function applyOptimizerBridge(
 }
 
 /**
+ * Company network → Route income. Only the counts of the network: the company card states
+ * nothing about a cargo, a leg or a consist, so the rest of the tab is left as the user
+ * last worked with it.
+ */
+export function applyNetworkBridge(network: NetworkInputs, label: string): void {
+  const route = useRouteStore.getState();
+  route.setNetwork(network);
+  // into the network's own note: a route carried over earlier still describes the cargo, the
+  // leg and the consist, and none of them moved
+  route.setNetworkOrigin({ source: 'company', label, values: { network } });
+}
+
+/**
  * What the Route income tab currently holds, in the shape the note compares against — the
  * consist as the tab itself computes with, so a note cannot stand over figures the tab is
  * not using (a vehicle of another set is left out of both).
@@ -71,5 +84,6 @@ export function routePrefillState(game: GameSettings) {
       id: entry.train.id,
       count: entry.count,
     })),
+    network: route.network,
   };
 }

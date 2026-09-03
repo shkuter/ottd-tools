@@ -3,6 +3,7 @@ import { selectableRailtypes } from '../../dataset';
 import { t } from '../../i18n';
 import { railtypeOptions } from '../../i18n/names';
 import { num, unitSuffix } from '../../components/format';
+import { PrefillNote } from '../../components/PrefillNote';
 import { Money } from '../../components/Money';
 import {
   EMPTY_NETWORK,
@@ -25,6 +26,7 @@ export function NetworkMaintenance() {
   const network = useRouteStore((s) => s.network);
   const setNetwork = useRouteStore((s) => s.setNetwork);
   const setRailPieces = useRouteStore((s) => s.setRailPieces);
+  const networkOrigin = useRouteStore((s) => s.networkOrigin);
   // named through railtypeOptions: a set may call two tracks the same thing, and a column of
   // identical labels would be two fields nobody can tell apart. Not memoised — the names are
   // translated, and a memo would hold the language they were first drawn in
@@ -49,6 +51,9 @@ export function NetworkMaintenance() {
   return (
     <Paper component="section" className="route-network" p="sm">
       <Title order={3}>{t('network.title')}</Title>
+      {/* the note belongs to the counts, so it stands here rather than over the route's own
+          inputs, which a company card says nothing about */}
+      <PrefillNote origin={networkOrigin} current={{ network }} />
       {!game.infrastructureMaintenance && <Text className="hint">{t('network.disabled')}</Text>}
       <div className="network-inputs">
         {options.map(({ railtype, name }) => (

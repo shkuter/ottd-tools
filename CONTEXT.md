@@ -202,6 +202,15 @@ is two. A figure typed in tiles understates a double-track line twofold, which i
 field names the unit. _Avoid_: клетка пути for this quantity; station tiles genuinely are
 tiles.
 
+**Company network** (_сеть компании_) — what one company of an imported game owns, counted
+off the map of the save the way the game recounts it on load: track pieces per railtype,
+signals, station tiles, road and tram pieces per type, canal tiles. A savegame stores no such
+counters, so this is computed, not read. **Absent is not zero**: a map in a layout the import
+does not know leaves the network unknown, and the bridge into the upkeep panel refuses rather
+than carrying zeroes — a company with no network and a network nobody could look at are
+different answers. _Avoid_: "infrastructure" for the counts alone; that word is the cost
+category.
+
 **Growth model** (_модель роста_) — how upkeep grows with the size of a network. Vanilla
 raises the price of every piece as the network grows (`1 + IntSqrt(total)`); JGRPP's
 **linear maintenance growth** replaces that with a flat per-category scale, so cost stays

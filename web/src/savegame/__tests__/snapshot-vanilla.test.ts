@@ -349,7 +349,10 @@ describe('настоящая ванильная партия (vanilla-1951)', ()
     const snap = await snapshot();
     // партия сыграна год: прошлогодняя прибыль у всех положительная
     for (const train of snap.trains) expect(train.profitLastYear).toBeGreaterThan(0);
-    expect(snap.companies).toEqual([{ id: 0, name: '', isAi: false }]);
+    // только опознающие поля: сеть компании проверяется своим тестом
+    expect(snap.companies.map(({ id, name, isAi }) => ({ id, name, isAi }))).toEqual([
+      { id: 0, name: '', isAi: false },
+    ]);
   });
 
   it('ванильные индустрии опознаются по таблице самой игры', async () => {

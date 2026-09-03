@@ -27,8 +27,26 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
   snapshot: {
     soldIds: null,
     companies: [
-      { id: 0, name: 'Checks & Co', isAi: false },
-      { id: 1, name: '', isAi: true },
+      {
+        id: 0,
+        name: 'Checks & Co',
+        isAi: false,
+        // the counts the game's infrastructure window would show for this company
+        network: {
+          rail: { RAIL: 240, ELRL: 60 },
+          signals: 18,
+          stations: 12,
+          road: { ROAD: 8 },
+          tram: {},
+          canals: 2,
+        },
+      },
+      {
+        id: 1,
+        name: '',
+        isAi: true,
+        network: { rail: { RAIL: 30 }, signals: 2, stations: 3, road: {}, tram: {}, canals: 0 },
+      },
     ],
     towns: [
       { id: 0, name: 'Checkford' },

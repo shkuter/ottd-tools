@@ -39,6 +39,16 @@ of what users see):
 - The consist summary now says what handed the train its speed limit — an engine, a wagon or
   the track — and names nothing when two of them sit at the same figure. A row in the picker
   whose wagons hold a faster engine back is flagged beside the wagon.
+- An imported savegame now states what each of its companies owns — track by type, signals,
+  station tiles, roads, tram track and canals — read off the map of the save. The game stores
+  no such counters and rebuilds them by walking every tile on load
+  (`sl/company_sl.cpp` AfterLoadCompanyStats), so the import walks the same tiles by the same
+  rules, in both map layouts: JGRPP's single `WMAP` chunk and upstream's chunk per tile field.
+  A map in a layout the import does not know leaves the counts absent rather than zero.
+- The company card of the Game tab carries that network into the upkeep panel of Route
+  income, marked as the game's figures like every other bridge, and says why it cannot when
+  the map was not read. The yearly total on those counts matches the game's own
+  infrastructure window to the rouble on both test savegames.
 
 ### Changed
 
@@ -46,6 +56,9 @@ of what users see):
   savegame into the settings that are carried over: the calculator now has a model for it.
 - `vehicle.wagon_speed_limits` travels with an imported savegame instead of being listed as
   a read-only fact of the game: the calculator now has a model for it.
+- **BREAKING** The stored snapshot's schema version rises, because a company now carries its
+  network: a game imported with an earlier version is dropped and has to be imported again.
+  Nothing else in the saved state is touched.
 
 ## [0.19.0] - 2026-09-02
 

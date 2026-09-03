@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createJSONStorage } from 'zustand/middleware';
 import { prefillMatches, type PrefillOrigin } from '../prefill';
-import { useRouteStore, type RoutePrefill } from '../routeStore';
+import { EMPTY_NETWORK_INPUTS, useRouteStore, type RoutePrefill } from '../routeStore';
 import { memoryStorage } from './memoryStorage';
 
 const carried: PrefillOrigin<RoutePrefill> = {
@@ -32,6 +32,7 @@ const current = (over: Partial<RoutePrefill> = {}): RoutePrefill => ({
     { id: 'haar', count: 1 },
     { id: 'hopper', count: 8 },
   ],
+  network: EMPTY_NETWORK_INPUTS,
   ...over,
 });
 

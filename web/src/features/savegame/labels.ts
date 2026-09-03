@@ -8,7 +8,24 @@ import { t } from '../../i18n';
 import { cargoName } from '../../i18n/names';
 import type { GameSettings } from '../../engine/settings';
 import type { Cargo } from '../../types';
-import type { SnapshotConsistEntry, SnapshotTown, SnapshotTrain } from '../../savegame/snapshot';
+import type {
+  SnapshotCompany,
+  SnapshotConsistEntry,
+  SnapshotTown,
+  SnapshotTrain,
+} from '../../savegame/snapshot';
+
+/**
+ * The player's name for the company, or the stub the game would show — written once because
+ * the company is named in two places at once: the picker at the top of the tab and the note
+ * a bridge leaves on the receiving tab, which have to agree.
+ */
+export function companyLabel(company: SnapshotCompany): string {
+  return (
+    company.name ||
+    t(company.isAi ? 'game.companyAi' : 'game.companyStub', { id: company.id + 1 })
+  );
+}
 
 /** The player's name for the train, or its unit number the way the game titles the window. */
 export function trainLabel(train: Pick<SnapshotTrain, 'name' | 'unitNumber'>): string {

@@ -25,6 +25,7 @@ import { isRearDualheaded, TS_ARTICULATED_PART, TS_FRONT } from './extract/vehs'
 import { isBaseSet, VEHICLE_TYPE_TRAIN } from './extract/ids';
 import { enginesOnSale } from './extract/engn';
 import { areasTouch } from './extract/area';
+import type { InfrastructureCounts } from './extract/infrastructure';
 import stationNamesJson from '../data/station_names.json';
 import { TOWNNAME_ENGLISH_ORIGINAL } from './extract/city';
 import { englishOriginalTownName } from './names';
@@ -34,6 +35,12 @@ export interface SnapshotCompany {
   /** Player-given name; '' when the game generates one — the UI falls back to a stub. */
   name: string;
   isAi: boolean;
+  /**
+   * What this company owns, as the game's infrastructure window counts it. Absent — not
+   * zeroed — where the save's map could not be read: a company with no network and a network
+   * nobody could look at are different answers, and only one of them may prefill a form.
+   */
+  network?: InfrastructureCounts;
 }
 
 export interface SnapshotTown {
@@ -192,6 +199,9 @@ export function buildSnapshot(raw: RawSavegame): Snapshot {
       id: c.index,
       name: c.name,
       isAi: c.isAi,
+      // every company of a readable map has a network, empty where it owns nothing; a map
+      // that could not be read leaves all of them without one
+      ...(raw.network.infrastructure ? { network: raw.network.infrastructure.get(c.index) } : {}),
     })),
     towns: buildTowns(raw),
     stations: buildStations(raw, label, industryTypeMap),

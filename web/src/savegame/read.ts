@@ -13,6 +13,9 @@ import { readGroups, type SavedGroup } from './extract/grps';
 import { readEngineIds, readIndustryTypeIds, type GrfEntityId } from './extract/ids';
 import { readEngineStates, type SavedEngineState } from './extract/engn';
 import { readIndustries, type SavedIndustry } from './extract/indy';
+import { countInfrastructure, type InfrastructureCounts } from './extract/infrastructure';
+import { readRailTypeLabels, readRoadTypeLabels } from './extract/labelmaps';
+import { readTiles } from './extract/tiles';
 import { readMapSize, type SavedMapSize } from './extract/maps';
 import { readNewGrfs, type SavedGrf } from './extract/ngrf';
 import { readOrderLists, type SavedOrder } from './extract/ordl';
@@ -58,6 +61,11 @@ export interface RawNetwork {
   towns: Map<number, SavedTown>;
   groups: Map<number, SavedGroup>;
   companies: Map<number, SavedCompany>;
+  /**
+   * What each company owns, counted off the map. Absent — not empty — where the map could
+   * not be read: nothing owned and nothing known are different answers.
+   */
+  infrastructure?: Map<number, InfrastructureCounts>;
 }
 
 export interface RawSavegame {
@@ -81,11 +89,11 @@ export async function readSavegame(bytes: Uint8Array): Promise<RawSavegame> {
     grfs: readNewGrfs(parsed.chunks.get('NGRF')),
     year: readGameYear(parsed.chunks.get('DATE')),
     inflation: readInflation(parsed.chunks.get('ECMY')),
-    network: readNetwork(parsed.chunks),
+    network: readNetwork(parsed.chunks, parsed.header.jgrpp),
   };
 }
 
-function readNetwork(chunks: Map<string, Chunk>): RawNetwork {
+function readNetwork(chunks: Map<string, Chunk>, jgrpp: boolean): RawNetwork {
   const packetCounts = readPacketCounts(chunks.get('CAPA'));
   const trains = new Map<number, RawTrainUnit>();
   for (const [index, unit] of readTrains(chunks.get('VEHS'))) {
@@ -107,8 +115,11 @@ function readNetwork(chunks: Map<string, Chunk>): RawNetwork {
       })),
     });
   }
+  const mapSize = readMapSize(chunks.get('MAPS'));
+  const companies = readCompanies(chunks.get('PLYR'));
+  const tiles = readTiles(chunks, mapSize);
   return {
-    mapSize: readMapSize(chunks.get('MAPS')),
+    mapSize,
     engineIds: readEngineIds(chunks.get('EIDS')),
     engineStates: readEngineStates(chunks.get('ENGN')),
     industryTypeIds: readIndustryTypeIds(chunks.get('IIDS')),
@@ -118,6 +129,14 @@ function readNetwork(chunks: Map<string, Chunk>): RawNetwork {
     industries: readIndustries(chunks.get('INDY')),
     towns: readTowns(chunks.get('CITY')),
     groups: readGroups(chunks.get('GRPS')),
-    companies: readCompanies(chunks.get('PLYR')),
+    companies,
+    infrastructure: tiles
+      ? countInfrastructure(
+          tiles,
+          readRailTypeLabels(chunks.get('RAIL')),
+          readRoadTypeLabels(chunks.get('ROTT')),
+          { companies: companies.keys(), jgrpp },
+        )
+      : undefined,
   };
 }

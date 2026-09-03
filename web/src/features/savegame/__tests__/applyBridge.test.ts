@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { applyIncomeBridge, applyOptimizerBridge, routePrefillState } from '../applyBridge';
+import {
+  applyIncomeBridge,
+  applyNetworkBridge,
+  applyOptimizerBridge,
+  routePrefillState,
+} from '../applyBridge';
 import { prefillMatches } from '../../../state/prefill';
 import { useConsistStore } from '../../../state/consistStore';
 import { useOptimizerStore } from '../../../state/optimizerStore';
@@ -149,5 +154,46 @@ describe('taking the optimizer bridge', () => {
     expect(state.cargoLabel).toBe('COAL');
     expect(state.distanceTiles).toBe(300);
     expect(prefillMatches(state.prefillOrigin, state)).toBe(true);
+  });
+});
+
+describe('taking the network bridge', () => {
+  const network = { railPieces: { RAIL: 240, ELRL: 60 }, signals: 18, stations: 12 };
+
+  const noteStands = () =>
+    prefillMatches(useRouteStore.getState().networkOrigin, {
+      network: useRouteStore.getState().network,
+    });
+
+  it('writes the counts and marks them as the company’s', () => {
+    applyNetworkBridge(network, 'Checks & Co');
+
+    expect(useRouteStore.getState().network).toEqual(network);
+    expect(noteStands()).toBe(true);
+  });
+
+  it('the mark goes as soon as a count is edited by hand', () => {
+    applyNetworkBridge(network, 'Checks & Co');
+    useRouteStore.getState().setRailPieces('RAIL', 241);
+
+    expect(noteStands()).toBe(false);
+  });
+
+  it('says nothing about the route: the rest of the tab is not compared', () => {
+    applyNetworkBridge(network, 'Checks & Co');
+    useRouteStore.getState().setDistanceTiles(7);
+
+    // the note stands: a company card carried no distance, so a changed one cannot disagree
+    expect(noteStands()).toBe(true);
+  });
+
+  it('leaves the note of a route that was carried over before it', () => {
+    applyIncomeBridge(fullBridge, 'Coalmouth — Power Station');
+    applyNetworkBridge(network, 'Checks & Co');
+
+    const game = useSettingsStore.getState().game;
+    // both halves of the tab keep their own note: neither card said anything about the other
+    expect(prefillMatches(useRouteStore.getState().prefillOrigin, routePrefillState(game))).toBe(true);
+    expect(noteStands()).toBe(true);
   });
 });

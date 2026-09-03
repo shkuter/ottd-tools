@@ -1,15 +1,17 @@
 /**
- * Where a tab's inputs came from, when they were not typed in by hand: a route or an
- * industry of an imported game, carried over by a bridge from the game tab.
+ * Where a tab's inputs came from, when they were not typed in by hand: a route, an industry
+ * or a company of an imported game, carried over by a bridge from the game tab.
  *
  * The note lives on the values, not on the act of filling them in. A tab shows it while its
  * inputs still equal what the bridge wrote, which makes editing any of them put the note
  * out by itself — no setter has to know about it, and no store has to watch another one.
  */
 
+/** The kinds of card a bridge starts from; the note reads differently for each. */
+export type PrefillSource = 'route' | 'industry' | 'company';
+
 export interface PrefillOrigin<V> {
-  /** Which kind of card sent these values — the note reads differently for each. */
-  source: 'route' | 'industry';
+  source: PrefillSource;
   /** What to call the source: "Coalmouth — Power Station", an industry's name. */
   label: string;
   /** Only the fields the bridge actually wrote; anything it left alone is absent. */
