@@ -57,6 +57,11 @@ of what users see):
   the map was not read. The yearly total on those counts matches the game's own
   infrastructure window to the rouble on both test savegames.
 
+### Fixed
+
+- The bridge arrow on the Game tab is no longer clipped: an action icon grows to the glyph it
+  holds instead of being held to Mantine's square.
+
 ### Changed
 
 - `economy.infrastructure_maintenance` moved from the informational list of an imported

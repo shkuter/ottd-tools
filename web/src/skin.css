@@ -599,6 +599,15 @@ h4 {
 .btn-add {
   padding: 1px 9px;
   color: var(--skin-link);
+  /*
+   * Mantine holds an action icon to a square of `--ai-size`, and the arrow inside it does not
+   * fit that square once the padding above is taken off: the glyph is wider than the box left
+   * for it and gets cut. The plate grows to its content instead, and the square becomes the
+   * floor rather than the ceiling — a row of these still lines up, because they all hold the
+   * same arrow.
+   */
+  width: auto;
+  min-width: var(--ai-size);
 }
 
 .consist-side {
