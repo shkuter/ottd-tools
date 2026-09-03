@@ -447,6 +447,31 @@ export default function SettingsPage() {
             ]}
           />
         </Row>
+        {/* both are the patchpack's: vanilla has no braking model at all, and a train there
+            stops dead at a signal whatever the calculator holds saved */}
+        {game.jgrpp && (
+          <Row label={t('settings.brakingModel')} hint={t('settings.brakingModelHint')}>
+            <Select
+              allowDeselect={false}
+              value={game.brakingModel}
+              onChange={(v) => v && setGame('brakingModel', v as typeof game.brakingModel)}
+              data={[
+                { value: 'realistic', label: t('settings.brakingRealistic') },
+                { value: 'original', label: t('settings.brakingOriginal') },
+              ]}
+            />
+          </Row>
+        )}
+        {game.jgrpp && (
+          <Row label={t('settings.accBrakingPercent')} hint={t('settings.accBrakingPercentHint')}>
+            <NumberInput
+              min={5}
+              max={200}
+              value={game.trainAccBrakingPercent}
+              onChange={(v) => setGame('trainAccBrakingPercent', asNumber(v, 100))}
+            />
+          </Row>
+        )}
         <Row label={t('settings.freightTrains')} hint={t('settings.freightTrainsHint')}>
           <NumberInput
             min={1}

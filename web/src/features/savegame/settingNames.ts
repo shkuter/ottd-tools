@@ -40,6 +40,8 @@ export const SETTING_LABEL_KEYS: Record<SettingKey, string> = {
   constructionCost: 'settings.constructionCost',
   subsidyMultiplier: 'settings.subsidyMultiplier',
   accelerationModel: 'settings.accelModel',
+  brakingModel: 'settings.brakingModel',
+  trainAccBrakingPercent: 'settings.accBrakingPercent',
   gradualLoading: 'settings.gradualLoading',
   paymentAlgorithm: 'settings.paymentAlgorithm',
   costsWhenStopped: 'settings.costsWhenStopped',

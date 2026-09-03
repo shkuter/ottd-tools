@@ -20,6 +20,16 @@ of what users see):
 
 ### Added
 
+- Signal density on the Route income tab: how far apart signals are worth standing on this
+  line, how many the network is worth keeping, and what the extra ones cost a year. Under
+  JGRPP's realistic braking the useful spacing follows the consist's braking distance, which
+  is computed from the patchpack's own formulas; under the original model it falls back to the
+  train's length, and the panel says why the answer is different.
+- Two game settings behind the JGRPP switch: the train braking model
+  (`vehicle.train_braking_model`) and the acceleration/braking scaling factor
+  (`vehicle.train_acc_braking_percent`). Both are read from an imported savegame; only the
+  braking half of the scaling factor reaches the calculation, as acceleration plays no part in
+  the trip model.
 - Corridor upgrade payback on the Route income tab: what converting a stretch of track to
   another type — electrifying it, usually — adds to the yearly upkeep, what it changes for the
   trains, and the **load threshold**, the fewest trains at which it stops losing money every

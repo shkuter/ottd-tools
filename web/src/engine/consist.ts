@@ -80,6 +80,9 @@ export function consistPhysics(
   let emptyWeightT = 0;
   let cargoWeightT = 0;
   let lengthUnits = 0;
+  // what the freight multiplier adds to the braked length on top of the consist's own
+  // (train_cmd.cpp UpdateAcceleration); the length itself is `lengthUnits`
+  let brakingStretchUnits = 0;
   let speedLimitMph: number | null = null;
   // kept split by candidate rather than as one running minimum: the consist's own limit is
   // the lower of the two, and the split is what lets the figure say which one produced it
@@ -126,6 +129,23 @@ export function consistPhysics(
     if (cargo && canCarryIn(game, train, cargo)) {
       const capacity = count * trainCapacity(train, capacityIndex);
       capacityForCargo += capacity;
+      // the game walks the units and stretches each loaded freight one by half the
+      // multiplier's addition (train_cmd.cpp:1288-1298); a unit that carries nothing of this
+      // cargo is left alone, which is why this sits inside the carrying branch. Only under
+      // the realistic acceleration model: the original one brakes over the consist's own
+      // length whatever the multiplier says (train_cmd.cpp:1281)
+      if (
+        cargo.is_freight &&
+        game.freightTrains > 1 &&
+        game.accelerationModel === 'realistic'
+      ) {
+        const adjust = game.freightTrains - 1;
+        for (const unit of train.units) {
+          if ((unit.capacities[capacityIndex] ?? 0) > 0) {
+            brakingStretchUnits += count * Math.floor((unit.length * adjust + 1) / 2);
+          }
+        }
+      }
       // вес груза: units × weight/16 т; множитель freight_trains — только для
       // грузовых (cargotype.cpp:254 WeightOfNUnitsInTrain)
       const freightMultiplier = cargo.is_freight ? game.freightTrains : 1;
@@ -156,6 +176,7 @@ export function consistPhysics(
       maxSpeedInternal: mphToInternal(speedLimitMph ?? 200),
       numParts: numUnits,
       slopeSteepness: game.slopeSteepness,
+      brakingLengthUnits: lengthUnits + brakingStretchUnits,
     },
     stats: {
       powerHp,

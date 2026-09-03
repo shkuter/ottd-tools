@@ -271,6 +271,30 @@ class Railtypes(unittest.TestCase):
         self.assertEqual(sorted(self.vanilla["ELRL"]["compatible"]), ["ELRL", "RAIL"])
         self.assertEqual(self.vanilla["MGLV"]["powered"], ["MGLV"])
 
+    def test_vanilla_acceleration_types_match_the_game(self):
+        # table/railtypes.h "acceleration type": plain and electrified rail share the normal
+        # model, monorail and maglev have their own. The number steps the braking cap
+        # (train_settings.h: 120 + 48 per step), so it is the value that matters, not the name
+        self.assertEqual(
+            [self.vanilla[label]["acceleration_type"] for label in ("RAIL", "ELRL", "MONO", "MGLV")],
+            [0, 0, 1, 2],
+        )
+
+    def test_unknown_acceleration_model_stops_the_extractor(self):
+        # a fourth model would step the braking cap by a number nobody wrote down, so the
+        # extractor says so instead of quietly reading it as plain rail
+        with self.assertRaises(SystemExit):
+            vanilla.acceleration_type("Hyperloop")
+
+    def test_iron_horse_names_one_acceleration_model_for_every_type(self):
+        # the extractor writes 0 for every type the set defines; that is only right while the
+        # set states one model for all of them, so the template is what this checks
+        template = os.path.join(VENDOR, "iron-horse", "src", "templates", "railtype.pynml")
+        with open(template, encoding="utf-8") as f:
+            models = re.findall(r"acceleration_model:\s*(\w+)", f.read())
+        self.assertEqual(set(models), {"ACC_MODEL_RAIL"}, "Iron Horse now varies the model")
+        self.assertEqual({rt["acceleration_type"] for rt in self.iron_horse.values()}, {0})
+
     def test_vanilla_maintenance_multipliers_match_the_game(self):
         # table/railtypes.h "maintenance cost multiplier": what a piece of this track
         # costs to own each month, before the infrastructure base price

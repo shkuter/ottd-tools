@@ -246,6 +246,13 @@ def railtypes_payload(dh):
                 else "RAILTYPE_FLAG_HIDDEN" in (rt.railtype_flags or [])
             ),
             "speed_limit_internal": rt.speed_limit,
+            # The set writes one acceleration model for every type it defines — its template
+            # states ACC_MODEL_RAIL flat (src/templates/railtype.pynml), with nothing on the
+            # railtype object to vary it — and that model is the game's own default, so its
+            # braking cap is plain rail's whichever of its tracks a train runs on. A borrowed
+            # type keeps whatever the game gives that one. `test_known_values` reads the
+            # template and fails if the set ever starts varying this.
+            "acceleration_type": borrowed["acceleration_type"] if borrowed else 0,
             # What the type costs to own, per piece of track per month (rail.h
             # RailMaintenanceCost).
             # Read off the object, not the kwarg: Iron Horse assigns

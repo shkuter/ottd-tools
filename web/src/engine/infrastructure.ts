@@ -64,7 +64,7 @@ export const ROAD_MAINTENANCE_MULTIPLIERS = { ROAD: 16, ELRL: 24 } as const;
 export type RoadTypeLabel = keyof typeof ROAD_MAINTENANCE_MULTIPLIERS;
 
 /** Signals cost fifteen of the rail base price each (rail.h SignalMaintenanceCost). */
-const SIGNAL_MULTIPLIER = 15;
+export const SIGNAL_MULTIPLIER = 15;
 
 /**
  * The game's integer square root (core/math_func.cpp): the last step rounds to the

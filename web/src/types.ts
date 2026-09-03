@@ -1,3 +1,9 @@
+/**
+ * Which acceleration model a track puts a vehicle under (engine_type.h
+ * VehicleAccelerationModel): 0 plain, 1 monorail, 2 maglev.
+ */
+export type AccelerationType = 0 | 1 | 2;
+
 export interface TrainUnit {
   capacities: number[];
   /** Единицы длины OpenTTD: 16 = тайл. */
@@ -41,6 +47,13 @@ export interface Railtype {
    */
   hidden: boolean;
   speed_limit_internal: number;
+  /**
+   * Which acceleration model a vehicle on this track uses (rail.h `acceleration_type`,
+   * engine_type.h: 0 plain, 1 monorail, 2 maglev). It steps the braking cap the game plans
+   * with — 120 plus 48 per step — so a monorail stops shorter than plain rail and a maglev
+   * shorter still. A set that states nothing gets 0, which is what the game gives it.
+   */
+  acceleration_type: AccelerationType;
   /**
    * What a piece of this track costs to own each month, before the infrastructure base price
    * (rail.h RailMaintenanceCost). Stated by the set; a type the set leaves to the game

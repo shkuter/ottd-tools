@@ -178,9 +178,31 @@ describe('сборка предложения импорта', () => {
     const byName = new Map(proposal.info.map((i) => [i.setting.name, i.value]));
     expect(byName.get('economy.industry_cargo_scale')).toBe(200);
     expect(byName.get('vehicle.max_train_length')).toBe(7);
-    expect(byName.get('vehicle.train_braking_model')).toBe(1);
     // и ни одна из них не притворяется настройкой калькулятора
     expect(Object.keys(proposal.game)).not.toContain('maxTrainLength');
+    // модель торможения из этого списка ушла: у калькулятора для неё есть модель
+    expect(byName.has('vehicle.train_braking_model')).toBe(false);
+  });
+
+  it('модель торможения и коэффициент масштабирования переносятся как настройки', async () => {
+    const { buildImport } = await import('../import');
+    const { readSavegame } = await import('../read');
+    const proposal = buildImport(await readSavegame(fixture('londworth-1860')));
+    expect(proposal.game.brakingModel).toBe('realistic');
+    // сохранение коэффициента не называет — действует значение самой игры
+    expect(proposal.game.trainAccBrakingPercent).toBe(100);
+  });
+
+  it('коэффициент масштабирования читается из сохранения как есть', async () => {
+    const { gameSettingsFrom } = await import('../mapping');
+    const saved = new Map<string, number>([
+      ['vehicle.train_acc_braking_percent', 50],
+      ['vehicle.train_braking_model', 0],
+    ]);
+    expect(gameSettingsFrom(saved)).toMatchObject({
+      trainAccBrakingPercent: 50,
+      brakingModel: 'original',
+    });
   });
 
   it('порядок экономик в данных совпадает с меню параметров FIRS', async () => {

@@ -1,25 +1,16 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { NumberInput, Paper, Select, Table, Text, Title } from '@mantine/core';
 import { activeRailtype, activeTrains, availabilityContext, selectableRailtypes } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { railtypeOptions } from '../../i18n/names';
 import { num, speedUnitLabel, speedValue, unitSuffix } from '../../components/format';
 import { Money } from '../../components/Money';
+import { SummaryRow as Row } from '../../components/SummaryRow';
 import { corridorUpgrade, replacementCandidates } from '../../engine/corridorUpgrade';
 import type { RouteWithFlowParams } from '../../engine/trip';
 import { useSoldIds } from '../savegame/soldIds';
 import { networkCounts, useRouteStore } from '../../state/routeStore';
 import { useSettingsStore } from '../../state/settingsStore';
-
-/** One row of the block: a label, and the figure or the pair of figures beside it. */
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Table.Tr>
-      <Table.Td>{label}</Table.Td>
-      <Table.Td className="cell-num">{children}</Table.Td>
-    </Table.Tr>
-  );
-}
 
 /**
  * Does converting this corridor to another track pay for itself?

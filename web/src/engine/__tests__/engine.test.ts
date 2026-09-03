@@ -979,6 +979,8 @@ describe('physics', () => {
     teWeightProduct: 140 * 0.18,
     maxSpeedInternal: mphToInternal(90),
     numParts: 12,
+    // паровоз плюс десять вагонов — двенадцать юнитов по полтайла
+    brakingLengthUnits: 12 * 8,
   };
 
   it('maxTE = 9800 * Σ(вес*коэф)', () => {

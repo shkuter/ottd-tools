@@ -793,7 +793,8 @@ h4 {
 .route-chart,
 .route-profit,
 .route-network,
-.route-corridor {
+.route-corridor,
+.route-signals {
   grid-column: 2;
 }
 
@@ -802,6 +803,10 @@ h4 {
 .network-inputs {
   display: flex;
   flex-wrap: wrap;
+  /* fields line up along their inputs, not their labels: a railtype whose name wraps to two
+     lines would otherwise push its own field half a row down, and a row of inputs at two
+     heights reads as broken */
+  align-items: flex-end;
   gap: var(--skin-hsep-normal);
   margin-bottom: var(--skin-hsep-wide);
 }
@@ -926,7 +931,8 @@ h4 {
   .route-chart,
   .route-profit,
   .route-network,
-  .route-corridor {
+  .route-corridor,
+  .route-signals {
     grid-column: auto;
   }
 }

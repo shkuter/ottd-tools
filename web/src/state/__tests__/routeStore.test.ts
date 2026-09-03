@@ -1,6 +1,6 @@
 import { createJSONStorage } from 'zustand/middleware';
 import { describe, expect, it } from 'vitest';
-import { EMPTY_CORRIDOR, useRouteStore } from '../routeStore';
+import { EMPTY_CORRIDOR, EMPTY_SIGNALS, useRouteStore } from '../routeStore';
 import { memoryStorage } from './memoryStorage';
 
 const KEY = 'ottd-tools-route';
@@ -10,6 +10,7 @@ async function rehydrateFrom(json: unknown) {
   useRouteStore.setState({
     network: { railPieces: {}, signals: 0, stations: 0 },
     corridor: EMPTY_CORRIDOR,
+    signals: EMPTY_SIGNALS,
   });
   const storage = memoryStorage({ [KEY]: JSON.stringify(json) });
   useRouteStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
@@ -47,6 +48,17 @@ describe('routeStore persist', () => {
       signals: 0,
       stations: 0,
     });
+  });
+
+  it('gives a state saved before the signal block an empty descent', async () => {
+    // the field arrived after the network did, so every state saved until now lacks it
+    await rehydrateFrom({ state: { distanceTiles: 96 }, version: 0 });
+    expect(useRouteStore.getState().signals).toEqual({ descentLevels: 0 });
+  });
+
+  it('keeps the worst descent across a reload', async () => {
+    await rehydrateFrom({ state: { signals: { descentLevels: 4 } }, version: 0 });
+    expect(useRouteStore.getState().signals.descentLevels).toBe(4);
   });
 
   it('keeps the corridor across a reload', async () => {

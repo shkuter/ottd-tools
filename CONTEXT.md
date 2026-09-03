@@ -211,6 +211,23 @@ than carrying zeroes — a company with no network and a network nobody could lo
 different answers. _Avoid_: "infrastructure" for the counts alone; that word is the cost
 category.
 
+**Useful spacing** (_полезный интервал_) — the distance between signal heads below which
+packing them tighter stops paying for itself. Under JGRPP's realistic braking a train's
+reservation has to cover its whole **braking distance**, so the stretch ahead of it is never
+shorter than that however many signals stand on it; the spacing adds the train's own length
+and the game's sighting distance to it. Measured in tiles along one track, which is the same
+figure as **track pieces**: each track carries its own heads, so a spacing of fourteen tiles
+is fourteen pieces between neighbours. Under the original braking model there is no braking
+distance at all and the spacing falls back to the train's length. _Avoid_: signal density for
+this number — that is the ratio it is compared against, not the recommendation.
+
+**Braking distance** (_тормозной путь_) — how far a consist travels stopping from a given
+speed, `v² / (32 × decel)` tiles, where the deceleration is the one the game plans with rather
+than the force balance it accelerates by (`train_cmd.cpp` UpdateAcceleration). It exists only
+under realistic braking: the original model stops a train dead at a signal. A descent
+lengthens it and a climb never shortens it. _Avoid_: stopping distance, тормозной путь поезда
+for the consist's length.
+
 **Corridor** (_коридор_) — a stretch of the network considered as one thing to convert: the
 length the player states when asking whether to electrify. Measured in **track pieces**, like
 everything else billed here, so a double-track corridor is twice its tiles. Not a route — a

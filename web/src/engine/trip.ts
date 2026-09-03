@@ -105,6 +105,8 @@ export interface TripSetup {
   capacity: number;
   /** Loaded consist physics, reused by callers that need e.g. speed on a grade. */
   loadedPhysics: ConsistPhysics;
+  /** Length of the consist in tiles — what a block has to hold, for callers that ask. */
+  loadedLengthTiles: number;
   loadedSpeedInternal: number;
   emptySpeedInternal: number;
   daysLoaded: number;
@@ -167,6 +169,7 @@ export function tripSetup(params: TripParams): TripSetup {
   return {
     capacity,
     loadedPhysics: loaded.physics,
+    loadedLengthTiles: loaded.stats.lengthTiles,
     loadedSpeedInternal,
     emptySpeedInternal,
     daysLoaded,

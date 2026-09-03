@@ -94,6 +94,21 @@ export interface GameSettings {
   subsidyMultiplier: 0 | 1 | 2 | 3;
   /** vehicle.train_acceleration_model: realistic учитывает сопротивление, original — нет. */
   accelerationModel: 'realistic' | 'original';
+  /**
+   * JGRPP vehicle.train_braking_model («Модель торможения поездов», def original): realistic
+   * gives a train a braking distance and makes it reserve that distance ahead of itself
+   * (train_cmd.cpp UpdateAcceleration, GetRealisticBrakingDistanceForSpeed). Vanilla has no
+   * such setting — a train there stops dead at a signal — so a game off JGRPP reads as
+   * original.
+   */
+  brakingModel: 'original' | 'realistic';
+  /**
+   * JGRPP vehicle.train_acc_braking_percent («Коэффициент масштабирования ускорения/
+   * торможения поезда», 5…200, def 100): scales both acceleration and braking. Acceleration
+   * plays no part in the trip model, so only the braking half reaches the calculation — it
+   * caps the deceleration a train is allowed to plan for (train_settings.h).
+   */
+  trainAccBrakingPercent: number;
   /** order.gradual_loading: постепенная погрузка (влияет на длительность стоянки). */
   gradualLoading: boolean;
   /**
@@ -156,6 +171,8 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   constructionCost: 0,
   subsidyMultiplier: 2,
   accelerationModel: 'realistic',
+  brakingModel: 'original',
+  trainAccBrakingPercent: 100,
   gradualLoading: true,
   paymentAlgorithm: 'modern',
   timekeeping: 'calendar',
@@ -342,6 +359,27 @@ export function stoppedCostDivisor(settings: GameSettings): number {
  */
 export function linearMaintenanceApplies(settings: GameSettings): boolean {
   return settings.jgrpp && settings.linearMaintenance;
+}
+
+/**
+ * Realistic braking is a patchpack setting: vanilla has no braking model at all, and a train
+ * there stops dead at a signal. The saved value survives a switch of mode — an import from a
+ * JGRPP game keeps it — but it applies only where the game has it, the way linear maintenance
+ * growth does.
+ */
+export function realisticBrakingApplies(settings: GameSettings): boolean {
+  return settings.jgrpp && settings.brakingModel === 'realistic';
+}
+
+/**
+ * The braking scale as the game holds it — a percentage, not a fraction: the cap it feeds is
+ * computed in integers, and a detour through a fraction loses a unit at some values. Off the
+ * patchpack the setting does not exist, so the game's own 100 applies whatever is saved.
+ */
+export function brakingPercent(
+  settings: Pick<GameSettings, 'jgrpp' | 'trainAccBrakingPercent'>,
+): number {
+  return settings.jgrpp ? Math.max(5, Math.min(200, settings.trainAccBrakingPercent)) : 100;
 }
 
 /** Замедление экономики учитывается только на JGRPP (в ванили настройки нет). */

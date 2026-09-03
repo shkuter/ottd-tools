@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { optimizeConsists, type OptimizeParams } from '../optimize';
 import { consistStats } from '../consist';
+import { signalInputs, signalPlan } from '../signals';
 import { transportedGoodsIncome } from '../income';
 import { standsInBuyMenu } from '../availability';
 import { networkMaintenance, type NetworkCounts } from '../infrastructure';
@@ -123,6 +124,28 @@ function snapshot(
     convert: (() => {
       const [from, to = from] = selectableRailtypes(game);
       return from ? railConvertCost(from, to!, game, calc.priceYear) : 0;
+    })(),
+    // полезная плотность сигналов: настройки торможения не двигают ни машину, ни содержание
+    // сети, поэтому в снимке им отвечает только эта строка
+    signals: (() => {
+      const plan = signalPlan(
+        signalInputs(
+          {
+            entries,
+            meta,
+            cargo,
+            payment: cargo.initial_payment_by_economy[economyIdForPayment(game)] ?? 0,
+            distanceTiles: params.distanceTiles,
+            productionPerMonth: 0,
+            game,
+            calc,
+          },
+          NETWORK,
+          2,
+        ),
+        { game, calc },
+      );
+      return plan && [plan.usefulSpacing, plan.recommendedSignals, plan.yearlySaving];
     })(),
   });
 }
@@ -246,6 +269,22 @@ const CASES: {
     name: 'linearMaintenance (JGRPP)',
     game: { jgrpp: true, infrastructureMaintenance: true, linearMaintenance: true },
     base: { jgrpp: true, infrastructureMaintenance: true },
+  },
+  {
+    // модель торможения: реалистичная даёт поезду тормозной путь, и полезная плотность
+    // сигналов начинает считаться по нему. База — с уже включённым JGRPP, иначе кейс
+    // прошёл бы за счёт самого флага патчпака
+    name: 'brakingModel (JGRPP)',
+    game: { jgrpp: true, brakingModel: 'realistic' },
+    base: { jgrpp: true },
+  },
+  {
+    // коэффициент масштабирования: ограничивает замедление, на которое рассчитывает поезд,
+    // поэтому виден только там, где тормозной путь вообще считается — при реалистичном
+    // торможении, которое и стоит в базе
+    name: 'trainAccBrakingPercent (JGRPP)',
+    game: { jgrpp: true, brakingModel: 'realistic', trainAccBrakingPercent: 40 },
+    base: { jgrpp: true, brakingModel: 'realistic' },
   },
   {
     // цены постройки и сноса пути: своя категория расходов (construction_cost) и свой

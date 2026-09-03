@@ -240,6 +240,22 @@ def parse_railtype_labels():
     }
 
 
+# engine_type.h VehicleAccelerationModel: the order is the multiplier the braking cap is
+# stepped by, so the number matters, not just which one it is
+ACCELERATION_TYPES = {"Normal": 0, "Monorail": 1, "Maglev": 2}
+
+
+def acceleration_type(name):
+    """VehicleAccelerationModel::Monorail -> 1, saying so when the game adds a fourth."""
+    if name not in ACCELERATION_TYPES:
+        raise SystemExit(
+            f"unknown acceleration model {name!r} in table/railtypes.h: "
+            f"the braking cap steps by this number (train_settings.h), so add it to "
+            f"ACCELERATION_TYPES with the value engine_type.h gives it"
+        )
+    return ACCELERATION_TYPES[name]
+
+
 def parse_railtypes():
     """The game's own track types from _original_railtypes[] (table/railtypes.h).
 
@@ -278,6 +294,11 @@ def parse_railtypes():
             "string_id": f"STR_RAIL_NAME_{name}",
             "name": names[f"STR_RAIL_NAME_{name}"],
             "speed_limit_internal": int(speed),
+            # rail.h: which acceleration model a vehicle on this track uses. It decides the
+            # braking cap the game plans with (train_settings.h: 120 + 48 per step), so a
+            # monorail brakes harder than plain rail and a maglev harder still. NewGRF types
+            # that do not state it are Normal, which is why this is a number and not a flag
+            "acceleration_type": acceleration_type(acceleration),
             # rail.h RailMaintenanceCost: a piece of this track costs this multiplier times
             # the infrastructure base price every month, so a set that redefines a type
             # redefines what its track costs to own
@@ -292,13 +313,24 @@ def parse_railtypes():
             "lgv": False,
             "sort": index,
         }
-        for index, (label, name, speed, flags, cost, maintenance, powered, compatible) in enumerate(zip(
+        for index, (
+            label,
+            name,
+            speed,
+            flags,
+            cost,
+            maintenance,
+            acceleration,
+            powered,
+            compatible,
+        ) in enumerate(zip(
             re.findall(r"/\* rail type label \*/\s*(RAILTYPE_LABEL_\w+)", block),
             re.findall(r"STR_RAIL_NAME_(\w+)", block),
             re.findall(r"/\* max speed \*/\s*(\d+)", block),
             re.findall(r"/\* flags \*/\s*\{([^}]*)\}", block),
             re.findall(r"/\* cost multiplier \*/\s*(\d+)", block),
             re.findall(r"/\* maintenance cost multiplier \*/\s*(\d+)", block),
+            re.findall(r"/\* acceleration type \*/\s*VehicleAccelerationModel::(\w+)", block),
             mask("Powered"),
             mask("Compatible"),
             strict=True,

@@ -13,6 +13,7 @@ import { TableFrame } from '../../components/table/TableFrame';
 import { useRouteStore } from '../../state/routeStore';
 import { NetworkMaintenance } from './NetworkMaintenance';
 import { CorridorUpgrade } from './CorridorUpgrade';
+import { SignalDensity } from './SignalDensity';
 import { PrefillNote } from '../../components/PrefillNote';
 import { routePrefillState } from '../savegame/applyBridge';
 import { useSettingsStore } from '../../state/settingsStore';
@@ -347,6 +348,8 @@ export default function RoutePage() {
         <NetworkMaintenance />
 
         <CorridorUpgrade route={routeParams} />
+
+        <SignalDensity route={routeParams} />
       </div>
     </>
   );

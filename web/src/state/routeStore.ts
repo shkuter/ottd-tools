@@ -35,6 +35,17 @@ export interface CorridorFields {
 export const EMPTY_CORRIDOR: CorridorFields = { target: '', pieces: 0, trains: 1, engineId: null };
 
 /**
+ * What the signal block asks for beyond the network it shares with the upkeep panel: the
+ * worst descent along the line, in height levels. The game lengthens a braking distance for
+ * a descent and never shortens it for a climb, so one number is all it takes.
+ */
+export interface SignalFields {
+  descentLevels: number;
+}
+
+export const EMPTY_SIGNALS: SignalFields = { descentLevels: 0 };
+
+/**
  * The counts as the engine bills them. Only the rail side is asked for: roads, trams and
  * canals are priced so the total can be checked against the game's own window, but a rail
  * calculator does not ask the player to keep count of them.
@@ -84,6 +95,8 @@ interface RouteState {
   waitForFullLoad: boolean;
   /** The network whose upkeep this tab prices; see NetworkInputs. */
   network: NetworkInputs;
+  /** What the signal density block asks for; see SignalFields. */
+  signals: SignalFields;
   /** The corridor upgrade the tab prices below the upkeep; see CorridorFields. */
   corridor: CorridorFields;
   /** Set when a bridge filled the route's own inputs in; null when they were typed by hand. */
@@ -103,6 +116,7 @@ interface RouteState {
   setWaitForFullLoad: (wait: boolean) => void;
   setNetwork: (network: NetworkInputs) => void;
   setCorridor: (corridor: Partial<CorridorFields>) => void;
+  setSignals: (signals: Partial<SignalFields>) => void;
   setRailPieces: (label: string, pieces: number) => void;
   setPrefillOrigin: (origin: PrefillOrigin<RoutePrefill> | null) => void;
   setNetworkOrigin: (origin: PrefillOrigin<NetworkPrefill> | null) => void;
@@ -119,6 +133,7 @@ export const useRouteStore = create<RouteState>()(
       waitForFullLoad: false,
       network: EMPTY_NETWORK_INPUTS,
       corridor: EMPTY_CORRIDOR,
+      signals: EMPTY_SIGNALS,
       prefillOrigin: null,
       networkOrigin: null,
       setCargoLabel: (cargoLabel) => set({ cargoLabel }),
@@ -129,6 +144,7 @@ export const useRouteStore = create<RouteState>()(
       setWaitForFullLoad: (waitForFullLoad) => set({ waitForFullLoad }),
       setNetwork: (network) => set({ network }),
       setCorridor: (corridor) => set((s) => ({ corridor: { ...s.corridor, ...corridor } })),
+      setSignals: (signals) => set((s) => ({ signals: { ...s.signals, ...signals } })),
       setRailPieces: (label, pieces) =>
         set((s) => ({ network: { ...s.network, railPieces: { ...s.network.railPieces, [label]: pieces } } })),
       setPrefillOrigin: (prefillOrigin) => set({ prefillOrigin }),
@@ -147,6 +163,7 @@ export const useRouteStore = create<RouteState>()(
           ...saved,
           network: { ...EMPTY_NETWORK_INPUTS, ...(saved.network ?? {}) },
           corridor: { ...EMPTY_CORRIDOR, ...(saved.corridor ?? {}) },
+          signals: { ...EMPTY_SIGNALS, ...(saved.signals ?? {}) },
         };
       },
     },

@@ -67,6 +67,18 @@ export const GAME_SETTING_SOURCES: readonly SettingSource[] = [
     whenAbsent: { linearMaintenance: false },
   },
   {
+    name: 'vehicle.train_braking_model',
+    read: (v) => ({ brakingModel: v === 1 ? 'realistic' : 'original' }),
+    // JGRPP-only: vanilla has no braking model at all, and a train there stops dead
+    whenAbsent: { brakingModel: 'original' },
+  },
+  {
+    name: 'vehicle.train_acc_braking_percent',
+    read: (v) => ({ trainAccBrakingPercent: v }),
+    // the patchpack's own default, and the only behaviour vanilla has
+    whenAbsent: { trainAccBrakingPercent: 100 },
+  },
+  {
     name: 'vehicle.vehicle_intro_randomisation',
     read: (v) => ({ vehicleIntroRandomisation: v !== 0 }),
   },
@@ -147,12 +159,6 @@ export interface InfoSetting {
  */
 export const INFO_SETTINGS: readonly InfoSetting[] = [
   { name: 'vehicle.max_train_length', labelKey: 'savegame.info.maxTrainLength', kind: 'number' },
-  {
-    name: 'vehicle.train_braking_model',
-    labelKey: 'savegame.info.trainBrakingModel',
-    kind: 'choice',
-    choiceKeys: ['savegame.info.brakingOriginal', 'savegame.info.brakingRealistic'],
-  },
   {
     name: 'order.station_length_loading_penalty',
     labelKey: 'savegame.info.stationLengthPenalty',

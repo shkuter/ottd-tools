@@ -71,14 +71,32 @@
 - **Semver: minor.** Новая настройка и новый блок; тот же ввод в существующих панелях даёт те же
   числа, состояние в localStorage не сбрасывается (новые поля доливаются существующим `merge`).
 - Движок: `engine/physics.ts` (замедление и тормозной путь), новый `engine/signals.ts`,
-  `engine/settings.ts` (две настройки + хелпер доступности), цена сигналов берётся готовой из
-  `engine/infrastructure.ts`.
+  `engine/settings.ts` (две настройки + два хелпера), `engine/consist.ts` (тормозная длина
+  состава), `engine/trip.ts` (длина состава в `TripSetup` — блок читает её оттуда же, откуда
+  панель берёт скорость), `engine/infrastructure.ts` (множитель сигналов открыт, чтобы цена
+  считалась одной моделью).
+- Данные и пайплайн: `acceleration_type` пути — `extract_vanilla.py`, `extract_iron_horse.py`,
+  перегенерированные `trains.json` и `vanilla_trains.json`, поле в `types.ts`, эталоны в
+  `pipeline/tests/test_known_values.py`.
 - UI и состояние: новый `features/route/SignalDensity.tsx`, строка в `RoutePage.tsx`, поле в
-  `state/routeStore.ts`, две строки в `features/settings/SettingsPage.tsx`, ключи в `en.json` и
-  `ru.json`.
+  `state/routeStore.ts`, две строки в `features/settings/SettingsPage.tsx` и ключи их названий
+  в `features/savegame/settingNames.ts`, ключи в `en.json` и `ru.json`, класс блока в
+  `skin.css`.
 - Импорт сейва: `savegame/mapping.ts` — модель торможения из `INFO_SETTINGS` в читаемые,
   коэффициент масштабирования заводится там впервые.
-- Тесты: новый набор движка, UI-тест блока, кейсы в `settings-effect.test.ts`.
+- Тесты: новый набор движка, UI-тест блока, тест настроек торможения на вкладке Settings,
+  кейсы в `settings-effect.test.ts`, правки в `extract.test.ts`, `routeStore.test.ts` и
+  `engine.test.ts`.
+- Документация: `README.md` и `README.ru.md` (абзац о третьем блоке вкладки — правятся одним
+  коммитом, иначе перевод разъедется), термины в `CONTEXT.md`, запись в `CHANGELOG.md`.
+
+Две правки трогают соседние блоки той же вкладки и потому названы отдельно:
+
+- **Выравнивание рядов полей** (`align-items: flex-end` у общего `.network-inputs`): подпись,
+  переносящаяся на две строки, сдвигала своё поле вниз, и ряд стоял ступенькой. Правило общее
+  для трёх панелей вкладки, потому что и дефект общий.
+- **Общая строка сводной таблицы** (`components/SummaryRow.tsx`): блок перевода коридора нёс
+  её собственную копию, второй такой копии заводить не стали.
 
 **Источники истины** (сверялись против них, а не против описаний):
 

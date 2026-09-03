@@ -21,7 +21,9 @@ it read them off your game.
   year — track by type, signals and stations, as the game's infrastructure window bills them.
   A corridor upgrade panel asks the other half of that question: what electrifying a stretch
   of it would add to the upkeep, change for the trains, and cost to build, and from how many
-  trains on the corridor it stops losing money every year.
+  trains on the corridor it stops losing money every year. A signal density panel answers the
+  third: how far apart signals are worth standing under the game's braking model, how many the
+  network is worth keeping, and what the extra ones cost a year.
 - **Industry supply** — every input of one industry at once: a fleet per input, the
   conversion they add up to, and the input to fix first.
 - **FIRS chains** — interactive cargo-flow graph per economy (graphviz WASM), industry and
