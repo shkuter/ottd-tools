@@ -20,6 +20,10 @@ of what users see):
 
 ### Fixed
 
+- The up arrow of a count field did nothing while the field was empty. Those fields show a
+  zero as an empty box, and the library steps an empty field to zero — so the click landed on
+  the value the field already held. They now step to one, and an emptied year steps back to
+  the year in force instead of to the year 0.
 - Text shadows that disagreed with the game, found by the interface-elements page below: the
   warning sign, the "may not be on sale yet" mark, the sorted column heading and the axis
   figures of the chart were drawn flat where the game shades them, and the summary labels and

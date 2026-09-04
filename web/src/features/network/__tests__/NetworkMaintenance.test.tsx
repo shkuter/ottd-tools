@@ -6,6 +6,7 @@
  */
 import { MantineProvider } from '@mantine/core';
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NetworkMaintenance } from '../NetworkMaintenance';
 import { useLocaleStore } from '../../../state/localeStore';
@@ -74,5 +75,29 @@ describe('network upkeep panel', () => {
     draw();
     expect(amounts().every((v) => v === 0)).toBe(true);
     expect(screen.getByText(/Infrastructure maintenance is off/)).toBeTruthy();
+  });
+});
+
+/**
+ * A count field shows a zero as an empty box — a count nobody stated is not a count of none.
+ * Mantine steps an empty field to its `startValue`, which is zero unless told otherwise, so
+ * the field would step from empty to zero and look empty again: the arrow appeared dead.
+ */
+describe('the arrows of an empty count field', () => {
+  it('steps up to one rather than back to nothing', async () => {
+    useRouteStore.setState({ network: { railPieces: {}, signals: 0, stations: 0 } });
+    draw();
+    const user = userEvent.setup();
+
+    const signals = screen.getByLabelText('Signals') as HTMLInputElement;
+    expect(signals.value, 'a count of none is shown as an empty field').toBe('');
+
+    const up = signals
+      .closest('.mantine-InputWrapper-root')!
+      .querySelectorAll('.mantine-NumberInput-control')[0];
+    await user.click(up);
+
+    expect(signals.value).toBe('1');
+    expect(useRouteStore.getState().network.signals).toBe(1);
   });
 });

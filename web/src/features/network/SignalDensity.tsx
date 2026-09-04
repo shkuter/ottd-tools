@@ -1,5 +1,6 @@
 import { NumberInput, Paper, Table, Text, Title } from '@mantine/core';
 import { t } from '../../i18n';
+import { STEP_FROM_EMPTY } from '../../components/numberField';
 import { num, speedUnitLabel, speedValue, unitSuffix } from '../../components/format';
 import { Money } from '../../components/Money';
 import { SummaryRow as Row } from '../../components/SummaryRow';
@@ -40,6 +41,7 @@ export function SignalDensity({ route }: { route: RouteWithFlowParams | null }) 
           min={0}
           allowDecimal={false}
           // empty rather than a zero nobody typed, as the upkeep block has it
+          startValue={STEP_FROM_EMPTY}
           value={signals.descentLevels || ''}
           onChange={(v) => setSignals({ descentLevels: Math.max(0, Number(v) || 0) })}
         />

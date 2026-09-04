@@ -15,6 +15,7 @@ import { activeIndustries, industriesMeta, industrySupplyInputs } from '../../da
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, industryName } from '../../i18n/names';
 import { engineLabel, num, unitSuffix, wagonLabel, withUnit } from '../../components/format';
+import { STEP_FROM_EMPTY } from '../../components/numberField';
 import { CargoIcon } from '../../components/CargoIcon';
 import { fieldWidth } from '../../skin';
 import { TrainImage } from '../../components/TrainImage';
@@ -215,6 +216,7 @@ export default function IndustrySupplyPage() {
                     <Table.Td className="cell-num">
                       <NumberInput
                         min={0}
+                        startValue={STEP_FROM_EMPTY}
                         value={params.distanceTiles || ''}
                         placeholder={t('supply.unsetField')}
                         onChange={(v) =>
@@ -226,6 +228,8 @@ export default function IndustrySupplyPage() {
                       <NumberInput
                         min={0}
                         step={10}
+                        // the step is ten, so an empty field starts where its steps land
+                        startValue={10}
                         value={params.productionPerMonth || ''}
                         placeholder={t('supply.unsetField')}
                         onChange={(v) =>

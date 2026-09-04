@@ -1,5 +1,6 @@
 import { NumberInput, Paper, Table, Text, Title } from '@mantine/core';
 import { t } from '../../i18n';
+import { STEP_FROM_EMPTY } from '../../components/numberField';
 import { num, unitSuffix } from '../../components/format';
 import { PrefillNote } from '../../components/PrefillNote';
 import { Money } from '../../components/Money';
@@ -41,6 +42,7 @@ export function NetworkMaintenance() {
             suffix={unitSuffix(t('units.trackPieces'))}
             min={0}
             allowDecimal={false}
+            startValue={STEP_FROM_EMPTY}
             // empty rather than a zero nobody typed: a count not stated is not a count of none
             value={network.railPieces[railtype.label] || ''}
             onChange={(v) => setRailPieces(railtype.label, Math.max(0, Number(v) || 0))}
@@ -51,6 +53,7 @@ export function NetworkMaintenance() {
           label={t('network.signals')}
           min={0}
           allowDecimal={false}
+          startValue={STEP_FROM_EMPTY}
           value={network.signals || ''}
           onChange={(v) => setNetwork({ ...network, signals: Math.max(0, Number(v) || 0) })}
         />
@@ -59,6 +62,7 @@ export function NetworkMaintenance() {
           label={t('network.stations')}
           min={0}
           allowDecimal={false}
+          startValue={STEP_FROM_EMPTY}
           value={network.stations || ''}
           onChange={(v) => setNetwork({ ...network, stations: Math.max(0, Number(v) || 0) })}
         />

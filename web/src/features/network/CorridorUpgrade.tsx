@@ -2,6 +2,7 @@ import { NumberInput, Paper, Select, Table, Text, Title } from '@mantine/core';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { num, speedUnitLabel, speedValue, unitSuffix } from '../../components/format';
 import { Money } from '../../components/Money';
+import { STEP_FROM_EMPTY } from '../../components/numberField';
 import { TrainSelect } from '../../components/PictureSelect';
 import { SummaryRow as Row } from '../../components/SummaryRow';
 import type { RouteWithFlowParams } from '../../engine/trip';
@@ -50,6 +51,7 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
           suffix={unitSuffix(t('units.trackPieces'))}
           min={0}
           allowDecimal={false}
+          startValue={STEP_FROM_EMPTY}
           value={corridor.pieces || ''}
           onChange={(v) => setCorridor({ pieces: Math.max(0, Number(v) || 0) })}
         />
@@ -58,6 +60,7 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
           label={t('corridor.trains')}
           min={1}
           allowDecimal={false}
+          startValue={STEP_FROM_EMPTY}
           value={corridor.trains || ''}
           onChange={(v) => setCorridor({ trains: Math.max(0, Number(v) || 0) })}
         />

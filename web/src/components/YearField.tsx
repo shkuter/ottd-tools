@@ -10,5 +10,13 @@ export function YearField() {
   const setCalc = useSettingsStore((s) => s.setCalc);
   const field = useYearField(year, (value) => setCalc('priceYear', value));
 
-  return <NumberInput {...fieldWidth('narrow')} label={t('consist.filter.year')} {...field} />;
+  return (
+    <NumberInput
+      {...fieldWidth('narrow')}
+      label={t('consist.filter.year')}
+      // an emptied year steps back to the year in force, not to the year 0
+      startValue={year}
+      {...field}
+    />
+  );
 }
