@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-04
+
 ### Added
 
 - A **Network** tab, and the three panels that price the network itself moved onto it from
