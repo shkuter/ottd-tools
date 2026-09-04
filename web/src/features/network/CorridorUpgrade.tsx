@@ -1,16 +1,12 @@
-import { useMemo } from 'react';
 import { NumberInput, Paper, Select, Table, Text, Title } from '@mantine/core';
-import { activeRailtype, activeTrains, availabilityContext, selectableRailtypes } from '../../dataset';
 import { intlLocale, t, useLocale } from '../../i18n';
-import { railtypeOptions } from '../../i18n/names';
 import { num, speedUnitLabel, speedValue, unitSuffix } from '../../components/format';
 import { Money } from '../../components/Money';
 import { SummaryRow as Row } from '../../components/SummaryRow';
-import { corridorUpgrade, replacementCandidates } from '../../engine/corridorUpgrade';
 import type { RouteWithFlowParams } from '../../engine/trip';
-import { useSoldIds } from '../savegame/soldIds';
-import { networkCounts, useRouteStore } from '../../state/routeStore';
-import { useSettingsStore } from '../../state/settingsStore';
+import { useRouteStore } from '../../state/routeStore';
+import { useCorridor } from './figures';
+import { NETWORK_ANCHORS } from './panels';
 
 /**
  * Does converting this corridor to another track pay for itself?
@@ -20,43 +16,12 @@ import { useSettingsStore } from '../../state/settingsStore';
  * verdict on the engine.
  */
 export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }) {
-  const { game, calc } = useSettingsStore();
   const corridor = useRouteStore((s) => s.corridor);
   const setCorridor = useRouteStore((s) => s.setCorridor);
-  const network = useRouteStore((s) => s.network);
   const locale = useLocale();
 
-  const from = activeRailtype(game, calc.trackType);
-  // named through railtypeOptions for the same reason the upkeep block does: a set may call
-  // two tracks the same thing, and the list would then hold two identical entries. Not
-  // memoised — the names are translated, and a memo would hold the language they were first
-  // drawn in
-  const options = railtypeOptions(selectableRailtypes(game)).filter(
-    (option) => option.railtype.label !== from.label,
-  );
-  const target = options.find((o) => o.railtype.label === corridor.target)?.railtype ?? null;
-
-  // the same buy menu every other list of vehicles reads, sold ids included: an imported game
-  // has already answered which machines exist in it, and that answer beats the formula
-  // (engine/availability.ts)
-  const soldIds = useSoldIds(calc.priceYear, game);
-  const buyMenu = useMemo(() => availabilityContext(game, soldIds), [game, soldIds]);
-  const candidates = useMemo(
-    () => (target ? replacementCandidates(activeTrains(game), target, game, calc, buyMenu) : []),
-    [target, game, calc, buyMenu],
-  );
-  const replacement = candidates.find((train) => train.id === corridor.engineId) ?? null;
-
-  const result = useMemo(() => {
-    if (!route || !target) return null;
-    return corridorUpgrade(route, {
-      target,
-      pieces: corridor.pieces,
-      trains: corridor.trains,
-      replacement,
-      network: networkCounts(network),
-    });
-  }, [route, target, replacement, corridor.pieces, corridor.trains, network]);
+  // the same computation the summary above ranks, so the two cannot state different figures
+  const { options, target, candidates, replacement, result } = useCorridor(route);
 
   /** Why there is nothing to show — the block asks for what it is missing, in that order. */
   const missing = (): string => {
@@ -68,7 +33,7 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
   };
 
   return (
-    <Paper component="section" className="route-corridor" p="sm">
+    <Paper component="section" id={NETWORK_ANCHORS.corridor} p="sm">
       <Title order={3}>{t('corridor.title')}</Title>
       <div className="network-inputs">
         <Select

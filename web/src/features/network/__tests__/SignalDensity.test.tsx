@@ -86,7 +86,7 @@ describe('signal density panel', () => {
     expect(cells()).toHaveLength(8);
   });
 
-  it('brakes from the speed the panel above shows, not from the consist limit', () => {
+  it('brakes from the speed the trip is run at, not from the consist limit', () => {
     draw();
     const { physics } = consistPhysics(
       ROUTE.entries,

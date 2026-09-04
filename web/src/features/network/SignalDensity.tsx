@@ -1,13 +1,13 @@
-import { useMemo } from 'react';
 import { NumberInput, Paper, Table, Text, Title } from '@mantine/core';
 import { t } from '../../i18n';
 import { num, speedUnitLabel, speedValue, unitSuffix } from '../../components/format';
 import { Money } from '../../components/Money';
 import { SummaryRow as Row } from '../../components/SummaryRow';
 import { Warning } from '../../components/Warning';
-import { signalInputs, signalPlan } from '../../engine/signals';
 import type { RouteWithFlowParams } from '../../engine/trip';
-import { networkCounts, useRouteStore } from '../../state/routeStore';
+import { useRouteStore } from '../../state/routeStore';
+import { useSignals } from './figures';
+import { NETWORK_ANCHORS } from './panels';
 
 /**
  * How many signals this line is worth, and what the extra ones cost.
@@ -17,22 +17,11 @@ import { networkCounts, useRouteStore } from '../../state/routeStore';
  * number of signal heads rather than a verdict on the signalling itself.
  */
 export function SignalDensity({ route }: { route: RouteWithFlowParams | null }) {
-  const network = useRouteStore((s) => s.network);
   const signals = useRouteStore((s) => s.signals);
   const setSignals = useRouteStore((s) => s.setSignals);
 
-  const inputs = useMemo(
-    () => (route ? signalInputs(route, networkCounts(network), signals.descentLevels) : null),
-    [route, network, signals.descentLevels],
-  );
-
-  // settings come off the route, not off the store: the route already carries the game and
-  // the assumptions the panel above was drawn with, and reading a second copy is how the two
-  // would start disagreeing (corridorUpgrade.ts does the same)
-  const result = useMemo(
-    () => (inputs && route ? signalPlan(inputs, route) : null),
-    [inputs, route],
-  );
+  // the same computation the summary above ranks, so the two cannot state different figures
+  const result = useSignals(route);
 
   /** Why there is nothing to show — the block asks for what it is missing, in that order. */
   const missing = (): string => {
@@ -41,7 +30,7 @@ export function SignalDensity({ route }: { route: RouteWithFlowParams | null }) 
   };
 
   return (
-    <Paper component="section" className="route-signals" p="sm">
+    <Paper component="section" id={NETWORK_ANCHORS.signals} p="sm">
       <Title order={3}>{t('signals.title')}</Title>
       <div className="network-inputs">
         <NumberInput

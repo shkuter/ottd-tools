@@ -37,8 +37,11 @@ number a player could state in its place.
 
 ## Consequences
 
-- The route income tab carries two panels the ADR-0005 world had no place for: what the
-  network costs to own, and what converting a corridor would cost and save.
+- Three panels the ADR-0005 world had no place for: what the network costs to own, what
+  converting a corridor would cost and save, and how many signals the line is worth. They
+  started on the route income tab and moved to a tab of their own (`add-network-tab`), where
+  they compute from the trip that tab still states. The decision above is unchanged by the
+  move — only where the answers are read.
 - Railtype data gains the construction multiplier alongside the maintenance one, so a
   conversion is priced from the set rather than from a constant.
 - The calculator now models a price category it never touched — `PCAT_CONSTRUCTION` — and so

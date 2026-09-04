@@ -17,6 +17,8 @@ import { TABS } from './tabs';
 // nothing else needs either, so both tabs load with their own chunk
 const ConsistPage = lazy(() => import('./features/consist/ConsistPage'));
 const RoutePage = lazy(() => import('./features/route/RoutePage'));
+// the network tab carries three panels of its own and the route model they compute from
+const NetworkPage = lazy(() => import('./features/network/NetworkPage'));
 // the supply tab drags the optimizer along and runs one sweep per input; it stays out of the
 // main chunk for the same reason the other two do
 const IndustrySupplyPage = lazy(() => import('./features/industry-supply/IndustrySupplyPage'));
@@ -101,6 +103,7 @@ export default function App() {
             <Route path="/optimizer" element={<OptimizerPage />} />
             <Route path="/consist" element={<ConsistPage />} />
             <Route path="/income" element={<RoutePage />} />
+            <Route path="/network" element={<NetworkPage />} />
             {/* both tabs answer about FIRS industries, so with FIRS off they answer nothing:
                 the supply tab offers an empty industry list and the chain graph draws a set
                 the calculator is not computing with. The addresses stay registered — an old

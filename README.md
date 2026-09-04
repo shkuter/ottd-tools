@@ -17,13 +17,15 @@ it read them off your game.
   (realistic acceleration physics reproduced from OpenTTD sources).
 - **Route income** — exact `GetTransportedGoodsIncome` reproduction with FIRS payment rates
   and time-penalty curve chart, plus profitability of the built consist on that route
-  (profit per year / per train tile, payback) and what the network itself costs to own each
-  year — track by type, signals and stations, as the game's infrastructure window bills them.
-  A corridor upgrade panel asks the other half of that question: what electrifying a stretch
-  of it would add to the upkeep, change for the trains, and cost to build, and from how many
-  trains on the corridor it stops losing money every year. A signal density panel answers the
-  third: how far apart signals are worth standing under the game's braking model, how many the
-  network is worth keeping, and what the extra ones cost a year.
+  (profit per year / per train tile, payback).
+- **Network** — the other half of the economy: what owning the network costs each year —
+  track by type, signals and stations, as the game's infrastructure window bills them — and
+  what to trim, ranked by the money it saves. A corridor upgrade panel prices electrifying a
+  stretch of it: what it adds to the upkeep, changes for the trains, and costs to build, and
+  from how many trains on the corridor it stops losing money every year. A signal density
+  panel answers how far apart signals are worth standing under the game's braking model, how
+  many the network is worth keeping, and what the extra ones cost a year. Both compute from
+  the trip stated on the route income tab, which the tab names and links to.
 - **Industry supply** — every input of one industry at once: a fleet per input, the
   conversion they add up to, and the input to fix first.
 - **FIRS chains** — interactive cargo-flow graph per economy (graphviz WASM), industry and

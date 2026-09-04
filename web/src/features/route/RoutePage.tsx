@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { Button, NumberInput, Paper, Select, Switch, Table, Text, Title } from '@mantine/core';
 import { LineChart } from '@mantine/charts';
-import { activeCargos, activeEntries, economyIdForPayment, activeTrainsMeta } from '../../dataset';
-import { t, useLocale } from '../../i18n';
-import { cargoName, cargoUnits, sortCargos } from '../../i18n/names';
+import { NavLink } from 'react-router';
+import { activeTrainsMeta } from '../../dataset';
+import { t } from '../../i18n';
+import { cargoName, cargoUnits } from '../../i18n/names';
 import { currencySymbol, money, num, percent, speed, unitSuffix, withUnit } from '../../components/format';
 import { Money } from '../../components/Money';
 import { CargoIcon } from '../../components/CargoIcon';
@@ -11,68 +12,31 @@ import { TrackTypeField } from '../../components/TrackTypeField';
 import { StrandedVehicles } from '../../components/StrandedVehicles';
 import { TableFrame } from '../../components/table/TableFrame';
 import { useRouteStore } from '../../state/routeStore';
-import { NetworkMaintenance } from './NetworkMaintenance';
-import { CorridorUpgrade } from './CorridorUpgrade';
-import { SignalDensity } from './SignalDensity';
 import { PrefillNote } from '../../components/PrefillNote';
 import { routePrefillState } from '../savegame/applyBridge';
 import { useSettingsStore } from '../../state/settingsStore';
-import { useConsistStore } from '../../state/consistStore';
-import { cargoPaymentRate, incomeCurve, transportedGoodsIncome } from '../../engine/income';
+import { incomeCurve, transportedGoodsIncome } from '../../engine/income';
 import { transitPeriodsFromDays } from '../../engine/units';
 import { consistStats } from '../../engine/consist';
 import { routeWithFlow } from '../../engine/trip';
-import { useActiveCargo } from '../useActiveCargo';
+import { useRouteParams } from './useRouteParams';
 
 export default function RoutePage() {
   const route = useRouteStore();
-  const consist = useConsistStore();
   const { game, calc } = useSettingsStore();
-  const locale = useLocale();
-
-  const cargoList = useMemo(() => sortCargos(activeCargos(game), locale), [game, locale]);
-  const cargo = useActiveCargo(cargoList, route.cargoLabel, route.setCargoLabel);
-
-  /*
-   * Only what the current game could actually buy. A consist survives a change of vehicle set
-   * in localStorage, and pricing a vanilla wagon with Iron Horse's basecost shifts (or the
-   * other way round) states money no game charges.
-   */
-  const entries = useMemo(() => activeEntries(consist.entries, game), [consist.entries, game]);
+  // the trip this tab states, assembled where the network tab reads it from too
+  const { cargoList, cargo, entries, payment, routeParams } = useRouteParams();
 
   const stats = useMemo(
     () => consistStats(entries, cargo ?? null, calc.capacityIndex, activeTrainsMeta(game), game, calc),
     [entries, cargo, calc, game],
   );
 
-  const payment = cargo ? cargoPaymentRate(cargo, economyIdForPayment(game), game, calc) : 0;
   const spec = useMemo(
     () => (cargo ? { currentPayment: payment, transitPeriods: cargo.transit_periods } : null),
     [cargo, payment],
   );
 
-  // Round-trip economics of the consist built on the Consist tab — the same model the
-  // optimizer uses, so a consist carried over with "→" shows the same figures here. The
-  // optimizer picks the loading branch by its goal; this tab has no goal, so the branch is
-  // the user's to set, and with it the source output the waiting branch accumulates from.
-  const routeParams = useMemo(() => {
-    if (entries.length === 0 || !cargo) return null;
-    return {
-      entries,
-      cargo,
-      payment,
-      distanceTiles: route.distanceTiles,
-      meta: activeTrainsMeta(game),
-      game,
-      calc,
-      loadedDaysOverride: route.manualDays,
-      productionPerMonth: route.productionPerMonth,
-      waitForFullLoad: route.waitForFullLoad,
-    };
-  }, [
-    entries, cargo, payment, route.distanceTiles, route.manualDays,
-    route.productionPerMonth, route.waitForFullLoad, game, calc,
-  ]);
   const routeTrip = useMemo(
     () => (routeParams ? routeWithFlow(routeParams) : null),
     [routeParams],
@@ -345,11 +309,13 @@ export default function RoutePage() {
           )}
           </Paper>
 
-        <NetworkMaintenance />
-
-        <CorridorUpgrade route={routeParams} />
-
-        <SignalDensity route={routeParams} />
+        {/* the panels that price the network itself moved to their own tab; someone who
+            looked for them under the profitability panel is told where they went */}
+        <Paper component="section" className="route-network-note" p="sm">
+          <Text>
+            {t('route.networkNote')} <NavLink to="/network">{t('nav.network')}</NavLink>
+          </Text>
+        </Paper>
       </div>
     </>
   );

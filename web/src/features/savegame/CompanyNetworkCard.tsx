@@ -11,7 +11,7 @@ import { companyLabel } from './labels';
 
 /**
  * What the selected company owns, and the way into pricing it: the counts the game's own
- * infrastructure window shows, carried over to the network upkeep block of Route income.
+ * infrastructure window shows, carried over to the upkeep panel on the Network tab.
  *
  * Only the rail side is shown. Roads, trams and canals are counted too — the yearly total has
  * to be checkable against the game's window — but a rail calculator has no fields for them,
@@ -33,7 +33,7 @@ export function CompanyNetworkCard({ company }: { company: SnapshotCompany }) {
           bridge={bridge}
           onTake={(values) => {
             applyNetworkBridge(values, companyLabel(company));
-            void navigate('/income');
+            void navigate('/network');
           }}
         />
       </Group>

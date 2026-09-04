@@ -67,6 +67,17 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('corridor upgrade panel', () => {
+  it('drops a target track the new set does not have', () => {
+    // a metro line exists in Iron Horse and in no vanilla table, so switching the set leaves
+    // the stored label naming nothing
+    useRouteStore.setState({ corridor: { ...EMPTY_CORRIDOR, target: 'MTRO', pieces: 1000 } });
+    useSettingsStore.setState({ game: { ...GAME, trainSet: 'vanilla' } });
+
+    draw();
+
+    expect(screen.getByText(/Pick the track to convert to/)).toBeTruthy();
+  });
+
   it('asks for what it is missing, one thing at a time', () => {
     draw(null);
     expect(screen.getByText(/Build a consist and pick a cargo/)).toBeTruthy();

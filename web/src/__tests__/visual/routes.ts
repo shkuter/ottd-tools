@@ -29,6 +29,7 @@ const PER_TAB: Record<string, { ready: string; scrollsX?: readonly string[] }> =
   '/optimizer': { ready: '.page-optimizer', scrollsX: ['table-wrap'] },
   '/consist': { ready: '.page-consist', scrollsX: ['table-wrap'] },
   '/income': { ready: '.page-route' },
+  '/network': { ready: '.page-network' },
   '/supply': { ready: '.page-industry-supply' },
   // and so is the chain graph
   '/firs': { ready: '.page-firs', scrollsX: ['graph-container'] },

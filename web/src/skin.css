@@ -435,6 +435,7 @@ h4 {
  */
 .page-consist > *,
 .page-route > *,
+.page-network > *,
 .firs-layout > * {
   min-width: 0;
 }
@@ -783,7 +784,7 @@ h4 {
   padding: 14px;
   /* the controls span the whole column, so every panel sits under the chart in turn: the
      count is the panels listed below as grid-column 2, and grows with them */
-  grid-row: 1 / span 4;
+  grid-row: 1 / span 3;
 }
 
 .route-controls .mantine-InputWrapper-root {
@@ -792,27 +793,8 @@ h4 {
 
 .route-chart,
 .route-profit,
-.route-network,
-.route-corridor,
-.route-signals {
+.route-network-note {
   grid-column: 2;
-}
-
-/* the inputs of both network panels — the counts and the corridor — read as one row of small
-   fields, the way the game's own window lists them */
-.network-inputs {
-  display: flex;
-  flex-wrap: wrap;
-  /* fields line up along their inputs, not their labels: a railtype whose name wraps to two
-     lines would otherwise push its own field half a row down, and a row of inputs at two
-     heights reads as broken */
-  align-items: flex-end;
-  gap: var(--skin-hsep-normal);
-  margin-bottom: var(--skin-hsep-wide);
-}
-
-.network-inputs .field {
-  width: 140px;
 }
 
 /* what the marked trip comes to, right under the field it is marked on */
@@ -910,6 +892,33 @@ h4 {
   padding: 12px;
 }
 
+/* ---------- network ---------- */
+
+/* One column, unlike the route income tab: the trip is entered there, so there is no column
+   of controls to sit beside — a 320px track here would only leave a gutter. */
+.page-network {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+}
+
+/* the inputs of the network panels — the counts, the corridor and the signals — read as one
+   row of small fields, the way the game's own window lists them */
+.network-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  /* fields line up along their inputs, not their labels: a railtype whose name wraps to two
+     lines would otherwise push its own field half a row down, and a row of inputs at two
+     heights reads as broken */
+  align-items: flex-end;
+  gap: var(--skin-hsep-normal);
+  margin-bottom: var(--skin-hsep-wide);
+}
+
+.network-inputs .field {
+  width: 140px;
+}
+
 /* ---------- narrow windows ---------- */
 
 @media (max-width: 1000px) {
@@ -930,9 +939,7 @@ h4 {
 
   .route-chart,
   .route-profit,
-  .route-network,
-  .route-corridor,
-  .route-signals {
+  .route-network-note {
     grid-column: auto;
   }
 }

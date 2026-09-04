@@ -194,6 +194,19 @@ truncating the monthly figure exactly where the game truncates it. Turned off by
 in the game. _Avoid_: maintenance cost of a train (that is **running cost**), содержание
 (the settings screen says «Обслуживание инфраструктуры», the game's own wording).
 
+**Trim list** (_что подрезать_) — the ranking that opens the network tab: the actions that
+would spend less on the network per year, biggest saving first, each with its share of the
+year's upkeep and a link to the panel that answered it. It states no figure of its own —
+every number in it is the one the panel below shows — and it holds savings only: a conversion
+that loses money and a line signalled too sparsely stay with the panels that explain them. A
+panel that cannot answer yet is said to be unanswered rather than counted as "nothing to
+trim". _Avoid_: "recommendations" — the list ranks answers already computed, it does not
+advise a course of action.
+
+**Costliest line** (_самая дорогая статья_) — the billed line the year mostly goes on, named
+with its share of the total: the one figure that says where the upkeep actually goes before
+the panels are read. Absent when nothing is owned, rather than zero.
+
 **Track piece** (_кусок пути_) — the unit upkeep is billed in, and not the same thing as a
 tile: a tile carries one piece per track on it, squared where the tracks cross, four per tile
 of tunnel or bridge, two for a level crossing, and a rail station tile carries one of its own

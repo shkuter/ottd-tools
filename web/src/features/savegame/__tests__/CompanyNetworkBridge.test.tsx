@@ -23,7 +23,7 @@ function draw(record: SnapshotRecord = GAME_SNAPSHOT) {
       <MemoryRouter initialEntries={['/game']}>
         <Routes>
           <Route path="/game" element={<GamePage record={record} />} />
-          <Route path="/income" element={<div>income tab</div>} />
+          <Route path="/network" element={<div>network tab</div>} />
         </Routes>
       </MemoryRouter>
     </MantineProvider>,
@@ -74,7 +74,7 @@ describe('the bridge on a company card', () => {
       stations: 12,
     });
     expect(route.networkOrigin).toMatchObject({ source: 'company', label: 'Checks & Co' });
-    expect(await screen.findByText('income tab')).toBeTruthy();
+    expect(await screen.findByText('network tab')).toBeTruthy();
   });
 
   it('another company means another network', async () => {
@@ -110,7 +110,7 @@ describe('the bridge on a company card', () => {
 
     await userEvent.click(button);
     expect(useRouteStore.getState().network).toEqual(EMPTY_NETWORK_INPUTS);
-    expect(screen.queryByText('income tab')).toBeNull();
+    expect(screen.queryByText('network tab')).toBeNull();
   });
 
   it('states what the company owns without being taken', () => {
