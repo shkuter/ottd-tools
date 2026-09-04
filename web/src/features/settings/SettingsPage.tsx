@@ -16,36 +16,10 @@ import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 import { SavegameImportPanel } from './SavegameImportPanel';
 import { useYearField } from '../../components/useYearField';
 import { TrackTypeField } from '../../components/TrackTypeField';
-
-function Row({
-  label,
-  hint,
-  className = 'setting-row',
-  children,
-}: {
-  label: string;
-  hint?: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={className}>
-      <div className="setting-label">
-        <span>{label}</span>
-        {hint && <span className="hint setting-hint">{hint}</span>}
-      </div>
-      <div className="setting-control">{children}</div>
-    </div>
-  );
-}
-
-/**
- * A parameter of the set above it — the FIRS economy, a Base Costs multiplier, the Iron Horse
- * capacity index — shown as part of that set rather than as a setting of its own rank.
- */
-function NestedRow(props: Omit<Parameters<typeof Row>[0], 'className'>) {
-  return <Row {...props} className="setting-row setting-row--nested" />;
-}
+import {
+  NestedSettingRow as NestedRow,
+  SettingRow as Row,
+} from '../../components/SettingRow';
 
 /** A NumberInput hands back a string while it is being typed; settings are numbers. */
 function asNumber(value: string | number, min: number): number {

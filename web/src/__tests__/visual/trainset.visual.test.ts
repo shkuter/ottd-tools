@@ -31,8 +31,9 @@ function catalogueSprites() {
 
 describe('the consist catalogue on the vanilla set', () => {
   it('lists its vehicles and shows their sprites', async () => {
-    // the roster is switched the way a player switches it: seeding localStorage would
-    // not survive, the harness writes its own settings on every navigation
+    // the roster is switched the way a player switches it, through the settings tab — which
+    // is also what this check is about; `harness.withGame` is for pages that only have to be
+    // looked at in another game
     const page = await harness().goto('/settings', '.settings-group');
     // the settings rows label their control with a plain span, not a <label>, so the
     // field is found through its row rather than by its label

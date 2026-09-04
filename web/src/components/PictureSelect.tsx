@@ -45,7 +45,11 @@ const trainOption = optionWithPicture(
  * Picks a cargo. Keyed by the cargo's label, which is what the dataset calls it and what the
  * lists put in `value`.
  */
-export function CargoSelect({ cargos, value, ...props }: { cargos: readonly Cargo[] } & SelectProps) {
+export function CargoSelect({
+  cargos,
+  value,
+  ...props
+}: { cargos: readonly Pick<Cargo, 'label' | 'icon'>[] } & SelectProps) {
   const icons = new Map(cargos.map((cargo) => [cargo.label, cargo.icon]));
   return (
     <Select

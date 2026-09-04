@@ -158,6 +158,23 @@ export async function dropdownMetrics(page: Page, field: Locator): Promise<Dropd
   }, await field.elementHandle());
 }
 
+/** The specimens of the tier of one: the list, the frame with nothing in it, the chart. */
+export const showcase = {
+  list: (page: Page) => page.locator('[data-testid="kit-list"]'),
+  emptyList: (page: Page) => page.locator('[data-testid="kit-list-empty"]'),
+  chart: (page: Page) => page.locator('[data-testid="kit-chart"] .mantine-LineChart-root'),
+};
+
+/** Every picture of the page, and whether each one is actually drawn. */
+export async function pictures(page: Page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid^="kit-"] img')].map((image) => ({
+      src: (image as HTMLImageElement).src,
+      drawn: image.getBoundingClientRect().width > 0,
+    })),
+  );
+}
+
 /** Brings the tooltip plate on screen inside the given colour group. */
 export async function showTooltip(page: Page, group: WindowColour) {
   await page.locator(`.kit-window[data-window="${group}"] [data-testid="kit-tooltip"]`).hover();

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { harnessFixture } from './harness';
+import { WINDOW_COLOURS } from '../../skin';
+import { openKit, showcase, showGroup } from './kit';
 import { snapshot } from './collect';
 import { fromToken, painted } from './colours';
 
@@ -98,5 +100,31 @@ describe('the chain graph', () => {
     });
 
     expect(strange, 'every colour in the graph is one the skin chose').toEqual([]);
+  });
+});
+
+/**
+ * The same chart on the interface-elements page, where it can be seen in every window colour
+ * the shell has: the plate and the figures follow the group, as the game's own graphs do.
+ */
+describe('the chart specimen', () => {
+  it.each(WINDOW_COLOURS)('follows the %s window', async (group) => {
+    const page = await openKit(harness());
+    await showGroup(page, group);
+    const shot = await page.evaluate(snapshot);
+    const tokens = shot.themes[group];
+
+    const measured = await showcase.chart(page).evaluate((root) => {
+      const ticks = [...root.querySelectorAll<SVGTextElement>('.recharts-text')];
+      return {
+        plate: getComputedStyle(root).backgroundColor,
+        tickColours: [...new Set(ticks.map((tick) => getComputedStyle(tick).fill))],
+      };
+    });
+
+    expect(painted(measured.plate, 'the chart plate')).toBe(fromToken(tokens, '--skin-field-bg'));
+    expect(measured.tickColours.map((colour) => painted(colour, 'an axis figure'))).toEqual([
+      fromToken(tokens, '--skin-field-text'),
+    ]);
   });
 });

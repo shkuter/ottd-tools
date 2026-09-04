@@ -605,6 +605,8 @@ h4 {
   color: var(--skin-link);
   cursor: help;
   padding-left: 2px;
+  /* the game shades every colour but black and the dimmed one */
+  text-shadow: var(--skin-text-shadow);
 }
 
 /* Loading branch of an optimizer row: lit when the full-load order is the better one,
@@ -694,6 +696,8 @@ h4 {
   /* the labels are the long half of the row; give them the room */
   width: 62%;
   color: var(--skin-muted);
+  /* dimmed text is one of the two the game draws flat */
+  text-shadow: none;
 }
 
 .summary-table .mantine-Table-td:last-child {
@@ -794,6 +798,7 @@ h4 {
   color: var(--skin-loss);
   font-size: var(--skin-font);
   line-height: 1.2;
+  text-shadow: var(--skin-text-shadow);
 }
 
 /* ---------- route income ---------- */
@@ -1250,6 +1255,8 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root) {
   margin: 0;
   padding: var(--skin-pad-cell);
   color: var(--skin-muted);
+  /* dimmed text is one of the two the game draws flat */
+  text-shadow: none;
 }
 
 /* ==========================================================================

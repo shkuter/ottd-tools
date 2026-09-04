@@ -342,6 +342,12 @@
     justify-content: flex-start;
   }
 
+  /* The list specimen of the interface-elements page is wider than the column it stands in on
+     purpose: that is the only way to see the edge columns hold while the middle scrolls. */
+  .kit-list .mantine-Table-table {
+    min-width: 900px;
+  }
+
   .mantine-Select-wrapper {
     --input-right-section-width: 24px;
   }
@@ -683,6 +689,8 @@
 
   .table-wrap .mantine-Table-th.sorted {
     color: var(--skin-link);
+    /* a colour of the palette, so it is shaded — the header it came from is dimmed and flat */
+    text-shadow: var(--skin-text-shadow);
   }
 
   /*
@@ -819,11 +827,14 @@
   }
 
   /* the figures down the axes: recharts fills them with currentColor, so it is
-     the colour that has to be set, and they stand on the dark plate now */
+     the colour that has to be set, and they stand on the dark plate now. The shadow the game
+     puts under every colour but black and the dimmed one goes on them too — SVG text takes it
+     as a paint-order shadow, so it is spelled with the same token as everywhere else. */
   .mantine-LineChart-root .recharts-text,
   .mantine-AreaChart-root .recharts-text,
   .mantine-BarChart-root .recharts-text {
     color: var(--skin-field-text);
+    text-shadow: var(--skin-text-shadow);
   }
 
   /* ==========================================================================

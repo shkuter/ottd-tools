@@ -22,6 +22,8 @@ const harness = harnessFixture();
 const PINNED = [
   { path: '/optimizer', ready: '.page-optimizer' },
   { path: '/consist', ready: '.page-consist' },
+  // the specimen of a list, which is on the page for exactly this
+  { path: '/kit', ready: '.page-kit' },
 ];
 
 describe.each(PINNED)('$path', (route) => {
@@ -87,7 +89,9 @@ describe.each(PINNED)('$path', (route) => {
   it('takes its row metrics from the skin, and holds no header at the top', async () => {
     const page = await harness().goto(route.path, route.ready);
     const measured = await page.evaluate(() => {
-      const wrap = document.querySelector<HTMLElement>('.table-wrap');
+      // the page may hold more than one frame (the specimen page does); a list of selectors
+      // would return whichever comes first in the DOM, so the pinned one is asked for by name
+      const wrap = document.querySelector<HTMLElement>('.table-wrap.pin-edges');
       if (!wrap) return { error: 'no list on the page' };
       // a cell holding a sprite has padding of its own, so measure an ordinary one
       const cell = [...wrap.querySelectorAll('tbody td')].find(

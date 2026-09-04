@@ -18,18 +18,31 @@ of what users see):
 
 ## [Unreleased]
 
+### Fixed
+
+- Text shadows that disagreed with the game, found by the interface-elements page below: the
+  warning sign, the "may not be on sale yet" mark, the sorted column heading and the axis
+  figures of the chart were drawn flat where the game shades them, and the summary labels and
+  the empty-list message carried a shadow where the game draws dimmed text flat.
+
 ### Changed
 
 - A dropdown now opens as wide as its longest option, the way the game sizes its own lists —
   one line per option instead of a name wrapped over three. It opens from the left edge of its
   field, the way the game opens a list from the left edge of its button; it is never narrower
-  than the field it belongs to, and on a window too narrow for the longest option the option wraps again
-  rather than being cut off or running past the edge.
+  than the field it belongs to, and on a window too narrow for the longest option the option
+  wraps again rather than being cut off or running past the edge.
 - An option that names a vehicle or a cargo shows its picture, as the game's own icon items do:
   the sprite of the engine in the corridor replacement list, the cargo icon in every cargo
   list. The picture sits in a column of its own, so the names all start at the same vertical,
   and the corridor's engine field is now wide enough to show the sprite and the whole name
   beside it.
+- The interface-elements page (`/kit`, for whoever edits the look) now shows one of everything
+  the app draws — panels, lists in the frame the tabs use, an empty list, settings rows,
+  pagination, the income chart, every picture and every note — together with the states the
+  skin paints separately. Controls and text still repeat in each window colour; the list and
+  the chart are shown once, in the colour the picker names. A test holds the page against the
+  app's own components, so one added without a specimen fails instead of going unchecked.
 
 ## [0.20.0] - 2026-09-04
 

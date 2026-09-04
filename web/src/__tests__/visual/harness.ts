@@ -26,11 +26,22 @@ const WEB_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 /** The window every check starts in; a check that resizes it puts this back afterwards. */
 export const VIEWPORT = { width: 1440, height: 900 };
 
+/**
+ * The game the checks measure: the NewGRF sets are off in a fresh calculator, and a set that
+ * is off hides its parameters — the fuller page is the one worth looking at.
+ */
+export const DEFAULT_GAME = { trainSet: 'iron_horse', firs: true, basecostGrf: true };
+
 export interface Harness {
   /** Opens an app route; `ready` is a selector to wait for beyond the shell. */
   goto(path: string, ready?: string): Promise<Page>;
   /** The one page the file's checks share — for undoing what a check did to it. */
   readonly page: Page;
+  /**
+   * Reopens the app with another game in the settings store. What is stored outlives the
+   * navigation, so a check that calls this puts `DEFAULT_GAME` back when it is done.
+   */
+  withGame(game: Record<string, unknown>, path: string, ready?: string): Promise<Page>;
   close(): Promise<void>;
 }
 
@@ -98,13 +109,16 @@ async function openHarness(): Promise<Harness> {
    * is drawn for those parameters, and nothing off-screen has a colour to read. Seeded
    * before the first navigation, at the store's own version, so it arrives as a state the
    * store accepts rather than one it migrates.
+   *
+   * Only when nothing is stored yet: a check that wants another game writes it and reloads
+   * (`withGame`), and a script that seeded on every navigation would undo that on the spot.
    */
   await context.addInitScript(
-    ({ key, version }) => {
-      const game = { trainSet: 'iron_horse', firs: true, basecostGrf: true };
+    ({ key, version, game }) => {
+      if (window.localStorage.getItem(key)) return;
       window.localStorage.setItem(key, JSON.stringify({ state: { game }, version }));
     },
-    { key: SETTINGS_KEY, version: SETTINGS_VERSION },
+    { key: SETTINGS_KEY, version: SETTINGS_VERSION, game: DEFAULT_GAME },
   );
 
   const goto = async (path: string, ready?: string) => {
@@ -156,8 +170,18 @@ async function openHarness(): Promise<Harness> {
     { record: GAME_SNAPSHOT, db: SNAPSHOT_DB },
   );
 
+  const withGame: Harness['withGame'] = async (game, path, ready) => {
+    await page.evaluate(
+      ({ key, version, state }) =>
+        window.localStorage.setItem(key, JSON.stringify({ state: { game: state }, version })),
+      { key: SETTINGS_KEY, version: SETTINGS_VERSION, state: game },
+    );
+    return goto(path, ready);
+  };
+
   return {
     goto,
+    withGame,
     page,
     close: async () => {
       await context.close();

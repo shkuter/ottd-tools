@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { harnessFixture } from './harness';
 import { ROUTES } from './routes';
+import { snapshot } from './collect';
+import { WINDOW_COLOURS } from '../../skin';
+import { fromToken, painted } from './colours';
+import { openKit, showcase, showGroup } from './kit';
 
 /**
  * What a list does with its columns, checked where it shows: on the page.
@@ -106,5 +110,41 @@ describe.each(ROUTES)('$path', (route) => {
 
     // at most one starting position, however wide the sprites beside the names are
     expect(starts.length, `names start at ${starts.join(', ')}`).toBeLessThanOrEqual(1);
+  });
+});
+
+/**
+ * The same two measures on the specimen of a list, plus the state a tab shows instead of a
+ * list: a page that filtered everything away says so, in the dimmed lettering of the skin.
+ */
+describe('/kit', () => {
+  it('aligns its figures and starts every name at one place', async () => {
+    const page = await openKit(harness());
+
+    expect(await page.evaluate(misaligned), 'on the list specimen: figures right, text left')
+      .toEqual([]);
+    const starts = await page.evaluate(nameStarts);
+    expect(starts.length, `names start at ${starts.join(', ')}`).toBeLessThanOrEqual(1);
+  });
+
+  it.each(WINDOW_COLOURS)('says why a list is empty, in the %s window', async (group) => {
+    const page = await openKit(harness());
+    // the tier of one follows the picker, so the empty frame is read in each colour in turn
+    await showGroup(page, group);
+    const shot = await page.evaluate(snapshot);
+    const empty = await showcase.emptyList(page).evaluate((frame) => {
+      const message = frame.querySelector('.table-empty');
+      return {
+        message: message?.textContent?.trim() ?? '',
+        colour: message ? getComputedStyle(message).color : '',
+        tables: frame.querySelectorAll('table').length,
+      };
+    });
+
+    expect(empty.tables, 'an empty frame draws no table').toBe(0);
+    expect(empty.message.length, 'and says why instead').toBeGreaterThan(0);
+    expect(painted(empty.colour, 'the empty-list message'), 'in the dimmed lettering').toBe(
+      fromToken(shot.themes[group], '--skin-muted'),
+    );
   });
 });
