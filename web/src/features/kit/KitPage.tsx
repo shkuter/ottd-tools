@@ -20,6 +20,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { intlLocale, t } from '../../i18n';
+import { TrainSelect } from '../../components/PictureSelect';
 import { WINDOW_COLOURS, type WindowColour } from '../../skin';
 import { useKitWindowStore } from '../../state/kitWindowStore';
 
@@ -38,12 +39,31 @@ import { useKitWindowStore } from '../../state/kitWindowStore';
 
 const OPTIONS = ['kit.optionFirst', 'kit.optionSecond', 'kit.optionThird'];
 
+/*
+ * Three more dropdowns, for what a plain three-word list cannot show: an option longer than
+ * its field, a list of nothing but short options (the width the list may not fall below, and
+ * the height of a row without a picture), and an option carrying a picture.
+ *
+ * The vehicles are named by id rather than taken from the dataset on purpose — the page has
+ * to look the same whatever set the settings hold. `expand-kit-page` moves all three
+ * into the rebuilt page and takes their data with it; they are found by data-testid, not by
+ * their position, so the move does not break the checks that use them.
+ */
+const SPECIMEN_TRAINS = [
+  { value: 'bean_feast', label: '2-6-4 Bean Feast' },
+  { value: 'buffalo', label: '0-6-2 Buffalo' },
+  { value: 'cheese_bug', label: '2-6-2 Cheese Bug' },
+];
+
 function Specimen({ showTooltip }: { showTooltip: boolean }) {
   const [checked, setChecked] = useState(true);
   const [on, setOn] = useState(true);
   const [text, setText] = useState(t('kit.sampleValue'));
   const [amount, setAmount] = useState<string | number>(120);
   const [choice, setChoice] = useState<string | null>(OPTIONS[0]);
+  const [longChoice, setLongChoice] = useState<string | null>('long');
+  const [shortChoice, setShortChoice] = useState<string | null>('short');
+  const [trainChoice, setTrainChoice] = useState<string | null>(SPECIMEN_TRAINS[0].value);
 
   return (
     <Stack gap="md">
@@ -71,6 +91,36 @@ function Specimen({ showTooltip }: { showTooltip: boolean }) {
           onChange={setChoice}
           data={OPTIONS.map((key) => ({ value: key, label: t(key) }))}
         />
+        <div data-testid="kit-dropdown-long">
+          <Select
+            className="kit-narrow-field"
+            searchable
+            label={t('kit.dropdownLong')}
+            value={longChoice}
+            onChange={setLongChoice}
+            data={[
+              { value: 'long', label: t('kit.optionLong') },
+              { value: 'short', label: t('kit.optionShort') },
+            ]}
+          />
+        </div>
+        <div data-testid="kit-dropdown-short">
+          <Select
+            className="kit-narrow-field"
+            label={t('kit.dropdownShort')}
+            value={shortChoice}
+            onChange={setShortChoice}
+            data={[{ value: 'short', label: t('kit.optionShort') }]}
+          />
+        </div>
+        <div data-testid="kit-dropdown-picture">
+          <TrainSelect
+            label={t('kit.dropdownPicture')}
+            value={trainChoice}
+            onChange={setTrainChoice}
+            data={SPECIMEN_TRAINS}
+          />
+        </div>
       </Group>
 
       <Group gap="lg">

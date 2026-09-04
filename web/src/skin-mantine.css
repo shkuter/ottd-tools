@@ -327,6 +327,21 @@
     --input-left-section-width: 20px;
   }
 
+  /* A field that picks a vehicle holds a sprite in its left section, so the section is as wide
+     as the sprite column. The variable is declared on the wrapper because that is where the
+     rule above declares it — an own declaration beats what the root would pass down. */
+  .train-select .mantine-Input-wrapper {
+    --input-left-section-width: var(--skin-sprite-cell);
+  }
+
+  /* and the sprite stands at the left of that section, where it stands in an option of the
+     list — the library centres a section, which would leave the field showing the vehicle at
+     one place and the list at another. Both sections carry the same class and are told apart
+     by data-position, so the chevron on the right keeps its own centring. */
+  .train-select .mantine-Input-section[data-position='left'] {
+    justify-content: flex-start;
+  }
+
   .mantine-Select-wrapper {
     --input-right-section-width: 24px;
   }

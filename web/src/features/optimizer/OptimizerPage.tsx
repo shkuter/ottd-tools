@@ -58,7 +58,7 @@ import { SortableTh } from '../../components/table/SortableTh';
 import { TableFrame } from '../../components/table/TableFrame';
 import { useConsistStore } from '../../state/consistStore';
 import { useRouteStore } from '../../state/routeStore';
-import { CargoIcon } from '../../components/CargoIcon';
+import { CargoSelect } from '../../components/PictureSelect';
 import { TrainImage } from '../../components/TrainImage';
 import { useActiveCargo } from '../useActiveCargo';
 import { PrefillNote } from '../../components/PrefillNote';
@@ -348,12 +348,12 @@ export default function OptimizerPage() {
       <Title order={2}>{t('opt.title')}</Title>
       <Group className="filters" align="flex-end" gap="xs">
         <YearField />
-        <Select
+        <CargoSelect
           {...fieldWidth('wide')}
+          cargos={cargoList}
           label={t('route.cargo')}
           searchable
           allowDeselect={false}
-          leftSection={<CargoIcon icon={cargo?.icon ?? ''} />}
           value={cargo?.label ?? null}
           onChange={(v) => v && setCargoLabel(v)}
           data={cargoList.map((c) => ({ value: c.label, label: cargoName(c) }))}

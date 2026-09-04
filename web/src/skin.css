@@ -138,6 +138,10 @@
   --skin-field-normal: 18ch; /* a short list value: RAIL, All */
   --skin-field-wide: 26ch; /* a cargo name, which carries an icon as well */
 
+  /* The sprite column: as wide as the longest vehicle drawn at 1x, so names line up in a
+     list, in a dropdown option and in a field's left section alike. */
+  --skin-sprite-cell: 65px;
+
 }
 
 /* ---------- window theme: grey ----------
@@ -537,7 +541,7 @@ h4 {
   /* the source is 4x (64px); shown at 1x logical size so its pixels divide evenly */
   height: 16px;
   width: auto;
-  max-width: 65px;
+  max-width: var(--skin-sprite-cell);
   image-rendering: pixelated;
   vertical-align: middle;
   flex-shrink: 0;
@@ -547,6 +551,27 @@ h4 {
   image-rendering: pixelated;
   vertical-align: -1px;
   flex-shrink: 0;
+}
+
+/* An option of a dropdown that carries a picture: the picture in a cell of its own, the name
+   beside it, both centred on the line. The cell is what keeps every name starting at the same
+   vertical — see optionWithPicture. The markup is ours, so the rules live here rather than
+   with the ones that reshape Mantine's own. */
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: var(--skin-hsep-normal);
+}
+
+.option-cell {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* a vehicle sprite is as wide as the vehicle, so its cell is the sprite column's width */
+.option-cell--sprite {
+  width: var(--skin-sprite-cell);
 }
 
 /* An icon of the game's interface standing in for a label. Drawn at the height
@@ -892,6 +917,13 @@ h4 {
   padding: 12px;
 }
 
+/* A specimen field of that page, narrow enough that an option longer than it can be seen
+   overflowing it. Widths come from the same scale as everywhere else (--skin-field-*), never
+   from a number in the markup. */
+.kit-narrow-field {
+  width: var(--skin-field-normal);
+}
+
 /* ---------- network ---------- */
 
 /* One column, unlike the route income tab: the trip is entered there, so there is no column
@@ -917,6 +949,13 @@ h4 {
 
 .network-inputs .field {
   width: 140px;
+}
+
+/* The engine field carries a sprite in its left section, so it is a cargo field's width plus
+   the sprite column: the longest engine name needs every pixel of the cargo width for itself
+   (High Speed Driving Van Trailer is 230px of text against 249px of room). */
+.network-inputs .field-engine {
+  width: calc(var(--skin-field-wide) + var(--skin-sprite-cell));
 }
 
 /* ---------- narrow windows ---------- */
@@ -1201,7 +1240,7 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root) {
    length of a shunter, and left to themselves the names stepped in and out along the column. */
 .cell-vehicle .train-sprite {
   display: inline-block;
-  width: 65px;
+  width: var(--skin-sprite-cell);
   object-fit: contain;
   object-position: left center;
 }

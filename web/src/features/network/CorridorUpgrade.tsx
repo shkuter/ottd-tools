@@ -2,6 +2,7 @@ import { NumberInput, Paper, Select, Table, Text, Title } from '@mantine/core';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { num, speedUnitLabel, speedValue, unitSuffix } from '../../components/format';
 import { Money } from '../../components/Money';
+import { TrainSelect } from '../../components/PictureSelect';
 import { SummaryRow as Row } from '../../components/SummaryRow';
 import type { RouteWithFlowParams } from '../../engine/trip';
 import { useRouteStore } from '../../state/routeStore';
@@ -60,8 +61,10 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
           value={corridor.trains || ''}
           onChange={(v) => setCorridor({ trains: Math.max(0, Number(v) || 0) })}
         />
-        <Select
-          className="field"
+        {/* the engine is picked by its picture as much as by its name, the way the game's
+            purchase list is read — so the sprite stands both in the list and in the field */}
+        <TrainSelect
+          className="field field-engine"
           label={t('corridor.replacement')}
           searchable
           value={replacement?.id ?? null}

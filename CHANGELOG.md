@@ -18,6 +18,19 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- A dropdown now opens as wide as its longest option, the way the game sizes its own lists —
+  one line per option instead of a name wrapped over three. It opens from the left edge of its
+  field, the way the game opens a list from the left edge of its button; it is never narrower
+  than the field it belongs to, and on a window too narrow for the longest option the option wraps again
+  rather than being cut off or running past the edge.
+- An option that names a vehicle or a cargo shows its picture, as the game's own icon items do:
+  the sprite of the engine in the corridor replacement list, the cargo icon in every cargo
+  list. The picture sits in a column of its own, so the names all start at the same vertical,
+  and the corridor's engine field is now wide enough to show the sprite and the whole name
+  beside it.
+
 ## [0.20.0] - 2026-09-04
 
 ### Added

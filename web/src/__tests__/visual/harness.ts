@@ -23,11 +23,14 @@ import { SNAPSHOT_DB } from '../../savegame/snapshotStore';
  */
 
 const WEB_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const VIEWPORT = { width: 1440, height: 900 };
+/** The window every check starts in; a check that resizes it puts this back afterwards. */
+export const VIEWPORT = { width: 1440, height: 900 };
 
 export interface Harness {
   /** Opens an app route; `ready` is a selector to wait for beyond the shell. */
   goto(path: string, ready?: string): Promise<Page>;
+  /** The one page the file's checks share — for undoing what a check did to it. */
+  readonly page: Page;
   close(): Promise<void>;
 }
 
@@ -155,6 +158,7 @@ async function openHarness(): Promise<Harness> {
 
   return {
     goto,
+    page,
     close: async () => {
       await context.close();
       await browser.close();

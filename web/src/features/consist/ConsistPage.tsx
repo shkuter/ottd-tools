@@ -36,7 +36,7 @@ import { useSoldIds } from '../savegame/soldIds';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, matchesTrainName, sortCargos } from '../../i18n/names';
 import { money, num, speed, speedUnitLabel, speedValue, withUnit } from '../../components/format';
-import { CargoIcon } from '../../components/CargoIcon';
+import { CargoSelect } from '../../components/PictureSelect';
 import { fieldWidth } from '../../skin';
 import { TrainImage } from '../../components/TrainImage';
 import { TrackTypeField } from '../../components/TrackTypeField';
@@ -174,11 +174,11 @@ export default function ConsistPage() {
           />
           <TrackTypeField />
           <YearField />
-          <Select
+          <CargoSelect
             {...fieldWidth('wide')}
+            cargos={cargoList}
             label={t('consist.filter.cargo')}
             searchable
-            leftSection={<CargoIcon icon={cargoList.find((c) => c.label === cargoFilter)?.icon ?? ''} />}
             value={cargoFilter || null}
             onChange={(v) => setCargoFilter(v ?? '')}
             placeholder={t('consist.filter.any')}
@@ -318,11 +318,11 @@ export default function ConsistPage() {
           </Button>
         )}
 
-        <Select
+        <CargoSelect
           className="field"
+          cargos={cargoList}
           label={t('consist.cargoForCapacity')}
           searchable
-          leftSection={<CargoIcon icon={cargoList.find((c) => c.label === cargoLabel)?.icon ?? ''} />}
           placeholder={t('consist.none')}
           value={cargoLabel ?? null}
           onChange={(v) => setCargoLabel(v)}

@@ -1,5 +1,7 @@
 import {
   createTheme,
+  Select,
+  type ComboboxProps,
   type CSSVariablesResolver,
   type MantineColorsTuple,
   type MantineThemeOverride,
@@ -12,6 +14,10 @@ import { gradients } from './skin';
  * The look itself lives in skin.css — this only teaches Mantine the game's
  * palette, font and metrics so its components start in the right place instead
  * of being dragged there rule by rule.
+ *
+ * One shape does live here rather than in the stylesheets: the size and place of
+ * a dropdown, which the library writes as an inline style and no rule can reach
+ * (see gameLikeDropdown below).
  */
 
 /**
@@ -37,7 +43,60 @@ export const PRIMARY_SHADE = 5;
  */
 const scaled = (unscaled: number) => `round(calc(${unscaled}px * var(--skin-scale)), 1px)`;
 
+/*
+ * The gap Mantine's own `shift` keeps between a floating element and the edge of the
+ * window (`padding: 5` in getPopoverMiddlewares). `size` is given the same gap, or it would
+ * report the whole viewport as available while `shift` holds the list five pixels short of
+ * it — and the list would hang exactly those five pixels off the screen.
+ */
+const WINDOW_EDGE_GAP = 5;
+
+/*
+ * A dropdown as wide as it needs to be, the way the game sizes its own: the
+ * width of the longest item, raised to the width of the button when the items
+ * are shorter (dropdown.cpp, UpdateSizeAndPosition and GetDropDownListDimension),
+ * and never past the edge of the window.
+ *
+ * It has to be a default prop rather than a rule in skin-mantine.css: Mantine's
+ * own default is `width: 'target'`, and at that value it writes the field's
+ * width onto the dropdown as an inline style (the `size` branch of
+ * getPopoverMiddlewares in @mantine/core/.../use-popover.mjs), which no rule can
+ * override. Line numbers are left out on purpose — they move with every patch
+ * release of the package.
+ *
+ * `max-content` keeps each item on one line while it fits; once maxWidth cuts
+ * in, the item wraps again on its own, which is what a narrow window needs. No
+ * `white-space` rule anywhere does that work.
+ *
+ * A list of another kind — MultiSelect, Autocomplete, a bare Combobox — has to
+ * be given the same defaults. The app has none today, which is the only reason
+ * `Select` alone covers "every dropdown".
+ */
+const gameLikeDropdown: ComboboxProps = {
+  width: 'max-content',
+  /*
+   * Aligned with the left edge of the field, the way the game aligns a list with the left
+   * edge of its button (dropdown.cpp, UpdateSizeAndPosition). Mantine centres a popover on
+   * its target, which is invisible while the list is the width of the field and sends the
+   * list off to the left as soon as it is wider.
+   */
+  position: 'bottom-start',
+  middlewares: {
+    size: {
+      padding: WINDOW_EDGE_GAP,
+      apply: ({ rects, availableWidth, elements }) => {
+        elements.floating.style.minWidth = `${rects.reference.width}px`;
+        elements.floating.style.maxWidth = `${availableWidth}px`;
+      },
+    },
+  },
+};
+
 export const theme: MantineThemeOverride = createTheme({
+  components: {
+    Select: Select.extend({ defaultProps: { comboboxProps: gameLikeDropdown } }),
+  },
+
   // the game paints its windows grey and fills its buttons yellow
   colors: {
     gray: colourTuple(gradients.grey),

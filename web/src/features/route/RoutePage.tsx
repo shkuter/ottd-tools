@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Button, NumberInput, Paper, Select, Switch, Table, Text, Title } from '@mantine/core';
+import { Button, NumberInput, Paper, Switch, Table, Text, Title } from '@mantine/core';
 import { LineChart } from '@mantine/charts';
 import { NavLink } from 'react-router';
 import { activeTrainsMeta } from '../../dataset';
@@ -7,7 +7,7 @@ import { t } from '../../i18n';
 import { cargoName, cargoUnits } from '../../i18n/names';
 import { currencySymbol, money, num, percent, speed, unitSuffix, withUnit } from '../../components/format';
 import { Money } from '../../components/Money';
-import { CargoIcon } from '../../components/CargoIcon';
+import { CargoSelect } from '../../components/PictureSelect';
 import { TrackTypeField } from '../../components/TrackTypeField';
 import { StrandedVehicles } from '../../components/StrandedVehicles';
 import { TableFrame } from '../../components/table/TableFrame';
@@ -93,12 +93,12 @@ export default function RoutePage() {
       <div className="page-route">
         <Paper component="section" className="route-controls" p="sm">
           <PrefillNote origin={route.prefillOrigin} current={routePrefillState(game)} />
-          <Select
+          <CargoSelect
             className="field"
+            cargos={cargoList}
             label={t('route.cargo')}
             searchable
             allowDeselect={false}
-            leftSection={<CargoIcon icon={cargo?.icon ?? ''} />}
             value={cargo?.label ?? null}
             onChange={(v) => v && route.setCargoLabel(v)}
             data={cargoList.map((c) => ({ value: c.label, label: cargoName(c) }))}

@@ -32,6 +32,9 @@ export interface CorridorFields {
   engineId: string | null;
 }
 
+/** Where the route state is kept; named here so checks can clear it without copying it. */
+export const ROUTE_KEY = 'ottd-tools-route';
+
 export const EMPTY_CORRIDOR: CorridorFields = { target: '', pieces: 0, trains: 1, engineId: null };
 
 /**
@@ -151,7 +154,7 @@ export const useRouteStore = create<RouteState>()(
       setNetworkOrigin: (networkOrigin) => set({ networkOrigin }),
     }),
     {
-      name: 'ottd-tools-route',
+      name: ROUTE_KEY,
       // persist merges the saved state into the live one field by field, so a state saved
       // before the network existed keeps the default — but a state saved with only part of
       // it (a later field added to NetworkInputs) would replace the whole object and lose
