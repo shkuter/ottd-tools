@@ -18,9 +18,12 @@ import { BridgeButton } from '../savegame/BridgeButton';
 import { cargoToIncome, chainTaskToSupply } from '../savegame/bridge';
 import { applyCargoIncomeBridge, applySupplyBridge } from '../savegame/applyBridge';
 import { getSnapshotState, subscribeSnapshot } from '../../savegame/snapshotStore';
+import { useNavigate } from 'react-router';
 
 function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) {
   const { game, calc } = useSettingsStore();
+  // a bridge carries the values and goes where they are used, as every other bridge does
+  const navigate = useNavigate();
   const industry = industryById.get(nodeId);
   const cargo = cargoByLabel.get(nodeId);
   if (industry) {
@@ -46,7 +49,10 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
                   { industryId: industry.id, cargoLabel: entry.label, distanceTiles: null, productionPerMonth: null },
                   game,
                 )}
-                onTake={(values) => applySupplyBridge(values, name)}
+                onTake={(values) => {
+                  applySupplyBridge(values, name);
+                  void navigate('/supply');
+                }}
               />
             </List.Item>
           ))}
@@ -79,7 +85,10 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
           <BridgeButton
             action={t('firs.bridge.toIncome')}
             bridge={cargoToIncome(cargo.label, game)}
-            onTake={(values) => applyCargoIncomeBridge(values, name)}
+            onTake={(values) => {
+              applyCargoIncomeBridge(values, name);
+              void navigate('/income');
+            }}
           />
         </Title>
         <Text className="hint">
