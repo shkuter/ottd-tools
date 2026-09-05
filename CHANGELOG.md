@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-09-05
+
 ### Fixed
 
 - The up arrow of a count field did nothing while the field was empty. Those fields show a
