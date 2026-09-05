@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { routeRows, stationStops, type RouteRow } from '../routeRows';
 import {
+  chainTaskToSupply,
   incomePrefillValues,
   industryToOptimizer,
   loadingFlow,
   routeToIncome,
   routeToOptimizer,
 } from '../bridge';
+import { DEFAULT_GAME_SETTINGS } from '../../../engine/settings';
 import { buildSnapshot } from '../../../savegame/snapshot';
 import { readSavegame, type RawSavegame } from '../../../savegame/read';
 import { snapshotSettings, type SnapshotSettings } from '../../../savegame/snapshotStore';
@@ -312,12 +314,14 @@ describe('the loading end of a leg', () => {
           id: 9001,
           catalogueId: null,
           townId: null,
+          plot: null,
           produced: [{ label, slot: 0, lastMonthProduction: 144, lastMonthTransported: 0 }],
         },
         {
           id: 9002,
           catalogueId: null,
           townId: null,
+          plot: null,
           produced: [{ label, slot: 0, lastMonthProduction: 96, lastMonthTransported: 0 }],
         },
       ],
@@ -365,5 +369,42 @@ describe('the loading end of a leg', () => {
     expect(routeToIncome(row, stripped).values!.trip!.productionPerMonth).toBe(0);
     // writing a zero here would overwrite whatever the user had entered before
     expect(routeToOptimizer(row, stripped).values!.productionPerMonth).toBeUndefined();
+  });
+});
+
+describe('chainTaskToSupply', () => {
+  const firsGame = { ...DEFAULT_GAME_SETTINGS, firs: true };
+  const task = {
+    cargoLabel: 'COAL',
+    industryId: 'coke_oven',
+    distanceTiles: 40,
+    productionPerMonth: 144,
+  };
+
+  it('carries the industry, cargo and both figures of a game', () => {
+    expect(chainTaskToSupply(task, firsGame).values).toEqual({
+      industryId: 'coke_oven',
+      cargoLabel: 'COAL',
+      distanceTiles: 40,
+      productionPerMonth: 144,
+    });
+  });
+
+  it('carries the pair alone when there is no game to measure by', () => {
+    const values = chainTaskToSupply(
+      { ...task, distanceTiles: null, productionPerMonth: null },
+      firsGame,
+    ).values;
+    // the two figures are left out entirely, so what the player typed on the tab stands
+    expect(values).toEqual({ industryId: 'coke_oven', cargoLabel: 'COAL' });
+  });
+
+  it('refuses a cargo the active set does not have, and says why', () => {
+    expect(chainTaskToSupply({ ...task, cargoLabel: 'NOPE' }, firsGame).blocker).toBe('noCargo');
+  });
+
+  it('refuses an industry the active economy does not have, and says why', () => {
+    expect(chainTaskToSupply({ ...task, industryId: 'nonexistent' }, firsGame).blocker)
+      .toBe('noIndustry');
   });
 });

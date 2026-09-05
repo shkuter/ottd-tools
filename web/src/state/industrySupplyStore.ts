@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_SEARCH_PARAMS, searchStorePersist, type SearchParams } from './searchParams';
+import type { PrefillOrigin } from './prefill';
 
 /** Route the user gave one input of an industry. Zero means "not given". */
 export interface InputRouteParams {
@@ -20,6 +21,21 @@ export function inputKey(industryId: string, cargoLabel: string): string {
   return `${industryId}:${cargoLabel}`;
 }
 
+/** Values a chain task hands this tab, as the origin note compares them. */
+export interface SupplyPrefill {
+  industryId: string;
+  cargoLabel: string;
+  distanceTiles: number;
+  productionPerMonth: number;
+}
+
+/**
+ * What a bridge writes: the pair naming the input is always there, the two figures only when
+ * whoever built the bridge could state them.
+ */
+export type SupplyBridgeValues = Partial<SupplyPrefill> &
+  Pick<SupplyPrefill, 'industryId' | 'cargoLabel'>;
+
 interface IndustrySupplyState extends SearchParams {
   /**
    * Industry being supplied. Empty when none was chosen; an id the active economy has no
@@ -36,6 +52,9 @@ interface IndustrySupplyState extends SearchParams {
   setMaxTrains: (trains: number) => void;
   setInput: (key: string, params: Partial<InputRouteParams>) => void;
   setCommonDistanceTiles: (tiles: number) => void;
+  /** Where the current input came from, when a bridge wrote it rather than the user. */
+  prefillOrigin: PrefillOrigin<SupplyPrefill> | null;
+  setPrefillOrigin: (origin: PrefillOrigin<SupplyPrefill> | null) => void;
   /** Fill the given inputs with one distance, leaving their outputs alone. */
   applyCommonDistance: (keys: string[]) => void;
 }
@@ -47,6 +66,8 @@ export const useIndustrySupplyStore = create<IndustrySupplyState>()(
       industryId: '',
       inputs: {},
       commonDistanceTiles: 100,
+      prefillOrigin: null,
+      setPrefillOrigin: (prefillOrigin) => set({ prefillOrigin }),
       setIndustryId: (industryId) => set({ industryId }),
       setStationTiles: (stationTiles) => set({ stationTiles }),
       setMaxTrains: (maxTrains) => set({ maxTrains }),

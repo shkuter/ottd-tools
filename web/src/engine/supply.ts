@@ -117,6 +117,24 @@ export function secondaryOutput(
 }
 
 /**
+ * How much has to be delivered across the window for a secondary to put out `output` of one
+ * cargo — `secondaryOutput()` read backwards, so the two cannot drift apart when FIRS changes.
+ *
+ * Null where the division has no answer: a conversion or an output ratio of zero means this
+ * industry makes none of that cargo however much it is fed, and a silent infinity in a list
+ * of haulage tasks is worse than a blank.
+ */
+export function requiredDelivery(
+  output: number,
+  conversionShare: number,
+  outputRatio: number,
+): number | null {
+  const divisor = conversionShare * outputRatio;
+  if (divisor <= 0) return null;
+  return (output * CONVERSION_CEILING) / divisor;
+}
+
+/**
  * Where a volume delivered across the window lands against the two thresholds. Ports pool
  * every cargo they accept into one count, which is why the caller passes a volume rather than
  * a per-cargo figure — and why the answer describes this route's contribution, not the

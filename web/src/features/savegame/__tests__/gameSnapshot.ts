@@ -202,6 +202,7 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
         id: 0,
         catalogueId: 'iron_ore_mine',
         townId: 0,
+        plot: { x: 40, y: 10 },
         produced: [{ label: 'IORE', slot: 12, lastMonthProduction: 144, lastMonthTransported: 96 }],
       },
       // a type the catalogue does not know at all
@@ -209,6 +210,7 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
         id: 1,
         catalogueId: null,
         townId: 1,
+        plot: { x: 120, y: 60 },
         produced: [{ label: 'QLME', slot: 34, lastMonthProduction: 80, lastMonthTransported: 80 }],
       },
       // a type only the base game has: FIRS knows no power station, so this one is named
@@ -217,6 +219,7 @@ export const GAME_SNAPSHOT: SnapshotRecord = {
         id: 2,
         catalogueId: 'power_station',
         townId: 0,
+        plot: { x: 44, y: 14 },
         produced: [],
       },
     ],

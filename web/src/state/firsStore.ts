@@ -1,9 +1,18 @@
 import { create } from 'zustand';
 
 interface FirsState {
-  /** Выбранный узел графа: id индустрии или label груза. */
+  /** Node clicked on the graph: an industry id or a cargo label. */
   selectedNode: string | null;
   setSelectedNode: (node: string | null) => void;
+  /** Industry whose supply chain the dependency mode works out. */
+  chainTargetId: string | null;
+  setChainTargetId: (id: string | null) => void;
+  /**
+   * Output wanted of the target, in units per month. Null while the player has set none, and
+   * the scale comes from the imported game instead (`defaultOutputPerMonth`).
+   */
+  targetOutputPerMonth: number | null;
+  setTargetOutputPerMonth: (value: number | null) => void;
 }
 
 /**
@@ -13,4 +22,10 @@ interface FirsState {
 export const useFirsStore = create<FirsState>()((set) => ({
   selectedNode: null,
   setSelectedNode: (selectedNode) => set({ selectedNode }),
+  chainTargetId: null,
+  // a target from another economy is as meaningless as a node from one: both are dropped when
+  // the tab switches, by the same effect
+  setChainTargetId: (chainTargetId) => set({ chainTargetId, targetOutputPerMonth: null }),
+  targetOutputPerMonth: null,
+  setTargetOutputPerMonth: (targetOutputPerMonth) => set({ targetOutputPerMonth }),
 }));

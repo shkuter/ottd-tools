@@ -17,7 +17,7 @@ import en from '../../i18n/en.json';
 const harness = harnessFixture();
 
 /** Tabs that filter their content with a row of controls. */
-const WITH_ROWS = ['/optimizer', '/consist', '/supply', '/game'];
+const WITH_ROWS = ['/optimizer', '/consist', '/firs', '/supply', '/game'];
 
 /** A row reads line by line: one that wraps is several, each level in itself. */
 function readRow() {

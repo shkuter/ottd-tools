@@ -11,6 +11,15 @@ import { activeEntries } from '../../dataset';
 import type { GameSettings } from '../../engine/settings';
 import { useConsistStore } from '../../state/consistStore';
 import { useOptimizerStore } from '../../state/optimizerStore';
+import {
+  EMPTY_INPUT,
+  inputKey,
+  useIndustrySupplyStore,
+  type InputRouteParams,
+  type SupplyBridgeValues,
+  type SupplyPrefill,
+} from '../../state/industrySupplyStore';
+import type { PrefillOrigin } from '../../state/prefill';
 import { useRouteStore, type NetworkInputs } from '../../state/routeStore';
 import type { OptimizerPrefill } from '../../state/optimizerStore';
 import { incomePrefillValues, type IncomeBridge } from './bridge';
@@ -37,6 +46,41 @@ export function applyIncomeBridge(bridge: IncomeBridge, label: string): void {
     route.setManualDays(null);
   }
   route.setPrefillOrigin({ source: 'route', label, values: incomePrefillValues(bridge) });
+}
+
+/**
+ * Supply: the tab opens on the receiving industry, and the task's own input gets whatever
+ * figures the bridge could state. Inputs the bridge said nothing about keep what the player
+ * last entered — an industry's other inputs are not this task's business.
+ */
+export function applySupplyBridge(values: SupplyBridgeValues, label: string): void {
+  const supply = useIndustrySupplyStore.getState();
+  supply.setIndustryId(values.industryId);
+  const key = inputKey(values.industryId, values.cargoLabel);
+  const written: Partial<InputRouteParams> = {};
+  if (values.distanceTiles !== undefined) written.distanceTiles = values.distanceTiles;
+  if (values.productionPerMonth !== undefined) {
+    written.productionPerMonth = values.productionPerMonth;
+  }
+  supply.setInput(key, written);
+  supply.setPrefillOrigin({ source: 'chain', label, values });
+}
+
+/**
+ * What the Supply tab currently holds in the shape the origin note compares — the one input a
+ * chain task filled in. Lives beside the bridge that writes it, so the page does not have to
+ * know how the two are matched up.
+ */
+export function supplyPrefillState(origin: PrefillOrigin<SupplyPrefill> | null): SupplyPrefill {
+  const supply = useIndustrySupplyStore.getState();
+  const cargoLabel = origin?.values.cargoLabel ?? '';
+  const input = supply.inputs[inputKey(supply.industryId, cargoLabel)] ?? EMPTY_INPUT;
+  return {
+    industryId: supply.industryId,
+    cargoLabel,
+    distanceTiles: input.distanceTiles,
+    productionPerMonth: input.productionPerMonth,
+  };
 }
 
 /** Best train: whatever of cargo, leg and flow the bridge could state. */

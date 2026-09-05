@@ -9,10 +9,13 @@
  * built two different ways carries nothing.
  */
 
+import { activeCargoByLabel, activeIndustries } from '../../dataset';
+import type { GameSettings } from '../../engine/settings';
 import type { Cargo, ConsistEntry } from '../../types';
 import type { Snapshot, SnapshotCompany, SnapshotProduced } from '../../savegame/snapshot';
 import type { OptimizerPrefill } from '../../state/optimizerStore';
 import type { NetworkInputs, RoutePrefill } from '../../state/routeStore';
+import type { SupplyBridgeValues } from '../../state/industrySupplyStore';
 import { routeObstacles, stationStops, type ForecastBlocker, type RouteRow } from './routeRows';
 
 /**
@@ -23,7 +26,9 @@ import { routeObstacles, stationStops, type ForecastBlocker, type RouteRow } fro
 export type BridgeBlocker =
   | ForecastBlocker
   /** The map of the save could not be read, so nobody's network is known. */
-  | 'noNetwork';
+  | 'noNetwork'
+  /** The receiving industry is not in the active economy, so the tab has nothing to open on. */
+  | 'noIndustry';
 
 /** A bridge that may be taken, or the reason it may not. */
 export type Bridge<V> = { values: V; blocker?: never } | { blocker: BridgeBlocker; values?: never };
@@ -151,6 +156,47 @@ function loadingStationOf(row: RouteRow, snapshot: Snapshot): number | null {
     return station?.goods.some((g) => g.label === row.cargo!.label && g.rating !== null) ?? false;
   });
   return rated.length === 1 ? rated[0]!.stationId : stops[0]!.stationId;
+}
+
+/**
+ * A chain task on its way to the Supply tab. The task itself lives on the FIRS tab, so it is
+ * passed as plain fields: the bridges know about the game, not about the chain that built one.
+ */
+export interface ChainTaskBridgeInput {
+  cargoLabel: string;
+  /** Catalogue id of the receiving industry. */
+  industryId: string;
+  /** Leg of the task; null without an imported game. */
+  distanceTiles: number | null;
+  /** Output of the source over its last month; null where the game states none. */
+  productionPerMonth: number | null;
+}
+
+/**
+ * Chain task → Supply. The receiving industry and the cargo are all it takes: those two open
+ * the tab on the right input, and the two figures beside them are ones the player types in by
+ * hand anyway. An imported game fills those in as well.
+ *
+ * Not having a game is deliberately not a blocker. The chain mode works without one, and a
+ * bridge that shut down with it would leave the mode without its one route to picking trains.
+ */
+export function chainTaskToSupply(
+  task: ChainTaskBridgeInput,
+  game: GameSettings,
+): Bridge<SupplyBridgeValues> {
+  if (!activeCargoByLabel(game).has(task.cargoLabel)) return { blocker: 'noCargo' };
+  if (!activeIndustries(game).some((industry) => industry.id === task.industryId)) {
+    return { blocker: 'noIndustry' };
+  }
+  return {
+    values: {
+      industryId: task.industryId,
+      cargoLabel: task.cargoLabel,
+      // a figure the game did not state leaves the field the player last worked with alone
+      ...(task.distanceTiles === null ? {} : { distanceTiles: task.distanceTiles }),
+      ...(task.productionPerMonth === null ? {} : { productionPerMonth: task.productionPerMonth }),
+    },
+  };
 }
 
 /** The prefill a full income bridge writes, as the note compares it later. */

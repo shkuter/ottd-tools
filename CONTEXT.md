@@ -273,6 +273,24 @@ industry stores a per-cargo countdown, reset on every delivery and stepped down 
 cycle; "supplied" is that countdown still being above zero. Nothing here depends on how *much*
 arrived — one unit inside the window counts the same as a full train.
 
+**Chain** (_цепочка_) — the industries feeding a chosen **target**, walked upwards from it.
+Only an industry that **converts** what it is fed carries the chain further; one living off a
+**supply pool** is a **leaf** — its own deliveries are tasks, but nothing upstream of it belongs
+to this chain.
+
+**Supply task** (_задача снабжения_) — one input of one chain industry: a cargo, the industry
+receiving it, the industry it comes from, and how much to deliver across one **supply window**.
+The chain is read as a list of these, not as a picture of a tree.
+
+**Leg** (_плечо_) — the haul of one task, measured between the plots of the two industries with
+the game's own metric. Its **leg class** — one town, two towns, or a town nobody knows — is what
+orders the list before the length does: a haul inside one town is the cheapest to build.
+
+**Task state** (_состояние задачи_) — what an imported game says about a task: **supplied**
+(the cargo already reaches that industry), **idle** (the industry stands there unfed) or
+**absent** (no industry of the type on the map). Supplied says the cargo arrives, never that it
+arrives often enough to hold the **supply window** — that question belongs to the supply tab.
+
 **Conversion** (_конверсия_) — the share of its output an industry gets out of what it is fed:
 `min(8, Σ input ratio over supplied inputs) / 8`. Every FIRS acceptance rule falls out of this
 one sum — an industry the game describes as "any three of five" is five inputs of ratio 3 under

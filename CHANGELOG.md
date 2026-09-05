@@ -18,6 +18,26 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- FIRS chains: a supply chain mode. Pick the industry you want to run and the tab walks its
+  inputs upwards — the industries feeding it, the ones feeding those, and so on — and turns the
+  walk into an ordered list of haulage tasks: what to bring, from where, to which industry, and
+  how much of it over one supply window. The chain is carried further only by industries that
+  convert what they are fed; a mine or a port is a leaf, since it takes deliveries for a
+  production bonus rather than passing them on. An imported game marks each task supplied,
+  standing unfed, or absent from the map, names the nearest source and the length of the leg,
+  and orders the list by what is cheapest to build: legs inside one town first, then between
+  towns, shortest first within each. Every row carries a bridge to the Supply tab, where the
+  trains for that haul get picked.
+
+### Changed
+
+- **BREAKING** Snapshots now carry the plot coordinates of each industry, which is what the
+  leg lengths are measured from. An imported game has to be imported again: the snapshot
+  schema version rises, and a stored one from an older version is dropped rather than
+  migrated.
+
 ## [0.20.1] - 2026-09-05
 
 ### Fixed

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { List, Paper, Text, Title } from '@mantine/core';
 import { activeEconomy, cargoByLabel, economyById, industryById } from '../../dataset';
 import { t, useLocale } from '../../i18n';
@@ -9,6 +9,8 @@ import { useFirsStore } from '../../state/firsStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { cargoPaymentRate } from '../../engine/income';
 import { chainNodes } from './chains';
+import { ChainTasks } from './ChainTasks';
+import { getSnapshotState, subscribeSnapshot } from '../../savegame/snapshotStore';
 
 function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) {
   const { game, calc } = useSettingsStore();
@@ -89,7 +91,8 @@ function CargoName({ label }: { label: string }) {
 }
 
 export default function FirsPage() {
-  const { selectedNode, setSelectedNode } = useFirsStore();
+  const { selectedNode, setSelectedNode, setChainTargetId } = useFirsStore();
+  const snapshot = useSyncExternalStore(subscribeSnapshot, getSnapshotState).record?.snapshot ?? null;
   const game = useSettingsStore((s) => s.game);
   const economy = activeEconomy(game);
   // node labels are baked into the rendered SVG, so it has to be redrawn on switch
@@ -115,7 +118,8 @@ export default function FirsPage() {
   // knows nothing of the graph, so the tab does it.
   useEffect(() => {
     setSelectedNode(null);
-  }, [economy, setSelectedNode]);
+    setChainTargetId(null);
+  }, [economy, setSelectedNode, setChainTargetId]);
 
   const highlight = useMemo(
     () => (selectedNode ? chainNodes(economy, selectedNode) : null),
@@ -133,6 +137,9 @@ export default function FirsPage() {
         const title = nodeGroup.querySelector('title')?.textContent;
         if (title) {
           setSelectedNode(title);
+          // an industry node is also the answer to "what do you want to run": picking it on
+          // the graph is the shortest way to a chain, and the select stays for the rest
+          if (industryById.has(title)) setChainTargetId(title);
           return;
         }
       }
@@ -140,7 +147,7 @@ export default function FirsPage() {
     };
     container.addEventListener('click', handler);
     return () => container.removeEventListener('click', handler);
-  }, [setSelectedNode, svg]);
+  }, [setChainTargetId, setSelectedNode, svg]);
 
   // подсветка цепочки: приглушаем узлы/рёбра вне достижимого множества
   useEffect(() => {
@@ -184,6 +191,7 @@ export default function FirsPage() {
           </Paper>
         )}
       </div>
+      <ChainTasks economy={economy} snapshot={snapshot} />
     </div>
   );
 }

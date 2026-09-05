@@ -31,8 +31,8 @@ const PER_TAB: Record<string, { ready: string; scrollsX?: readonly string[] }> =
   '/income': { ready: '.page-route' },
   '/network': { ready: '.page-network' },
   '/supply': { ready: '.page-industry-supply' },
-  // and so is the chain graph
-  '/firs': { ready: '.page-firs', scrollsX: ['graph-container'] },
+  // and so is the chain graph — and the task list of the chain mode, like every other list
+  '/firs': { ready: '.page-firs', scrollsX: ['graph-container', 'table-wrap'] },
   '/settings': { ready: '.page-settings' },
   // seeded with a snapshot by the harness, or the tab would not exist to look at
   '/game': { ready: '.page-game', scrollsX: ['table-wrap'] },

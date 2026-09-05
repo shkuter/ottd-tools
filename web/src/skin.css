@@ -884,6 +884,22 @@ h4 {
   top: 12px;
 }
 
+.firs-chain {
+  margin-top: 16px;
+}
+
+/* the notes under the list read as a group, not as three stray paragraphs */
+.firs-chain-notes {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* a task already served is still worth reading, but it is not what to work on next */
+.firs-chain .mantine-Table-tr[data-state='supplied'] {
+  opacity: 0.65;
+}
+
 .node-card ul {
   margin: 0;
   padding-left: 18px;

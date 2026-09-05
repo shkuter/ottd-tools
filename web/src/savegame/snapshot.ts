@@ -155,12 +155,35 @@ export interface SnapshotProduced {
   lastMonthTransported: number | null;
 }
 
+/**
+ * North-west corner of an industry's plot, in map tiles. The one place a raw tile position
+ * leaves the parse: the distance between two industries is asked about a pair the user picks
+ * after the import, so it can neither be precomputed for every pair nor worked out later from
+ * a snapshot that kept no positions. Split into axes here so the map width stays inside the
+ * parse, as it does for every other answer.
+ */
+export interface IndustryPlot {
+  x: number;
+  y: number;
+}
+
 export interface SnapshotIndustry {
   id: number;
   /** industries.json id; null for a type the calculator's data does not know. */
   catalogueId: string | null;
   townId: number | null;
+  /** Null where the save states no map size or no plot for this industry. */
+  plot: IndustryPlot | null;
   produced: SnapshotProduced[];
+}
+
+/**
+ * Tiles between two industry plots, by the metric the game pays over (`DistanceManhattan`,
+ * map_func.h). Measured corner to corner, which makes it the same approximation route legs
+ * are: an industry's plot is not the station a player builds beside it.
+ */
+export function plotDistance(a: IndustryPlot, b: IndustryPlot): number {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
 
 export interface Snapshot {
@@ -553,6 +576,7 @@ function buildIndustries(
    * naming them nothing.
    */
   const vanilla = raw.network.industryTypeIds.size === 0;
+  const width = raw.network.mapSize?.width;
   const out: SnapshotIndustry[] = [];
   for (const industry of raw.network.industries.values()) {
     const known = vanilla
@@ -562,6 +586,10 @@ function buildIndustries(
       id: industry.index,
       catalogueId: known?.id ?? null,
       townId: industry.town,
+      plot:
+        width === undefined || industry.location === null
+          ? null
+          : { x: industry.location.tile % width, y: Math.floor(industry.location.tile / width) },
       produced: industry.produced.map((p) => ({
         label: label(p.cargoIndex),
         slot: p.cargoIndex,

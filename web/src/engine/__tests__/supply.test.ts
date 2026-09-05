@@ -7,6 +7,7 @@ import {
   conversion,
   holdsSupplied,
   poolOutcome,
+  requiredDelivery,
   secondaryOutput,
   supplyRatio,
   hasVerdict,
@@ -431,5 +432,28 @@ describe('снабжение предприятия целиком', () => {
     expect(result.conversion).toBeNull();
     expect(result.pool).toBeNull();
     expect(result.bottleneck).toBeNull();
+  });
+});
+
+describe('requiredDelivery', () => {
+  // coke oven: COAL in at ratio 8, COKE out at ratio 6 (industries.json, STEELTOWN)
+  const conversionShare = conversion([8]);
+
+  it('is secondaryOutput read backwards', () => {
+    for (const output of [1, 6, 42, 1000]) {
+      const delivered = requiredDelivery(output, conversionShare, 6)!;
+      expect(secondaryOutput(delivered, conversionShare, 6)).toBeCloseTo(output, 9);
+    }
+  });
+
+  it('scales with the wanted output', () => {
+    const one = requiredDelivery(100, conversionShare, 6)!;
+    const two = requiredDelivery(200, conversionShare, 6)!;
+    expect(two).toBeCloseTo(one * 2, 9);
+  });
+
+  it('has no answer when the industry makes none of that cargo', () => {
+    expect(requiredDelivery(100, conversionShare, 0)).toBeNull();
+    expect(requiredDelivery(100, 0, 6)).toBeNull();
   });
 });

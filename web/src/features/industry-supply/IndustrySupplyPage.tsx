@@ -12,8 +12,8 @@ import {
 import { TableFrame } from '../../components/table/TableFrame';
 import { useDebouncedValue } from '@mantine/hooks';
 import { activeIndustries, industriesMeta, industrySupplyInputs } from '../../dataset';
-import { intlLocale, t, useLocale } from '../../i18n';
-import { cargoName, industryName } from '../../i18n/names';
+import { t, useLocale } from '../../i18n';
+import { cargoName, industryName, sortIndustries } from '../../i18n/names';
 import { engineLabel, num, unitSuffix, wagonLabel, withUnit } from '../../components/format';
 import { STEP_FROM_EMPTY } from '../../components/numberField';
 import { CargoIcon } from '../../components/CargoIcon';
@@ -31,6 +31,8 @@ import { useSettingsStore } from '../../state/settingsStore';
 import { YearField } from '../../components/YearField';
 import { TrackTypeField } from '../../components/TrackTypeField';
 import { EMPTY_INPUT, inputKey, useIndustrySupplyStore } from '../../state/industrySupplyStore';
+import { PrefillNote } from '../../components/PrefillNote';
+import { supplyPrefillState } from '../savegame/applyBridge';
 import type { OptimizerCache } from '../../engine/optimizeCache';
 import { runSupplyInputs, type InputRun } from './inputs';
 import { useSoldIds } from '../savegame/soldIds';
@@ -43,10 +45,7 @@ export default function IndustrySupplyPage() {
 
   // Industries of the active economy: one the economy does not have drops out of the list, so
   // a choice left over from another economy simply stops being selected (ADR-0002).
-  const industryList = useMemo(() => {
-    const collator = new Intl.Collator(intlLocale(locale));
-    return activeIndustries(game).sort((a, b) => collator.compare(industryName(a), industryName(b)));
-  }, [game, locale]);
+  const industryList = useMemo(() => sortIndustries(activeIndustries(game), locale), [game, locale]);
   const industry = industryList.find((i) => i.id === store.industryId) ?? null;
 
   const inputs = useMemo(
@@ -110,6 +109,7 @@ export default function IndustrySupplyPage() {
       <Title order={2}>{t('supply.title')}</Title>
       <Text className="subtitle">{t('supply.intro', { window: num(windowDays, 1) })}</Text>
       {soldIds && <p className="hint">{t('vehicle.listFromGame')}</p>}
+      <PrefillNote origin={store.prefillOrigin} current={supplyPrefillState(store.prefillOrigin)} />
 
       <Group className="filters" align="flex-end" gap="xs">
         <Select

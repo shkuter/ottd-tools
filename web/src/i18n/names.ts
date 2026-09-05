@@ -124,6 +124,19 @@ function repeated(names: readonly string[]): Set<string> {
 const PINNED_CARGOS = ['passengers', 'mail'];
 
 /**
+ * Industries by the name the player reads, which is the only order a list of them can be in.
+ * Locale is an argument for the same reason it is one for `sortCargos`: callers memoise, and a
+ * list sorted off a store read inside the memo would stay in the language it was built in.
+ */
+export function sortIndustries<T extends { id: string; name: string }>(
+  industries: T[],
+  locale: Locale,
+): T[] {
+  const collator = new Intl.Collator(LOCALES[locale].numbers);
+  return [...industries].sort((a, b) => collator.compare(industryName(a), industryName(b)));
+}
+
+/**
  * Cargo pickers read as a list, so order them by what the user actually sees.
  * Takes the locale as an argument rather than reading the store: callers memoise
  * the sorted list, and this way the locale is a real dependency of that memo.

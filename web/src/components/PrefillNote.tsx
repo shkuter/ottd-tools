@@ -5,6 +5,7 @@ const SENTENCE: Record<PrefillSource, string> = {
   route: 'prefill.fromRoute',
   industry: 'prefill.fromIndustry',
   company: 'prefill.fromCompany',
+  chain: 'prefill.fromChain',
 };
 
 /**

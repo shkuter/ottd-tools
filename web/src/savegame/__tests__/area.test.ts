@@ -3,7 +3,7 @@ import { parseSavegame } from '../parse';
 import { readStations, type SavedStation } from '../extract/stnn';
 import { readIndustries } from '../extract/indy';
 import { areasTouch, type TileArea } from '../extract/area';
-import { buildSnapshot } from '../snapshot';
+import { buildSnapshot, plotDistance } from '../snapshot';
 import { readSavegame } from '../read';
 import { fixture } from './fixture';
 
@@ -207,5 +207,44 @@ describe('пересечение площадок с охватом', () => {
   it('диагональ считается по обеим осям сразу', () => {
     expect(areasTouch(at(10, 10), at(14, 14), width, 4)).toBe(true);
     expect(areasTouch(at(10, 10), at(15, 15), width, 4)).toBe(false);
+  });
+});
+
+/** Координаты площадки — единственное, что разбор отдаёт наружу тайлами. */
+describe('координаты площадок индустрий в снапшоте', () => {
+  it('у индустрий партии есть координаты, а размера карты в снапшоте нет', async () => {
+    const raw = await readSavegame(fixture('vanilla-1951'));
+    const snapshot = buildSnapshot(raw);
+    const width = raw.network.mapSize!.width;
+
+    expect(snapshot.industries.length).toBeGreaterThan(0);
+    for (const industry of snapshot.industries) {
+      const saved = raw.network.industries.get(industry.id)!;
+      if (saved.location === null) {
+        expect(industry.plot).toBeNull();
+        continue;
+      }
+      expect(industry.plot).toEqual({
+        x: saved.location.tile % width,
+        y: Math.floor(saved.location.tile / width),
+      });
+    }
+    expect(snapshot).not.toHaveProperty('mapSize');
+  });
+
+  it('сейв без размера карты оставляет индустрии без координат', async () => {
+    const base = await readSavegame(fixture('vanilla-1951'));
+    const snapshot = buildSnapshot({
+      ...base,
+      network: { ...base.network, mapSize: undefined },
+    });
+    expect(snapshot.industries.length).toBeGreaterThan(0);
+    expect(snapshot.industries.every((i) => i.plot === null)).toBe(true);
+  });
+
+  it('расстояние между площадками считается манхэттенской метрикой', () => {
+    expect(plotDistance({ x: 10, y: 20 }, { x: 40, y: 30 })).toBe(40);
+    expect(plotDistance({ x: 40, y: 30 }, { x: 10, y: 20 })).toBe(40);
+    expect(plotDistance({ x: 7, y: 7 }, { x: 7, y: 7 })).toBe(0);
   });
 });
