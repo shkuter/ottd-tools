@@ -140,6 +140,39 @@ describe('GraphCanvas', () => {
     expect(container.querySelector<HTMLInputElement>('.graph-toolbar input')!.value).toBe('');
   });
 
+  it('walks the nodes with the arrows, picks with Enter and clears with Escape', () => {
+    const onSelect = vi.fn();
+    const { container } = draw(onSelect);
+    const canvas = container.querySelector<HTMLElement>('.graph-canvas')!;
+    expect(canvas.tabIndex, 'the canvas is one tab stop').toBe(0);
+    expect(canvas.getAttribute('aria-activedescendant'), 'no cursor yet').toBeNull();
+
+    fireEvent.keyDown(canvas, { key: 'ArrowRight' });
+    // the first arrow lands on the first node, the second moves right to the other one
+    expect(canvas.getAttribute('aria-activedescendant')).toBe('graph-node-C_COAL');
+    fireEvent.keyDown(canvas, { key: 'ArrowRight' });
+    expect(canvas.getAttribute('aria-activedescendant')).toBe('graph-node-C_IORE');
+    expect(screen.getByTitle('IORE').dataset.focused).toBe('true');
+
+    fireEvent.keyDown(canvas, { key: 'Enter' });
+    expect(onSelect).toHaveBeenCalledWith('IORE');
+    fireEvent.keyDown(canvas, { key: 'Escape' });
+    expect(onSelect).toHaveBeenLastCalledWith(null);
+  });
+
+  it('drops the labels on the overview and keeps them close up', () => {
+    const { container } = draw(vi.fn());
+    const layer = () => container.querySelector<HTMLElement>('.graph-layer')!;
+    // the fixture layout is small, so it opens fitted at the maximum zoom: labels on
+    expect(layer().dataset.labels).toBeUndefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    expect(layer().dataset.labels).toBe('hidden');
+  });
+
   it('keeps the search shut until the layout is there', () => {
     const { container, rerender } = render(
       <MantineProvider>

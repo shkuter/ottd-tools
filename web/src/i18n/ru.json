@@ -132,6 +132,7 @@
   "firs.node.produces": "Производит: {cargo}",
   "firs.node.to": "На {industry}",
   "firs.graph.search": "Найти предприятие или груз",
+  "firs.graph.canvas": "Граф цепочек: стрелки водят по узлам, Enter выбирает",
   "firs.graph.zoomIn": "Крупнее",
   "firs.graph.zoomOut": "Мельче",
   "firs.graph.fit": "Вписать",

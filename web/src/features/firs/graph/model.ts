@@ -80,6 +80,9 @@ export const acceptCloneId = (label: string, industryId: string) => `C:${label}@
 /** A cargo drawn again beside one producer (produce clone). */
 export const produceCloneId = (industryId: string, label: string) => `I:${industryId}@${label}`;
 
+/** The DOM id of a node's card: what the canvas points aria-activedescendant at. */
+export const nodeElementId = (nodeId: string) => `graph-node-${nodeId.replace(/[^\w-]/g, '_')}`;
+
 /** A cargo drawn beside one industry rather than the common cargo node. */
 export const isClone = (nodeId: string) => nodeId.includes('@');
 

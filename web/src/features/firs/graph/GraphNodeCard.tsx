@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { badgeTextColour } from './cargoColour';
-import type { PlacedNode } from './model';
+import { nodeElementId, type PlacedNode } from './model';
 import { INDUSTRY_NAME_LINES } from './sizes';
 
 /**
@@ -15,6 +15,7 @@ export function GraphNodeCard({
   colour,
   full,
   selected,
+  focused,
   dim,
   onSelect,
 }: {
@@ -27,6 +28,8 @@ export function GraphNodeCard({
   /** Show the full-size picture (the node is in view at a zoom above 1:1). */
   full: boolean;
   selected: boolean;
+  /** Under the keyboard cursor; the canvas names it through aria-activedescendant. */
+  focused: boolean;
   dim: boolean;
   onSelect: (baseId: string) => void;
 }) {
@@ -43,9 +46,11 @@ export function GraphNodeCard({
   }
   return (
     <div
+      id={nodeElementId(node.id)}
       className={`graph-node graph-node--${node.kind}`}
       style={style}
       data-selected={selected || undefined}
+      data-focused={focused || undefined}
       data-dim={dim || undefined}
       title={[name, ...node.notes].join('\n')}
       onClick={(event) => {

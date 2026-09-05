@@ -961,6 +961,22 @@ h4 {
   outline-offset: calc(-2 * var(--bevel));
 }
 
+/* the keyboard cursor: the same frame the game draws around a focused widget */
+.graph-node[data-focused] {
+  outline: calc(2 * var(--bevel)) dashed var(--skin-text);
+  outline-offset: var(--bevel);
+}
+
+/*
+ * Zoomed out, a node is its picture or its colour: the text at that size is a smear of
+ * pixels over the very thing the graph is read by from afar. Hidden in CSS rather than in
+ * React, so a zoom gesture does not re-render a hundred cards.
+ */
+.graph-layer[data-labels='hidden'] .graph-node__name,
+.graph-layer[data-labels='hidden'] .graph-node__note {
+  display: none;
+}
+
 /* picking a node dims everything that is not tied to it */
 .graph-node[data-dim],
 .graph-edge[data-dim] {

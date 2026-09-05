@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ZOOM_STEP, centreOn, fitView, panBy, zoomAt, type Size, type View } from './zoomPan';
+import { ZOOM_STEP, centreOn, fitView, panBy, zoomAt, zoomFactor, type Size, type View } from './zoomPan';
 
 /**
  * Wheel to zoom around the cursor, drag to pan, and the buttons. The wheel listener is
@@ -56,7 +56,9 @@ export function useZoomPan(content: Size | null) {
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const box = element.getBoundingClientRect();
-      const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+      // by how far the gesture scrolled, not by how many events it arrived in: a trackpad
+      // sends dozens of small ones where a mouse sends one notch
+      const factor = zoomFactor(event.deltaY, event.deltaMode, box.height);
       setView((v) => zoomAt(v, factor, event.clientX - box.left, event.clientY - box.top));
     };
     element.addEventListener('wheel', onWheel, { passive: false });

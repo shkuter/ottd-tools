@@ -49,4 +49,69 @@ describe('the chain graph under the pointer', () => {
     // the drag ended over whatever it ended over; the pick is untouched
     expect(await page.locator('.firs-side').innerText()).toBe(picked);
   });
+
+  it('drops the node labels on the overview and brings them back close up', async () => {
+    const page = await harness().goto('/firs', ROOT);
+    const labels = () => page.locator('.graph-layer').getAttribute('data-labels');
+    const textShown = async () =>
+      page.evaluate(() => {
+        const name = document.querySelector<HTMLElement>('.graph-node__name');
+        return name ? getComputedStyle(name).display !== 'none' : false;
+      });
+
+    await page.getByRole('button', { name: 'Fit', exact: true }).click();
+    await page.waitForTimeout(200);
+    expect(await labels(), 'a whole economy at once is read by pictures and colours').toBe('hidden');
+    expect(await textShown()).toBe(false);
+
+    await page.getByRole('button', { name: '1:1', exact: true }).click();
+    await page.waitForTimeout(200);
+    expect(await labels()).toBeNull();
+    expect(await textShown()).toBe(true);
+  });
+
+  it('walks the graph with the keyboard, from one tab stop', async () => {
+    const page = await harness().goto('/firs', ROOT);
+    // the canvas is reachable by tabbing, and the arrows work from there
+    await page.locator('.graph-canvas').focus();
+    await page.keyboard.press('ArrowRight');
+    const first = await page.locator('.graph-canvas').getAttribute('aria-activedescendant');
+    expect(first).toMatch(/^graph-node-/);
+    await page.keyboard.press('ArrowRight');
+    expect(await page.locator('.graph-canvas').getAttribute('aria-activedescendant')).not.toBe(first);
+    expect(await page.locator('.graph-node[data-focused]').count()).toBe(1);
+
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.firs-side');
+    expect(await page.locator('.graph-node[data-selected]').count()).toBe(1);
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    expect(await page.locator('.firs-side').count()).toBe(0);
+  });
+
+  it('zooms by how far the wheel travelled, not by how many events it took', async () => {
+    const page = await harness().goto('/firs', ROOT);
+    const scale = async () =>
+      Number((await page.locator('.graph-layer').getAttribute('style'))!.match(/scale\(([\d.]+)\)/)![1]);
+    const box = (await page.locator('.graph-canvas').boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
+    const start = await scale();
+    // one mouse notch
+    await page.mouse.wheel(0, -100);
+    await page.waitForTimeout(120);
+    const afterNotch = await scale();
+
+    await page.getByRole('button', { name: 'Fit', exact: true }).click();
+    await page.waitForTimeout(150);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // the same travel as a trackpad sends it
+    for (let i = 0; i < 20; i++) await page.mouse.wheel(0, -5);
+    await page.waitForTimeout(200);
+    const afterTrackpad = await scale();
+
+    expect(afterNotch / start).toBeGreaterThan(1.2);
+    expect(afterTrackpad / start).toBeCloseTo(afterNotch / start, 1);
+  });
 });

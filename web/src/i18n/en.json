@@ -132,6 +132,7 @@
   "firs.node.produces": "Produces {cargo}",
   "firs.node.to": "To {industry}",
   "firs.graph.search": "Find an industry or cargo",
+  "firs.graph.canvas": "Chain graph: arrows move between nodes, Enter selects",
   "firs.graph.zoomIn": "Zoom in",
   "firs.graph.zoomOut": "Zoom out",
   "firs.graph.fit": "Fit",

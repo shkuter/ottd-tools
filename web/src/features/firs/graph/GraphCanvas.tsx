@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Select, Text } from '@mantine/core';
 import { t } from '../../../i18n';
 import { cargoByLabel } from '../../../dataset';
 import { cargoColour } from './cargoColour';
 import { GraphNodeCard } from './GraphNodeCard';
 import { placeEdges, placeNodes } from './layout';
-import { baseNodeId, isClone, type BuiltGraph, type GraphNode, type Layout, type PlacedEdge } from './model';
+import { baseNodeId, isClone, nodeElementId, type BuiltGraph, type GraphNode, type Layout, type PlacedEdge } from './model';
 import { useZoomPan } from './useZoomPan';
-import { fullPictureNodes } from './zoomPan';
+import { fullPictureNodes, labelsVisible, nextNodeInDirection, visibleNodes, type Direction } from './zoomPan';
 
 const ARROW = 8;
 
@@ -46,6 +46,9 @@ export function GraphCanvas({
   // a search names a node of this economy's graph; the same graph in another language
   // keeps it
   useEffect(() => setSearch(null), [economyId]);
+  /** The node the keyboard cursor sits on; the mouse puts it where it picks. */
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  useEffect(() => setFocusedId(null), [economyId]);
 
   const placed = useMemo(() => (layout ? placeNodes(graph, layout) : []), [graph, layout]);
   const edges = useMemo(() => (layout ? placeEdges(graph, layout) : []), [graph, layout]);
@@ -74,8 +77,47 @@ export function GraphCanvas({
 
   // a drag that ends over a node is not a pick, any more than one that ends on the background
   const pick = (baseId: string | null) => {
-    if (!zoom.consumeDrag()) onSelect(baseId);
+    if (zoom.consumeDrag()) return;
+    onSelect(baseId);
+    // arrows carry on from the node the hand just touched
+    setFocusedId(baseId === null ? null : (placed.find((n) => n.baseId === baseId)?.id ?? null));
   };
+
+  /** Arrows walk the drawing, Enter picks, Escape clears — everything the mouse can do. */
+  const onKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const arrows: Record<string, Direction> = {
+        ArrowLeft: 'left',
+        ArrowRight: 'right',
+        ArrowUp: 'up',
+        ArrowDown: 'down',
+      };
+      const direction = arrows[event.key];
+      if (direction) {
+        event.preventDefault();
+        const nextId = nextNodeInDirection(placed, focusedId, direction);
+        if (!nextId) return;
+        setFocusedId(nextId);
+        const node = placed.find((n) => n.id === nextId);
+        // keep the cursor on screen: only when it is not already
+        if (node && !visibleNodes([node], zoom.view, zoom.size).has(node.id)) {
+          zoom.centre({ x: node.x + node.width / 2, y: node.y + node.height / 2 });
+        }
+        return;
+      }
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        const node = placed.find((n) => n.id === focusedId);
+        if (node) onSelect(node.baseId);
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onSelect(null);
+      }
+    },
+    [placed, focusedId, onSelect, zoom],
+  );
 
   const find = (baseId: string | null) => {
     setSearch(baseId);
@@ -110,6 +152,11 @@ export function GraphCanvas({
         ref={zoom.ref}
         className="graph-canvas"
         data-dragging={zoom.dragging || undefined}
+        tabIndex={0}
+        role="application"
+        aria-label={t('firs.graph.canvas')}
+        aria-activedescendant={focusedId ? nodeElementId(focusedId) : undefined}
+        onKeyDown={onKeyDown}
         {...zoom.handlers}
         onClick={() => pick(null)}
       >
@@ -121,6 +168,7 @@ export function GraphCanvas({
         {layout && (
           <div
             className="graph-layer"
+            data-labels={labelsVisible(view.k) ? undefined : 'hidden'}
             style={{
               width: layout.width,
               height: layout.height,
@@ -149,6 +197,7 @@ export function GraphCanvas({
                 colour={node.kind === 'cargo' ? colourOf(node.baseId) : undefined}
                 full={fullPictures?.has(node.id) ?? false}
                 selected={selected === node.baseId}
+                focused={focusedId === node.id}
                 dim={highlight !== null && !highlight.has(node.baseId)}
                 onSelect={pick}
               />

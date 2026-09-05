@@ -20,6 +20,8 @@ of what users see):
 
 ### Added
 
+- FIRS chains: the graph canvas takes the keyboard — one tab stop, arrows to walk from node
+  to node (the canvas follows the cursor), Enter to pick, Escape to clear.
 - FIRS chains: the graph is redrawn the way FIRS draws its own cargo-flow chart. Industry
   nodes carry the set's picture of the industry, cargo nodes are badges in the cargo's game
   colour and so are the edges; hub cargos are cloned beside each producer or consumer, "To
@@ -43,6 +45,10 @@ of what users see):
 
 ### Changed
 
+- FIRS chains: the wheel zooms by how far the gesture scrolled rather than by how many events
+  it arrived in, so a trackpad no longer flies through the scales while a mouse notch still
+  steps like the toolbar buttons; below half scale the nodes drop their text and are read by
+  picture and colour, as the overview is meant to be.
 - **BREAKING** Snapshots now carry the plot coordinates of each industry, which is what the
   leg lengths are measured from. An imported game has to be imported again: the snapshot
   schema version rises, and a stored one from an older version is dropped rather than
