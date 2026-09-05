@@ -50,6 +50,24 @@ describe('GraphCanvas', () => {
     expect(onSelect).toHaveBeenCalledWith('COAL');
   });
 
+  it('leaves the pointer uncaptured until it travels, so a click reaches its node', () => {
+    const { container } = draw(vi.fn());
+    const canvas = container.querySelector<HTMLElement>('.graph-canvas')!;
+    // jsdom has no pointer capture; the calls are what matters — a captured pointer sends
+    // its click to the canvas instead of the node
+    const captured: number[] = [];
+    canvas.setPointerCapture = (id: number) => void captured.push(id);
+    canvas.releasePointerCapture = () => {};
+
+    fireEvent.pointerDown(canvas, { button: 0, clientX: 10, clientY: 10, pointerId: 7 });
+    expect(captured, 'a press alone captures nothing').toEqual([]);
+    fireEvent.pointerMove(canvas, { clientX: 11, clientY: 11, pointerId: 7 });
+    expect(captured, 'nor does a twitch below the threshold').toEqual([]);
+    fireEvent.pointerMove(canvas, { clientX: 60, clientY: 40, pointerId: 7 });
+    expect(captured, 'a pan captures, to keep following past the edge').toEqual([7]);
+    fireEvent.pointerUp(canvas);
+  });
+
   it('does not pick the node a drag happens to end on', () => {
     const onSelect = vi.fn();
     const { container } = draw(onSelect);

@@ -79,7 +79,6 @@ export function useZoomPan(content: Size | null) {
   const onPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     drag.current = { x: event.clientX, y: event.clientY, moved: false };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   }, []);
   const onPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
@@ -87,7 +86,15 @@ export function useZoomPan(content: Size | null) {
     const dx = event.clientX - d.x;
     const dy = event.clientY - d.y;
     if (!d.moved && Math.hypot(dx, dy) < 3) return;
-    if (!d.moved) setDragging(true);
+    if (!d.moved) {
+      setDragging(true);
+      // Captured only once the pointer actually travels — a pan has to keep following it
+      // past the edge of the canvas. Capturing on pointerdown instead would swallow every
+      // click on a node: the compatibility click after a captured pointer is dispatched to
+      // the element that held the capture, so the canvas would get it and read it as
+      // "clicked the background".
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
     d.moved = true;
     d.x = event.clientX;
     d.y = event.clientY;
