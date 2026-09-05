@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-05
+
 ### Added
 
 - FIRS chains: the graph canvas takes the keyboard — one tab stop, arrows to walk from node
