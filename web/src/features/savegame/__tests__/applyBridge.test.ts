@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  applyCargoIncomeBridge,
   applyIncomeBridge,
   applyNetworkBridge,
   applyOptimizerBridge,
@@ -195,5 +196,19 @@ describe('taking the network bridge', () => {
     // both halves of the tab keep their own note: neither card said anything about the other
     expect(prefillMatches(useRouteStore.getState().prefillOrigin, routePrefillState(game))).toBe(true);
     expect(noteStands()).toBe(true);
+  });
+});
+
+describe('applyCargoIncomeBridge', () => {
+  it('switches both tabs to the cargo and notes where it came from', () => {
+    useRouteStore.getState().setDistanceTiles(123);
+    applyCargoIncomeBridge({ cargoLabel: 'IORE' }, 'Iron Ore');
+    expect(useRouteStore.getState().cargoLabel).toBe('IORE');
+    expect(useConsistStore.getState().cargoLabel).toBe('IORE');
+    // the rest of the tab is left alone
+    expect(useRouteStore.getState().distanceTiles).toBe(123);
+    const origin = useRouteStore.getState().prefillOrigin;
+    expect(origin).toMatchObject({ source: 'graph', label: 'Iron Ore', values: { cargoLabel: 'IORE' } });
+    expect(prefillMatches(origin, routePrefillState(useSettingsStore.getState().game))).toBe(true);
   });
 });

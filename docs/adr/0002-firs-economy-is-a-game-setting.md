@@ -37,6 +37,10 @@ stronger effect than moving a figure, not a weaker one.
 - Both persisted copies are dropped: `firsStore` loses its `economyId` (and with it its
   `persist`, since `selectedNode` was never persisted) and `routeStore` loses its own.
   A user's saved economy is not migrated — every default was already `STEELTOWN`.
+  *Amended 2026-09-05 (`redraw-firs-chain-graph`):* `firsStore` carries an `economyId`
+  again, with the opposite meaning — not a choice, but the economy the picked node belongs
+  to, so a pick made in one economy is dropped when another is shown. It is not persisted,
+  and the setting remains the only place the economy is chosen.
 - `economyIdForCargo(game, cargo, preferred)` collapses to `economyIdForPayment(game)`:
   `VANILLA` or the setting. The "first economy that lists this cargo" fallback disappears,
   because `activeCargos(game)` now only offers cargos the economy has.

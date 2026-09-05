@@ -36,7 +36,8 @@ function clipped() {
     // a box that scrolls is meant to hold more than it shows; so is one told to
     // shorten its text with an ellipsis
     if (/auto|scroll/.test(style.overflowX) || style.textOverflow === 'ellipsis') continue;
-    if (element.closest('[class*="scroll"], .table-wrap, .graph-container')) continue;
+    // the graph canvas cuts what is panned out of view, on purpose
+    if (element.closest('[class*="scroll"], .table-wrap, .graph-canvas')) continue;
     // a box that hides nothing lets its content stand past it, and the check
     // above catches that where it matters; here the question is what is cut
     const hides = style.overflowX === 'hidden' || style.overflowX === 'clip';

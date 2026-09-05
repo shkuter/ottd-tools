@@ -1,4 +1,6 @@
-import { extractColours, inPalette, normaliseColour, type Colour } from './colours';
+import {
+  GRAPH_CANVAS, extractColours, inGamePalette, inPalette, normaliseColour, type Colour,
+} from './colours';
 import { isExempt } from './exemptions';
 import type { ElementStyles, Snapshot } from './collect';
 
@@ -47,7 +49,8 @@ export function offPalette(shot: Snapshot): ColourFinding[] {
   const findings: ColourFinding[] = [];
   for (const element of shot.elements) {
     for (const { property, colour } of coloursOf(element)) {
-      if (inPalette(colour) || isExempt(element.path, colour)) continue;
+      const allowed = element.path.includes(GRAPH_CANVAS) ? inGamePalette(colour) : inPalette(colour);
+      if (allowed || isExempt(element.path, colour)) continue;
       findings.push({
         path: element.path,
         property,

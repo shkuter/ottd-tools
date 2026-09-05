@@ -21,8 +21,10 @@ FIRS_ROOT = fx.root
 NML_PRICE_FACTOR_NUM = 1 << 21
 NML_PRICE_FACTOR_DENOM = 10 * 20 * 255
 
-# служебные грузы, исключаемые из графа цепочек (как в доках FIRS)
-GRAPH_EXCLUDED_LABELS = ["ENSP", "FMSP", "PASS", "MAIL"]
+# Industry pictures for the chain graph: the pipeline copies FIRS's own docs
+# assets (see extract_industry_images.py); the record only carries the paths.
+INDUSTRY_IMAGE = "icons/industries/{id}.png"
+INDUSTRY_IMAGE_SMALL = "icons/industries/small/{id}.png"
 
 ACCEPT_MODES = {
     "STR_EMPTY": "all",
@@ -172,6 +174,7 @@ def extract_cargos(dh, economies, spaced_price_factors):
     for cargo in firs.cargo_manager:
         price_by_eco = {}
         payment_by_eco = {}
+        colour_by_eco = {}
         for economy in economies:
             if cargo not in economy.cargos:
                 continue
@@ -180,6 +183,9 @@ def extract_cargos(dh, economies, spaced_price_factors):
             payment_by_eco[economy.id] = round(
                 pf * NML_PRICE_FACTOR_NUM / NML_PRICE_FACTOR_DENOM
             )
+            # the colour the game draws the cargo in (station rating, graphs):
+            # an index into the game palette, assigned per economy by slot
+            colour_by_eco[economy.id] = int(cargo.get_cargo_colour(economy))
         items.append({
             "id": cargo.id,
             "label": cargo.cargo_label,
@@ -190,6 +196,7 @@ def extract_cargos(dh, economies, spaced_price_factors):
             "capacity_multiplier": int(cargo.capacity_multiplier),
             "price_factor_by_economy": price_by_eco,
             "initial_payment_by_economy": payment_by_eco,
+            "colour_by_economy": colour_by_eco,
             # transit_periods: единица — период старения 185 тиков = 2.5 дня (НЕ день)
             "transit_periods": [
                 int(cargo.penalty_lowerbound),
@@ -248,7 +255,13 @@ def extract_industries(dh, economies, param_defaults):
             "type": type(industry).__name__,
             "map_colour": industry.get_property("map_colour", None),
             "economies": per_economy,
+            "image": INDUSTRY_IMAGE.format(id=industry.id),
+            "image_small": INDUSTRY_IMAGE_SMALL.format(id=industry.id),
         }
+        if getattr(industry, "town_industry_for_cargoflow", False):
+            # FIRS's own cargo-flow chart leaves town industries out and names
+            # them in the cargo badge instead ("To Hotel"); the graph does the same
+            item["town_industry"] = True
         if name_overrides:
             item["name_by_economy"] = name_overrides
         # 'string(STR_STATION_FURNACE)' -> STR_STATION_FURNACE: the key of the
@@ -268,7 +281,7 @@ def extract_industries(dh, economies, param_defaults):
     return items
 
 
-def economy_graph(economy, industries_payload):
+def economy_graph(economy, industries_payload, excluded_labels):
     """Граф цепочек per economy: рёбра produces (industry->cargo) и accepts (cargo->industry)."""
     edges = []
     for industry in industries_payload:
@@ -276,59 +289,73 @@ def economy_graph(economy, industries_payload):
         if eco_data is None:
             continue
         for entry in eco_data["produces"]:
-            if entry["label"] not in GRAPH_EXCLUDED_LABELS:
+            if entry["label"] not in excluded_labels:
                 edges.append({"from": industry["id"], "to": entry["label"], "kind": "produces"})
         for entry in eco_data["accepts"]:
-            if entry["label"] not in GRAPH_EXCLUDED_LABELS:
+            if entry["label"] not in excluded_labels:
                 edges.append({"from": entry["label"], "to": industry["id"], "kind": "accepts"})
     return edges
 
 
-def economy_dot(economy, dh, edges, cargo_names_by_label):
-    """DOT-описание графа для рендера graphviz'ом в SPA."""
-    lines = [
-        "digraph cargoflow {",
-        '  rankdir="LR";',
-        # graphviz spaces a graph this size out over several screens by default;
-        # the ranks and the nodes within them are pulled closer together so the
-        # chart is read by scrolling once rather than by scrolling past gaps
-        '  ranksep=0.35;',
-        '  nodesep=0.12;',
-        '  node [fontsize=10, fontname="sans-serif", height=0.3, margin="0.08,0.04"];',
-        "  edge [color=\"#888888\"];",
-    ]
-    industry_ids = set()
-    cargo_labels = set()
-    for edge in edges:
-        if edge["kind"] == "produces":
-            industry_ids.add(edge["from"])
-            cargo_labels.add(edge["to"])
-        else:
-            cargo_labels.add(edge["from"])
-            industry_ids.add(edge["to"])
-    industry_names = {i.id: resolve_name(dh.get_industry_name(i, economy)) for i in firs.industry_manager}
-    for industry_id in sorted(industry_ids):
-        label = industry_names.get(industry_id, industry_id)
-        lines.append(
-            f'  "{industry_id}" [shape=box, style=filled, fillcolor="#dce7f5", label="{label}"];'
-        )
-    for cargo_label in sorted(cargo_labels):
-        name = cargo_names_by_label.get(cargo_label, cargo_label)
-        lines.append(
-            f'  "{cargo_label}" [shape=ellipse, style=filled, fillcolor="#f5efd8", label="{name}"];'
-        )
-    for edge in edges:
-        lines.append(f'  "{edge["from"]}" -> "{edge["to"]}";')
-    lines.append("}")
-    return "\n".join(lines)
+def graph_tuning(economy, label_by_id, known_industry_ids, town_industry_ids):
+    """The readability tuning FIRS's cargo-flow chart is drawn with, as the graph node ids.
+
+    The economy lists cargos by id and mixes cargos with industries in ranks,
+    clusters and edge groups (doc_helper.unpack_cargoflow_node_name tells them
+    apart the same way). Cargo nodes become `C:<label>`, industries `I:<id>`, so
+    the page matches them against its own nodes without a second lookup.
+    """
+    tuning = economy.cargoflow_graph_tuning or {}
+
+    def node(name):
+        if name in label_by_id:
+            return f"C:{label_by_id[name]}"
+        if name in known_industry_ids:
+            return f"I:{name}"
+        raise SystemExit(f"{economy.id}: cargoflow tuning names unknown node {name!r}")
+
+    def labels(key):
+        return [label_by_id[cargo_id] for cargo_id in tuning.get(key, [])]
+
+    # doc_helper.get_cargoflow_wormhole_cargos: the listed industries plus every
+    # town industry — neither gets an edge from the cargos it takes
+    wormhole = list(dict.fromkeys([*tuning.get("wormhole_industries", []), *town_industry_ids]))
+    return {
+        "clone_produce": labels("cargos_with_individual_produce_nodes"),
+        "clone_accept": labels("cargos_with_individual_accept_nodes"),
+        "wormhole_industries": wormhole,
+        "edge_groups": [[node(n) for n in group] for group in tuning.get("group_edges_subgraphs", [])],
+        "ranks": [
+            {"rank": rank, "nodes": [node(n) for n in nodes]}
+            for rank, nodes in tuning.get("ranking_subgraphs", [])
+        ],
+        "clusters": [
+            {
+                "nodes": [node(n) for n in cluster["nodes"]],
+                **({"rank": cluster["rank"]} if "rank" in cluster else {}),
+            }
+            for cluster in tuning.get("clusters", [])
+        ],
+    }
 
 
 def extract_economies(dh, economies, industries_payload, cargos_payload):
-    cargo_names_by_label = {c["label"]: c["name"] for c in cargos_payload}
     label_by_id = {c["id"]: c["label"] for c in cargos_payload}
+    # what FIRS's own chart leaves out: passengers and mail, and the supply
+    # cargos, which would tie half the graph together — those are written into
+    # the industry node as "Requires …" / "Produces …" lines instead
+    banned_labels = [label_by_id[c] for c in dh.get_cargoflow_banned_cargos()]
+    supply_labels = [label_by_id[c] for c in dh.get_cargoflow_supply_cargos()]
+    excluded_labels = [*banned_labels, *supply_labels]
+    all_industry_ids = {i["id"] for i in industries_payload}
     items = []
     for economy in economies:
-        edges = economy_graph(economy, industries_payload)
+        edges = economy_graph(economy, industries_payload, excluded_labels)
+        industry_ids = [i["id"] for i in industries_payload if economy.id in i["economies"]]
+        town_industry_ids = [
+            i["id"] for i in industries_payload
+            if economy.id in i["economies"] and i.get("town_industry")
+        ]
         items.append({
             "id": economy.id,
             "numeric_id": economy.numeric_id,
@@ -339,13 +366,12 @@ def extract_economies(dh, economies, industries_payload, cargos_payload):
             "cargo_slots": [
                 label_by_id[cargo_id] for cargo_id in economy.cargo_ids
             ],
-            "industry_ids": [
-                i["id"] for i in industries_payload if economy.id in i["economies"]
-            ],
+            "industry_ids": industry_ids,
             "graph": {
-                "excluded_labels": GRAPH_EXCLUDED_LABELS,
+                "excluded_labels": excluded_labels,
+                "supply_labels": supply_labels,
                 "edges": edges,
-                "dot": economy_dot(economy, dh, edges, cargo_names_by_label),
+                "tuning": graph_tuning(economy, label_by_id, all_industry_ids, town_industry_ids),
             },
         })
     return items

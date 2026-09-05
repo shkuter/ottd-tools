@@ -3,6 +3,7 @@ import cargosJson from './data/cargos.json';
 import industriesJson from './data/industries.json';
 import economiesJson from './data/economies.json';
 import metaJson from './data/meta.json';
+import gamePaletteJson from './data/game_palette.json';
 import type {
   Cargo, Economy, IndustriesMeta, Industry, IronHorseMeta, Railtype, Train, TrainsMeta,
 } from './types';
@@ -17,6 +18,8 @@ export const cargos = (cargosJson as { items: unknown }).items as Cargo[];
 export const industries = (industriesJson as { items: unknown }).items as Industry[];
 export const industriesMeta = (industriesJson as { meta: unknown }).meta as IndustriesMeta;
 export const economies = (economiesJson as { items: unknown }).items as Economy[];
+/** The game's 256-colour palette as `#rrggbb`, index by index: cargo colours point into it. */
+export const gamePalette = (gamePaletteJson as { colours: string[] }).colours;
 export const datasetMeta = metaJson as {
   generated_at: string;
   iron_horse: string;

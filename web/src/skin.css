@@ -866,16 +866,124 @@ h4 {
   align-items: start;
 }
 
-.graph-container {
-  overflow-x: auto;
+/*
+ * The chain graph: a canvas of fixed height the graph is panned and zoomed in, never
+ * scrolled — the page around it scrolls as one document. Edges are an SVG the page draws
+ * from the layout, nodes are cards laid over it; both sit in one layer that carries the
+ * transform, so they cannot drift apart.
+ */
+.graph-canvas {
+  position: relative;
+  height: clamp(480px, 70vh, 900px);
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  /* a finger drags the drawing sideways and still scrolls the page up and down past it */
+  touch-action: pan-y;
 }
 
-.graph-container svg {
-  display: block;
+.graph-canvas[data-dragging] {
+  cursor: grabbing;
 }
 
-.graph-container g.node {
+.graph-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+
+.graph-edges {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+}
+
+.graph-edge path {
+  fill: none;
+  stroke: var(--cargo-colour);
+  stroke-width: 3px;
+}
+
+.graph-edge polygon {
+  fill: var(--cargo-colour);
+}
+
+.graph-node {
+  position: absolute;
+  box-sizing: border-box;
+  padding: var(--graph-node-padding);
+  line-height: var(--graph-line-height);
   cursor: pointer;
+  overflow: hidden;
+}
+
+.graph-node--industry {
+  border-style: solid;
+  border-width: var(--bevel);
+  border-color: var(--skin-edges-raised);
+  background: var(--skin-button);
+  color: var(--skin-button-text);
+  text-align: center;
+}
+
+.graph-node--industry img {
+  display: block;
+  width: 100%;
+  height: var(--graph-image-height);
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.graph-node--cargo {
+  background: var(--cargo-colour);
+  color: var(--cargo-text);
+  text-align: center;
+}
+
+/* the name gets the lines the box was sized for (sizes.ts sets them on the node) and no more */
+.graph-node__name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--graph-name-lines);
+  overflow: hidden;
+}
+
+.graph-node__note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.graph-node[data-selected] {
+  outline: calc(2 * var(--bevel)) solid var(--skin-text);
+  outline-offset: calc(-2 * var(--bevel));
+}
+
+/* picking a node dims everything that is not tied to it */
+.graph-node[data-dim],
+.graph-edge[data-dim] {
+  opacity: 0.15;
+}
+
+.graph-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.graph-toolbar .mantine-Select-root {
+  flex: 1 1 240px;
+}
+
+.graph-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
 }
 
 .firs-side {
@@ -1030,7 +1138,7 @@ body {
 .firs-side,
 .settings-group,
 .table-wrap,
-.graph-container,
+.graph-canvas,
 .warning {
   border-radius: var(--skin-radius);
   border-style: solid;
@@ -1294,39 +1402,15 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root) {
 }
 
 /*
- * The chain graph. Graphviz lays it out and writes its own colours into the SVG
- * as presentation attributes — which CSS overrides, so the palette wins without
- * the layout being touched: the boxes keep the sizes graphviz measured for them,
- * and only what fills them changes. The font is left to graphviz for the same
- * reason: it sized every box around the text before the page ever saw it.
+ * The chain graph paints from two sources: the skin for the frame, the industry cards and
+ * the text, and the cargo's own game colour — set per node and edge as --cargo-colour from
+ * the game palette (ADR-0008) — for the badges and the edges.
  */
-.graph-container {
+.graph-canvas {
+  --graph-line-height: calc(12px * var(--skin-scale));
+  --graph-node-padding: calc(4px * var(--skin-scale));
+  --graph-image-height: 112px;
   background: var(--skin-window);
-}
-
-.graph-container g.node polygon,
-.graph-container g.node ellipse {
-  fill: var(--skin-button);
-  stroke: var(--skin-edge-lo);
-}
-
-.graph-container g.node text {
-  fill: var(--skin-button-text);
-}
-
-.graph-container g.edge path {
-  stroke: var(--skin-text);
-}
-
-.graph-container g.edge polygon {
-  fill: var(--skin-text);
-  stroke: var(--skin-text);
-}
-
-/* the sheet graphviz draws on is its own — a white polygon behind everything,
-   in the group it names "graph"; the panel is the window */
-.graph-container g.graph > polygon {
-  fill: var(--skin-window);
 }
 
 /* scrollbars: a sunken track with a raised thumb, like the game's */

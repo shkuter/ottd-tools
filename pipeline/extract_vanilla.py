@@ -19,6 +19,7 @@ import re
 import sys
 
 from common import VENDOR, vendor_meta, write_json
+from grf_sprites import read_palette
 
 OTTD = os.path.join(VENDOR, "openttd")
 ENGINES_H = os.path.join(OTTD, "src", "table", "engines.h")
@@ -27,6 +28,7 @@ RAILTYPES_H = os.path.join(OTTD, "src", "table", "railtypes.h")
 RAIL_TYPE_H = os.path.join(OTTD, "src", "rail_type.h")
 CARGO_TYPE_H = os.path.join(OTTD, "src", "cargo_type.h")
 LANG = os.path.join(OTTD, "src", "lang", "english.txt")
+PALETTES_H = os.path.join(OTTD, "src", "table", "palettes.h")
 INDUSTRY_H = os.path.join(OTTD, "src", "table", "build_industry.h")
 INDUSTRY_TYPE_H = os.path.join(OTTD, "src", "industry_type.h")
 TRAIN_SPRITES_H = os.path.join(OTTD, "src", "table", "train_sprites.h")
@@ -439,6 +441,8 @@ def build_cargos():
             # The lang string the name comes from — other extractors translate through it.
             "str_plural": f"STR_CARGO_PLURAL_{str_plural}",
             "initial_payment": int(args[5]),
+            # legend_colour / rating_colour: the palette index the game draws the cargo in
+            "colour": int(args[2]),
             "transit_periods": [int(args[6]), int(args[7])],
             "weight_16ths": int(args[3]),
             "capacity_multiplier": int(args[4], 16),
@@ -552,6 +556,17 @@ def main():
             name, base = where["offset"]
             icons[key] = {"block": where["block"], "offset": sprite(name) - sprite(base)}
     write_json("vanilla_gui.json", {"meta": meta, "icons": icons})
+    # The whole game palette, index by index: cargo colours are palette indexes,
+    # and the chain graph resolves them here. The skin's own palette file keeps
+    # only the gradients and named GUI colours, on purpose.
+    rgb = read_palette(PALETTES_H)
+    write_json("game_palette.json", {
+        "meta": meta,
+        "source": "src/table/palettes.h",
+        "colours": [
+            "#%02x%02x%02x" % tuple(rgb[i * 3 : i * 3 + 3]) for i in range(256)
+        ],
+    })
     print(
         f"vanilla: {len(trains)} trains, {len(cargos)} cargos, "
         f"{len(industries)} industries"

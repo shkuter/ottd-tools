@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { routeRows, stationStops, type RouteRow } from '../routeRows';
 import {
+  cargoToIncome,
   chainTaskToSupply,
   incomePrefillValues,
   industryToOptimizer,
@@ -406,5 +407,17 @@ describe('chainTaskToSupply', () => {
   it('refuses an industry the active economy does not have, and says why', () => {
     expect(chainTaskToSupply({ ...task, industryId: 'nonexistent' }, firsGame).blocker)
       .toBe('noIndustry');
+  });
+});
+
+describe('cargo card to Route income', () => {
+  it('carries the cargo and nothing else', () => {
+    const game = { ...DEFAULT_GAME_SETTINGS, firs: true, firsEconomy: 'STEELTOWN' };
+    expect(cargoToIncome('COAL', game)).toEqual({ values: { cargoLabel: 'COAL' } });
+  });
+
+  it('refuses a cargo the active economy has not', () => {
+    const game = { ...DEFAULT_GAME_SETTINGS, firs: true, firsEconomy: 'BASIC_TEMPERATE' };
+    expect(cargoToIncome('SLAG', game)).toEqual({ blocker: 'noCargo' });
   });
 });

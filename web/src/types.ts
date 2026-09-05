@@ -200,6 +200,8 @@ export interface Cargo {
   transit_periods: [number, number];
   units: string;
   icon: string;
+  /** Index into the game palette the cargo is drawn in, per economy it belongs to. */
+  colour_by_economy: Record<string, number>;
 }
 
 export interface IndustryCargoEntry {
@@ -238,6 +240,11 @@ export interface Industry {
   type: string;
   map_colour: string | null;
   economies: Record<string, IndustryEconomyData>;
+  /** Isometric picture of the industry, as FIRS's docs draw it (400px wide), and its half. */
+  image: string;
+  image_small: string;
+  /** Left off FIRS's own cargo-flow chart and named in the cargo badge instead. */
+  town_industry?: boolean;
   name_by_economy?: Record<string, string>;
   supply_pool?: SupplyPool;
   /** Key of the suffix a station named after this industry gets (station_names.json). */
@@ -258,6 +265,26 @@ export interface GraphEdge {
   kind: 'produces' | 'accepts';
 }
 
+/**
+ * The readability tuning FIRS draws its own cargo-flow chart with, per economy
+ * (`cargoflow_graph_tuning`). Empty lists where the economy sets none. Nodes of ranks,
+ * clusters and edge groups are named the way the graph names them: `C:<cargo label>` or
+ * `I:<industry id>`.
+ */
+export interface GraphTuning {
+  /** Cargos drawn as a separate node beside each producer / each consumer. */
+  clone_produce: string[];
+  clone_accept: string[];
+  /**
+   * Industries no cargo gets an edge to: the badge names them ("To Wharf") instead. Every
+   * town industry is one, as FIRS's own chart has it.
+   */
+  wormhole_industries: string[];
+  edge_groups: string[][];
+  ranks: { rank: string; nodes: string[] }[];
+  clusters: { nodes: string[]; rank?: string }[];
+}
+
 export interface Economy {
   id: string;
   numeric_id: number;
@@ -267,9 +294,12 @@ export interface Economy {
   cargo_slots: (string | null)[];
   industry_ids: string[];
   graph: {
+    /** Passengers, mail and the supply cargos: never edges of the graph. */
     excluded_labels: string[];
+    /** The supply cargos: written into the industry node as lines, not drawn as nodes. */
+    supply_labels: string[];
     edges: GraphEdge[];
-    dot: string;
+    tuning: GraphTuning;
   };
 }
 

@@ -26,7 +26,8 @@ sprites comes from OpenTTD itself (`src/table/palettes.h`), GPL-2.0.
 Vehicle sprites rendered from the Iron Horse train set by Andy (andythenorth):
 <https://github.com/andythenorth/iron-horse>, GPL-2.0.
 
-## FIRS — `icons/cargo/`
+## FIRS — `icons/cargo/`, `icons/industries/`
 
-Cargo icons from FIRS Industry Replacement Set by Andy (andythenorth):
-<https://github.com/andythenorth/firs>, GPL-2.0.
+Cargo icons and the industry pictures of the chain graph (the set's own documentation
+artwork, `src/docs/static/img/industries/`) from FIRS Industry Replacement Set by Andy
+(andythenorth): <https://github.com/andythenorth/firs>, GPL-2.0.

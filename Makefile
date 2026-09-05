@@ -13,7 +13,7 @@ FIRS_RU_REF ?= 61a0f0973cce43c41e156f7809782e7567279330
 VENV = pipeline/.venv
 PY = $(VENV)/bin/python
 
-.PHONY: fetch fetch-firs-ru fetch-opengfx2 venv data check-i18n data-images data-opengfx2 dev build test check-visual verify release release-auto deploy
+.PHONY: fetch fetch-firs-ru fetch-opengfx2 venv data check-i18n data-images data-industry-images data-opengfx2 dev build test check-visual verify release release-auto deploy
 
 # Shallow-клоны исходников в vendor/ (iron-horse и firs пинуются релизными тегами)
 fetch:
@@ -41,6 +41,7 @@ venv:
 data: fetch-firs-ru
 	$(PY) pipeline/extract_iron_horse.py
 	$(PY) pipeline/extract_firs.py
+	$(MAKE) data-industry-images
 	$(PY) pipeline/extract_vanilla.py
 	$(PY) pipeline/extract_town_names.py
 	$(PY) pipeline/extract_station_names.py
@@ -63,6 +64,11 @@ fetch-opengfx2:
 # vanilla-mode graphics: vehicle sprites, cargo icons, GUI palette
 data-opengfx2:
 	$(PY) pipeline/extract_opengfx2.py
+
+# industry pictures for the chain graph: copied from FIRS's docs assets (cheap,
+# so it is part of `data` as well — validate.py expects the files to be there)
+data-industry-images:
+	$(PY) pipeline/extract_industry_images.py
 
 # картинки машин: рендер спрайтшитов (небыстро) + нарезка buy-menu спрайтов
 data-images:

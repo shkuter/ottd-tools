@@ -5,7 +5,6 @@
  * edit those sources, not the JSON. Cargos are keyed by id, not by label: WOOD is both
  * vanilla "wood" (Древесина) and FIRS "logs" (Брёвна).
  */
-import { cargoByLabel } from '../dataset';
 import type { TrainSet } from '../engine/settings';
 import { LOCALES, useLocaleStore, type Locale } from '../state/localeStore';
 import cargosRu from './cargos.ru.json';
@@ -20,10 +19,17 @@ const INDUSTRY_NAMES: Record<string, Record<string, string>> = { ru: industriesR
 // поставлял, и имена в словаре — наши собственные (сторожит locales.test.ts)
 const RAILTYPE_NAMES: Record<string, Record<string, string>> = { ru: railtypesRu };
 
-/** Translated cargo name, or the English one from the data. */
-export function cargoName(cargo: { id: string; name: string } | null | undefined): string {
+/**
+ * Translated cargo name, or the English one where the dictionary has none. The locale is
+ * read off the store when not given, which suits a render-time call; a memoised caller
+ * passes it, so that its memo is keyed on the language (sortCargos, which
+ * is only ever memoised, insists on it).
+ */
+export function cargoName(
+  cargo: { id: string; name: string } | null | undefined,
+  locale: Locale = useLocaleStore.getState().locale,
+): string {
   if (!cargo) return '';
-  const { locale } = useLocaleStore.getState();
   return CARGO_NAMES[locale]?.[cargo.id] ?? cargo.name;
 }
 
@@ -38,9 +44,9 @@ export function cargoUnits(units: string | null | undefined): string {
 export function industryName(
   industry: { id: string; name: string; name_by_economy?: Record<string, string> } | null | undefined,
   economyId?: string,
+  locale: Locale = useLocaleStore.getState().locale,
 ): string {
   if (!industry) return '';
-  const { locale } = useLocaleStore.getState();
   const translated = INDUSTRY_NAMES[locale]?.[industry.id];
   if (translated) return translated;
   return (economyId ? industry.name_by_economy?.[economyId] : undefined) ?? industry.name;
@@ -156,24 +162,4 @@ export function sortCargos<T extends { id: string; name: string }>(
       rank(a.id) - rank(b.id) ||
       collator.compare(names[a.id] ?? a.name, names[b.id] ?? b.name),
   );
-}
-
-/**
- * Node labels in the FIRS chain graph. A graphviz node id is either a cargo label
- * (ACID) or an industry id (coal_mine); cargo labels are resolved to a cargo id
- * through the dataset. Anything unknown keeps its English label.
- */
-export function localiseDot(dot: string): string {
-  const { locale } = useLocaleStore.getState();
-  const cargos = CARGO_NAMES[locale] ?? {};
-  const industries = INDUSTRY_NAMES[locale] ?? {};
-  if (!Object.keys(cargos).length && !Object.keys(industries).length) return dot;
-  const translate = (id: string) => {
-    const cargo = cargoByLabel.get(id);
-    return (cargo ? cargos[cargo.id] : undefined) ?? industries[id];
-  };
-  return dot.replace(/"([^"]+)" \[([^\]]*?)label="([^"]*)"/g, (full, id, attrs) => {
-    const name = translate(id);
-    return name ? `"${id}" [${attrs}label="${name}"` : full;
-  });
 }

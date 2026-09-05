@@ -42,6 +42,15 @@ export const PALETTE: ReadonlySet<string> = new Set([
   ...Object.values(named),
 ]);
 
+/**
+ * The skin's one geometry multiplier, as `--skin-scale` in skin.css sets it. Kept in TS for
+ * the chain graph, whose node boxes the layout engine has to be told in numbers before
+ * anything is styled; `sizes.test.ts` holds the two to the same value.
+ */
+export const SKIN_SCALE = 1.5;
+/** `--bevel`: the 1px lines of the game, scaled and rounded to whole pixels. */
+export const BEVEL = Math.round(1 * SKIN_SCALE);
+
 /** camelCase of the palette data to the kebab-case CSS custom properties use. */
 export const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 

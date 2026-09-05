@@ -41,6 +41,8 @@ interface VanillaCargoRaw {
   label: string;
   name: string;
   initial_payment: number;
+  /** The palette index the game draws the cargo in (legend_colour). */
+  colour: number;
   transit_periods: [number, number];
   weight_16ths: number;
   capacity_multiplier: number;
@@ -137,6 +139,7 @@ function toCargo(raw: VanillaCargoRaw): Cargo {
     capacity_multiplier: raw.capacity_multiplier,
     price_factor_by_economy: { VANILLA: raw.initial_payment },
     initial_payment_by_economy: { VANILLA: raw.initial_payment },
+    colour_by_economy: { VANILLA: raw.colour },
     transit_periods: raw.transit_periods,
     units: raw.is_freight ? 'tonnes' : 'items',
     icon: raw.icon,

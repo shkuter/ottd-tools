@@ -1,6 +1,7 @@
 /**
- * Минимальная i18n-обёртка: t(key). Все UI-строки — в en.json / ru.json,
- * выбранный язык — в state/localeStore.
+ * Минимальная i18n-обёртка: t(key, params?, locale?). Все UI-строки — в en.json / ru.json,
+ * выбранный язык — в state/localeStore; локаль передаётся явно только там, где строка
+ * попадает в мемо (см. useLocale ниже).
  * При реальной локализации заменяется на i18next без переписывания вызовов t().
  */
 import { LOCALES, useLocaleStore, type Locale } from '../state/localeStore';
@@ -15,8 +16,13 @@ const dictionaries: Record<Locale, Strings> = { en: en as Strings, ru: ru as Str
  * Missing string falls back to English, then to the key itself. Placeholders are written
  * as {name} in the dictionaries and filled from `params`.
  */
-export function t(key: string, params?: Record<string, string | number>): string {
-  const { locale } = useLocaleStore.getState();
+export function t(
+  key: string,
+  params?: Record<string, string | number>,
+  // read off the store when not given; a memoised caller passes it so that its memo is
+  // keyed on the language
+  locale: Locale = useLocaleStore.getState().locale,
+): string {
   const text = dictionaries[locale][key] ?? (en as Strings)[key] ?? key;
   if (!params) return text;
   return text.replace(/\{(\w+)\}/g, (match, name: string) =>
@@ -27,8 +33,9 @@ export function t(key: string, params?: Record<string, string | number>): string
 /**
  * Subscribes a component to the locale. t() reads the store outside React, so
  * App depends on this to re-render the tree when the language changes; anything
- * that caches translated strings has to do the same (or translate at render
- * time, the way the table headers do).
+ * that caches translated strings has to do the same — either translate at render
+ * time, the way the table headers do, or hand the locale from this hook to t()
+ * and the name helpers and key the memo on it, the way the chain graph does.
  */
 export function useLocale(): Locale {
   return useLocaleStore((s) => s.locale);

@@ -28,8 +28,11 @@ it read them off your game.
   the trip stated on the route income tab, which the tab names and links to.
 - **Industry supply** — every input of one industry at once: a fleet per input, the
   conversion they add up to, and the input to fix first.
-- **FIRS chains** — interactive cargo-flow graph per economy (graphviz WASM), industry and
-  cargo cards with input/output ratios. Pick the industry you want to run and the tab walks its
+- **FIRS chains** — the cargo-flow graph of an economy, drawn as FIRS draws its own: industry
+  pictures from the set, cargo badges and edges in the game's cargo colours, hub cargos cloned
+  beside their consumers and "To Wharf" notes where the set says so, on a canvas you pan, zoom
+  and search; industry and cargo cards with input/output ratios and bridges to the Supply and
+  Route income tabs. Pick the industry you want to run and the tab walks its
   inputs upwards into an ordered list of haulage tasks: what to bring, from where, to which
   industry, and how much of it over one supply window. An imported game marks each task
   supplied, standing unfed or absent from the map, names the nearest source with the length of

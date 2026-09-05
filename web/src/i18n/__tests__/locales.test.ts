@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { intlLocale, t } from '..';
 import {
-  cargoName, cargoUnits, industryName, localiseDot, railtypeName, railtypeOptions, sortCargos,
+  cargoName, cargoUnits, industryName, railtypeName, railtypeOptions, sortCargos,
   trainSetName,
 } from '../names';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
@@ -29,6 +29,8 @@ const dictionaries = { en, ru } as Record<string, Record<string, string>>;
 
 /** Proper nouns and GRF error text that stay English on purpose. */
 const KEPT_IN_ENGLISH = new Set([
+  // a scale reads as a ratio in any language
+  'firs.graph.actual',
   'app.title',
   'settings.firs',
   // набор зовётся Base Costs и в русской игре: собственного перевода у него нет
@@ -224,16 +226,6 @@ describe('industry names', () => {
     useLocaleStore.getState().setLocale('ru');
     expect(industryName(mine)).toBe('Угольная шахта');
     expect(industryName({ id: 'nope', name: 'Widget Works' })).toBe('Widget Works');
-  });
-
-  it('relabels both cargo and industry nodes of the chain graph', () => {
-    useLocaleStore.getState().setLocale('ru');
-    const dot = localiseDot(economies.items[0].graph.dot);
-    expect(dot).toContain('"COAL" [shape=ellipse, style=filled, fillcolor="#f5efd8", label="Уголь"]');
-    expect(dot).toContain('label="Угольная шахта"');
-    expect(dot).not.toContain('label="Coal Mine"');
-    // edges carry node ids, not labels — they must survive untouched
-    expect(dot).toContain('"coal_mine" -> "COAL"');
   });
 });
 

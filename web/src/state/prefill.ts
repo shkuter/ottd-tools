@@ -8,7 +8,7 @@
  */
 
 /** The kinds of card a bridge starts from; the note reads differently for each. */
-export type PrefillSource = 'route' | 'industry' | 'company' | 'chain';
+export type PrefillSource = 'route' | 'industry' | 'company' | 'chain' | 'graph';
 
 export interface PrefillOrigin<V> {
   source: PrefillSource;

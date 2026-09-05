@@ -282,6 +282,32 @@ to this chain.
 receiving it, the industry it comes from, and how much to deliver across one **supply window**.
 The chain is read as a list of these, not as a picture of a tree.
 
+**Chain graph** (_граф цепочек_) — the drawing of an economy's cargo flow: industry cards,
+cargo badges and the edges between them, on a **canvas** the user pans and zooms. Drawn the
+way FIRS draws its own cargo-flow chart, from the **layout tuning** the set ships (ADR-0007).
+Not the **chain**: the graph shows every link of the economy, the chain is the walk up from one
+target.
+
+**Layout tuning** (_тюнинг раскладки_) — FIRS's per-economy readability settings for its
+cargo-flow chart (`cargoflow_graph_tuning`): which cargos get **clones**, which industries are
+**wormholes**, plus ranks, clusters and edge groups. Read by the extractor, never written here.
+
+**Cargo node clone** (_дубль узла груза_) — a cargo drawn a second time beside one producer
+(produce clone) or one consumer (accept clone), joined to the common cargo node by an edge, so
+a hub cargo does not gather every edge into one box. A clone is the same cargo: picking it picks
+the cargo, and the chain walk never sees it as a node.
+
+**Wormhole** (_wormhole-предприятие_) — an industry no cargo gets an edge to; the cargo badge
+names it instead ("To Wharf"). Town industries are wormholes too, and are not drawn at all.
+
+**Supply cargo** (_груз снабжения_) — one of the four cargos FIRS keeps off its own chart
+because they would tie half the graph together: farm supplies, engineering supplies, welding
+consumables, seals-belts-and-hoses. Written into the industry card as "Requires …" /
+"Produces …" lines, never drawn as a node.
+
+**Canvas** (_полотно_) — the fixed-height area the chain graph is drawn in; the drawing is
+panned and zoomed inside it, never scrolled.
+
 **Leg** (_плечо_) — the haul of one task, measured between the plots of the two industries with
 the game's own metric. Its **leg class** — one town, two towns, or a town nobody knows — is what
 orders the list before the length does: a haul inside one town is the cheapest to build.

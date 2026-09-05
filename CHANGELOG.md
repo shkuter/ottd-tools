@@ -20,6 +20,16 @@ of what users see):
 
 ### Added
 
+- FIRS chains: the graph is redrawn the way FIRS draws its own cargo-flow chart. Industry
+  nodes carry the set's picture of the industry, cargo nodes are badges in the cargo's game
+  colour and so are the edges; hub cargos are cloned beside each producer or consumer, "To
+  Wharf"-style notes replace edges to the industries the set marks as wormholes, and the
+  supply cargos are lines in the industry card instead of nodes — all of it from the tuning
+  the economy ships (`cargoflow_graph_tuning`), not from a rule of ours. The graph sits on a
+  canvas of fixed height with zoom, pan, fit and a node search; the cards of the selected
+  node offer bridges to the Supply tab (per input) and to Route income (the cargo). Data gain
+  the cargo colour per economy, the layout tuning, the industry pictures (two sizes) and the
+  full game palette; the visual checks admit the whole palette inside the graph (ADR-0008).
 - FIRS chains: a supply chain mode. Pick the industry you want to run and the tab walks its
   inputs upwards — the industries feeding it, the ones feeding those, and so on — and turns the
   walk into an ordered list of haulage tasks: what to bring, from where, to which industry, and

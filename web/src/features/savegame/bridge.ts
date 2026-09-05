@@ -230,3 +230,12 @@ export function companyToNetwork(company: SnapshotCompany): Bridge<NetworkInputs
   // be checked against the game's window, and the block has no fields for them
   return { values: { railPieces: { ...rail }, signals, stations } };
 }
+
+/**
+ * Cargo card of the chain graph → Route income. Only the cargo travels: the graph knows no
+ * route, and the tab keeps whatever consist and trip the player last worked with.
+ */
+export function cargoToIncome(label: string, game: GameSettings): Bridge<Pick<RoutePrefill, 'cargoLabel'>> {
+  if (!activeCargoByLabel(game).has(label)) return { blocker: 'noCargo' };
+  return { values: { cargoLabel: label } };
+}

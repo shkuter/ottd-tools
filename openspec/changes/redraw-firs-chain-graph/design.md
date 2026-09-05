@@ -40,10 +40,14 @@ DOT приходит готовым из `economies.json` (`economy_dot()` в `p
   `opengfx2_palette.json` не трогаем — он про скин.
 - **Тюнинг раскладки**: `economy.cargoflow_graph_tuning` → `economies.json`,
   `graph.tuning`: `{ clone_produce: [label], clone_accept: [label], wormhole_industries: [id],
-  ranks: [{ rank, nodes }], clusters: [{ nodes, rank? }], edge_groups: [[id]] }`. Грузы в
-  конфиге набора идут по `cargo.id`, узлы рангов/кластеров — по голому id; экстрактор
-  переводит грузы в метки (`label_by_id`), предприятия оставляет, неизвестный id — падение
-  (как `unpack_cargoflow_node_name` у FIRS). Пустой конфиг → `tuning` с пустыми списками.
+  ranks: [{ rank, nodes }], clusters: [{ nodes, rank? }], edge_groups: [[node]] }`, где узел
+  записан как id узла графа (`C:<label>` / `I:<id>`). Грузы в конфиге набора идут по
+  `cargo.id`, узлы рангов/кластеров — по голому id; экстрактор переводит грузы в метки
+  (`label_by_id`), предприятия оставляет, неизвестный id — падение (как
+  `unpack_cargoflow_node_name` у FIRS). В `wormhole_industries` экстрактор добавляет все
+  городские предприятия экономики, как `doc_helper` у FIRS; сами они помечены флагом
+  `town_industry` в записи предприятия (`industries.json`), по нему страница их не рисует.
+  Пустой конфиг → `tuning` с пустыми списками.
 - **Грузы снабжения**: `doc_helper.supply_cargos` → `graph.supply_labels` (по меткам);
   `graph.excluded_labels` остаётся = banned (`PASS`, `MAIL`) + supply, чтобы потребители
   поля не ломались. `GRAPH_EXCLUDED_LABELS` как константа уходит — список берётся у
@@ -63,13 +67,14 @@ DOT приходит готовым из `economies.json` (`economy_dot()` в `p
 ### Построение графа (web/src/features/firs/graph/)
 
 - **`model.ts`** — `GraphNode { id, kind: 'industry'|'cargo', baseId, width, height,
-  industry?, cargo?, lines: NodeLine[] }`, `GraphEdge { from, to, cargoLabel }`,
-  `Layout { nodes: PlacedNode[], edges: PlacedEdge[], width, height }`. Id узлов:
+  industry?, cargo?, notes: string[] }`, `GraphEdge { from, to, cargoLabel }`,
+  `Layout { nodes: NodePlacement[], edges: EdgeSpline[], width, height }`. Id узлов:
   `I:<industry>`, `C:<label>`, дубли `C:<label>@<industry>` (на приём) и
   `I:<industry>@<label>` (на выпуск) — `baseId` у дубля указывает на груз. `@` не встречается
   ни в id FIRS, ни в метках, поэтому `baseId` восстанавливается разбором.
-- **`buildGraph.ts`** — чистая: `(economy, industries, cargos, locale) → { nodes, edges,
-  dot }`. Правила из спеки: supply/banned не узлы; wormhole-ребро не создаётся, а даёт строку
+- **`buildGraph.ts`** — чистая: `(economy, { industryById, cargoByLabel }, names) → { nodes,
+  edges, dot }`, где `names` — уже переведённые функции имён и строк (страница строит их из
+  `t()` и словарей, ключуя мемо на локали). Правила из спеки: supply/banned не узлы; wormhole-ребро не создаётся, а даёт строку
   «На <предприятие>» в бейдже груза; дубли по спискам тюнинга связаны с общим узлом одним
   ребром (как у FIRS: `C_x -> C_x_ind_2 -> I_ind`); ранги, кластеры, группы — в DOT
   (`newrank=true`, `rankdir=LR`, кластеры без рамки). Размеры узлов — в DOT как
@@ -79,25 +84,32 @@ DOT приходит готовым из `economies.json` (`economy_dot()` в `p
 - **`layout.ts`** — `layoutGraph(dot): Promise<Layout>`: динамический импорт
   `@hpcc-js/wasm-graphviz`, `graphviz.layout(dot, 'plain', 'dot')`, разбор строк
   `graph`/`node`/`edge` (дюймы, ось y снизу вверх → пиксели, y сверху вниз). Формат
-  `plain` — потому что даёт ровно то, что нужно (центр и размер узла, контрольные точки
-  сплайна), без разбора JSON-операций рисования. Сплайн → SVG-путь: точки идут четвёрками
-  кубической Безье; стрелка — треугольник на последней точке по касательной. Результат
-  мемоизируется по `economy.id`: раскладка от языка не зависит, поэтому смена языка не
-  перекладывает граф, а лишь перерисовывает подписи.
+  `plain` — потому что даёт ровно то, что нужно (центр узла, контрольные точки сплайна), без
+  разбора JSON-операций рисования. Сплайн → SVG-путь: точки идут четвёрками кубической
+  Безье; стрелка — треугольник на последней точке по касательной. `Layout` — функция одного
+  DOT: только места и сплайны, без текста узлов и без грузов; `placeNodes(graph, layout)` и
+  `placeEdges(graph, layout)` соединяют их с графом текущего языка. Результат кэшируется по тексту DOT (`cachedLayout(dot)` отдаёт его
+  синхронно): раскладка от языка не зависит, поэтому смена языка не перекладывает граф, не
+  показывает заглушку и не сбрасывает зум, а лишь перерисовывает подписи.
 - Размеры узлов — единственный вход раскладки, зависящий от скина: константы в
-  `graph/sizes.ts`, выведенные из `--skin-scale` (кегль × число строк + отступы).
+  `graph/sizes.ts`, выведенные из `SKIN_SCALE` (`skin.ts`, копия `--skin-scale`, равенство
+  стережёт `sizes.test.ts`): кегль × число строк + отступы + бордюр.
 
 ### Полотно (GraphCanvas.tsx)
 
 - `<div class="graph-canvas">` фиксированной высоты (`clamp(480px, 70vh, 900px)`),
   `overflow: hidden`; внутри слой с `transform: translate(x, y) scale(k)`: SVG рёбер
-  (размер `Layout`) и поверх — абсолютно позиционированные узлы (`IndustryNode`,
-  `CargoBadge`). Зум колесом вокруг курсора, пан перетаскиванием (pointer events,
+  (размер `Layout`) и поверх — абсолютно позиционированные узлы (`GraphNodeCard` —
+  карточка предприятия или бейдж груза; цвета — `cargoColour.ts`). Зум колесом вокруг курсора, пан перетаскиванием (pointer events,
   `setPointerCapture`), кнопки «+», «−», «1:1», «вписать»; начальное состояние — вписать.
   Своя реализация (~60 строк в `useZoomPan.ts`): библиотека тянула бы CSS мимо слоёв.
 - Подсветка: `chainNodes(economy, baseId)` как сейчас; узел получает `data-dim`, если его
   `baseId` вне множества, ребро — если вне хоть один конец. Клик по узлу →
-  `setSelectedNode(baseId)` и для предприятия `setChainTargetId` — поведение прежнее.
+  `setSelectedNode(baseId)` и для предприятия `setChainTargetId` — поведение прежнее. Клик,
+  которым кончается перетаскивание, выбором не считается ни на фоне, ни на узле. Экономика
+  выбора живёт в `firsStore` (`economyId`, `showEconomy`): вкладка сообщает, какую показывает,
+  и стор сбрасывает выбор и цель, сделанные в другой, — экономика меняется на «Настройках»,
+  пока вкладка размонтирована, поэтому ref в компоненте смену бы не увидел.
 - Картинки: при `k > 1` узлы, чей прямоугольник пересекает видимую область (считается из
   `Layout` и текущего transform, не через IntersectionObserver — так проверяется юнит-тестом),
   получают `image`, остальные `image_small`; `image-rendering: pixelated`.
@@ -117,13 +129,16 @@ DOT приходит готовым из `economies.json` (`economy_dot()` в `p
 ### Скин и проверки вида
 
 - `skin.css`: правила перекраски graphviz уходят; вместо них стили `.graph-canvas`,
-  `.graph-node`, `.graph-badge`, рёбер и кнопок; цвет груза ставится инлайновым
+  `.graph-node` (`--industry` / `--cargo`), рёбер и кнопок; цвет груза ставится инлайновым
   `style="--cargo-colour: #…"` из `game_palette.json`, текст бейджа — цветом по контрасту.
-- `palette.visual.test.ts`: `inPalette` получает второй набор — для элементов, чей путь
-  содержит `graph-canvas`, допустима вся `game_palette.json`. `chart.visual.test.ts`:
+- Проверка палитры на отрисованной странице (`visual/colours.ts`, `visual/findings.ts`)
+  получает второй набор — для элементов, чей путь содержит `graph-canvas`, допустима вся
+  `game_palette.json`. `chart.visual.test.ts`:
   «граф красит скин» переписывается — допустимы токены скина плюс цвета грузов из данных.
-  `routes.ts`: у `/firs` `scrollsX: ['table-wrap']`; `clipping.visual.test.ts` пропускает
-  `.graph-canvas` вместо `.graph-container`. `exemptions.ts` остаётся пустым.
+  `routes.ts`: у `/firs` `scrollsX: ['table-wrap']`, а готовность — `.graph-canvas
+  .graph-node` (раскладка приходит из wasm после вкладки; снимок до неё видел бы только
+  заглушку); `clipping.visual.test.ts` пропускает `.graph-canvas` вместо `.graph-container`.
+  `exemptions.ts` остаётся пустым.
 
 ### Документы
 

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { List, Paper, Text, Title } from '@mantine/core';
 import { activeEconomy, cargoByLabel, economyById, industryById } from '../../dataset';
 import { t, useLocale } from '../../i18n';
-import { cargoName, cargoUnits, industryName, localiseDot } from '../../i18n/names';
+import { cargoName, cargoUnits, industryName } from '../../i18n/names';
 import { num } from '../../components/format';
 import { CargoIcon } from '../../components/CargoIcon';
 import { useFirsStore } from '../../state/firsStore';
@@ -10,6 +10,13 @@ import { useSettingsStore } from '../../state/settingsStore';
 import { cargoPaymentRate } from '../../engine/income';
 import { chainNodes } from './chains';
 import { ChainTasks } from './ChainTasks';
+import { GraphCanvas } from './graph/GraphCanvas';
+import { buildGraph, type GraphNames } from './graph/buildGraph';
+import { cachedLayout, layoutGraph } from './graph/layout';
+import type { GraphNode, Layout } from './graph/model';
+import { BridgeButton } from '../savegame/BridgeButton';
+import { cargoToIncome, chainTaskToSupply } from '../savegame/bridge';
+import { applyCargoIncomeBridge, applySupplyBridge } from '../savegame/applyBridge';
 import { getSnapshotState, subscribeSnapshot } from '../../savegame/snapshotStore';
 
 function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) {
@@ -31,7 +38,16 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
           {eco.accepts.map((entry) => (
             <List.Item key={entry.label}>
               <CargoName label={entry.label} />
-              {entry.ratio != null ? ` — ${entry.ratio}/8` : ''}
+              {entry.ratio != null ? ` — ${entry.ratio}/8` : ''}{' '}
+              {/* each input is a supply task in waiting: the same bridge the task list offers */}
+              <BridgeButton
+                action={t('firs.bridge.toSupply')}
+                bridge={chainTaskToSupply(
+                  { industryId: industry.id, cargoLabel: entry.label, distanceTiles: null, productionPerMonth: null },
+                  game,
+                )}
+                onTake={(values) => applySupplyBridge(values, name)}
+              />
             </List.Item>
           ))}
         </List>
@@ -55,10 +71,16 @@ function NodeCard({ economyId, nodeId }: { economyId: string; nodeId: string }) 
     const consumers = economy.graph.edges
       .filter((e) => e.kind === 'accepts' && e.from === cargo.label)
       .map((e) => e.to);
+    const name = cargoName(cargo);
     return (
       <div className="node-card">
         <Title order={3}>
-          <CargoIcon icon={cargo.icon} /> {cargoName(cargo)}
+          <CargoIcon icon={cargo.icon} /> {name}{' '}
+          <BridgeButton
+            action={t('firs.bridge.toIncome')}
+            bridge={cargoToIncome(cargo.label, game)}
+            onTake={(values) => applyCargoIncomeBridge(values, name)}
+          />
         </Title>
         <Text className="hint">
           {cargo.classes.join(', ')} · {cargoUnits(cargo.units)}
@@ -91,81 +113,79 @@ function CargoName({ label }: { label: string }) {
 }
 
 export default function FirsPage() {
-  const { selectedNode, setSelectedNode, setChainTargetId } = useFirsStore();
+  const { selectedNode, setSelectedNode, setChainTargetId, showEconomy } = useFirsStore();
   const snapshot = useSyncExternalStore(subscribeSnapshot, getSnapshotState).record?.snapshot ?? null;
   const game = useSettingsStore((s) => s.game);
   const economy = activeEconomy(game);
-  // node labels are baked into the rendered SVG, so it has to be redrawn on switch
+  // the notes of the nodes are worded in the current language; the layout is not, and is
+  // cached by the DOT, so a language switch redraws the cards and leaves the drawing alone
   const locale = useLocale();
-  const [svg, setSvg] = useState<string>('');
-  const containerRef = useRef<HTMLDivElement>(null);
 
+  // t() and the name helpers read the locale outside React unless handed it; handed it,
+  // the memo is keyed on what it actually depends on
+  const names = useMemo<GraphNames>(
+    () => ({
+      industry: (industry) => industryName(industry, economy.id, locale),
+      cargo: (cargo) => cargoName(cargo, locale),
+      requires: (cargo) => t('firs.node.requires', { cargo }, locale),
+      produces: (cargo) => t('firs.node.produces', { cargo }, locale),
+      to: (industry) => t('firs.node.to', { industry }, locale),
+    }),
+    [economy.id, locale],
+  );
+  const graph = useMemo(() => buildGraph(economy, { industryById, cargoByLabel }, names), [economy, names]);
+
+  // the layout is a function of the DOT alone, and the DOT is the same in every language:
+  // a known one is picked up before the first paint (no blank canvas on a language switch,
+  // and the view stays where it was); an unknown one is laid out
+  const { dot } = graph;
+  const [layout, setLayout] = useState<Layout | null>(() => cachedLayout(dot) ?? null);
   useEffect(() => {
+    const cached = cachedLayout(dot);
+    if (cached) {
+      setLayout(cached);
+      return;
+    }
     let cancelled = false;
-    // graphviz-wasm (~1 МБ) грузим лениво только на этой вкладке
-    import('@hpcc-js/wasm-graphviz').then(async ({ Graphviz }) => {
-      const graphviz = await Graphviz.load();
-      if (!cancelled) setSvg(graphviz.dot(localiseDot(economy.graph.dot)));
+    setLayout(null);
+    layoutGraph(dot).then((placed) => {
+      if (!cancelled) setLayout(placed);
     });
     return () => {
       cancelled = true;
     };
-  }, [economy, locale]);
+  }, [dot]);
 
-  // The selected node belongs to the economy it was clicked in: kept across a switch, it
-  // would leave chainNodes() tracing a chain no node of the new graph is part of, dimming
-  // the whole picture. The reset used to ride on the store's own setEconomyId; the setting
-  // knows nothing of the graph, so the tab does it.
-  useEffect(() => {
-    setSelectedNode(null);
-    setChainTargetId(null);
-  }, [economy, setSelectedNode, setChainTargetId]);
+  // the pick belongs to the economy it was made in (see the store): the tab says which one
+  // it shows, and the store drops a pick from another — on a switch, not on every visit, so
+  // coming back from another tab finds the pick where it was left
+  useEffect(() => showEconomy(economy.id), [economy.id, showEconomy]);
 
   const highlight = useMemo(
     () => (selectedNode ? chainNodes(economy, selectedNode) : null),
     [economy, selectedNode],
   );
 
-  // клики по узлам SVG (graphviz кладёт id узла в <title>)
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const handler = (event: Event) => {
-      const target = event.target as Element;
-      const nodeGroup = target.closest('g.node');
-      if (nodeGroup) {
-        const title = nodeGroup.querySelector('title')?.textContent;
-        if (title) {
-          setSelectedNode(title);
-          // an industry node is also the answer to "what do you want to run": picking it on
-          // the graph is the shortest way to a chain, and the select stays for the rest
-          if (industryById.has(title)) setChainTargetId(title);
-          return;
-        }
-      }
-      setSelectedNode(null);
-    };
-    container.addEventListener('click', handler);
-    return () => container.removeEventListener('click', handler);
-  }, [setChainTargetId, setSelectedNode, svg]);
+  const select = (baseId: string | null) => {
+    setSelectedNode(baseId);
+    // an industry node is also the answer to "what do you want to run": picking it on
+    // the graph is the shortest way to a chain, and the select stays for the rest
+    if (baseId && industryById.has(baseId)) setChainTargetId(baseId);
+  };
 
-  // подсветка цепочки: приглушаем узлы/рёбра вне достижимого множества
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const nodes = container.querySelectorAll<SVGGElement>('g.node');
-    const edges = container.querySelectorAll<SVGGElement>('g.edge');
-    nodes.forEach((node) => {
-      const id = node.querySelector('title')?.textContent ?? '';
-      node.style.opacity = !highlight || highlight.has(id) ? '1' : '0.15';
-    });
-    edges.forEach((edge) => {
-      const title = edge.querySelector('title')?.textContent ?? '';
-      const [from, to] = title.split('->').map((s) => s.trim());
-      const visible = !highlight || (highlight.has(from) && highlight.has(to));
-      edge.style.opacity = visible ? '1' : '0.1';
-    });
-  }, [highlight, svg]);
+  // stable while the language and the economy are, so the canvas can memoise on them
+  const nameOf = useCallback(
+    (node: GraphNode) =>
+      node.industry ? names.industry(node.industry) : node.cargo ? names.cargo(node.cargo) : node.baseId,
+    [names],
+  );
+  const modeOf = useCallback(
+    (node: GraphNode) => {
+      const mode = node.industry?.economies[economy.id]?.accept_mode;
+      return mode ? t(`firs.industry.mode.${mode}`, undefined, locale) : '';
+    },
+    [economy.id, locale],
+  );
 
   return (
     <div className="page-firs">
@@ -180,10 +200,15 @@ export default function FirsPage() {
         </Text>
       </section>
       <div className="firs-layout">
-        <div
-          ref={containerRef}
-          className="graph-container"
-          dangerouslySetInnerHTML={{ __html: svg }}
+        <GraphCanvas
+          graph={graph}
+          layout={layout}
+          economyId={economy.id}
+          selected={selectedNode}
+          highlight={highlight}
+          onSelect={select}
+          nameOf={nameOf}
+          modeOf={modeOf}
         />
         {selectedNode && (
           <Paper component="aside" className="firs-side" p="sm">

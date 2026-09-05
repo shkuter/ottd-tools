@@ -20,7 +20,7 @@ import {
   type SupplyPrefill,
 } from '../../state/industrySupplyStore';
 import type { PrefillOrigin } from '../../state/prefill';
-import { useRouteStore, type NetworkInputs } from '../../state/routeStore';
+import { useRouteStore, type NetworkInputs, type RoutePrefill } from '../../state/routeStore';
 import type { OptimizerPrefill } from '../../state/optimizerStore';
 import { incomePrefillValues, type IncomeBridge } from './bridge';
 
@@ -46,6 +46,17 @@ export function applyIncomeBridge(bridge: IncomeBridge, label: string): void {
     route.setManualDays(null);
   }
   route.setPrefillOrigin({ source: 'route', label, values: incomePrefillValues(bridge) });
+}
+
+/**
+ * A cargo alone, from the chain graph: the income tab and the consist builder switch to it
+ * and nothing else moves, as the partial route bridge does it.
+ */
+export function applyCargoIncomeBridge(values: Pick<RoutePrefill, 'cargoLabel'>, label: string): void {
+  useConsistStore.getState().setCargoLabel(values.cargoLabel);
+  const route = useRouteStore.getState();
+  route.setCargoLabel(values.cargoLabel);
+  route.setPrefillOrigin({ source: 'graph', label, values });
 }
 
 /**

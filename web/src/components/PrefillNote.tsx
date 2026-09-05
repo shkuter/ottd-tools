@@ -6,6 +6,7 @@ const SENTENCE: Record<PrefillSource, string> = {
   industry: 'prefill.fromIndustry',
   company: 'prefill.fromCompany',
   chain: 'prefill.fromChain',
+  graph: 'prefill.fromGraph',
 };
 
 /**

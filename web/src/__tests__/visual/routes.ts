@@ -31,8 +31,11 @@ const PER_TAB: Record<string, { ready: string; scrollsX?: readonly string[] }> =
   '/income': { ready: '.page-route' },
   '/network': { ready: '.page-network' },
   '/supply': { ready: '.page-industry-supply' },
-  // and so is the chain graph — and the task list of the chain mode, like every other list
-  '/firs': { ready: '.page-firs', scrollsX: ['graph-container', 'table-wrap'] },
+  // the graph is laid out by wasm after the tab lands, so the tab is ready once a node is
+  // on the canvas — a snapshot before that would see the loading note and nothing painted
+  // in cargo colours; the canvas is panned and zoomed, not scrolled, and the task list of
+  // the chain mode scrolls sideways like every other list
+  '/firs': { ready: '.graph-canvas .graph-node', scrollsX: ['table-wrap'] },
   '/settings': { ready: '.page-settings' },
   // seeded with a snapshot by the harness, or the tab would not exist to look at
   '/game': { ready: '.page-game', scrollsX: ['table-wrap'] },

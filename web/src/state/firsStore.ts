@@ -4,6 +4,15 @@ interface FirsState {
   /** Node clicked on the graph: an industry id or a cargo label. */
   selectedNode: string | null;
   setSelectedNode: (node: string | null) => void;
+  /**
+   * The economy the node and the target were picked in. A pick belongs to its graph: kept
+   * across a switch, it would leave the chain walk tracing nodes the new graph has not,
+   * dimming the whole picture — so the tab hands in the economy it shows, and a different
+   * one drops both. Held here rather than in the tab because the economy is changed on the
+   * settings tab, while this one is unmounted.
+   */
+  economyId: string | null;
+  showEconomy: (economyId: string) => void;
   /** Industry whose supply chain the dependency mode works out. */
   chainTargetId: string | null;
   setChainTargetId: (id: string | null) => void;
@@ -22,6 +31,13 @@ interface FirsState {
 export const useFirsStore = create<FirsState>()((set) => ({
   selectedNode: null,
   setSelectedNode: (selectedNode) => set({ selectedNode }),
+  economyId: null,
+  showEconomy: (economyId) =>
+    set((s) =>
+      s.economyId === economyId
+        ? s
+        : { economyId, selectedNode: null, chainTargetId: null, targetOutputPerMonth: null },
+    ),
   chainTargetId: null,
   // a target from another economy is as meaningless as a node from one: both are dropped when
   // the tab switches, by the same effect

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { cargos, economies } from '../../dataset';
+import { BADGE_TEXT_COLOURS, cargoColour } from '../../features/firs/graph/cargoColour';
 import { harnessFixture } from './harness';
 import { WINDOW_COLOURS } from '../../skin';
 import { openKit, showcase, showGroup } from './kit';
@@ -57,23 +59,27 @@ describe('the income chart', () => {
 });
 
 describe('the chain graph', () => {
-  it('is painted by the skin, not by graphviz', async () => {
+  it('is painted by the skin and by the cargo colours of the game, nothing else', async () => {
     const page = await harness().goto('/firs', '.page-firs');
-    await page.waitForSelector('.graph-container g.node', { timeout: 30_000 });
+    await page.waitForSelector('.graph-canvas .graph-node', { timeout: 60_000 });
 
-    const strange = await page.evaluate(() => {
-      // what the skin says the graph is painted in, asked of the page rather than
-      // repeated here: naming graphviz's own colours would tie this check to a
-      // palette that lives in a Python file on the other side of the pipeline
+    // the cargo colours the graph may use: the palette entries the data points at — asked
+    // of the data, not repeated here — plus the darkest and lightest entries, which letter
+    // the badges. Of every economy: the page reads the economy off its own persisted
+    // settings, which this process does not share, and a cargo colour of any economy of the
+    // set is a colour of the game
+    const cargoColours = [
+      ...economies.flatMap((economy) =>
+        cargos
+          .map((cargo) => cargoColour(cargo, economy.id))
+          .filter((hex): hex is string => hex !== undefined),
+      ),
+      ...BADGE_TEXT_COLOURS,
+    ];
+
+    const strange = await page.evaluate((allowedHex: string[]) => {
       const style = getComputedStyle(document.documentElement);
       const token = (name: string) => style.getPropertyValue(name).trim();
-      const allowed = new Set(
-        ['--skin-window', '--skin-button', '--skin-edge-lo', '--skin-text', '--skin-button-text']
-          .map(token)
-          .filter(Boolean),
-      );
-
-      const seen = new Set<string>();
       const probe = document.createElement('div');
       document.body.append(probe);
       const asColour = (value: string) => {
@@ -81,25 +87,39 @@ describe('the chain graph', () => {
         probe.style.color = value;
         return getComputedStyle(probe).color;
       };
-      const wanted = new Set([...allowed].map(asColour));
+      const wanted = new Set(
+        [
+          ...['--skin-window', '--skin-button', '--skin-edge-hi', '--skin-edge-lo', '--skin-text', '--skin-button-text', '--skin-muted']
+            .map(token)
+            .filter(Boolean),
+          ...allowedHex,
+        ].map(asColour),
+      );
 
-      // only what actually draws: a <g> or the <svg> itself carries a fill it
-      // never paints with, handing it down to children that set their own
-      for (const element of document.querySelectorAll<SVGElement>(
-        '.graph-container polygon, .graph-container ellipse, .graph-container path, .graph-container text',
+      const seen = new Set<string>();
+      // what actually paints: fill and stroke on the SVG, text, background and a drawn
+      // border on the cards — an HTML element reports a fill it never uses
+      for (const element of document.querySelectorAll<HTMLElement | SVGElement>(
+        '.graph-canvas path, .graph-canvas polygon, .graph-canvas .graph-node, .graph-canvas .graph-node *',
       )) {
         const computed = getComputedStyle(element);
-        for (const property of ['fill', 'stroke'] as const) {
+        const svg = element instanceof SVGElement;
+        const properties = svg
+          ? (['fill', 'stroke'] as const)
+          : computed.borderTopStyle === 'none'
+            ? (['backgroundColor', 'color'] as const)
+            : (['backgroundColor', 'color', 'borderTopColor'] as const);
+        for (const property of properties) {
           const value = computed[property];
-          if (value === 'none' || value.startsWith('rgba(0, 0, 0, 0')) continue;
-          if (!wanted.has(value)) seen.add(`${element.tagName} ${property} ${value}`);
+          if (!value || value === 'none' || value.startsWith('rgba(0, 0, 0, 0')) continue;
+          if (!wanted.has(value)) seen.add(`${element.tagName}.${element.getAttribute('class')} ${property} ${value}`);
         }
       }
       probe.remove();
       return [...seen];
-    });
+    }, cargoColours);
 
-    expect(strange, 'every colour in the graph is one the skin chose').toEqual([]);
+    expect(strange, 'every colour in the graph is one the skin or the game chose').toEqual([]);
   });
 });
 

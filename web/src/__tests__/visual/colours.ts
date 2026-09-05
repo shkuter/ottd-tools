@@ -1,4 +1,7 @@
 import { PALETTE } from '../../skin';
+import { gamePalette } from '../../dataset';
+
+const GAME_PALETTE: ReadonlySet<string> = new Set(gamePalette);
 
 /**
  * The colours a rendered page is allowed to show, and how to read a computed
@@ -123,6 +126,16 @@ export function tokenColours(value: string): Colour[] {
 /** Is this a colour of the game's palette? */
 export function inPalette(colour: Colour) {
   return PALETTE.has(colour.hex);
+}
+
+/**
+ * Inside the chain graph, any colour of the game's whole palette: a cargo is painted in
+ * the index the set assigned it, which need not be one of the interface gradients
+ * (ADR-0008). Everywhere else the narrower rule above holds.
+ */
+export const GRAPH_CANVAS = 'graph-canvas';
+export function inGamePalette(colour: Colour) {
+  return GAME_PALETTE.has(colour.hex);
 }
 
 /**

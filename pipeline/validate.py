@@ -115,6 +115,11 @@ def main():
             check(payment > 0, f"cargos/{c['id']}: payment <= 0 в {eco}")
         icon_path = os.path.join(DATA_DIR, "..", "..", "public", c["icon"])
         check(os.path.exists(icon_path), f"cargos/{c['id']}: нет иконки {c['icon']}")
+        # the chain graph paints the cargo in its game colour: one per economy it is in
+        for eco in c["initial_payment_by_economy"]:
+            colour = c["colour_by_economy"].get(eco)
+            check(colour is not None and 0 <= colour < 256,
+                  f"cargos/{c['id']}: colour_by_economy[{eco}] вне палитры: {colour}")
 
     # default_cargos Iron Horse: неизвестные FIRS-лейблы — предупреждение (это не ошибка,
     # cargo table Iron Horse шире набора FIRS)
@@ -127,6 +132,9 @@ def main():
     # --- industries ---
     check(len(industries["items"]) >= 80, f"industries: мало: {len(industries['items'])}")
     for ind in industries["items"]:
+        for key in ("image", "image_small"):
+            path = os.path.join(DATA_DIR, "..", "..", "public", ind[key])
+            check(os.path.exists(path), f"industries/{ind['id']}: нет картинки {ind[key]}")
         for eco_id, eco in ind["economies"].items():
             for entry in eco["accepts"] + eco["produces"]:
                 check(entry["label"] in cargo_labels,
