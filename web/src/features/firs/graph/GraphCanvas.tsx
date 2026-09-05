@@ -92,7 +92,6 @@ export function GraphCanvas({
         <Select
           searchable
           clearable
-          size="xs"
           disabled={!layout}
           placeholder={t('firs.graph.search')}
           aria-label={t('firs.graph.search')}
@@ -101,10 +100,10 @@ export function GraphCanvas({
           onChange={find}
         />
         <Button.Group>
-          <Button size="xs" disabled={!layout} onClick={zoom.zoomOut} aria-label={t('firs.graph.zoomOut')}>−</Button>
-          <Button size="xs" disabled={!layout} onClick={zoom.zoomIn} aria-label={t('firs.graph.zoomIn')}>+</Button>
-          <Button size="xs" disabled={!layout} onClick={zoom.actual}>{t('firs.graph.actual')}</Button>
-          <Button size="xs" disabled={!layout} onClick={zoom.fit}>{t('firs.graph.fit')}</Button>
+          <Button disabled={!layout} onClick={zoom.zoomOut} aria-label={t('firs.graph.zoomOut')}>−</Button>
+          <Button disabled={!layout} onClick={zoom.zoomIn} aria-label={t('firs.graph.zoomIn')}>+</Button>
+          <Button disabled={!layout} onClick={zoom.actual}>{t('firs.graph.actual')}</Button>
+          <Button disabled={!layout} onClick={zoom.fit}>{t('firs.graph.fit')}</Button>
         </Button.Group>
       </div>
       <div
