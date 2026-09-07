@@ -1,5 +1,5 @@
 import { intlLocale, t } from '../i18n';
-import { internalToKmh, internalToMph } from '../engine/units';
+import { displaySpeed } from '../engine/units';
 import { CURRENCIES, useSettingsStore, type CurrencyCode } from '../state/settingsStore';
 
 /** Деньги: базовая валюта расчётов — фунт, конвертация по курсам игры. */
@@ -29,9 +29,7 @@ export function speed(internal: number): string {
 
 /** The bare number, for rows that print several speeds under one unit label. */
 export function speedValue(internal: number): string {
-  return useSettingsStore.getState().speedUnit === 'imperial'
-    ? String(internalToMph(internal))
-    : String(internalToKmh(internal));
+  return String(displaySpeed(internal, useSettingsStore.getState().speedUnit));
 }
 
 export function speedUnitLabel(): string {

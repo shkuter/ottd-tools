@@ -18,7 +18,11 @@ import {
   trainsMeta,
   VANILLA_ECONOMY_ID,
 } from '../dataset';
-import { DEFAULT_FIRS_ECONOMY, DEFAULT_GAME_SETTINGS } from '../engine/settings';
+import {
+  DEFAULT_CALC_SETTINGS,
+  DEFAULT_FIRS_ECONOMY,
+  DEFAULT_GAME_SETTINGS,
+} from '../engine/settings';
 import type { Cargo, Train } from '../types';
 
 const coal = cargoByLabel.get('COAL')!;
@@ -92,6 +96,29 @@ describe('active dataset', () => {
     const outsideTemperate = steeltown.find((c) => !temperate.includes(c))!;
     expect(cargoByLabel.get(outsideTemperate.label)).toBe(outsideTemperate);
   });
+});
+
+/**
+ * A dual-headed vehicle is two vehicles in the game: it builds the rear half as a copy of the
+ * front and gives it the same hold (train_cmd.cpp AddRearEngineToMultiheadedTrain). Both sets
+ * state the capacity of one half, so the whole vehicle carries twice what the column says —
+ * and the rule has to hold for either set, or the same train would carry different amounts
+ * depending on which roster it came from.
+ */
+describe('a dual-headed vehicle carries with both halves', () => {
+  for (const trainSet of ['vanilla', 'iron_horse'] as const) {
+    it(`doubles the stated capacity in ${trainSet}`, () => {
+      const game = { ...DEFAULT_GAME_SETTINGS, trainSet };
+      const index = DEFAULT_CALC_SETTINGS.capacityIndex;
+      const pairs = activeTrains(game).filter((t) => t.dual_headed && t.capacities[index] > 0);
+      expect(pairs.length).toBeGreaterThan(0);
+      for (const train of pairs) {
+        expect(trainCapacity(train, index)).toBe(train.capacities[index] * 2);
+      }
+      const single = activeTrains(game).find((t) => !t.dual_headed && t.capacities[index] > 0)!;
+      expect(trainCapacity(single, index)).toBe(single.capacities[index]);
+    });
+  }
 });
 
 describe('a cargo two economies share', () => {

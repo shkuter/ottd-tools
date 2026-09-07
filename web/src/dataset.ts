@@ -177,14 +177,22 @@ export function activeCargoByLabel(game: GameSettings): Map<string, Cargo> {
   return new Map(activeCargos(game).map((c) => [c.label, c]));
 }
 
-/** Вместимость машины: наборы держат её пятью столбцами, настройка выбирает один. */
+/**
+ * Вместимость машины: наборы держат её пятью столбцами, настройка выбирает один.
+ *
+ * Сдвоенная машина везёт вдвое: игра строит её задней половиной вторую машину того же типа и
+ * копирует ей вместимость (`train_cmd.cpp: AddRearEngineToMultiheadedTrain`), а данные обоих
+ * наборов называют вместимость одной половины. Удвоение живёт здесь, а не в наборах, потому
+ * что это правило игры, одинаковое для любого из них.
+ */
 export function trainCapacity(
-  train: Pick<Train, 'capacities'>,
+  train: Pick<Train, 'capacities' | 'dual_headed'>,
   capacityIndex: number,
 ): number {
   // все наборы пишут ровно пять столбцов (validate.py это стережёт), но индекс приходит
   // из настроек, а те переживают смену набора — так что ответ есть и на чужой индекс
-  return train.capacities[capacityIndex] ?? 0;
+  const stated = train.capacities[capacityIndex] ?? 0;
+  return train.dual_headed ? stated * 2 : stated;
 }
 
 /** Проверка перевозки с учётом того, какие наборы включены. */

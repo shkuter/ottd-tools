@@ -6,6 +6,7 @@
 
 import type { AccelerationType } from '../types';
 import { brakingPercent, type GameSettings } from './settings';
+import { UNITS_PER_TILE } from './units';
 
 const GROUND_ACCELERATION = 9800;
 const HP_TO_WATTS = 746;
@@ -19,8 +20,6 @@ const SLOPE_KE_FACTOR = 111;
 export const HEIGHT_LEVEL_UNITS = 8;
 /** engine_type.h VehicleAccelerationModel::Maglev — the branch without air or rolling drag. */
 const MAGLEV_ACCELERATION: AccelerationType = 2;
-/** Length units in a tile; the game's positions are counted in them (tile_type.h). */
-const TILE_LENGTH_UNITS = 16;
 
 function clamp(value: number, low: number, high: number): number {
   return Math.max(low, Math.min(high, value));
@@ -240,5 +239,5 @@ export function brakingDistanceTiles(
     const uncapped = uncappedDeceleration(c, accelerationType);
     units = Math.max(units, Math.floor((keDelta + slope) / (2 * uncapped)));
   }
-  return units / TILE_LENGTH_UNITS;
+  return units / UNITS_PER_TILE;
 }

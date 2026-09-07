@@ -8,6 +8,7 @@
  * иначе — по расчётному профилю, — и своей группировки не теряет.
  */
 import type { Train } from '../types';
+import { trainCapacity } from '../dataset';
 import type { GameSettings } from './settings';
 
 /**
@@ -26,7 +27,7 @@ export function purchaseKey(train: Train, capacityIndex: number, game: GameSetti
     train.kind,
     train.base_track_type,
     train.name,
-    train.capacities[capacityIndex] ?? 0,
+    trainCapacity(train, capacityIndex),
     train.length,
     `${train.intro_year}-${train.intro_month}`,
     train.weight_t,

@@ -23,6 +23,7 @@ import {
 import { preferTrain } from './purchase';
 import { tripBranches, tripMoney, tripSetup, type TripEconomics } from './trip';
 import type { SpeedLimitSource } from './consist';
+import { UNITS_PER_TILE } from './units';
 import {
   flowPerEngineDay,
   flowPerYearFromMonthly,
@@ -354,7 +355,7 @@ export function optimizeConsists(
   }
   const searchWagons = [...representatives.values()];
 
-  const maxLengthUnits = maxLengthTiles * 16; // тайл = 16 единиц длины (стандартная машина 8 = полтайла)
+  const maxLengthUnits = maxLengthTiles * UNITS_PER_TILE;
   // Industry output is stated per economy month, trips are counted per economy year.
   const flowPerYear = flowPerYearFromMonthly(params.productionPerMonth);
   // Without a flow there is no delivered share to rank by, so the transported goal is
@@ -487,7 +488,7 @@ export function optimizeConsists(
         ? Math.max(1, Math.ceil(flowPerYear / capacityPerYear))
         : 1;
 
-    const lengthTiles = (engineLength + wagonCount * wagon.length) / 16;
+    const lengthTiles = (engineLength + wagonCount * wagon.length) / UNITS_PER_TILE;
     const loadedPhysics = setup.loadedPhysics;
     const massOnSlope = loadedPhysics.massT * Math.min(calc.hillTiles / lengthTiles, 1);
     const gradeSpeed = balancingSpeed(loadedPhysics, massOnSlope, game.accelerationModel);

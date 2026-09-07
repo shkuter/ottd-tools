@@ -80,7 +80,9 @@ const RAILTYPE_TRACK: Record<string, Train['base_track_type']> = {
 };
 
 function toTrain(raw: VanillaTrainRaw): Train {
-  const capacity = raw.capacity * (raw.dual_headed ? 2 : 1);
+  // the capacity the game's table states, for one vehicle: what a dual-headed pair carries is
+  // `trainCapacity`'s answer, the same way it is for a NewGRF set
+  const capacity = raw.capacity;
   return {
     id: raw.id,
     // the base set's engine ids are the game's table indexes, one per vehicle

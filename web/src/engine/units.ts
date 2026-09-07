@@ -8,6 +8,15 @@ export const DAY_TICKS = 74;
 export const CARGO_AGING_TICKS = 185;
 export const DAYS_PER_TRANSIT_PERIOD = CARGO_AGING_TICKS / DAY_TICKS; // 2.5
 
+/**
+ * Length units in one tile. A standard vehicle is 8 of them — half a tile, not a whole one:
+ * verified against the game, a Haar with 14 long wagons measures 5.8 tiles.
+ */
+export const UNITS_PER_TILE = 16;
+
+/** Speed units of the game's Localisation settings (locale.units_velocity), metric by default. */
+export type SpeedUnit = 'imperial' | 'metric';
+
 export function mphToInternal(mph: number): number {
   return Math.round((mph * 16) / 10);
 }
@@ -33,6 +42,17 @@ export function internalToMphExact(internal: number): number {
  */
 export function internalToKmh(internal: number): number {
   return Math.floor(Math.trunc(internal * 10 * 1.609344) / 16);
+}
+
+/**
+ * Internal speed as the interface shows it, in the unit the player chose.
+ *
+ * One function for every printed speed and for every figure computed from one, so a cell and
+ * a metric standing beside it can never differ in the last digit: both truncate where the
+ * game truncates, and both truncate at the same step.
+ */
+export function displaySpeed(internal: number, unit: SpeedUnit): number {
+  return unit === 'imperial' ? internalToMph(internal) : internalToKmh(internal);
 }
 
 /** Тайлов в игровой день при постоянной скорости (v*3/4 прогресса дважды за тик, тайл = 3072). */

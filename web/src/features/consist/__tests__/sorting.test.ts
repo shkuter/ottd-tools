@@ -13,7 +13,7 @@ import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../../engine/se
  */
 
 const collator = new Intl.Collator('ru', { numeric: true });
-const values = catalogueSortValues(DEFAULT_GAME_SETTINGS, DEFAULT_CALC_SETTINGS);
+const values = catalogueSortValues(DEFAULT_GAME_SETTINGS, DEFAULT_CALC_SETTINGS, 'metric');
 const rows = activeTrains(DEFAULT_GAME_SETTINGS);
 
 /**
@@ -67,7 +67,7 @@ describe('catalogue columns', () => {
 describe('the columns follow the chosen track', () => {
   const ironHorseGame = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const };
   const valuesOn = (trackType: string) =>
-    catalogueSortValues(ironHorseGame, { ...DEFAULT_CALC_SETTINGS, trackType });
+    catalogueSortValues(ironHorseGame, { ...DEFAULT_CALC_SETTINGS, trackType }, 'metric');
   const train = (id: string) => activeTrains(ironHorseGame).find((t) => t.id === id)!;
 
   it('ranks an electro-diesel by the power it makes on this line', () => {
@@ -113,5 +113,51 @@ describe("the track's own limit reaches the catalogue too", () => {
     const limited = { ...plainRail, speed_limit_internal: 96 };
     expect(topSpeedOn(wagon, plainRail)).toBeNull();
     expect(topSpeedOn(wagon, limited)).toBeNull();
+  });
+});
+
+/**
+ * The two columns the catalogue adds once a cargo is chosen: what they order by and where the
+ * rows without a figure end up. That the key is the very number the cell prints is checked on
+ * the rendered page (features/__tests__/capacityColumns.test.tsx), where the cell exists.
+ */
+describe('the computed columns', () => {
+  const ironHorseGame = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const };
+  const ihRows = activeTrains(ironHorseGame);
+  const ihValues = (unit: 'metric' | 'imperial') =>
+    catalogueSortValues(ironHorseGame, DEFAULT_CALC_SETTINGS, unit);
+
+  it('puts vehicles with no figure at the end, whichever way it sorts', () => {
+    const values = ihValues('metric');
+    for (const column of ['capacity_per_tile', 'capacity_speed'] as const) {
+      const withFigure = ihRows.filter((t) => values[column](t) != null).length;
+      expect(withFigure).toBeGreaterThan(0);
+      expect(withFigure).toBeLessThan(ihRows.length);
+      for (const descending of [false, true]) {
+        const sorted = sortRows(ihRows, { column, descending }, values, collator);
+        expect(sorted.slice(withFigure).every((t) => values[column](t) == null)).toBe(true);
+      }
+    }
+  });
+
+  it('can order two vehicles differently in the two units', () => {
+    // the speed is truncated before it is multiplied, so the column is not one unit's figures
+    // scaled by a constant: the spec says the order follows the unit, and here it does
+    const rows = ihRows
+      .map((t) => ({ m: ihValues('metric').capacity_speed(t), i: ihValues('imperial').capacity_speed(t) }))
+      .filter((r): r is { m: number; i: number } => typeof r.m === 'number' && typeof r.i === 'number');
+    const swapped = rows.some((a, k) =>
+      rows.slice(k + 1).some((b) => Math.sign(a.m - b.m) * Math.sign(a.i - b.i) < 0),
+    );
+    expect(swapped).toBe(true);
+  });
+
+  it('follows the displayed speed unit, miles giving the smaller figure', () => {
+    const wagon = ihRows.find(
+      (t) => t.kind === 'wagon' && t.speed_mph != null && ihValues('metric').capacity_speed(t),
+    )!;
+    expect(Number(ihValues('imperial').capacity_speed(wagon))).toBeLessThan(
+      Number(ihValues('metric').capacity_speed(wagon)),
+    );
   });
 });

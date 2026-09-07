@@ -144,6 +144,22 @@ identical rows, so the optimizer searches one per profile. Deliberately blind to
 groups harder than a **purchase entry** — that one is for lists a human reads, this one is for
 the search.
 
+**Capacity per tile** (_вместимость/клетку_) — a vehicle's capacity divided by its length in
+tiles: the figure that matters when the platform, not the vehicle, is what binds. A standard
+vehicle is half a tile, so its figure is twice the capacity printed beside it. A dual-headed
+vehicle counts as the pair it is — both halves of the hold over both halves of the length. Compared within
+one cargo only — capacity units differ between cargos, which is why the catalogue shows it only
+once a cargo is chosen. _Avoid_: capacity density; вместимость на клетку (the UI says
+«Вместимость/клетку»).
+
+**Capacity × speed** (_вместимость × скорость_) — a vehicle's capacity times its top speed on
+the chosen **track type**, in the displayed speed unit: a proxy for how much one vehicle moves
+per unit of time on a long leg. Empty for a vehicle whose own limit does not bind — none stated,
+or wagon speed limits off in the game, where the engine sets the pace. Not **hauled per year**,
+which belongs to a route and a **fleet**. _Avoid_: throughput, transport capacity, провозная
+способность — those name what a line carries over time, which needs a headway and a **fleet**
+and is not what this figure says.
+
 ## Sets
 
 **Train set** (_набор машин_) — the roster a game runs: vanilla or Iron Horse. Exactly

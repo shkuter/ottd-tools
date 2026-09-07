@@ -18,6 +18,26 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- Vehicle catalogue: two computed columns for comparing wagons under a chosen cargo —
+  capacity per tile of length, and capacity times the speed the vehicle reaches on the
+  chosen track, in the displayed speed unit. Both sort like every other column and appear
+  only once the cargo filter is set, since capacity units differ between cargos. A vehicle
+  that states no speed of its own leaves the second column empty, and so does every wagon in
+  a game with wagon speed limits off — there the engine sets the pace, and the line under the
+  table says so.
+
+### Fixed
+
+- Dual-headed vehicles of Iron Horse carried half of what they carry in the game. A dual-headed
+  vehicle is built as two: the game copies the front half's hold onto the rear one, so the pair
+  carries twice what the data state. The vanilla adapter doubled it on its own while nothing
+  doubled it for Iron Horse, which left Firebird and Brenner understated wherever a capacity is
+  read — the catalogue, the consist builder and its stats, the route income tab, the optimizer
+  and the supply tab. The doubling now lives in one place, with the rule that owns it: the game,
+  not the set.
+
 ## [0.21.0] - 2026-09-05
 
 ### Added

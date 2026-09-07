@@ -8,9 +8,9 @@ import {
   CURRENCIES,
   useSettingsStore,
   type CurrencyCode,
-  type SpeedUnit,
 } from '../../state/settingsStore';
 import { BASECOST_MULTIPLIERS, TRAIN_SETS, type GameSettings } from '../../engine/settings';
+import type { SpeedUnit } from '../../engine/units';
 import { resetPersistedState } from '../../state';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 import { SavegameImportPanel } from './SavegameImportPanel';

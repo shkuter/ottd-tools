@@ -17,7 +17,8 @@ import { notifications } from '@mantine/notifications';
 import { SortableTh } from '../../components/table/SortableTh';
 import { TableFrame } from '../../components/table/TableFrame';
 import { sortRows, type SortState } from '../../components/table/sorting';
-import { catalogueSortValues, DEFAULT_SORT, type CatalogueColumn } from './sorting';
+import { catalogueSortValues, DEFAULT_SORT, isCargoColumn, type CatalogueColumn } from './sorting';
+import { capacityPerTile, capacityTimesSpeed } from './metrics';
 import {
   activeCargoByLabel,
   activeCargos,
@@ -60,7 +61,7 @@ export default function ConsistPage() {
   const setCount = useConsistStore((s) => s.setCount);
   const clearConsist = useConsistStore((s) => s.clear);
   const setCargoLabel = useConsistStore((s) => s.setCargoLabel);
-  const { game, calc } = useSettingsStore();
+  const { game, calc, speedUnit } = useSettingsStore();
   const entries = useMemo(() => activeEntries(stored, game), [stored, game]);
   const [kindFilter, setKindFilter] = useState<'all' | 'engine' | 'wagon'>('all');
   const [search, setSearch] = useState('');
@@ -113,6 +114,18 @@ export default function ConsistPage() {
     [cargoFilter, game],
   );
   const cargo = cargoLabel ? (activeCargoByLabel(game).get(cargoLabel) ?? null) : null;
+  /**
+   * The two computed columns stand only while a cargo narrows the list: capacity units differ
+   * between cargos, so the figures are comparable within one and meaningless across all.
+   */
+  const showCargoColumns = filterCargo !== null;
+  /**
+   * A sort by a column that is not on the screen orders the list by a header nobody can see, so
+   * the catalogue falls back to its default order while that column is away. Derived rather
+   * than reset on the way out: the cargo leaves by several routes — the select, an economy that
+   * no longer has it — and a rule computed in one place cannot miss one of them.
+   */
+  const activeSort = sort && !showCargoColumns && isCargoColumn(sort.column) ? DEFAULT_SORT : sort;
   // asked once per catalogue entry: the filter drops what the game does not sell and the row
   // marks what is uncertain, and both want the same answer rather than two computations of it
   const availability = useMemo(
@@ -132,12 +145,15 @@ export default function ConsistPage() {
     });
   }, [catalogue, kindFilter, search, track, railtypes, filterCargo, game, availability]);
 
-  const sortValue = useMemo(() => catalogueSortValues(game, calc), [game, calc]);
+  const sortValue = useMemo(
+    () => catalogueSortValues(game, calc, speedUnit),
+    [game, calc, speedUnit],
+  );
 
   const sorted = useMemo(() => {
     const collator = new Intl.Collator(intlLocale(locale), { numeric: true });
-    return sortRows(filtered, sort, sortValue, collator);
-  }, [filtered, sort, sortValue, locale]);
+    return sortRows(filtered, activeSort, sortValue, collator);
+  }, [filtered, activeSort, sortValue, locale]);
 
   // a narrower filter can leave the current page beyond the end of the results
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -196,28 +212,48 @@ export default function ConsistPage() {
         <TableFrame pinEdges rowCount={records.length} emptyMessage={t('table.noRecords')}>
           <Table.Thead>
             <Table.Tr>
-              <SortableTh column="name" sort={sort} onSort={setSortOrDefault}>
+              <SortableTh column="name" sort={activeSort} onSort={setSortOrDefault}>
                 {t('table.name')}
               </SortableTh>
-              <SortableTh column="intro_year" sort={sort} onSort={setSortOrDefault} className="cell-num">
+              <SortableTh column="intro_year" sort={activeSort} onSort={setSortOrDefault} className="cell-num">
                 {t('table.year')}
               </SortableTh>
-              <SortableTh column="power_hp" sort={sort} onSort={setSortOrDefault} className="cell-num">
+              <SortableTh column="power_hp" sort={activeSort} onSort={setSortOrDefault} className="cell-num">
                 {withUnit(t('table.power'), t('units.hp'))}
               </SortableTh>
-              <SortableTh column="speed" sort={sort} onSort={setSortOrDefault} className="cell-num">
+              <SortableTh column="speed" sort={activeSort} onSort={setSortOrDefault} className="cell-num">
                 {withUnit(t('table.speed'), speedUnitLabel())}
               </SortableTh>
-              <SortableTh column="weight_t" sort={sort} onSort={setSortOrDefault} className="cell-num">
+              <SortableTh column="weight_t" sort={activeSort} onSort={setSortOrDefault} className="cell-num">
                 {withUnit(t('table.weight'), t('units.t'))}
               </SortableTh>
-              <SortableTh column="capacity" sort={sort} onSort={setSortOrDefault} className="cell-num">
+              <SortableTh column="capacity" sort={activeSort} onSort={setSortOrDefault} className="cell-num">
                 {t('table.capacity')}
               </SortableTh>
-              <SortableTh column="cost" sort={sort} onSort={setSortOrDefault} className="cell-money">
+              {showCargoColumns && (
+                <>
+                  <SortableTh
+                    column="capacity_per_tile"
+                    sort={activeSort}
+                    onSort={setSortOrDefault}
+                    className="cell-num"
+                  >
+                    {t('table.capacityPerTile')}
+                  </SortableTh>
+                  <SortableTh
+                    column="capacity_speed"
+                    sort={activeSort}
+                    onSort={setSortOrDefault}
+                    className="cell-num"
+                  >
+                    {withUnit(t('table.capacitySpeed'), speedUnitLabel())}
+                  </SortableTh>
+                </>
+              )}
+              <SortableTh column="cost" sort={activeSort} onSort={setSortOrDefault} className="cell-money">
                 {t('table.cost')}
               </SortableTh>
-              <SortableTh column="running" sort={sort} onSort={setSortOrDefault} className="cell-money">
+              <SortableTh column="running" sort={activeSort} onSort={setSortOrDefault} className="cell-money">
                 {t('table.running')}
               </SortableTh>
               <Table.Th></Table.Th>
@@ -244,9 +280,19 @@ export default function ConsistPage() {
                     {topSpeed ? speedValue(topSpeed) : '—'}
                   </Table.Td>
                   <Table.Td className="cell-num">{num(train.weight_t)}</Table.Td>
-                  <Table.Td className="cell-num">
-                    {capacity ? num(capacity) : '—'}
-                  </Table.Td>
+                  <Table.Td className="cell-num">{numOrDash(capacity || null)}</Table.Td>
+                  {/* the cargo columns, from the very functions the sort keys read, so a
+                      cell and the header above it can never disagree */}
+                  {showCargoColumns && (
+                    <>
+                      <Table.Td className="cell-num">
+                        {numOrDash(capacityPerTile(train, calc), 1)}
+                      </Table.Td>
+                      <Table.Td className="cell-num">
+                        {numOrDash(capacityTimesSpeed(train, track, game, calc, speedUnit))}
+                      </Table.Td>
+                    </>
+                  )}
                   <Table.Td className="cell-money">
                     {money(trainBuyCost(train, activeTrainsMeta(game), game, calc))}
                   </Table.Td>
@@ -267,6 +313,9 @@ export default function ConsistPage() {
             })}
           </Table.Tbody>
         </TableFrame>
+        {showCargoColumns && !game.wagonSpeedLimits && (
+          <p className="hint">{t('consist.capacitySpeedNoWagonLimits')}</p>
+        )}
         {sorted.length > 0 && (
           <Group className="table-more" gap="xs" align="center">
             <Pagination total={pageCount} value={currentPage} onChange={setPage} />
@@ -381,6 +430,11 @@ function speedLimitText(internal: number | null, source: SpeedLimitSource | null
   if (!internal) return '—';
   const shown = speed(internal);
   return source ? `${shown} · ${t(`consist.stats.limitBy.${source}`)}` : shown;
+}
+
+/** A computed cell: the figure, or the em dash the row shows where it has none. */
+function numOrDash(value: number | null, digits = 0) {
+  return value == null ? '—' : num(value, digits);
 }
 
 function StatRow({ label, value }: { label: string; value: string }) {

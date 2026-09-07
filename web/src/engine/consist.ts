@@ -2,12 +2,12 @@
  * Сборка статистики состава из выбранных машин Iron Horse.
  * Все игровые формулы — в physics.ts/costs.ts, здесь только агрегация.
  */
-import type { Cargo, ConsistEntry, Railtype, TrainsMeta } from '../types';
+import type { Cargo, ConsistEntry, Railtype, Train, TrainsMeta } from '../types';
 import { consistMoney } from './costs';
 import type { ConsistPhysics } from './physics';
 import { balancingSpeed } from './physics';
 import { poweredOutputOn, trackSpeedLimit, vehicleSpeedOn } from './tracktypes';
-import { internalToMphExact, mphToInternal } from './units';
+import { internalToMphExact, mphToInternal, UNITS_PER_TILE } from './units';
 import { activeRailtype, activeRailtypes, canCarryIn, trainCapacity } from '../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
@@ -18,6 +18,39 @@ import {
 
 /** What handed the consist its speed limit: an engine, a wagon, or the track itself. */
 export type SpeedLimitSource = 'engine' | 'wagon' | 'track';
+
+/**
+ * Length units a vehicle takes up on the track, both halves of a dual-headed one included.
+ *
+ * The data state the length of one half: the game builds the rear half as a second vehicle of
+ * the same type (train_cmd.cpp AddRearEngineToMultiheadedTrain), so it is as long as the front
+ * and the pair occupies twice what the field says.
+ *
+ * Only the catalogue's own columns read this. `consistPhysics` below still sums `train.length`,
+ * the way every panel of the calculator has always measured a train: correcting that moves
+ * numbers this change promised not to move, and it is written up as a question of its own.
+ */
+export function vehicleLengthUnits(train: Pick<Train, 'length' | 'dual_headed'>): number {
+  return train.length * (train.dual_headed ? 2 : 1);
+}
+
+/**
+ * Whether a vehicle's own speed limit binds the train it runs in.
+ *
+ * train_cmd.cpp:185 — a vehicle binds the consist when it is not a wagon or the setting is on
+ * (the game also excludes a wagon under a wagon override, which no set the calculator reads
+ * uses). It is the kind of vehicle that decides, not whether the track powers it: an electric
+ * loco under no wires makes no power and still caps the speed. The game derives that kind from
+ * declared power for a NewGRF vehicle (newgrf_act0_trains.cpp: `power == 0` makes it a wagon),
+ * which is what `kind` holds; `wagon-speed-limits.test.ts` ("the kind the gate reads") fails if
+ * a set ever disagrees.
+ */
+export function ownLimitBinds(
+  train: Pick<Train, 'kind'>,
+  game: Pick<GameSettings, 'wagonSpeedLimits'>,
+): boolean {
+  return train.kind !== 'wagon' || game.wagonSpeedLimits;
+}
 
 export interface ConsistStats {
   powerHp: number;
@@ -101,6 +134,9 @@ export function consistPhysics(
     const power = poweredOutputOn(train, track, railtypes);
     powerHp += count * power;
     emptyWeightT += count * train.weight_t;
+    // one half of a dual-headed vehicle, not the pair: this is the figure every panel has been
+    // computed from, so `vehicleLengthUnits` deliberately does not feed it — see the note on
+    // that function
     lengthUnits += count * train.length;
     // tractive effort comes with power, so it follows the track as well: a vehicle that
     // makes no power here pulls nothing (ground_vehicle.cpp: `if (current_power > 0)`)
@@ -110,14 +146,7 @@ export function consistPhysics(
     // both units are tracked: physics keeps using mph (see the note below), the display
     // takes the internal speed straight from the data so it matches the game
     const speed = vehicleSpeedOn(train, track);
-    // train_cmd.cpp:185 — a vehicle binds the consist when it is not a wagon or the setting
-    // is on (the game also excludes a wagon under a wagon override, which no set the
-    // calculator reads uses). It is the kind of vehicle that decides, not whether this track
-    // powers it: an electric loco under no wires makes no power and still caps the speed.
-    // The game derives that kind from declared power for a NewGRF vehicle
-    // (newgrf_act0_trains.cpp: `power == 0` makes it a wagon), which is what `kind` holds;
-    // `wagon-speed-limits.test.ts` ("the kind the gate reads") fails if a set ever disagrees.
-    if (speed.mph != null && (train.kind !== 'wagon' || game.wagonSpeedLimits)) {
+    if (speed.mph != null && ownLimitBinds(train, game)) {
       speedLimitMph = minOf(speedLimitMph, speed.mph);
       const internal = speed.internal ?? mphToInternal(speed.mph);
       if (train.kind === 'wagon') {
@@ -183,7 +212,7 @@ export function consistPhysics(
       maxTeN: Math.floor(teWeightProduct * 9800),
       emptyWeightT,
       loadedWeightT: emptyWeightT + cargoWeightT,
-      lengthTiles: lengthUnits / 16, // тайл = 16 единиц длины
+      lengthTiles: lengthUnits / UNITS_PER_TILE,
       speedLimitInternal,
       // read from the same internal figures the limit itself is built from, so the label
       // can never name a candidate the number did not come from

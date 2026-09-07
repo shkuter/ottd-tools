@@ -17,6 +17,15 @@ const coal = vanillaCargos.find((c) => c.label === 'COAL')!;
 const passengers = vanillaCargos.find((c) => c.label === 'PASS')!;
 
 describe('vanilla train adapter', () => {
+  it('states the capacity of one vehicle, leaving the pair to trainCapacity', () => {
+    // the game's table gives 38 for the DMU and the game builds two of them; the adapter used to
+    // double it here, which made the field mean one thing in vanilla and another in Iron Horse
+    const dmu = vanillaTrains.find((t) => t.name.includes('Manley-Morel'))!;
+    expect(dmu.dual_headed).toBe(true);
+    expect(dmu.capacities).toEqual([38, 38, 38, 38, 38]);
+    expect(dmu.units[0].capacities).toEqual([38]);
+  });
+
   it('Kirby Paul Tank: steam engine, cost 7, running by the steam base, no cargo hold', () => {
     expect(kirby.kind).toBe('engine');
     expect(kirby.cost_factor).toBe(7);

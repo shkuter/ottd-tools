@@ -5,6 +5,7 @@
 export type AccelerationType = 0 | 1 | 2;
 
 export interface TrainUnit {
+  /** Вместимость одной машины данных по пяти столбцам GRF-параметра; см. `trainCapacity`. */
   capacities: number[];
   /** Единицы длины OpenTTD: 16 = тайл. */
   length: number;
@@ -125,6 +126,10 @@ export interface Train {
   cost_factor: number;
   running_cost_factor: number;
   running_cost_base: string;
+  /**
+   * Вместимость по пяти столбцам GRF-параметра — одной машины, а не пары: у сдвоенной игра
+   * строит вторую половину и копирует ей вместимость. Целиком отвечает `trainCapacity()`.
+   */
   capacities: number[];
   capacity_label: string | null;
   loading_speed: number | null;

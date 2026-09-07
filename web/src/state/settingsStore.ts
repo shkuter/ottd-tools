@@ -8,6 +8,7 @@ import {
   type CalcSettings,
   type GameSettings,
 } from '../engine/settings';
+import type { SpeedUnit } from '../engine/units';
 
 /**
  * OpenTTD currencies: rate against the base pound and where the sign goes, as in the game
@@ -28,9 +29,6 @@ export const CURRENCIES = {
 } as const;
 
 export type CurrencyCode = keyof typeof CURRENCIES;
-
-/** Speed units of the game's Localisation settings (locale.units_velocity), metric by default. */
-export type SpeedUnit = 'imperial' | 'metric';
 
 /**
  * How the numbers are shown. Not a matter of calculation — that works in pounds and the

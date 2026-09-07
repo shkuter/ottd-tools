@@ -14,7 +14,9 @@ it read them off your game.
   fleet size and full-load order included.
 - **Consist builder** — assemble a train from the full vehicle catalogue: power, tractive
   effort, weight, capacity, purchase price, running costs, top speed on flat/grade
-  (realistic acceleration physics reproduced from OpenTTD sources).
+  (realistic acceleration physics reproduced from OpenTTD sources). Filter by a cargo and the
+  catalogue adds two figures for comparing wagons: capacity per tile of platform, and capacity
+  times the speed the vehicle reaches on the chosen track.
 - **Route income** — exact `GetTransportedGoodsIncome` reproduction with FIRS payment rates
   and time-penalty curve chart, plus profitability of the built consist on that route
   (profit per year / per train tile, payback).

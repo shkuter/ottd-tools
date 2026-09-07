@@ -1,21 +1,23 @@
 ## 1. Общие места вместо копий
 
-- [ ] 1.1 Добавить в `web/src/engine/units.ts` чистую `displaySpeed(internal, unit): number`
+- [x] 1.1 Добавить в `web/src/engine/units.ts` чистую `displaySpeed(internal, unit): number`
       (усечение как в игре, тот же выбор `internalToMph` / `internalToKmh`) и переписать
       `speedValue` в `web/src/components/format.ts` как `String(displaySpeed(internal, unit))`;
       проверка — `make test` зелёный, ни одна цифра скорости в существующих тестах не поехала
-- [ ] 1.2 Вынести предикат «собственный предел машины связывает» из выражения в
-      `web/src/engine/consist.ts:120` в `ownLimitBinds(train, game)` в
-      `web/src/engine/tracktypes.ts`, вместе с комментарием о том, почему решает `kind`, и
-      звать её из `consist.ts`; проверка — `engine/__tests__/wagon-speed-limits.test.ts`
-      проходит без правок
-- [ ] 1.3 Завести `UNITS_PER_TILE = 16` в `web/src/engine/units.ts` и заменить литерал в
-      `engine/consist.ts` (`lengthTiles`) и `engine/optimize.ts` (`lengthTiles`); проверка —
-      `make test` зелёный, инвариант «тайл = 16 единиц» из CLAUDE.md записан в одном месте
+- [x] 1.2 Вынести предикат «собственный предел машины связывает» из выражения в
+      `web/src/engine/consist.ts:120` в экспорт `ownLimitBinds(train, game)` того же модуля,
+      вместе с комментарием о том, почему решает `kind`; проверка —
+      `engine/__tests__/wagon-speed-limits.test.ts` проходит без правок
+- [x] 1.3 Завести `UNITS_PER_TILE = 16` в `web/src/engine/units.ts` и заменить им каждый
+      литерал длины: `engine/consist.ts` (`lengthTiles`), оба места `engine/optimize.ts`
+      (`lengthTiles` и предел длины перебора) и константу `TILE_LENGTH_UNITS` в
+      `engine/physics.ts`; проверка — `make test` зелёный, а поиск по
+      `engine/` не находит шестнадцати в значении длины (прочие 16 — масса, скорость, шкала
+      множителей)
 
 ## 2. Формулы
 
-- [ ] 2.1 Создать `web/src/features/consist/metrics.ts` с `capacityPerTile(train, calc)`
+- [x] 2.1 Создать `web/src/features/consist/metrics.ts` с `capacityPerTile(train, calc)`
       (вместимость × `UNITS_PER_TILE` / `train.length`, `null` при нулевой вместимости) и
       `capacityTimesSpeed(train, track, game, calc, speedUnit)` (вместимость × отображаемая
       скорость `topSpeedOn` через `displaySpeed`; `null` без собственной скорости, при нулевой
@@ -28,7 +30,7 @@
 
 ## 3. Сортировка
 
-- [ ] 3.1 Добавить в `web/src/features/consist/sorting.ts` колонки `capacity_per_tile` и
+- [x] 3.1 Добавить в `web/src/features/consist/sorting.ts` колонки `capacity_per_tile` и
       `capacity_speed` в `CatalogueColumn`, третий аргумент `speedUnit` в
       `catalogueSortValues(game, calc, speedUnit)` и значения через функции из `metrics.ts`;
       проверка — `web/src/features/consist/__tests__/sorting.test.ts` дополнен: обе колонки
@@ -38,27 +40,26 @@
 
 ## 4. Страница каталога
 
-- [ ] 4.1 В `web/src/features/consist/ConsistPage.tsx` вывести два заголовка `SortableTh`
+- [x] 4.1 В `web/src/features/consist/ConsistPage.tsx` вывести два заголовка `SortableTh`
       (`table.capacityPerTile`; `withUnit(t('table.capacitySpeed'), speedUnitLabel())`) и две
       ячейки `cell-num` (`num(v, 1)` и `num(v)`, прочерк при `null`) только при
       `cargoFilter !== ''`, читая значения теми же функциями `metrics.ts`; проверка —
       компонентный тест `web/src/features/__tests__/capacityColumns.test.tsx` (на английском,
       по образцу `buyMenuNote.test.tsx`): без груза заголовков нет, с выбранным грузом есть и в
       строке стандартного вагона стоит удвоенная вместимость
-- [ ] 4.2 Откат сортировки: завести в `ConsistPage` один хелпер сброса фильтра груза, который
-      ставит `DEFAULT_SORT`, если `sort.column` — одна из двух новых колонок, и звать его из
-      обоих мест сброса (обработчик `onChange` фильтра и эффект, сбрасывающий устаревший груз
-      при смене экономики), чтобы правило не разъехалось между копиями; проверка — в том же
-      компонентном тесте: сортировка по «Вместимость/клетку», сброс фильтра в «любой» — колонок
-      нет, отмечен заголовок «Год», порядок по умолчанию
-- [ ] 4.3 Строка-пояснение под таблицей при выбранном грузе и `game.wagonSpeedLimits === false`
+- [x] 4.2 Откат сортировки: сделать порядок производным от показа колонок — пока колонки нет
+      на экране, сортировка по ней подменяется `DEFAULT_SORT` при отрисовке, так что ни один
+      путь исчезновения груза не нужно ловить обработчиком; проверка — в том же компонентном
+      тесте: сортировка по «Вместимость/клетку», сброс фильтра в «любой» — колонок нет, отмечен
+      заголовок «Год», порядок по умолчанию; плюс кейс на три щелчка по новой колонке
+- [x] 4.3 Строка-пояснение под таблицей при выбранном грузе и `game.wagonSpeedLimits === false`
       (`consist.capacitySpeedNoWagonLimits`); проверка — в том же компонентном тесте: с
       выключенной настройкой у вагона в колонке прочерк, строка видна; с включённой — строки
       нет
 
 ## 5. Строки
 
-- [ ] 5.1 Завести `table.capacityPerTile` («Capacity/tile» / «Вместимость/клетку»),
+- [x] 5.1 Завести `table.capacityPerTile` («Capacity/tile» / «Вместимость/клетку»),
       `table.capacitySpeed` («Capacity × speed» / «Вместимость × скорость») и
       `consist.capacitySpeedNoWagonLimits` в `web/src/i18n/en.json` и `ru.json`; проверка —
       `i18n/__tests__/locales.test.ts` проходит (названия грузов и предприятий не трогать —
@@ -66,20 +67,36 @@
 
 ## 6. Документация
 
-- [ ] 6.1 Добавить термины **Capacity per tile** и **Capacity × speed** в раздел Catalogue
+- [x] 6.1 Добавить термины **Capacity per tile** и **Capacity × speed** в раздел Catalogue
       файла `CONTEXT.md` в формулировке из design.md, вместе со строками `_Avoid_`; проверка —
       термины есть, русская колонка каждого совпадает со строкой интерфейса из `ru.json`,
       ссылки **track type**, **fleet**, **hauled per year** указывают на существующие записи
-- [ ] 6.2 Дописать в абзац о вкладке «Конструктор состава» в `README.md` и `README.ru.md` (одним
+- [x] 6.2 Дописать в абзац о вкладке «Конструктор состава» в `README.md` и `README.ru.md` (одним
       коммитом) упоминание двух колонок под выбранный груз; проверка — оба файла изменены в
       одном коммите, структура абзаца совпадает
-- [ ] 6.3 Дописать запись в `## [Unreleased]` → `### Added` файла `CHANGELOG.md` (на
+- [x] 6.3 Дописать запись в `## [Unreleased]` → `### Added` файла `CHANGELOG.md` (на
       английском): две колонки каталога, условие показа, прочерк при выключенных лимитах
       вагонов; проверка — `scripts/next-version.sh` выводит minor
 
-## 7. Проверка
+## 7. Вместимость сдвоенных машин
 
-- [ ] 7.1 Прогнать `make check-visual`; проверка — зелёный, заголовки таблицы каталога с
-      выбранным грузом не переносятся на три строки, новых исключений в `visual/exemptions.ts`
-      нет
-- [ ] 7.2 Прогнать `make test`; проверка — набор зелёный
+- [x] 7.1 Снять удвоение вместимости из `web/src/vanilla.ts` и перенести его в
+      `trainCapacity()` (`web/src/dataset.ts`) со ссылкой на
+      `train_cmd.cpp: AddRearEngineToMultiheadedTrain`, чтобы поле данных означало одно и то же
+      в обоих наборах; проверка — кейс в `web/src/__tests__/dataset.test.ts` на оба набора
+      (сдвоенная отдаёт вдвое, обычная — столбец как есть) и кейс в
+      `web/src/__tests__/vanilla.test.ts` на то, что адаптер больше не удваивает сам
+- [x] 7.2 Убедиться, что ванильные числа не поехали, а числа сдвоенных машин Iron Horse
+      выросли вдвое; проверка — `make test` зелёный, вместимость Firebird и Brenner при
+      настройке по умолчанию равна 32 и 48 вместо 16 и 24
+- [x] 7.3 Дописать в `CHANGELOG.md` секцию `### Fixed` про занижение вместимости сдвоенных
+      машин Iron Horse; проверка — запись есть, `scripts/next-version.sh` по-прежнему minor
+
+## 8. Проверка
+
+- [x] 8.1 Прогнать `make check-visual` и посмотреть каталог с выбранным грузом в браузере
+      (проверки вида груз не выбирают, поэтому новые заголовки они не видят); проверка —
+      `check-visual` зелёный без новых исключений в `visual/exemptions.ts`, а в прод-сборке
+      каждый заголовок обеих локалей занимает одну строку и таблица прокручивается вбок, не
+      растягивая страницу
+- [x] 8.2 Прогнать `make test`; проверка — набор зелёный
