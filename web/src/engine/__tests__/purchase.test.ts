@@ -10,6 +10,22 @@ const GAME = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const, firs: 
 /** Единственный режим, где расчёт читает грузы по умолчанию (`canCarryIn`). */
 const NO_FIRS = { ...GAME, firs: false };
 
+/**
+ * A dual-headed vehicle gives the consist twice the length, weight and capacity its data state,
+ * so the entry key has to be told in those terms: two vehicles that differ only in being
+ * dual-headed are two lines of the game's own purchase list, not one.
+ */
+describe('a dual-headed vehicle is its own entry', () => {
+  it('differs from a single-headed one with the same stated figures', () => {
+    const game = GAME;
+    const pair = trains.find((t) => t.dual_headed)!;
+    expect(pair).toBeDefined();
+    const single = { ...pair, id: `${pair.id}_single`, dual_headed: false };
+    const index = DEFAULT_CALC_SETTINGS.capacityIndex;
+    expect(purchaseKey(pair, index, game)).not.toBe(purchaseKey(single, index, game));
+  });
+});
+
 describe('purchase entries', () => {
   it('collapses a family of visual variants into one entry', () => {
     const coilCarriers = trains.filter((t) => t.name === 'Coil Carrier');

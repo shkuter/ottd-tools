@@ -383,8 +383,12 @@ def build_trains():
             # engine.cpp:141 — original wagons never expire (base_life forced to 0xFF)
             "model_life": None if is_wagon else info["base_life"],
             "climates": info["climates"],
-            "power_hp": rvi["power_hp"] * (2 if rvi["type"] == "multihead" else 1),
-            "weight_t": rvi["weight_t"] * (2 if rvi["type"] == "multihead" else 1),
+            # properties as the game's table states them: for a multiheaded engine power and
+            # running cost are already the sum of both halves, while weight and capacity are
+            # what one half has (engine_type.h RailVehicleInfo). Doubling is the calculator's
+            # job, and it does it for either set rather than here for one of them.
+            "power_hp": rvi["power_hp"],
+            "weight_t": rvi["weight_t"],
             # 1 unit = 1/1.6 mph -> в mph как показывает игра
             "speed_mph": round(rvi["max_speed"] * 10 / 16) if rvi["max_speed"] else None,
             "speed_internal": rvi["max_speed"],

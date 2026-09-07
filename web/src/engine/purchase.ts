@@ -9,6 +9,7 @@
  */
 import type { Train } from '../types';
 import { trainCapacity } from '../dataset';
+import { vehicleLengthUnits, vehicleWeightT } from './vehicle';
 import type { GameSettings } from './settings';
 
 /**
@@ -28,9 +29,9 @@ export function purchaseKey(train: Train, capacityIndex: number, game: GameSetti
     train.base_track_type,
     train.name,
     trainCapacity(train, capacityIndex),
-    train.length,
+    vehicleLengthUnits(train),
     `${train.intro_year}-${train.intro_month}`,
-    train.weight_t,
+    vehicleWeightT(train),
     game.trainSet === 'iron_horse' && !game.firs ? [...train.default_cargos].sort().join(',') : '',
   ].join('|');
 }

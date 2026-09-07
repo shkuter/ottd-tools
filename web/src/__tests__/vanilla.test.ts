@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { vanillaCanCarry, vanillaCargos, vanillaTrains } from '../vanilla';
 import { activeTrainsMeta } from '../dataset';
+import { vehicleWeightT } from '../engine/vehicle';
 import { trainRunningCostPerYear, trainBuyCost } from '../engine/costs';
 import { DEFAULT_GAME_SETTINGS } from '../engine/settings';
 
@@ -59,11 +60,15 @@ describe('vanilla train adapter', () => {
     expect(grain.default_cargos).toEqual(['GRAI', 'WHEA', 'MAIZ']);
   });
 
-  it('SH 125: dual-headed, power and weight doubled', () => {
+  it('SH 125: dual-headed, properties as the game states them', () => {
     expect(sh125.dual_headed).toBe(true);
-    // engines.h: RVI(6, M, 20, 200, 4500 hp, 70 t, ...) per head
-    expect(sh125.power_hp).toBe(2 * 4500);
-    expect(sh125.weight_t).toBe(2 * 70);
+    // engines.h: RVI(6, M, 20, 200, 4500 hp, 70 t, ...). engine_type.h says what those mean for
+    // a multiheaded engine: power is the sum of both halves, weight is what one half has. The
+    // adapter states them as the table does; doubling the weight is the engine's job, and it
+    // does it for either set — see vehicleWeightT.
+    expect(sh125.power_hp).toBe(4500);
+    expect(sh125.weight_t).toBe(70);
+    expect(vehicleWeightT(sh125)).toBe(140);
   });
 
   it('wagons: single capacity repeated for all five GRF slots, one default cargo, no refit', () => {

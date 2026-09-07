@@ -132,8 +132,16 @@ only in the sprite; the game hides them inside a variant group and shows the non
 one as its head. A family is not a **purchase entry** by itself — two generations of "Coal
 Wagon" are two entries, each with its own family.
 
+**Dual-headed vehicle** (_сдвоенная машина_) — the vehicle the game builds as two: it puts a
+second vehicle of the same type behind the first. Length, weight and capacity therefore count
+twice, and so does the vehicle's share of air drag; power, purchase cost and running cost do
+not, because the set states those for the pair and the game halves them per half
+(`engine_type.h`). Every list and every calculation asks for the figures of the pair — the
+data hold what one half has.
+
 **Purchase entry** (_пункт списка покупки_) — one line the player can actually pick out in the
-game: kind, track type, name, capacity, length, introduction date and weight all equal. This is
+game: kind, track type, name, capacity, length, introduction date and weight all equal, each of
+them read for the whole vehicle (a **dual-headed vehicle** counts as the pair it is). This is
 the unit the vehicle catalogue lists, and the unit the optimizer's "doubtful" checkboxes switch
 off. Its representative is the non-randomised member, ties settled by identifier, so the same
 vehicle stands for the entry everywhere in the app.

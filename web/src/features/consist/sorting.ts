@@ -3,6 +3,7 @@ import type { CalcSettings, GameSettings } from '../../engine/settings';
 import type { SortState, SortValues } from '../../components/table/sorting';
 import { activeRailtype, activeRailtypes, activeTrainsMeta, trainCapacity } from '../../dataset';
 import { poweredOutputOn, topSpeedOn } from '../../engine/tracktypes';
+import { vehicleWeightT } from '../../engine/vehicle';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 import type { SpeedUnit } from '../../engine/units';
 import { capacityPerTile, capacityTimesSpeed } from './metrics';
@@ -62,7 +63,7 @@ export function catalogueSortValues(
     intro_year: (train) => train.intro_year,
     power_hp: (train) => poweredOutputOn(train, track, railtypes) || null,
     speed: (train) => topSpeedOn(train, track) || null,
-    weight_t: (train) => train.weight_t,
+    weight_t: (train) => vehicleWeightT(train),
     capacity: (train) => trainCapacity(train, calc.capacityIndex) || null,
     capacity_per_tile: (train) => capacityPerTile(train, calc),
     capacity_speed: (train) => capacityTimesSpeed(train, track, game, calc, speedUnit),

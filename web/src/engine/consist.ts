@@ -8,6 +8,7 @@ import type { ConsistPhysics } from './physics';
 import { balancingSpeed } from './physics';
 import { poweredOutputOn, trackSpeedLimit, vehicleSpeedOn } from './tracktypes';
 import { internalToMphExact, mphToInternal, UNITS_PER_TILE } from './units';
+import { vehicleHalves, vehicleLengthUnits, vehicleWeightT } from './vehicle';
 import { activeRailtype, activeRailtypes, canCarryIn, trainCapacity } from '../dataset';
 import {
   DEFAULT_CALC_SETTINGS,
@@ -18,21 +19,6 @@ import {
 
 /** What handed the consist its speed limit: an engine, a wagon, or the track itself. */
 export type SpeedLimitSource = 'engine' | 'wagon' | 'track';
-
-/**
- * Length units a vehicle takes up on the track, both halves of a dual-headed one included.
- *
- * The data state the length of one half: the game builds the rear half as a second vehicle of
- * the same type (train_cmd.cpp AddRearEngineToMultiheadedTrain), so it is as long as the front
- * and the pair occupies twice what the field says.
- *
- * Only the catalogue's own columns read this. `consistPhysics` below still sums `train.length`,
- * the way every panel of the calculator has always measured a train: correcting that moves
- * numbers this change promised not to move, and it is written up as a question of its own.
- */
-export function vehicleLengthUnits(train: Pick<Train, 'length' | 'dual_headed'>): number {
-  return train.length * (train.dual_headed ? 2 : 1);
-}
 
 /**
  * Whether a vehicle's own speed limit binds the train it runs in.
@@ -128,20 +114,19 @@ export function consistPhysics(
   const railtypes = activeRailtypes(game);
 
   for (const { train, count } of entries) {
-    numUnits += count * Math.max(1, train.units.length);
+    // parts, not entries: the game builds the rear half of a dual-headed vehicle as a second
+    // one, and air drag grows with how many parts the train has (ground_vehicle.cpp)
+    numUnits += count * Math.max(1, train.units.length) * vehicleHalves(train);
     // what the vehicle actually contributes here: nothing unless the track powers it, and a
     // dual-power engine's electric figure only where the wires are
     const power = poweredOutputOn(train, track, railtypes);
     powerHp += count * power;
-    emptyWeightT += count * train.weight_t;
-    // one half of a dual-headed vehicle, not the pair: this is the figure every panel has been
-    // computed from, so `vehicleLengthUnits` deliberately does not feed it — see the note on
-    // that function
-    lengthUnits += count * train.length;
+    emptyWeightT += count * vehicleWeightT(train);
+    lengthUnits += count * vehicleLengthUnits(train);
     // tractive effort comes with power, so it follows the track as well: a vehicle that
     // makes no power here pulls nothing (ground_vehicle.cpp: `if (current_power > 0)`)
     if (power > 0) {
-      teWeightProduct += count * train.weight_t * train.te_coefficient;
+      teWeightProduct += count * vehicleWeightT(train) * train.te_coefficient;
     }
     // both units are tracked: physics keeps using mph (see the note below), the display
     // takes the internal speed straight from the data so it matches the game
@@ -169,9 +154,11 @@ export function consistPhysics(
         game.accelerationModel === 'realistic'
       ) {
         const adjust = game.freightTrains - 1;
+        // once per half of a dual-headed vehicle: both carry, so both stretch
+        const halves = vehicleHalves(train);
         for (const unit of train.units) {
           if ((unit.capacities[capacityIndex] ?? 0) > 0) {
-            brakingStretchUnits += count * Math.floor((unit.length * adjust + 1) / 2);
+            brakingStretchUnits += count * halves * Math.floor((unit.length * adjust + 1) / 2);
           }
         }
       }

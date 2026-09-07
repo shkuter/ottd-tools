@@ -23,6 +23,7 @@ import {
 import { preferTrain } from './purchase';
 import { tripBranches, tripMoney, tripSetup, type TripEconomics } from './trip';
 import type { SpeedLimitSource } from './consist';
+import { vehicleLengthUnits, vehicleWeightT } from './vehicle';
 import { UNITS_PER_TILE } from './units';
 import {
   flowPerEngineDay,
@@ -340,7 +341,7 @@ export function optimizeConsists(
     const speed = vehicleSpeedOn(t, track);
     return [
       trainCapacity(t, capacityIndex),
-      t.weight_t, t.length, poweredOutputOn(t, track, railtypes), t.te_coefficient,
+      vehicleWeightT(t), vehicleLengthUnits(t), poweredOutputOn(t, track, railtypes), t.te_coefficient,
       speed.mph, speed.internal, t.units.length,
       t.cost_factor, t.running_cost_base, t.running_cost_factor, t.loading_speed,
     ].join('|');
@@ -488,7 +489,7 @@ export function optimizeConsists(
         ? Math.max(1, Math.ceil(flowPerYear / capacityPerYear))
         : 1;
 
-    const lengthTiles = (engineLength + wagonCount * wagon.length) / UNITS_PER_TILE;
+    const lengthTiles = (engineLength + wagonCount * vehicleLengthUnits(wagon)) / UNITS_PER_TILE;
     const loadedPhysics = setup.loadedPhysics;
     const massOnSlope = loadedPhysics.massT * Math.min(calc.hillTiles / lengthTiles, 1);
     const gradeSpeed = balancingSpeed(loadedPhysics, massOnSlope, game.accelerationModel);
@@ -627,10 +628,10 @@ export function optimizeConsists(
 
   for (const engine of engines) {
     for (const engineCount of [1, 2]) {
-      const engineLength = engineCount * engine.length;
+      const engineLength = engineCount * vehicleLengthUnits(engine);
       if (engineLength >= maxLengthUnits) continue;
       for (const wagon of searchWagons) {
-        const maxWagons = Math.floor((maxLengthUnits - engineLength) / wagon.length);
+        const maxWagons = Math.floor((maxLengthUnits - engineLength) / vehicleLengthUnits(wagon));
         if (maxWagons <= 0) continue;
         const full = evaluate(engine, engineCount, engineLength, wagon, maxWagons);
         if (!full.length) continue;

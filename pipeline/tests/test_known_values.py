@@ -449,6 +449,21 @@ class VanillaSpriteIds(unittest.TestCase):
         self.assertEqual(t["sprite_id"], 0x0B6F)  # 28x12 in the set
         self.assertIsNone(t["sprite_id_rear"])
 
+    def test_dual_headed_properties_are_the_tables(self):
+        # engine_type.h RailVehicleInfo: for a multiheaded engine `power`, `cost_factor` and
+        # `running_cost` are the sum of both halves, while `weight` and `capacity` are what one
+        # half has. The extractor states them as the table does; doubling is the calculator's.
+        sh125 = self.trains["vanilla_22"]
+        # engines.h: RVI( 6, M,  20, 200,    4500,  70,   190, RC_D,  4, R, D)
+        self.assertEqual(sh125["power_hp"], 4500)
+        self.assertEqual(sh125["weight_t"], 70)
+        self.assertEqual(sh125["capacity"], 4)
+        dmu = self.trains["vanilla_11"]
+        # engines.h: RVI( 8, M,  11, 112,     600,  32,    85, RC_D, 38, R, D)
+        self.assertEqual(dmu["power_hp"], 600)
+        self.assertEqual(dmu["weight_t"], 32)
+        self.assertEqual(dmu["capacity"], 38)
+
     def test_dual_headed_has_second_half(self):
         # SH '125': the rear half is the next image_index (train_cmd.cpp:555).
         # The pair shares _engine_sprite_base but differs in _engine_sprite_add,

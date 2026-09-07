@@ -9,7 +9,8 @@
 import type { Railtype, Train } from '../../types';
 import type { CalcSettings, GameSettings } from '../../engine/settings';
 import { trainCapacity } from '../../dataset';
-import { ownLimitBinds, vehicleLengthUnits } from '../../engine/consist';
+import { ownLimitBinds } from '../../engine/consist';
+import { vehicleLengthUnits } from '../../engine/vehicle';
 import { topSpeedOn } from '../../engine/tracktypes';
 import { displaySpeed, UNITS_PER_TILE, type SpeedUnit } from '../../engine/units';
 

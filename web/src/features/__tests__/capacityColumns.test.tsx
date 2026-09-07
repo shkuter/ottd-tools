@@ -20,7 +20,7 @@ import { useSettingsStore } from '../../state/settingsStore';
 import { useLocaleStore } from '../../state/localeStore';
 import { resetSnapshotStateForTests } from '../../savegame/snapshotStore';
 import { activeCargos, activeRailtype, activeTrains, canCarryIn, trainCapacity } from '../../dataset';
-import { vehicleLengthUnits } from '../../engine/consist';
+import { vehicleLengthUnits } from '../../engine/vehicle';
 import { capacityTimesSpeed } from '../consist/metrics';
 import { cargoName } from '../../i18n/names';
 import { UNITS_PER_TILE } from '../../engine/units';
@@ -237,6 +237,24 @@ describe('the catalogue computes two figures per cargo', () => {
     // the sort was hidden with its column, not cancelled: picking the cargo again restores it
     await pickCargo(user);
     expect(header('Capacity/tile')!.className).toContain('sorted');
+  });
+});
+
+/**
+ * The weight column prints what the vehicle puts on the track: a dual-headed vehicle is two of
+ * them, and the game's own purchase window doubles the figure for exactly that reason.
+ */
+describe('the weight column', () => {
+  it('shows both halves of a dual-headed vehicle', async () => {
+    // the column stands without a cargo, so the case narrows by name instead. Firebird is on
+    // sale from 1960 for twenty years, so the year is set inside that stretch
+    useSettingsStore.setState({ calc: { ...calc, priceYear: 1965 } });
+    const user = userEvent.setup();
+    draw();
+    await user.type(screen.getByLabelText('Name'), 'Firebird');
+    const row = catalogueRows().find((r) => r.train.dual_headed);
+    expect(row, 'no dual-headed vehicle in the catalogue').toBeTruthy();
+    expect(figureIn(cellOf(row!.row, 'Weight, t'))).toBe(row!.train.weight_t * 2);
   });
 });
 

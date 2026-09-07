@@ -118,8 +118,9 @@ export interface Train {
   /** Speed in the game's internal unit — what the game derives the displayed number from. */
   speed_internal: number | null;
   speed_lgv_internal: number | null;
+  /** Масса одной машины данных, а не пары: см. `vehicleWeightT`. */
   weight_t: number;
-  /** Единицы длины OpenTTD: 16 = тайл. */
+  /** Единицы длины OpenTTD: 16 = тайл; одной машины данных, не пары — см. `vehicleLengthUnits`. */
   length: number;
   dual_headed: boolean;
   units: TrainUnit[];

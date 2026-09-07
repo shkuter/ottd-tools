@@ -1,3 +1,4 @@
+import { vehicleHalves } from './engine/vehicle';
 import trainsJson from './data/trains.json';
 import cargosJson from './data/cargos.json';
 import industriesJson from './data/industries.json';
@@ -191,8 +192,7 @@ export function trainCapacity(
 ): number {
   // все наборы пишут ровно пять столбцов (validate.py это стережёт), но индекс приходит
   // из настроек, а те переживают смену набора — так что ответ есть и на чужой индекс
-  const stated = train.capacities[capacityIndex] ?? 0;
-  return train.dual_headed ? stated * 2 : stated;
+  return (train.capacities[capacityIndex] ?? 0) * vehicleHalves(train);
 }
 
 /** Проверка перевозки с учётом того, какие наборы включены. */

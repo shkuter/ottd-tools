@@ -30,6 +30,14 @@ of what users see):
 
 ### Fixed
 
+- **BREAKING** A dual-headed vehicle is now measured as the pair the game builds. Its length,
+  weight and share of air drag count twice, the way its capacity already did, so a consist
+  holding one is a tile longer per vehicle, heavier, and pulls harder; the optimizer fits fewer
+  wagons behind it. Power and running cost stay as they were — the set states those for the
+  pair and the game halves them per half (`engine_type.h`). The vanilla extractor had been
+  doubling power and weight on its own, which left every vanilla dual-headed engine with twice
+  the horsepower it has in the game: SH '125' read 9000 hp against the game's 4500. Both sets
+  now state what their tables say, and the doubling happens once, in the calculator.
 - Dual-headed vehicles of Iron Horse carried half of what they carry in the game. A dual-headed
   vehicle is built as two: the game copies the front half's hold onto the rear one, so the pair
   carries twice what the data state. The vanilla adapter doubled it on its own while nothing

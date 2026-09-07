@@ -47,6 +47,7 @@ import { useConsistStore } from '../../state/consistStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { YearField } from '../../components/YearField';
 import { consistStats, type SpeedLimitSource } from '../../engine/consist';
+import { vehicleWeightT } from '../../engine/vehicle';
 import { purchaseRepresentatives } from '../../engine/purchase';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 
@@ -279,7 +280,7 @@ export default function ConsistPage() {
                   <Table.Td className="cell-num">
                     {topSpeed ? speedValue(topSpeed) : '—'}
                   </Table.Td>
-                  <Table.Td className="cell-num">{num(train.weight_t)}</Table.Td>
+                  <Table.Td className="cell-num">{num(vehicleWeightT(train))}</Table.Td>
                   <Table.Td className="cell-num">{numOrDash(capacity || null)}</Table.Td>
                   {/* the cargo columns, from the very functions the sort keys read, so a
                       cell and the header above it can never disagree */}
