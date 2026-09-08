@@ -10,8 +10,9 @@ your game until you tell it — switch the sets on in the settings, or import a 
 it read them off your game.
 
 - **Best train** — the job first, the train second: distance, station length, cargo and
-  industry output go in, and a swept catalogue comes back ranked by profit, haul or supply,
-  fleet size and full-load order included.
+  industry output go in, and a swept catalogue comes back ranked by profit, haul, supply or
+  running cost among the consists that are enough for the job, fleet size and full-load order
+  included.
 - **Consist builder** — assemble a train from the full vehicle catalogue: power, tractive
   effort, weight, capacity, purchase price, running costs, top speed on flat/grade
   (realistic acceleration physics reproduced from OpenTTD sources). Filter by a cargo and the

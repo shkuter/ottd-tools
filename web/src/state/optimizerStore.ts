@@ -11,7 +11,7 @@ export interface OptimizerPrefill {
   productionPerMonth: number;
 }
 
-interface OptimizerState extends SearchParams {
+export interface OptimizerState extends SearchParams {
   cargoLabel: string;
   distanceTiles: number;
   /** Industry output per economy month, 0 = do not limit the load. */

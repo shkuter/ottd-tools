@@ -1,7 +1,9 @@
 /**
- * Перебор связок «локомотив(ы) + вагоны» под задачу:
- * год, дистанция, груз, длина станции -> рейтинг по прибыли в год.
- * Гружёное плечо и порожний обратный ход считаются с разной скоростью.
+ * Перебор связок «локомотив(ы) + вагоны» под задачу: год, дистанция, груз, длина станции ->
+ * выдача, упорядоченная выбранной целью (прибыль, вывоз, снабжение получателя или расходы).
+ * Гружёное плечо и порожний обратный ход считаются с разной скоростью. Цель, которая ранжирует
+ * по расходам, ещё и отвергает строки, которых для задачи мало, и поиск сообщает, какие
+ * условия это сделали.
  */
 import type { Cargo, ConsistEntry, Train, TrainsMeta } from '../types';
 import {
@@ -35,6 +37,7 @@ import {
   type SupplyAssessment,
   type SupplyTarget,
   assessSupply,
+  hasVerdict,
   holdsSupplied,
   supplyWindowDays,
 } from './supply';
@@ -54,7 +57,7 @@ import {
 } from './settings';
 
 /** What the optimizer ranks its output by. */
-export type OptimizeGoal = 'profit' | 'transported' | 'supply';
+export type OptimizeGoal = 'profit' | 'transported' | 'supply' | 'cheapest';
 
 export interface OptimizeParams {
   year: number;
@@ -79,9 +82,10 @@ export interface OptimizeParams {
    */
   productionPerMonth?: number;
   /**
-   * What the search ranks by: yearly profit (the default) or cargo hauled per year.
-   * The transported goal needs a production flow to have a delivered share at all, so
-   * without one it is treated as 'profit' — the engine is the single source of truth here.
+   * What the search ranks by: yearly profit (the default), cargo hauled per year, how well the
+   * receiving industry ends up supplied, or the yearly running cost of the fleet. The last
+   * three all measure something against the industry output, so without one they are treated
+   * as 'profit' — the engine is the single source of truth here.
    */
   goal?: OptimizeGoal;
   /**
@@ -89,7 +93,7 @@ export interface OptimizeParams {
    * cargo has no consumer in the active economy, which is also when the goal is unavailable.
    */
   supplyTarget?: SupplyTarget | null;
-  /** Upper bound on trains per route, used by the transported goal. */
+  /** Upper bound on trains per route; every goal sweeps the fleet up to it. */
   maxTrains?: number;
   game?: GameSettings;
   calc?: CalcSettings;
@@ -202,6 +206,8 @@ interface RankKeys {
   hauled: number;
   profit: number;
   cost: number;
+  /** Yearly running cost of the whole fleet, which is what the cheapest goal ranks by. */
+  running: number;
   /** How well the receiving industry ends up supplied, 0..1. Stepped, not continuous. */
   supply: number;
   /** Whether this route's own input stays inside the window: 1 yes, 0 no. */
@@ -210,11 +216,12 @@ interface RankKeys {
 
 /**
  * What the search goal decides: whether consists shorter than the full station are swept, and
- * what ranking looks at before the shared profit and price tie-breaks. Keeping both answers in
- * one object means the goal is read once, at the top of a search, instead of being re-tested
- * wherever it matters. The fleet sweep is NOT one of those answers: every allowed size is
- * evaluated under both goals, because a bigger fleet shortens the interval, lifts the station
- * rating and can therefore be the more profitable one too.
+ * what ranking looks at before the shared profit and price tie-breaks; and which rows it will
+ * not show at all. Keeping all three answers in one object means the goal is read once, at the
+ * top of a search, instead of being re-tested wherever it matters. The fleet sweep is NOT one of
+ * those answers: every allowed size is evaluated under every goal, because a bigger fleet
+ * shortens the interval, lifts the station rating and can therefore be the more profitable one
+ * too.
  */
 interface GoalStrategy {
   /** Whether consists shorter than the full station are worth sweeping at all. */
@@ -223,6 +230,71 @@ interface GoalStrategy {
   stopsSweep(rows: readonly OptimizeResult[]): boolean;
   /** Orders a pair before the shared tie-breaks: negative = a first, 0 = undecided. */
   primary(a: RankKeys, b: RankKeys): number;
+  /**
+   * Why the goal will not show this row, or null when it will. Only the cheapest goal ever
+   * refuses one: "cheapest" is meaningless without "enough", so the conditions belong to the
+   * goal rather than to the search. A goal that leaves this out shows everything it ranks.
+   *
+   * The answer is a property of one row, so it also decides which loading branch a row is
+   * shown in — a branch the goal refuses must not take the row down with it. And it is a
+   * reason rather than a flag because the tab has to say what actually did the refusing:
+   * naming a condition that never bit would send the player to fix the wrong thing.
+   */
+  refuses?(row: OptimizeResult): Insufficiency | null;
+}
+
+/**
+ * What made a goal refuse a row — see `insufficiency` below for what each one means. The
+ * search reports the ones it actually used, so the tab can name them.
+ */
+export type Insufficiency = 'grade' | 'backlog' | 'window';
+
+/**
+ * Reported in this order, so the tab reads the same way twice on the same search. A `Record`
+ * rather than a list: a condition added later cannot be forgotten here and silently vanish
+ * from what the search reports.
+ */
+const INSUFFICIENCY_ORDER: Record<Insufficiency, number> = { grade: 0, backlog: 1, window: 2 };
+
+/**
+ * The reasons a search collected, in that fixed order rather than the order rows happened to
+ * fail in. Separate from the search so the ordering can be stated and tested on its own: the
+ * sweep visits early, light consists first, so on today's data the two orders agree by
+ * accident, and a test through the search would pass with the ordering gone.
+ */
+export function orderedInsufficiencies(reasons: Iterable<Insufficiency>): Insufficiency[] {
+  return [...new Set(reasons)].sort((a, b) => INSUFFICIENCY_ORDER[a] - INSUFFICIENCY_ORDER[b]);
+}
+
+/**
+ * Where `balancingSpeed` gives up: its search starts at 1, so a consist whose tractive effort
+ * falls short of the slope resistance even at that speed comes back with exactly this figure.
+ * The game lets a train pull away from a standstill either way — `GetAcceleration`
+ * (ground_vehicle.cpp) substitutes a "kickoff" force of `max(min(max_te, power), mass * 8 +
+ * resistance)` — but once moving the force drops to `power * 18 / (speed * 5)`, and a train
+ * that cannot beat the slope with it slides back to a crawl. This figure is that crawl.
+ */
+export const STALLED_GRADE_SPEED = 1;
+
+/**
+ * What keeps a row from being enough for the task the search was given, or null when nothing
+ * does: the consist stalls on the worst grade of the route, its fleet leaves cargo standing at
+ * the station, or it misses the supply window of a receiving industry the model judges. Only
+ * the first of them is reported — a row refused for one reason is refused, and the player
+ * fixes them one at a time.
+ *
+ * Where the industry's rule yields no verdict (it takes no supplies, or the model does not read
+ * its rule) there is no answer to act on rather than a bad one, so the window refuses nothing:
+ * `hasVerdict` in engine/supply.ts draws that line, and the supply column shows those same
+ * industries as a dash.
+ */
+function insufficiency(row: OptimizeResult): Insufficiency | null {
+  if (row.gradeSpeedInternal <= STALLED_GRADE_SPEED) return 'grade';
+  if (row.fleetLimited) return 'backlog';
+  if (row.supply && hasVerdict(row.supply.rule) && !holdsSupplied(row.supply.verdict)) {
+    return 'window';
+  }
+  return null;
 }
 
 /**
@@ -258,6 +330,17 @@ function goalStrategy(goal: OptimizeGoal): GoalStrategy {
       },
     };
   }
+  if (goal === 'cheapest') {
+    return {
+      // A shorter consist and a smaller fleet are the two ways to run cheaper, and the
+      // conditions below stop either from dropping below the task: this goal has to see
+      // every length.
+      sweepsShorter: () => true,
+      stopsSweep: () => false,
+      primary: (a, b) => (a.running === b.running ? 0 : a.running < b.running ? -1 : 1),
+      refuses: insufficiency,
+    };
+  }
   if (goal === 'transported') {
     return {
       // A shorter consist runs more often, so it can haul more than a full-length one: this
@@ -275,6 +358,18 @@ function goalStrategy(goal: OptimizeGoal): GoalStrategy {
   };
 }
 
+/**
+ * A search and what it refused. The rows alone cannot tell an empty answer apart from one the
+ * goal emptied: "nothing is enough for this task" and "no engine and wagon pair exists here at
+ * all" are different messages, and only the search knows which it is.
+ */
+export interface ConsistSearch {
+  rows: OptimizeResult[];
+  /** Conditions that turned at least one row away; empty when the goal refused nothing. */
+  refused: Insufficiency[];
+}
+
+/** The search as most callers want it: the rows, without the outcome around them. */
 export function optimizeConsists(
   trains: Train[],
   params: OptimizeParams,
@@ -282,13 +377,28 @@ export function optimizeConsists(
   topN = 30,
   cache: OptimizerCache = createOptimizerCache(),
 ): OptimizeResult[] {
+  return searchConsists(trains, params, meta, topN, cache).rows;
+}
+
+/**
+ * The full search: every consist the task allows, ranked by the goal, with what the goal
+ * refused alongside. `refused` is empty unless a goal actually turned a row away, so an empty
+ * `rows` with an empty `refused` means the task had nothing to rank in the first place.
+ */
+export function searchConsists(
+  trains: Train[],
+  params: OptimizeParams,
+  meta: TrainsMeta,
+  topN = 30,
+  cache: OptimizerCache = createOptimizerCache(),
+): ConsistSearch {
   const { year, distanceTiles, cargo, maxLengthTiles } = params;
   const game = params.game ?? DEFAULT_GAME_SETTINGS;
   const calc = params.calc ?? DEFAULT_CALC_SETTINGS;
   const { capacityIndex, trackType } = calc;
   // Payment rides the same inflation clock as prices, so it comes from the shared helper.
   const payment = cargoPaymentRate(cargo, params.economyId, game, calc);
-  if (!payment) return [];
+  if (!payment) return { rows: [], refused: [] };
 
   resetIfStale(cache, {
     cargoLabel: cargo.label,
@@ -364,12 +474,17 @@ export function optimizeConsists(
   // Without a flow there is no interval, and without a receiving industry there is nothing to
   // be supplied: either way the supply goal has no order to impose, so it falls back to profit
   // rather than leaving the tab ranked by nothing.
+  // The same line covers the cheapest goal: without a flow there is no "enough" for it to be
+  // cheap about, and its answer would collapse to the shortest consist ever swept.
   const supplyTarget = params.supplyTarget ?? null;
   const requested = params.goal ?? 'profit';
   const goal: OptimizeGoal =
     flowPerYear <= 0 || (requested === 'supply' && !supplyTarget) ? 'profit' : requested;
   const maxTrains = Math.max(1, Math.floor(params.maxTrains ?? 4));
   const strategy = goalStrategy(goal);
+  /** Conditions that turned at least one candidate away; reported in a fixed order below. */
+  const refused = new Set<Insufficiency>();
+  const refusalOf = strategy.refuses ?? (() => null);
   const results: OptimizeResult[] = [];
 
   // How two candidates are ordered: by the goal first, then by the shared profit and price
@@ -385,6 +500,7 @@ export function optimizeConsists(
     hauled: Math.round(r.hauledPerYear),
     profit: Math.round(r.profitPerYear),
     cost: Math.round(r.buyCostTotal),
+    running: Math.round(r.runningCostPerYear),
     // Rounded like the rest: the conversion is a multiple of 1/8 and the pool a level, so
     // rounding only guards against float noise in the division.
     supply: Math.round(supplyScore(r.supply) * 1000) / 1000,
@@ -605,7 +721,20 @@ export function optimizeConsists(
       const plain = row(branches.runsWithWhatAccumulated, stationRating, offeredPerYear);
       if (!branches.differ || !branches.waitsForFullLoad) return plain;
       const waiting = row(branches.waitsForFullLoad, waitingRating, waitingOffered);
-      const [won, lost] = better(waiting, plain) ? [waiting, plain] : [plain, waiting];
+      // Which branch is shown is decided among the ones the goal accepts, not after the fact.
+      // Waiting costs less to run wherever a stopped consist is charged less (JGRPP), so a
+      // goal ranking by running cost would always reach for it — and waiting stretches the
+      // interval, which is what can push the row out of the supply window or leave cargo
+      // standing. When both branches are equally (in)admissible the comparison decides, as
+      // it always did.
+      //
+      // Only whether a branch is admitted matters here, not what refused it: the reasons are
+      // read when the answer comes back empty, and then `keepAdmitted` below collects the one
+      // from the row that stands.
+      const waitingOk = refusalOf(waiting) === null;
+      const plainOk = refusalOf(plain) === null;
+      const preferWaiting = waitingOk === plainOk ? better(waiting, plain) : waitingOk;
+      const [won, lost] = preferWaiting ? [waiting, plain] : [plain, waiting];
       return {
         ...won,
         otherBranch: {
@@ -615,7 +744,7 @@ export function optimizeConsists(
       };
     };
 
-    // Every allowed fleet size is a candidate under both goals. How much the station hands
+    // Every allowed fleet size is a candidate under every goal. How much the station hands
     // over depends on the interval, and the interval depends on the fleet, so a bigger fleet
     // hauls more *and* can earn more — stopping at the smallest fleet that clears what is
     // offered would hide the more profitable ones. Without a flow there is nothing to share
@@ -626,6 +755,20 @@ export function optimizeConsists(
     return rows;
   };
 
+  // The one place a row enters the answer, so a goal that refuses rows is applied in full by
+  // asking it here — and the reasons it gave are kept, because only conditions that actually
+  // refused something may be named to the player. `sweepsShorter` / `stopsSweep` deliberately
+  // read the *unfiltered* rows instead: whether a shorter consist is worth looking at is a
+  // question about the source and the consist, and must not depend on whether the full-length
+  // rows were admitted.
+  const keepAdmitted = (rows: readonly OptimizeResult[]) => {
+    for (const r of rows) {
+      const why = refusalOf(r);
+      if (why) refused.add(why);
+      else results.push(r);
+    }
+  };
+
   for (const engine of engines) {
     for (const engineCount of [1, 2]) {
       const engineLength = engineCount * vehicleLengthUnits(engine);
@@ -633,14 +776,19 @@ export function optimizeConsists(
       for (const wagon of searchWagons) {
         const maxWagons = Math.floor((maxLengthUnits - engineLength) / vehicleLengthUnits(wagon));
         if (maxWagons <= 0) continue;
+        // A full-length consist that evaluates to nothing (no capacity, or too slow to move)
+        // ends this pair, shorter variants included. That is a real gap — the shorter ones may
+        // well be fine — but closing it here changes what the haul and supply goals return
+        // (measured: 18 differing rows over 900 tasks), and this change adds a goal rather
+        // than re-cutting the existing ones. Logged for a change of its own.
         const full = evaluate(engine, engineCount, engineLength, wagon, maxWagons);
         if (!full.length) continue;
-        results.push(...full);
+        keepAdmitted(full);
         if (!strategy.sweepsShorter(full)) continue;
         for (let wagonCount = 1; wagonCount < maxWagons; wagonCount++) {
           const rows = evaluate(engine, engineCount, engineLength, wagon, wagonCount);
           if (!rows.length) continue;
-          results.push(...rows);
+          keepAdmitted(rows);
           if (strategy.stopsSweep(rows)) break;
         }
       }
@@ -653,7 +801,8 @@ export function optimizeConsists(
     const prev = best.get(key);
     if (!prev || better(r, prev)) best.set(key, r);
   }
-  return [...best.values()]
+  const rows = [...best.values()]
     .sort((a, b) => (better(a, b) ? -1 : better(b, a) ? 1 : 0))
     .slice(0, topN);
+  return { rows, refused: orderedInsufficiencies(refused) };
 }

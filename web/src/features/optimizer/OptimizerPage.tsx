@@ -44,7 +44,12 @@ import {
   engineLabel, num, percent, speedUnitLabel, speedValue, unitSuffix, wagonLabel, withUnit,
 } from '../../components/format';
 import { Money } from '../../components/Money';
-import { optimizeConsists, type OptimizeResult } from '../../engine/optimize';
+import {
+  searchConsists,
+  type ConsistSearch,
+  type Insufficiency,
+  type OptimizeResult,
+} from '../../engine/optimize';
 import { hasVerdict, supplyFigure, type SupplyTarget } from '../../engine/supply';
 import { createOptimizerCache } from '../../engine/optimizeCache';
 import { cargoPaymentRate } from '../../engine/income';
@@ -65,6 +70,13 @@ import { PrefillNote } from '../../components/PrefillNote';
 
 /** Rows drawn before the "show more" button; the search itself still ranks all of them. */
 const PAGE_SIZE = 15;
+
+/** How the search's own reasons for refusing rows are named to the player. */
+const INSUFFICIENCY_STRINGS: Record<Insufficiency, string> = {
+  grade: 'opt.enoughGrade',
+  backlog: 'opt.enoughBacklog',
+  window: 'opt.enoughWindow',
+};
 
 /** Tooltip listing what the estimated station rating is made of. */
 function ratingBreakdown(r: StationRating): string {
@@ -266,9 +278,9 @@ export default function OptimizerPage() {
   // what the imported game sells on its own date beats the model, see engine/availability.ts
   const soldIds = useSoldIds(searchInput.year, game);
 
-  const results = useMemo(() => {
-    if (!cargo) return [];
-    return optimizeConsists(
+  const search = useMemo(() => {
+    if (!cargo) return { rows: [], refused: [] } satisfies ConsistSearch;
+    return searchConsists(
       trains,
       {
         year: searchInput.year,
@@ -291,6 +303,7 @@ export default function OptimizerPage() {
       searchCache.current,
     );
   }, [trains, cargo, economyId, searchInput, activeGoal, supplyTarget, subsidised, excludedIds, soldIds, game, calc]);
+  const results = search.rows;
 
   // машины, которые в выбранном году могут ещё не появиться, — их можно выключить
   const collator = useMemo(() => new Intl.Collator(intlLocale(locale)), [locale]);
@@ -314,6 +327,19 @@ export default function OptimizerPage() {
   // not on a new row count: a different search of the same size is still a different answer.
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   useEffect(() => setVisibleCount(PAGE_SIZE), [matching]);
+  // The cheapest goal is the only one that can empty the table on a valid search: it shows
+  // what is enough for the task, and sometimes nothing is. What it turned rows away for comes
+  // from the search itself rather than being guessed here — a condition that never bit would
+  // send the player to fix the wrong thing, and an empty answer with no refusals at all is an
+  // ordinary "nothing matched", the same as when the engine filter empties the table.
+  // Translated during the render, so the strings follow the language like every other label.
+  const emptyMessage =
+    results.length === 0 && search.refused.length > 0
+      ? t('opt.noResultsCheapest', {
+          conditions: search.refused.map((why) => t(INSUFFICIENCY_STRINGS[why])).join('; '),
+        })
+      : t('opt.noResults');
+
   // Sorting is a view over the rows the search returned, not a second ranking: it reorders
   // what is on screen and leaves the set and the numbers alone.
   const ordered = useMemo(
@@ -407,6 +433,7 @@ export default function OptimizerPage() {
                 { value: 'profit', label: t('opt.goalProfit') },
                 { value: 'transported', label: t('opt.goalTransported'), disabled: !goalAvailable },
                 { value: 'supply', label: t('opt.goalSupply'), disabled: !supplyAvailable },
+                { value: 'cheapest', label: t('opt.goalCheapest'), disabled: !goalAvailable },
               ]}
             />
           )}
@@ -491,7 +518,7 @@ export default function OptimizerPage() {
           </Group>
         </>
       )}
-      <TableFrame pinEdges rowCount={shown.length} emptyMessage={t('opt.noResults')}>
+      <TableFrame pinEdges rowCount={shown.length} emptyMessage={emptyMessage}>
         <Table.Thead>
           <Table.Tr>
             <Table.Th className="cell-num">#</Table.Th>

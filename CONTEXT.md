@@ -97,9 +97,18 @@ splitting it would invite the two sides to drift apart.
 
 **Trains needed** (`trainsNeeded`) — the smallest fleet that clears the **full** output by
 capacity. It only bounds the search: the fleet a row really needs is usually smaller, because
-the station forwards part of the output. Both goals sweep the fleet from one train up — the
-"profit" goal stops at the smallest fleet that moves everything offered, the "transported" goal
-goes to the user's limit.
+the station forwards part of the output. Every goal sweeps the fleet from one train up to the
+user's limit; what differs is which of those rows it keeps — "profit" the most profitable,
+"transported" the biggest haul, "supply" the best-fed industry, "cheapest" the smallest running
+cost among the fleets that are enough.
+
+**Enough for the task** (_достаточный_, `Insufficiency` / `refuses`) — the three conditions
+the `cheapest` goal admits a row by, since "cheapest" answers nothing without "enough": the consist accelerates on the worst
+grade of the route (its settled speed there is above the crawl `balancingSpeed` returns when
+tractive effort loses to the slope), its fleet leaves no cargo standing (**Fleet limited** is
+false), and, where the receiving industry has a verdict at all, the route keeps it inside its
+supply window. The conditions belong to that goal alone: under the other three every row is
+listed, flagged rather than dropped.
 
 **Fleet limited** (`fleetLimited`) — the fleet, not the station, is the binding constraint:
 the route carries a **backlog**. Not measured against `trainsNeeded` — a fleet below it still
@@ -110,12 +119,18 @@ flows meet and only the pile on the platform tells them apart.
 ## Search
 
 **Goal** (_цель_) — what the optimizer ranks by: `profit` (yearly profit), `transported`
-(hauled per year) or `supply` (how well the receiving industry ends up fed). Without a flow
-there is no delivered share, so `transported` degrades to `profit` inside the engine, and
-`supply` does the same without a flow or without a receiving industry — the UI only stops the
-user from picking a dead option. `supply` ranks lexicographically: the conversion the industry
-reaches first, profit among the rows that reach the same one, so it buys the cheapest way to a
-result rather than the shortest interval for its own sake.
+(hauled per year), `supply` (how well the receiving industry ends up fed) or `cheapest` (the
+yearly running cost of the fleet). Without a flow there is no delivered share, so `transported`
+degrades to `profit` inside the engine; `supply` does the same without a flow or without a
+receiving industry, and `cheapest` without a flow, since "enough" is measured against it — the
+UI only stops the user from picking a dead option. `supply` ranks lexicographically: the
+conversion the industry reaches first, profit among the rows that reach the same one, so it
+buys the cheapest way to a result rather than the shortest interval for its own sake.
+
+A goal also decides **which** rows are listed, not only their order, though `cheapest` is so
+far the only one that drops any — see **Enough for the task**, and what a search reports having
+refused rows for (`Insufficiency`: `grade`, `backlog`, `window`), which is what the tab names
+when the table comes back empty.
 
 **Sort** (_сортировка_) — a view over the rows a tab lists, applied after that tab put them in
 its own order. It reorders what is on screen and changes neither the set nor the numbers; a

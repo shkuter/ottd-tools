@@ -69,7 +69,7 @@ describe('an unavailable option of a switch', () => {
        shows: the goal "Supply" sat there reading as available. */
     const page = await harness().goto('/optimizer', '.page-optimizer');
 
-    // both goals that need the source output go unavailable once it is unknown
+    // the goals that need the source output go unavailable once it is unknown
     const output = page.getByLabel(en['opt.production'], { exact: true });
     await output.fill('0');
     await output.blur();

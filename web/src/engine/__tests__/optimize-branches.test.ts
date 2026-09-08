@@ -72,7 +72,7 @@ describe('оптимизатор: ветка загрузки', () => {
   });
 
   it('ветка ожидания приезжает реже и получает меньшую долю вывоза', () => {
-    // Same route under both goals: whichever branch wins, the row stays self-consistent —
+    // Same route under every goal: whichever branch wins, the row stays self-consistent —
     // the rating shown is the one its own interval settles at.
     const rows = optimizeConsists(
       trains,

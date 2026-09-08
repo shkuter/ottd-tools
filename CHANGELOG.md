@@ -18,6 +18,20 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- Best train: a fourth search goal, **Min cost**, ranking by the yearly running cost of the
+  fleet among the consists that are *enough* for the task. On a short haul profit is settled
+  by the wagons, so the top of the list goes flat while running costs across it differ
+  fivefold — the goal makes that difference the ranking. Three conditions decide what counts
+  as enough, and only this goal applies them: the consist accelerates on the worst grade of
+  the route, its fleet carries off what the station hands over (no cargo left standing), and,
+  where the receiving industry is one the model judges, the route keeps it inside its supply
+  window. The loading branch is chosen among the branches those conditions admit, so a
+  cheaper waiting branch that misses the window shows the row in its plain branch instead of
+  dropping it. Like Haul and Supply, the goal needs the industry output to be set; when
+  nothing is enough, the table says which conditions went unmet rather than standing empty.
+
 ## [0.22.0] - 2026-09-08
 
 ### Added
