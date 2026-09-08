@@ -408,6 +408,36 @@ window (quoted with the consist that fleet belongs to), or the fact that the inp
 **unserved**. There is no bottleneck when the supplied inputs already reach the conversion
 ceiling: fixing anything then buys no output.
 
+## Chain completeness
+
+**Chain completeness** (_полнота цепочек_) — whether the industries a chain needs stand on the
+map at all. A property of the map the generator made, not of what the player has built: what a
+train already hauls is **supplied**, which is a different question asked by a different list.
+
+**Reachable share** (_доступная доля_) — the share of its output an industry can reach on this
+map: the input ratios of the inputs whose producer stands on the map and is itself **workable**,
+through the **conversion**. `1` where every input can be had, `0` where none can. It replaces
+asking whether all inputs are present, because FIRS states "any three of five" as five inputs of
+ratio 3 — three of which already reach the ceiling.
+
+**Workable** (_работоспособное_) — an industry whose **reachable share** is above zero, so it
+can produce something here. Everything that does not convert — primaries, ports, pool
+industries, tertiaries — is workable by definition; a secondary is workable only through its
+inputs. Solved bottom-up until it stops changing, so a chain that only feeds itself stays
+unworkable, which is what it is.
+
+**Chain gap** (_разрыв_) — an industry standing on the map with a **reachable share** of zero:
+it cannot produce, and no route will change that. Distinct from one running below full, which
+works and is merely worth improving.
+
+**Dead end** (_тупик_) — a cargo produced on this map that nothing on this map accepts. A
+cargo, not an industry: an industry with several outputs can have a buyer for one and none for
+another, so naming the industry would say less than it seems to.
+
+**Missing link** (_недостающее звено_) — an industry type absent from the map, whose absence is
+what holds the **reachable share** of others at zero. It is what the **chain gap** list is
+grouped by: one type named, and the industries that would start working if it were built.
+
 ## Cargo sets
 
 **Economy** (_экономика_) — the FIRS variant a game runs: Temperate Basic, Arctic Basic, Tropic
