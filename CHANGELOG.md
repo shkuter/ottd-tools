@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-08
+
 ### Added
 
 - Vehicle catalogue: two computed columns for comparing wagons under a chosen cargo —
