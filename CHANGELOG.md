@@ -20,6 +20,19 @@ of what users see):
 
 ### Added
 
+- Best train: **side-by-side comparison** of engines picked from the answer. Tick up to four
+  rows, press Compare, and the engines stand as columns with one figure per row — tractive
+  effort, loaded speed on the flat and on the worst grade, capacity, length, wagons, fleet,
+  round trip, haul per year, delivered share, supply window, running cost, purchase price,
+  yearly profit, payback and running cost per unit delivered. Conditions are levelled by the
+  **wagon**: every engine gets the wagon of the first ticked row, while the length and the
+  fleet are chosen by the same search that produced the table — so a column repeats its row
+  exactly where the conditions match, and an engine the shared wagon leaves without an answer
+  says so instead of showing blanks. The best value of a row is marked wherever "better" is defined
+  — length, wagon count and fleet size get no mark, since longer means both more cargo and
+  more to run — and no overall verdict is offered, since the figures pull in different
+  directions.
+
 - Best train: a fourth search goal, **Min cost**, ranking by the yearly running cost of the
   fleet among the consists that are *enough* for the task. On a short haul profit is settled
   by the wagons, so the top of the list goes flat while running costs across it differ

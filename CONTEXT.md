@@ -132,6 +132,14 @@ far the only one that drops any — see **Enough for the task**, and what a sear
 refused rows for (`Insufficiency`: `grade`, `backlog`, `window`), which is what the tab names
 when the table comes back empty.
 
+**Comparison** (_сравнение_, `useComparison` / `comparisonColumns`) — reading engines picked out
+of an answer side by side: a **pick** (_отметка_) is one ticked "engine × number of units", the
+**shared wagon** (_общий вагон_) is the wagon of the first pick that every column is rebuilt on,
+and a **metric** (_показатель_) is one row of the panel — a figure, its value per column and
+which of them is best. A comparison is not a second model: each column is the same search
+narrowed to one engine and one wagon, so a column repeats its row wherever the conditions match.
+Picks are cleared when the **task** changes — everything the answer depends on except the goal.
+
 **Sort** (_сортировка_) — a view over the rows a tab lists, applied after that tab put them in
 its own order. It reorders what is on screen and changes neither the set nor the numbers; a
 third click on a header returns that order, whatever it is for the tab: the search order in the

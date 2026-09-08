@@ -1390,6 +1390,31 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root) {
   object-position: left center;
 }
 
+/*
+ * Comparing engines side by side. The panel itself needs no frame: the table inside it already
+ * stands in `.table-wrap`, which is a raised frame like every other list. Only the row of
+ * commands above the list and the panel's own heading line are shaped here; the cell modifiers
+ * (the tick column, the mark on a row's best value) live with the other cell modifiers in
+ * skin-mantine.css — that is where the cell rules of a list are kept, next to the ones they
+ * are read against.
+ */
+.compare-bar,
+.compare-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--skin-hsep-wide);
+  margin-bottom: var(--skin-hsep-wide);
+}
+
+.compare-head > :last-child {
+  margin-left: auto;
+}
+
+.compare-panel {
+  margin-bottom: var(--skin-hsep-wide);
+}
+
 /* Nothing to list: the frame says why instead of standing empty. */
 .table-empty {
   margin: 0;

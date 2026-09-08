@@ -1,8 +1,8 @@
 /**
- * Четвёртая цель вкладки подбора и пустое состояние, которое она может дать. Отбор
- * достаточных вариантов — единственное место калькулятора, где корректный ввод оставляет
- * таблицу пустой, поэтому вкладка обязана назвать условия, которых никто не выполнил, — и
- * назвать только те, что в этом поиске действительно кого-то отвергли.
+ * Вкладка подбора целиком: отметки для сравнения и панель над таблицей, а также четвёртая цель
+ * и пустое состояние, которое она может дать. Отбор достаточных вариантов — единственное место
+ * калькулятора, где корректный ввод оставляет таблицу пустой, поэтому вкладка обязана назвать
+ * условия, которых никто не выполнил, — и только те, что действительно кого-то отвергли.
  *
  * @vitest-environment jsdom
  */
@@ -40,9 +40,9 @@ const NOTHING_IS_ENOUGH = {
   goal: 'cheapest',
 } satisfies Partial<OptimizerState>;
 
-/** Машина из первой строки таблицы (третья ячейка: номер, спрайт, название). */
+/** Машина из первой строки таблицы — по test-id ячейки, а не по её номеру: колонки двигаются. */
 const topEngine = () =>
-  document.querySelector('tbody tr')?.querySelectorAll('td')[2]?.textContent ?? '';
+  document.querySelector('tbody tr [data-testid="opt-engine"]')?.textContent ?? '';
 
 /** Кладёт задачу в стор вкладки; страница читает её при рендере. */
 const givenSearch = (over: Partial<OptimizerState>) =>
@@ -67,6 +67,202 @@ beforeEach(() => {
 });
 
 afterEach(cleanup);
+
+/** Команда «Сравнить» над таблицей. */
+const compareButton = () =>
+  screen.getByRole('button', { name: /^Compare \(/ }) as HTMLButtonElement;
+
+/** Отметки сравнения в строках таблицы. */
+const picks = () =>
+  Array.from(document.querySelectorAll<HTMLInputElement>('.cell-pick input[type="checkbox"]'));
+
+describe('сравнение машин на вкладке', () => {
+  it('отметка не трогает выдачу, а вторая открывает команду «Сравнить»', async () => {
+    givenSearch({});
+    draw();
+    const before = document.querySelectorAll('tbody tr').length;
+    const top = topEngine();
+
+    await userEvent.click(picks()[0]!);
+    // Отметка ничего не считает: те же строки, тот же порядок.
+    expect(document.querySelectorAll('tbody tr')).toHaveLength(before);
+    expect(topEngine()).toBe(top);
+    expect(compareButton().disabled).toBe(true);
+    expect(screen.getByText(/Tick one more engine/)).toBeTruthy();
+
+    await userEvent.click(picks()[1]!);
+    expect(compareButton().disabled).toBe(false);
+    expect(compareButton().textContent).toContain('(2)');
+  });
+
+  it('панель появляется по команде и уравнивает вагон', async () => {
+    givenSearch({});
+    draw();
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    expect(screen.queryByText(/Side by side/)).toBeNull();
+
+    await userEvent.click(compareButton());
+    expect(screen.getByText(/Side by side/)).toBeTruthy();
+    expect(screen.getByText(/Same conditions for everyone/)).toBeTruthy();
+    // Таблица выдачи никуда не делась — панель встала над ней.
+    expect(document.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
+  });
+
+  it('больше четырёх машин рядом не ставит', async () => {
+    givenSearch({});
+    draw();
+    for (const box of picks().slice(0, 4)) await userEvent.click(box);
+    expect(screen.getByText(/Up to 4 engines/)).toBeTruthy();
+    expect(picks()[4]!.disabled).toBe(true);
+    expect(picks().filter((b) => b.checked)).toHaveLength(4);
+  });
+
+  it('смена задачи снимает отметки, смена цели — нет', async () => {
+    givenSearch({});
+    draw();
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    expect(picks().filter((b) => b.checked)).toHaveLength(2);
+
+    // Цель пересобирает строки, но задача та же — выбор остаётся.
+    await userEvent.click(goalInput('cheapest')!);
+    await waitFor(() => expect(picks().filter((b) => b.checked)).toHaveLength(2));
+
+    // Другой груз — другой ответ, и отмеченных машин в нём может не быть.
+    act(() => useOptimizerStore.setState({ cargoLabel: 'STEL' }));
+    await waitFor(() => expect(picks().filter((b) => b.checked)).toHaveLength(0));
+  });
+
+  it.each([
+    ['плечо', () => useOptimizerStore.setState({ distanceTiles: 260 })],
+    ['длину станции', () => useOptimizerStore.setState({ stationTiles: 4 })],
+    ['выпуск', () => useOptimizerStore.setState({ productionPerMonth: 300 })],
+    ['предел поездов', () => useOptimizerStore.setState({ maxTrains: 2 })],
+    ['исключённые машины', () => useOptimizerStore.setState({ excludedIds: ['haar'] })],
+    ['год', () => useSettingsStore.setState({ calc: { ...DEFAULT_CALC_SETTINGS, priceYear: 1960 } })],
+    ['тип пути', () => useSettingsStore.setState({ calc: { ...DEFAULT_CALC_SETTINGS, trackType: 'ELRL' } })],
+    ['длину холма', () => useSettingsStore.setState({ calc: { ...DEFAULT_CALC_SETTINGS, hillTiles: 6 } })],
+    [
+      'настройку партии',
+      () =>
+        useSettingsStore.setState({
+          game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse', firs: true, dayLengthFactor: 8 },
+        }),
+    ],
+  ])('сбрасывает отметки, когда меняют %s', async (_name, change) => {
+    givenSearch({});
+    draw();
+    await userEvent.click(picks()[0]!);
+    expect(picks().filter((b) => b.checked)).toHaveLength(1);
+    act(change);
+    await waitFor(() => expect(picks().filter((b) => b.checked)).toHaveLength(0));
+  });
+
+  it('закрывает панель, когда задача сменилась', async () => {
+    givenSearch({});
+    draw();
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    await userEvent.click(compareButton());
+    expect(screen.getByText(/Side by side/)).toBeTruthy();
+
+    act(() => useOptimizerStore.setState({ distanceTiles: 260 }));
+    await waitFor(() => expect(screen.queryByText(/Side by side/)).toBeNull());
+  });
+
+  it('убирает панель, когда сняли вторую отметку', async () => {
+    givenSearch({});
+    draw();
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    await userEvent.click(compareButton());
+    expect(screen.getByText(/Side by side/)).toBeTruthy();
+
+    // Сняли отметку — сравнивать не с чем, и панель не должна возвращаться сама, когда вторую
+    // машину отметят снова.
+    await userEvent.click(picks()[1]!);
+    expect(screen.queryByText(/Side by side/)).toBeNull();
+    await userEvent.click(picks()[1]!);
+    expect(screen.queryByText(/Side by side/)).toBeNull();
+  });
+
+  it('после смены задачи панель не открывается сама', async () => {
+    givenSearch({});
+    draw();
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    await userEvent.click(compareButton());
+    expect(screen.getByText(/Side by side/)).toBeTruthy();
+
+    act(() => useOptimizerStore.setState({ distanceTiles: 260 }));
+    await waitFor(() => expect(picks().filter((b) => b.checked)).toHaveLength(0));
+    // Отметки сняты — но и признак «панель открыта» должен быть снят: иначе панель вернётся
+    // сама, стоит отметить две строки в новом ответе.
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    expect(screen.queryByText(/Side by side/)).toBeNull();
+  });
+
+  it('закрывается по команде, не теряя отметок', async () => {
+    givenSearch({});
+    draw();
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    await userEvent.click(compareButton());
+    expect(screen.getByText(/Side by side/)).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: /^Close/ }));
+    expect(screen.queryByText(/Side by side/)).toBeNull();
+    // Отметки остаются: игрок закрыл панель, а не передумал сравнивать.
+    expect(picks().filter((b) => b.checked)).toHaveLength(2);
+  });
+
+  it('снимает все отметки одной командой', async () => {
+    givenSearch({});
+    draw();
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    await userEvent.click(screen.getByRole('button', { name: /^Clear/ }));
+    expect(picks().filter((b) => b.checked)).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: /^Compare \(/ })).toBeNull();
+  });
+
+  it('после «Снять отметки» панель не возвращается сама', async () => {
+    givenSearch({});
+    draw();
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    await userEvent.click(compareButton());
+    await userEvent.click(screen.getByRole('button', { name: /^Clear/ }));
+
+    await userEvent.click(picks()[0]!);
+    await userEvent.click(picks()[1]!);
+    expect(screen.queryByText(/Side by side/)).toBeNull();
+  });
+
+  it('на пределе отметку всё ещё можно снять', async () => {
+    givenSearch({});
+    draw();
+    for (const box of picks().slice(0, 4)) await userEvent.click(box);
+    expect(picks().filter((b) => b.checked)).toHaveLength(4);
+    // Иначе выбор запирается: пятую не отметить, а четвёртую не снять.
+    expect(picks()[0]!.disabled).toBe(false);
+    await userEvent.click(picks()[0]!);
+    expect(picks().filter((b) => b.checked)).toHaveLength(3);
+  });
+
+  it('сбрасывает отметки, когда меняют получателя', async () => {
+    // У угля в Steeltown потребитель один, менять нечего: берём груз, который принимают
+    // несколько предприятий.
+    givenSearch({ cargoLabel: 'STSH', destinationId: 'appliance_factory', productionPerMonth: 600 });
+    draw();
+    await userEvent.click(picks()[0]!);
+    expect(picks().filter((b) => b.checked)).toHaveLength(1);
+    act(() => useOptimizerStore.setState({ destinationId: 'metal_works' }));
+    await waitFor(() => expect(picks().filter((b) => b.checked)).toHaveLength(0));
+  });
+});
 
 describe('цель «Мин. расходы» на вкладке', () => {
   it('без заданного выпуска недоступна — вместе с двумя другими такими же целями', () => {

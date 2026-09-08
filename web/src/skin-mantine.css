@@ -661,6 +661,25 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* the tick that puts a row into the comparison: the column is as narrow as the box in it */
+  .cell-pick {
+    width: 1px;
+  }
+
+  /*
+   * The best value of a comparison row, marked by a frame drawn inside the cell.
+   *
+   * Not a text colour: money draws itself in a nested span (`.money-neg` for a loss), which
+   * wins over any colour set on the cell — on a loss-making route the mark would not show.
+   * Not a fill either: the row under the cursor is filled already (`--skin-list-hover`), so a
+   * filled cell would vanish exactly while the player runs their eye along it, and an unhovered
+   * one would read as hovered. Not weight: the game's font has no bold face, and the browser
+   * would synthesise one.
+   */
+  .compare-best {
+    box-shadow: inset 0 0 0 var(--bevel) var(--skin-profit);
+  }
+
   /*
    * The action on a row ends it, so its button stands at the edge of the list
    * rather than against the next column's boundary — in a column wider than the
@@ -699,8 +718,8 @@
    * order above the cells it covers. The hover shade has to be repeated for the same reason:
    * it is painted on the row, and the row is what scrolls away underneath.
    */
-  .table-wrap.pin-edges .mantine-Table-th:first-child,
-  .table-wrap.pin-edges .mantine-Table-td:first-child {
+  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-th:first-child,
+  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-td:first-child {
     position: sticky;
     left: 0;
     z-index: 1;
@@ -713,7 +732,7 @@
     z-index: 1;
   }
 
-  .table-wrap.pin-edges .mantine-Table-td:first-child,
+  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-td:first-child,
   .table-wrap.pin-edges .mantine-Table-td:last-child {
     background: var(--skin-list-bg);
   }
@@ -725,8 +744,8 @@
    * and the scrolling part begins, the way the game separates a fixed pane
    * from a scrolling one.
    */
-  .table-wrap.pin-edges .mantine-Table-th:first-child,
-  .table-wrap.pin-edges .mantine-Table-td:first-child {
+  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-th:first-child,
+  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-td:first-child {
     border-right: var(--bevel) solid var(--skin-edge-lo);
   }
 
@@ -743,12 +762,15 @@
     position: static;
   }
 
-  .table-wrap.pin-edges .mantine-Table-th:first-child,
+  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-th:first-child,
   .table-wrap.pin-edges .mantine-Table-th:last-child {
     background: var(--skin-list-head-bg);
   }
 
-  .table-wrap.pin-edges .mantine-Table-tbody .mantine-Table-tr:hover .mantine-Table-td:first-child,
+  .table-wrap:is(.pin-edges, .pin-start)
+    .mantine-Table-tbody
+    .mantine-Table-tr:hover
+    .mantine-Table-td:first-child,
   .table-wrap.pin-edges .mantine-Table-tbody .mantine-Table-tr:hover .mantine-Table-td:last-child {
     background: var(--skin-list-hover);
   }

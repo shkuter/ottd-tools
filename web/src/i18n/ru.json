@@ -656,5 +656,21 @@
   "networkPage.actionShare": "{share} содержания",
   "networkPage.trimIncomplete": "Посчитано не всё: блоки ниже называют, чего каждому из них не хватает.",
   "networkPage.consistWithEngine": "{engine}, машин в составе — {vehicles}",
-  "networkPage.consistVehicles": "машин в составе — {vehicles}"
+  "networkPage.consistVehicles": "машин в составе — {vehicles}",
+  "compare.title": "Бок о бок",
+  "compare.metric": "Показатель",
+  "compare.sharedWagon": "Условия у всех одни: вагон {wagon} и та длина состава, с которой машина показывает себя лучше всего.",
+  "compare.close": "Закрыть",
+  "compare.run": "Сравнить ({count})",
+  "compare.clear": "Снять отметки",
+  "compare.needsSecond": "Отметьте ещё одну машину, чтобы сравнить.",
+  "compare.atLimit": "Бок о бок помещается не больше {limit} машин.",
+  "compare.pick": "Сравнить: {engine}",
+  "compare.answer": "Ответ",
+  "compare.answerOk": "есть",
+  "compare.noAnswer": "подходящего состава нет",
+  "compare.noneSufficient": "достаточных вариантов нет: {conditions}",
+  "compare.costPerUnit": "Расходы на единицу доставленного",
+  "compare.wagonCount": "Вагонов в составе",
+  "compare.nothing": "Сравнивать пока нечего."
 }

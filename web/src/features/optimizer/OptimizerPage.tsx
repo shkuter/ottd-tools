@@ -47,7 +47,7 @@ import { Money } from '../../components/Money';
 import {
   searchConsists,
   type ConsistSearch,
-  type Insufficiency,
+  type OptimizeParams,
   type OptimizeResult,
 } from '../../engine/optimize';
 import { hasVerdict, supplyFigure, type SupplyTarget } from '../../engine/supply';
@@ -57,6 +57,10 @@ import { waitTimeThresholdDays, type StationRating } from '../../engine/rating';
 import { effectiveDayLength } from '../../engine/settings';
 import { introRandomisationActive } from '../../engine/availability';
 import { doubtfulGroups } from './doubtful';
+import { ComparisonPanel } from './ComparisonPanel';
+import { MAX_COMPARED } from './comparison';
+import { INSUFFICIENCY_STRINGS } from './insufficiency';
+import { taskKeyOf, useComparison } from './useComparison';
 import { optimizerSortValues, type OptimizerSort } from './sorting';
 import { sortRows } from '../../components/table/sorting';
 import { SortableTh } from '../../components/table/SortableTh';
@@ -70,13 +74,6 @@ import { PrefillNote } from '../../components/PrefillNote';
 
 /** Rows drawn before the "show more" button; the search itself still ranks all of them. */
 const PAGE_SIZE = 15;
-
-/** How the search's own reasons for refusing rows are named to the player. */
-const INSUFFICIENCY_STRINGS: Record<Insufficiency, string> = {
-  grade: 'opt.enoughGrade',
-  backlog: 'opt.enoughBacklog',
-  window: 'opt.enoughWindow',
-};
 
 /** Tooltip listing what the estimated station rating is made of. */
 function ratingBreakdown(r: StationRating): string {
@@ -278,32 +275,48 @@ export default function OptimizerPage() {
   // what the imported game sells on its own date beats the model, see engine/availability.ts
   const soldIds = useSoldIds(searchInput.year, game);
 
+  // One set of parameters for everything: the answer is computed with it, so are the
+  // comparison columns, and the task key is derived from it. Three hand-written lists of the
+  // same fields drift apart the moment an input is added — that is how `soldIds` was lost.
+  const searchParams: OptimizeParams | null = useMemo(
+    () =>
+      cargo
+        ? {
+            year: searchInput.year,
+            distanceTiles: searchInput.distance,
+            cargo,
+            economyId,
+            maxLengthTiles: searchInput.stationTiles,
+            productionPerMonth: searchInput.productionPerMonth,
+            goal: activeGoal,
+            supplyTarget,
+            maxTrains: searchInput.maxTrains,
+            subsidised,
+            excludedIds,
+            soldIds,
+            game,
+            calc,
+          }
+        : null,
+    [cargo, economyId, searchInput, activeGoal, supplyTarget, subsidised, excludedIds, soldIds, game, calc],
+  );
+
   const search = useMemo(() => {
-    if (!cargo) return { rows: [], refused: [] } satisfies ConsistSearch;
-    return searchConsists(
-      trains,
-      {
-        year: searchInput.year,
-        distanceTiles: searchInput.distance,
-        cargo,
-        economyId,
-        maxLengthTiles: searchInput.stationTiles,
-        productionPerMonth: searchInput.productionPerMonth,
-        goal: activeGoal,
-        supplyTarget,
-        maxTrains: searchInput.maxTrains,
-        subsidised,
-        excludedIds,
-        soldIds,
-        game,
-        calc,
-      },
-      activeTrainsMeta(game),
-      50,
-      searchCache.current,
-    );
-  }, [trains, cargo, economyId, searchInput, activeGoal, supplyTarget, subsidised, excludedIds, soldIds, game, calc]);
+    if (!searchParams) return { rows: [], refused: [] } satisfies ConsistSearch;
+    return searchConsists(trains, searchParams, activeTrainsMeta(game), 50, searchCache.current);
+  }, [trains, searchParams, game]);
   const results = search.rows;
+
+  const taskKey = useMemo(() => taskKeyOf(searchParams), [searchParams]);
+
+  const compare = useComparison({
+    rows: results,
+    trains,
+    params: searchParams,
+    meta: activeTrainsMeta(game),
+    cache: searchCache.current,
+    taskKey,
+  });
 
   // машины, которые в выбранном году могут ещё не появиться, — их можно выключить
   const collator = useMemo(() => new Intl.Collator(intlLocale(locale)), [locale]);
@@ -518,10 +531,37 @@ export default function OptimizerPage() {
           </Group>
         </>
       )}
+      {compare.pickedCount > 0 && (
+        <div className="compare-bar">
+          <Button size="compact-sm" disabled={!compare.canCompare} onClick={compare.compare}>
+            {t('compare.run', { count: compare.pickedCount })}
+          </Button>
+          <Button size="compact-sm" variant="default" onClick={compare.clear}>
+            {t('compare.clear')}
+          </Button>
+          <span className="hint">
+            {!compare.canCompare
+              ? t('compare.needsSecond')
+              : compare.canPickMore
+                ? ''
+                : t('compare.atLimit', { limit: MAX_COMPARED })}
+          </span>
+        </div>
+      )}
+      {compare.comparison && (
+        <ComparisonPanel
+          columns={compare.comparison.columns}
+          metrics={compare.comparison.metrics}
+          wagonName={compare.comparison.wagon.name}
+          cargo={cargo}
+          onClose={compare.close}
+        />
+      )}
       <TableFrame pinEdges rowCount={shown.length} emptyMessage={emptyMessage}>
         <Table.Thead>
           <Table.Tr>
             <Table.Th className="cell-num">#</Table.Th>
+            <Table.Th className="cell-pick"></Table.Th>
             <SortableTh column="engine" sort={sort} onSort={setSort} colSpan={2}>
               {t('opt.engine')}
             </SortableTh>
@@ -620,8 +660,17 @@ export default function OptimizerPage() {
           {shown.map((r, i) => (
             <Table.Tr key={`${r.engine.id}-${r.engineCount}-${r.wagon.id}`}>
               <Table.Td className="cell-num">{i + 1}</Table.Td>
+              <Table.Td className="cell-pick">
+                <Checkbox
+                  size="xs"
+                  aria-label={t('compare.pick', { engine: engineLabel(r) })}
+                  checked={compare.isPicked(r)}
+                  disabled={!compare.canPickMore && !compare.isPicked(r)}
+                  onChange={() => compare.toggle(r)}
+                />
+              </Table.Td>
               <Table.Td className="cell-sprite"><TrainImage trainId={r.engine.id} /></Table.Td>
-              <Table.Td>
+              <Table.Td data-testid="opt-engine">
                 {engineLabel(r)}
                 <BuyMenuNote availability={r.engineBuyMenu} />
                 {/* the power the engine makes on the line being planned, which is what the

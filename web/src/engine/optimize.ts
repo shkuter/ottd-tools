@@ -14,7 +14,7 @@ import {
   trainCapacity,
 } from '../dataset';
 import { canRunOn, poweredOutputOn, vehicleSpeedOn } from './tracktypes';
-import { balancingSpeed } from './physics';
+import { balancingSpeed, maxTractiveEffortN } from './physics';
 import { cargoPaymentRate } from './income';
 import { ratingPeriods, speedRating, visitClearsFlow, type StationRating } from './rating';
 import {
@@ -171,6 +171,12 @@ export interface OptimizeResult {
   speedLimitSource: SpeedLimitSource | null;
   /** Гружёным на подъёме (холм заданной длины: на уклоне часть состава). */
   gradeSpeedInternal: number;
+  /**
+   * Tractive effort of the loaded consist, newtons. Read off the same physics the row's
+   * speeds come from: computing it again from the vehicles would have to rebuild the mass,
+   * which depends on the cargo and the capacity, and could drift from the figures beside it.
+   */
+  tractiveEffortN: number;
   /** Дни стоянки под погрузку и разгрузку за рейс. */
   loadingDays: number;
   roundTripDays: number;
@@ -609,6 +615,7 @@ export function searchConsists(
     const loadedPhysics = setup.loadedPhysics;
     const massOnSlope = loadedPhysics.massT * Math.min(calc.hillTiles / lengthTiles, 1);
     const gradeSpeed = balancingSpeed(loadedPhysics, massOnSlope, game.accelerationModel);
+    const tractiveEffort = maxTractiveEffortN(loadedPhysics);
 
     const forFleet = (fleetSize: number): OptimizeResult => {
       // Where both branches settle: the share the station is handed, the load one train gets
@@ -703,6 +710,7 @@ export function searchConsists(
           emptySpeedInternal: trip.emptySpeedInternal,
           speedLimitSource: setup.speedLimitSource,
           gradeSpeedInternal: gradeSpeed,
+          tractiveEffortN: tractiveEffort,
           loadingDays: trip.loadingDays,
           roundTripDays: trip.roundTripDays,
           tripsPerYear: trip.tripsPerYear,

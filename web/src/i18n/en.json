@@ -656,5 +656,21 @@
   "networkPage.actionShare": "{share} of the upkeep",
   "networkPage.trimIncomplete": "Not everything is answered yet: the panels below name what each of them is still missing.",
   "networkPage.consistWithEngine": "{engine}, {vehicles} vehicles in all",
-  "networkPage.consistVehicles": "{vehicles} vehicles"
+  "networkPage.consistVehicles": "{vehicles} vehicles",
+  "compare.title": "Side by side",
+  "compare.metric": "Figure",
+  "compare.sharedWagon": "Same conditions for everyone: wagon {wagon}, and the length each engine does best with.",
+  "compare.close": "Close",
+  "compare.run": "Compare ({count})",
+  "compare.clear": "Clear",
+  "compare.needsSecond": "Tick one more engine to compare.",
+  "compare.atLimit": "Up to {limit} engines fit side by side.",
+  "compare.pick": "Compare {engine}",
+  "compare.answer": "Answer",
+  "compare.answerOk": "yes",
+  "compare.noAnswer": "no consist works here",
+  "compare.noneSufficient": "nothing is enough: {conditions}",
+  "compare.costPerUnit": "Running cost per unit delivered",
+  "compare.wagonCount": "Wagons in the consist",
+  "compare.nothing": "Nothing to compare yet."
 }

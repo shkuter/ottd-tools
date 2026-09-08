@@ -10,6 +10,7 @@ import {
   trainRunningCostPerYear,
 } from '../costs';
 import { balancingSpeed, forceN, maxTractiveEffortN, resistanceN } from '../physics';
+import { consistStats } from '../consist';
 import {
   daysForDistance,
   internalToKmh,
@@ -1008,5 +1009,43 @@ describe('physics', () => {
 
   it('сопротивление растёт со скоростью', () => {
     expect(resistanceN(consist, 100)).toBeGreaterThan(resistanceN(consist, 10));
+  });
+});
+
+describe('tractive effort on a search row', () => {
+  // The comparison panel reads this field, and it has to agree with the consist stats every
+  // other tab shows — see features/optimizer/comparison.ts.
+  it('matches the consist stats the rest of the calculator reads', () => {
+    const game = { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse' as const, firs: true };
+    const rows = optimizeConsists(
+      trains,
+      {
+        year: 1938,
+        distanceTiles: 120,
+        cargo: cargoByLabel.get('COAL')!,
+        economyId: 'STEELTOWN',
+        maxLengthTiles: 6,
+        productionPerMonth: 900,
+        game,
+        calc: DEFAULT_CALC_SETTINGS,
+      },
+      trainsMeta,
+      5,
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      const stats = consistStats(
+        [
+          { train: row.engine, count: row.engineCount },
+          { train: row.wagon, count: row.wagonCount },
+        ],
+        cargoByLabel.get('COAL')!,
+        DEFAULT_CALC_SETTINGS.capacityIndex,
+        trainsMeta,
+        game,
+        DEFAULT_CALC_SETTINGS,
+      );
+      expect(row.tractiveEffortN).toBe(stats.maxTeN);
+    }
   });
 });
