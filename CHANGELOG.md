@@ -30,6 +30,16 @@ of what users see):
 
 ### Fixed
 
+- **BREAKING** Under JGRPP's realistic braking, the freight multiplier now shortens the braking
+  distance of vanilla trains the way it always did for Iron Horse ones. The game stretches the distance a train brakes over by half
+  the multiplier's addition for every loaded freight vehicle; the calculator walks a vehicle's
+  sections to find those, reading each section's capacity by the GRF parameter slot the settings
+  name. The vanilla adapter filled only the first slot, so on any other setting every section
+  read as carrying nothing and the stretch vanished for the whole roster. A train of nine loaded
+  coal wagons braked over 3.69 tiles from 60 mph where the game gives 2.69, which made the
+  network tab ask for fewer signals than the line needs. Games without JGRPP or with the
+  original braking model read no braking distance at all and are unaffected.
+
 - **BREAKING** A dual-headed vehicle is now measured as the pair the game builds. Its length,
   weight and share of air drag count twice, the way its capacity already did, so a consist
   holding one is a tile longer per vehicle, heavier, and pulls harder; the optimizer fits fewer

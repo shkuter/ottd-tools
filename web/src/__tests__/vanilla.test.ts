@@ -24,7 +24,7 @@ describe('vanilla train adapter', () => {
     const dmu = vanillaTrains.find((t) => t.name.includes('Manley-Morel'))!;
     expect(dmu.dual_headed).toBe(true);
     expect(dmu.capacities).toEqual([38, 38, 38, 38, 38]);
-    expect(dmu.units[0].capacities).toEqual([38]);
+    expect(dmu.units[0].capacities).toEqual([38, 38, 38, 38, 38]);
   });
 
   it('Kirby Paul Tank: steam engine, cost 7, running by the steam base, no cargo hold', () => {
@@ -69,6 +69,13 @@ describe('vanilla train adapter', () => {
     expect(sh125.power_hp).toBe(4500);
     expect(sh125.weight_t).toBe(70);
     expect(vehicleWeightT(sh125)).toBe(140);
+  });
+
+  it('states the capacity in every slot of the section too', () => {
+    // the base game has no capacity parameter, so its figure holds whichever slot the setting
+    // names — and a calculation that indexes the section by that setting must not read a hole
+    expect(coalWagon.units).toHaveLength(1);
+    expect(coalWagon.units[0].capacities).toEqual(coalWagon.capacities);
   });
 
   it('wagons: single capacity repeated for all five GRF slots, one default cargo, no refit', () => {

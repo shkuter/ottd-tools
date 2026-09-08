@@ -83,6 +83,9 @@ function toTrain(raw: VanillaTrainRaw): Train {
   // the capacity the game's table states, for one vehicle: what a dual-headed pair carries is
   // `trainCapacity`'s answer, the same way it is for a NewGRF set
   const capacity = raw.capacity;
+  // five slots because that is how a NewGRF set states capacity; the base game has no such
+  // parameter, so the same figure stands in every one of them
+  const capacities = [capacity, capacity, capacity, capacity, capacity];
   return {
     id: raw.id,
     // the base set's engine ids are the game's table indexes, one per vehicle
@@ -116,13 +119,16 @@ function toTrain(raw: VanillaTrainRaw): Train {
     weight_t: raw.weight_t,
     length: raw.length,
     dual_headed: raw.dual_headed,
-    units: [{ capacities: [capacity], length: raw.length, weight_t: raw.weight_t }],
+    // the same five slots the vehicle itself gets: the base game has no capacity parameter, so
+    // its figure holds whichever slot the setting names. A single-slot section would read as
+    // "carries nothing" wherever a calculation indexes it by that setting — which is how the
+    // freight multiplier's braking stretch went missing for the whole vanilla roster.
+    units: [{ capacities: [...capacities], length: raw.length, weight_t: raw.weight_t }],
     cost_factor: raw.cost_factor,
     running_cost_factor: raw.running_cost_factor,
     // same vocabulary as Iron Horse (RUNNING_COST_STEAM/…); wagons (Price::Invalid) cost nothing
     running_cost_base: RUNNING_COST_BASE[raw.running_cost_class ?? ''] ?? 'RUNNING_COST_DIESEL',
-    // ванильные машины не имеют GRF-параметра вместимости — одно значение на все 5
-    capacities: [capacity, capacity, capacity, capacity, capacity],
+    capacities,
     capacity_label: null,
     loading_speed: 5,
     default_cargos: raw.default_cargos,
