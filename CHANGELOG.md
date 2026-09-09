@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-09-09
+
 ### Added
 
 - FIRS chains: **chain completeness** of the imported map, beside the list of what to haul.
