@@ -20,6 +20,21 @@ of what users see):
 
 ### Added
 
+- FIRS chains: **chain completeness** of the imported map, beside the list of what to haul.
+  Reads the industries of the savegame alone — no routes, no distances — and answers what the
+  map generator left: **chain gaps** (industries standing there that can produce nothing,
+  grouped by the one build that would fix them), **dead ends** (cargoes made on the map that
+  nothing there accepts), and the **supply cargoes** with no source at all. How much of its
+  output an industry can reach is measured through the same conversion the supply tab uses, so
+  "any three of five" counts as the set states it — three sources out of five are a full
+  share, not a gap — and a source counts only if it can itself run, solved bottom-up so a gap
+  low in a chain surfaces on every floor above it. A missing link is established by trying it:
+  the candidate is placed on the map and workability solved again, so a source that would not
+  run either is never suggested. The block also settles the question a single factory always
+  raises: FIRS industries never close down at all — the set defines its own production-change
+  callback, and both vanilla closure rules are gated on its absence — with a pipeline test
+  watching the two places that claim rests on.
+
 - Best train: **side-by-side comparison** of engines picked from the answer. Tick up to four
   rows, press Compare, and the engines stand as columns with one figure per row — tractive
   effort, loaded speed on the flat and on the worst grade, capacity, length, wagons, fleet,

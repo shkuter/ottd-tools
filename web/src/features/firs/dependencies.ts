@@ -101,10 +101,13 @@ export function industryChain(economy: Economy, targetId: string): Chain {
  * supplies a mine or a port runs on, so a chain built from the drawing would claim nobody in
  * the economy makes them.
  */
-function producerIndex(economy: Economy): Map<string, string[]> {
+export function producerIndex(
+  economy: Economy,
+  catalogue: ReadonlyMap<string, Industry> = industryById,
+): Map<string, string[]> {
   const out = new Map<string, string[]>();
   for (const id of economy.industry_ids) {
-    for (const produced of industryById.get(id)?.economies[economy.id]?.produces ?? []) {
+    for (const produced of catalogue.get(id)?.economies[economy.id]?.produces ?? []) {
       const made = out.get(produced.label);
       if (made) made.push(id);
       else out.set(produced.label, [id]);

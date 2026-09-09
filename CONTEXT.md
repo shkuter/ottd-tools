@@ -430,13 +430,23 @@ unworkable, which is what it is.
 it cannot produce, and no route will change that. Distinct from one running below full, which
 works and is merely worth improving.
 
+**Closure** (_закрытие_) — what FIRS industries never do, for two reasons that cover the set
+between them. The game's closure branches (`industry_cmd.cpp:2922` and `:3000`) run only where
+the set defines no production-change callback, and FIRS defines `monthly_prod_change` in every
+template, answering "no change". The random call of the same routine reads a second callback,
+`random_prod_change`, which the tertiary template omits — but tertiaries are black holes, which
+that routine returns on earlier (`:2919`). Stated once by the completeness block, because
+it is the standing worry about building to a single factory.
+
 **Dead end** (_тупик_) — a cargo produced on this map that nothing on this map accepts. A
 cargo, not an industry: an industry with several outputs can have a buyer for one and none for
 another, so naming the industry would say less than it seems to.
 
-**Missing link** (_недостающее звено_) — an industry type absent from the map, whose absence is
-what holds the **reachable share** of others at zero. It is what the **chain gap** list is
-grouped by: one type named, and the industries that would start working if it were built.
+**Missing link** (_недостающее звено_) — an industry type absent from the map, one of which
+would lift the **reachable share** of others off zero — established by trying it, not by
+reading the chain upwards: a source that would not run itself fixes nothing. It is what the
+**chain gap** list is grouped by. Gaps no single build revives are grouped under no link at
+all, which is a statement in its own right: more than one industry is missing.
 
 ## Cargo sets
 

@@ -39,7 +39,11 @@ it read them off your game.
   inputs upwards into an ordered list of haulage tasks: what to bring, from where, to which
   industry, and how much of it over one supply window. An imported game marks each task
   supplied, standing unfed or absent from the map, names the nearest source with the length of
-  the leg, and puts the legs inside one town before the ones between towns.
+  the leg, and puts the legs inside one town before the ones between towns. Below that the tab
+  asks a different question of the same game: whether the map can close its chains at all —
+  industries standing there that cannot produce, grouped by what one build would fix; cargoes
+  made there that nobody takes; supply cargoes with no source; and the answer to the question a
+  lone factory always raises — FIRS industries never close down at all.
 - **Game** — import a savegame (JGRPP and vanilla, read in a worker, never leaves the
   browser) and the calculator reads your settings, trains, routes, stations and industries out
   of it, and walks its map to count what each company owns — track by type, signals, station

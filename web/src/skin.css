@@ -1008,8 +1008,14 @@ h4 {
   top: 12px;
 }
 
-.firs-chain {
+.firs-chain,
+.firs-completeness {
   margin-top: 16px;
+}
+
+/* the notes under the completeness lists are about the block, not about the last section */
+.firs-completeness-notes {
+  margin-top: 12px;
 }
 
 /* the notes under the list read as a group, not as three stray paragraphs */

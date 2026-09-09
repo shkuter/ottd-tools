@@ -9,6 +9,7 @@ import { useFirsStore } from '../../state/firsStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { cargoPaymentRate } from '../../engine/income';
 import { chainNodes } from './chains';
+import { ChainCompleteness } from './ChainCompleteness';
 import { ChainTasks } from './ChainTasks';
 import { GraphCanvas } from './graph/GraphCanvas';
 import { buildGraph, type GraphNames } from './graph/buildGraph';
@@ -226,6 +227,7 @@ export default function FirsPage() {
         )}
       </div>
       <ChainTasks economy={economy} snapshot={snapshot} />
+      <ChainCompleteness economy={economy} snapshot={snapshot} />
     </div>
   );
 }

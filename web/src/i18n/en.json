@@ -672,5 +672,16 @@
   "compare.noneSufficient": "nothing is enough: {conditions}",
   "compare.costPerUnit": "Running cost per unit delivered",
   "compare.wagonCount": "Wagons in the consist",
-  "compare.nothing": "Nothing to compare yet."
+  "compare.nothing": "Nothing to compare yet.",
+  "firs.completeness.title": "Chain completeness",
+  "firs.completeness.intro": "What the map itself allows: which of the industries standing on it cannot produce, whose output nobody there takes, and which supply cargoes are nowhere to be had. Computed from the industries alone — routes and distances belong to the supply chain list above.",
+  "firs.completeness.needGame": "Needs an imported game:",
+  "firs.completeness.gaps": "Chain gaps",
+  "firs.completeness.deadEnds": "Dead ends",
+  "firs.completeness.none": "Nothing found.",
+  "firs.completeness.build": "Build {industry} — industries it would start: {count}",
+  "firs.completeness.nothingToBuild": "No single build fixes these {count} — they are waiting on each other",
+  "firs.completeness.supplies": "No source on this map for the supply cargoes: {cargos}. Industries run without them, just on a smaller share of their output.",
+  "firs.completeness.unknown": "Industries on the map from other sets: {count} — they may make what is called unavailable here.",
+  "firs.completeness.neverClose": "None of these industries will close down: FIRS defines its own production-change callback, and the vanilla closure rules — the one for poor transport and the five-year idle one alike — never reach the industries of the set."
 }
