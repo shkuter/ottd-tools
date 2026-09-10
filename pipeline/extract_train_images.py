@@ -12,7 +12,7 @@ import shutil
 import sys
 import tempfile
 
-from common import REPO_ROOT, bootstrap_iron_horse
+from common import REPO_ROOT, bootstrap_iron_horse, load_json
 
 ih = bootstrap_iron_horse(with_render_docs=True)
 iron_horse = ih.iron_horse
@@ -38,6 +38,7 @@ def main():
     os.makedirs(os.path.join(tmp_dir, "img"), exist_ok=True)
 
     done = 0
+    rendered = set()
     failed = []
     for catalogue in roster.catalogues:
         if catalogue.clone_quacker.quack:
@@ -57,11 +58,22 @@ def main():
                 src, os.path.join(TRAIN_ICONS_DIR, f"{catalogue.model_id}.png")
             )
             done += 1
+            rendered.add(catalogue.model_id)
         except Exception as e:  # noqa: BLE001 — one missing picture must not stop the rest
             failed.append((catalogue.model_id, repr(e)[:80]))
 
     shutil.rmtree(tmp_dir, ignore_errors=True)
-    print(f"train images: {done} -> {TRAIN_ICONS_DIR}, failed: {len(failed)}")
+
+    # A vehicle the set drops upstream leaves its picture behind, and the stale file then
+    # ships with the site: the catalogue decides what exists, so the directory follows it.
+    # Both the committed catalogue and this run are consulted, because `make data` and
+    # `make data-images` are separate targets and either one can be the first to run.
+    keep = {t["id"] for t in load_json("trains.json")["items"]} | rendered
+    stale = [f for f in os.listdir(TRAIN_ICONS_DIR) if f.endswith(".png") and f[:-4] not in keep]
+    for name in stale:
+        os.remove(os.path.join(TRAIN_ICONS_DIR, name))
+
+    print(f"train images: {done} -> {TRAIN_ICONS_DIR}, failed: {len(failed)}, stale: {len(stale)}")
     for model_id, err in failed[:15]:
         print(f"  FAIL {model_id}: {err}", file=sys.stderr)
     if failed and done == 0:

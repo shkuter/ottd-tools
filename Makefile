@@ -1,4 +1,4 @@
-IRON_HORSE_REF ?= v4.29.0
+IRON_HORSE_REF ?= horse/4.31.0
 FIRS_REF ?= 5.2.0
 # The game's own locale names 57 of the cargos and industries the calculator shows,
 # so the checkout it comes from is pinned like every other data source.
@@ -6,7 +6,7 @@ OPENTTD_REF ?= 15.3
 # JGR's Patchpack: the calculator reproduces its formulas, so the reference it is read
 # from is pinned like every other source. The version players run is the one to pin —
 # a moving checkout would quietly change what the patchpack notes are checked against.
-OPENTTD_PATCHES_REF ?= jgrpp-0.73.1
+OPENTTD_PATCHES_REF ?= jgrpp-0.73.2
 OPENGFX2_REF ?= 0.8.1
 # Russian FIRS translation players actually run (fork of FIRS 5.2.0), pinned by commit
 FIRS_RU_REF ?= 61a0f0973cce43c41e156f7809782e7567279330

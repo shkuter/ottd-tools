@@ -1,6 +1,7 @@
 """Регрессионные тесты сгенерированных JSON против известных эталонов.
 
-Эталоны Iron Horse сверены с https://grf.farm/iron-horse/4.29.0/ (17.08.2026),
+Эталоны Iron Horse сверены с https://grf.farm/iron-horse/4.29.0/ (17.08.2026);
+на 4.31.0 (10.09.2026) значения этих машин те же, что и были,
 FIRS — с исходниками и конверсией NML price_factor -> prop 0x12.
 """
 import os
@@ -25,7 +26,7 @@ class IronHorseKnownValues(unittest.TestCase):
         cls.by_id = {t["id"]: t for t in payload["items"]}
 
     def test_abernant(self):
-        # https://grf.farm/iron-horse/4.29.0/html/abernant.html
+        # https://grf.farm/iron-horse/4.31.0/html/abernant.html
         t = self.by_id["abernant"]
         self.assertEqual(t["name"], "0-8-4 Abernant")
         self.assertEqual(t["intro_year"], 1905)

@@ -20,6 +20,22 @@ of what users see):
 
 ### Changed
 
+- Iron Horse data now comes from **4.31.0** (was 4.29.0). Salt hoppers became a vehicle family
+  of their own, so 12 wagon ids gave way to 21 new ones — a saved consist drops the wagons
+  whose ids are gone, the rest of it stands; a randomised swing-roof hopper was reshuffled;
+  17 wagons changed what they refit to; and 12 engines gained numeric ids, which the savegame
+  import matches on. Every reference value the pipeline asserts is unchanged, rechecked
+  against the 4.31.0 vehicle pages.
+
+- The JGR's Patchpack reference is pinned to `jgrpp-0.73.2` (was `0.73.1`). No data is read
+  from it — it is the source the patchpack formulas in the engine are checked against.
+
+### Fixed
+
+- `make data-images` now deletes the pictures of vehicles the set has dropped. They used to
+  stay in `web/public/icons/trains/` and ship with the site, one stale file per removed
+  vehicle, for as long as nobody noticed them.
+
 - The footer now dates the app by its release instead of by the moment the data was built.
   The date comes from the `CHANGELOG.md` section of the version in `package.json` and is
   inlined beside it, so version and date are read from the one commit that writes both.

@@ -348,7 +348,7 @@ JGRPP-специфика (флаг `jgrpp` раскрывает эти наст�
 Данные о машинах/грузах/индустриях НЕ править руками в JSON — только через экстракторы
 и `make data`. Эталонные значения в `pipeline/tests/test_known_values.py` сверены с
 https://grf.farm/iron-horse/4.29.0/ — при обновлении версий обновлять осознанно.
-Текущие версии данных: Iron Horse 4.29.0, FIRS **5.2.0** (релизный тег, не master —
+Текущие версии данных: Iron Horse 4.31.0, FIRS **5.2.0** (релизный тег, не master —
 в master уже есть расхождения, например `liquids_terminal` переименован в `oil_terminal`).
 Ванильные эталоны: Kirby Paul Tank cost_factor 7, уголь initial_payment 5916.
 
