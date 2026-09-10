@@ -1,7 +1,6 @@
 """Валидация сгенерированных JSON + запись агрегированного meta.json."""
 import os
 import sys
-from datetime import date
 
 from common import DATA_DIR, firs_ru_ref, load_json, vendor_meta, write_json
 
@@ -217,8 +216,11 @@ def main():
             print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # No generation date here on purpose: it would rewrite meta.json on every run even when
+    # the pinned sources have not moved, and a dirty tree blocks make release. What the data
+    # is worth is said by the source versions below; the app dates itself by its release
+    # (see __APP_DATE__ in web/vite.config.ts).
     write_json("meta.json", {
-        "generated_at": date.today().isoformat(),
         "iron_horse": trains["meta"]["describe"],
         "firs": cargos["meta"]["describe"],
         "firs_ru": firs_ru_ref()[:7],

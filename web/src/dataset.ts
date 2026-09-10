@@ -22,7 +22,6 @@ export const economies = (economiesJson as { items: unknown }).items as Economy[
 /** The game's 256-colour palette as `#rrggbb`, index by index: cargo colours point into it. */
 export const gamePalette = (gamePaletteJson as { colours: string[] }).colours;
 export const datasetMeta = metaJson as {
-  generated_at: string;
   iron_horse: string;
   firs: string;
   firs_ru: string;

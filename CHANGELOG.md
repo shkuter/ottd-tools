@@ -18,6 +18,16 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- The footer now dates the app by its release instead of by the moment the data was built.
+  The date comes from the `CHANGELOG.md` section of the version in `package.json` and is
+  inlined beside it, so version and date are read from the one commit that writes both.
+  `meta.json` no longer carries `generated_at`: a date stamped at generation time rewrote the
+  file on every `make data` even when the pinned sources had not moved, and the dirty tree
+  that left behind blocked the next release. What the data is worth is still stated by the
+  source versions in the footer.
+
 ## [0.23.0] - 2026-09-09
 
 ### Added

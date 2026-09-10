@@ -140,12 +140,11 @@ export default function App() {
         </Suspense>
       </Box>
       <Box component="footer" className="app-footer">
-        {t('footer.version')} {__APP_VERSION__} · {t('footer.data')}: Iron Horse{' '}
+        {t('footer.version')} {__APP_VERSION__} ({__APP_DATE__}) · {t('footer.data')}: Iron Horse{' '}
         {datasetMeta.iron_horse} · FIRS {datasetMeta.firs} ·{' '}
         OpenTTD {datasetMeta.openttd}
         {/* The translation revision only matters where names actually come from it. */}
-        {locale !== 'en' && ` (${t('footer.translation')} ${datasetMeta.firs_ru})`} ·{' '}
-        {t('footer.generated')} {datasetMeta.generated_at}
+        {locale !== 'en' && ` (${t('footer.translation')} ${datasetMeta.firs_ru})`}
         <br />
         {t('footer.graphics')}:{' '}
         <Anchor href="https://github.com/OpenTTD/OpenGFX2/">OpenGFX2 Classic</Anchor>,{' '}
