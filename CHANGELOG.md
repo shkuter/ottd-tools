@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-09-10
+
 ### Changed
 
 - Iron Horse data now comes from **4.31.0** (was 4.29.0). Salt hoppers became a vehicle family
