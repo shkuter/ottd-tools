@@ -230,7 +230,11 @@ interface RankKeys {
  * too.
  */
 interface GoalStrategy {
-  /** Whether consists shorter than the full station are worth sweeping at all. */
+  /**
+   * Whether consists shorter than the full station are worth sweeping at all, read off the
+   * rows of the one that fills it. Asked only when there are rows: a full-length consist
+   * that evaluated to nothing says nothing about the shorter ones, and the sweep runs.
+   */
   sweepsShorter(rows: readonly OptimizeResult[]): boolean;
   /** Whether the sweep over shorter consists can stop here. */
   stopsSweep(rows: readonly OptimizeResult[]): boolean;
@@ -768,7 +772,8 @@ export function searchConsists(
   // refused something may be named to the player. `sweepsShorter` / `stopsSweep` deliberately
   // read the *unfiltered* rows instead: whether a shorter consist is worth looking at is a
   // question about the source and the consist, and must not depend on whether the full-length
-  // rows were admitted.
+  // rows were admitted. Where the full-length consist evaluated to nothing there is nothing
+  // to read it off at all, and the sweep runs unconditionally.
   const keepAdmitted = (rows: readonly OptimizeResult[]) => {
     for (const r of rows) {
       const why = refusalOf(r);
@@ -784,15 +789,15 @@ export function searchConsists(
       for (const wagon of searchWagons) {
         const maxWagons = Math.floor((maxLengthUnits - engineLength) / vehicleLengthUnits(wagon));
         if (maxWagons <= 0) continue;
-        // A full-length consist that evaluates to nothing (no capacity, or too slow to move)
-        // ends this pair, shorter variants included. That is a real gap — the shorter ones may
-        // well be fine — but closing it here changes what the haul and supply goals return
-        // (measured: 18 differing rows over 900 tasks), and this change adds a goal rather
-        // than re-cutting the existing ones. Logged for a change of its own.
+        // A full-length consist that evaluates to nothing says nothing about the shorter
+        // variants of the same pair. Of the two ways `evaluate` comes back empty, only one
+        // can happen here — the loaded consist barely moves — because wagons that carry
+        // nothing are filtered out before the sweep starts; and a shorter consist is lighter,
+        // so it moves where the long one stalls. An empty answer therefore no longer ends
+        // the pair.
         const full = evaluate(engine, engineCount, engineLength, wagon, maxWagons);
-        if (!full.length) continue;
         keepAdmitted(full);
-        if (!strategy.sweepsShorter(full)) continue;
+        if (full.length && !strategy.sweepsShorter(full)) continue;
         for (let wagonCount = 1; wagonCount < maxWagons; wagonCount++) {
           const rows = evaluate(engine, engineCount, engineLength, wagon, wagonCount);
           if (!rows.length) continue;

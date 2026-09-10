@@ -18,6 +18,16 @@ of what users see):
 
 ## [Unreleased]
 
+### Fixed
+
+- **BREAKING**: a pair of engine and wagon no longer drops out of the Best train search when
+  its full-length consist cannot move. The search evaluated the consist filling the whole
+  station first and ended the pair when that came back empty — so a pair that stalls loaded
+  at six tiles lost the three-tile variant of itself, which hauls perfectly well. It happened
+  under every goal, since the sweep of shorter lengths never started to begin with. Measured
+  over 864 tasks across all four goals: 11 rows out of 6480 differ, all of them under Profit,
+  and no top row changed.
+
 ## [0.24.0] - 2026-09-10
 
 ### Changed
