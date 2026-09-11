@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-09-11
+
 ### Changed
 
 - A steam engine's name now explains itself on hover. "0-8-4 Abernant" reads out as eight
