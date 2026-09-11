@@ -9,6 +9,7 @@ import { intlLocale, t, useLocale } from '../../i18n';
 import type { Snapshot, SnapshotTrain } from '../../savegame/snapshot';
 import type { SnapshotSettings } from '../../savegame/snapshotStore';
 import { groupOptions, groupWithDescendants } from './game';
+import { ConsistLine } from './ConsistLine';
 import { cargoLookup, cargoNamer, consistText, trainLabel } from './labels';
 import { CargoLabel } from './CargoLabel';
 import { GoodsCell } from './GoodsCell';
@@ -121,7 +122,9 @@ export function TrainsTab({
                 {trainLabel(train)}
                 {train.stopped && <span className="hint"> · {t('game.stopped')}</span>}
               </Table.Td>
-              <Table.Td>{consistText(train.consist)}</Table.Td>
+              <Table.Td>
+                <ConsistLine consist={train.consist} />
+              </Table.Td>
               <Table.Td>
                 <GoodsCell entries={carried(train)}>
                   {(load) => (

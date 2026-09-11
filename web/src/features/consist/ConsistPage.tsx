@@ -50,6 +50,7 @@ import { consistStats, type SpeedLimitSource } from '../../engine/consist';
 import { vehicleWeightT } from '../../engine/vehicle';
 import { purchaseRepresentatives } from '../../engine/purchase';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
+import { VehicleName } from '../../components/VehicleName';
 
 /** Rows held in the DOM at a time; the catalogue itself runs to ~965 purchase entries. */
 const PAGE_SIZE = 50;
@@ -270,7 +271,7 @@ export default function ConsistPage() {
                   {/* one cell, the way a line of the game's purchase list is: the sprite and the
                       name identify the row together, and the pinned first column keeps both */}
                   <Table.Td className="cell-vehicle">
-                    <TrainImage trainId={train.id} /> {train.name}
+                    <TrainImage trainId={train.id} /> <VehicleName train={train} />
                     <BuyMenuNote availability={availability.get(train.id)!} />
                   </Table.Td>
                   <Table.Td className="cell-num">{train.intro_year}</Table.Td>
@@ -342,7 +343,9 @@ export default function ConsistPage() {
             {entries.map(({ train, count }) => (
               <Group key={train.id} gap={6} wrap="nowrap">
                 <TrainImage trainId={train.id} />
-                <Text className="consist-name">{train.name}</Text>
+                <Text className="consist-name">
+                  <VehicleName train={train} />
+                </Text>
                 <NumberInput
                   min={0}
                   value={count}

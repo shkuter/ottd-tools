@@ -71,6 +71,7 @@ import { CargoSelect } from '../../components/PictureSelect';
 import { TrainImage } from '../../components/TrainImage';
 import { useActiveCargo } from '../useActiveCargo';
 import { PrefillNote } from '../../components/PrefillNote';
+import { VehicleName } from '../../components/VehicleName';
 
 /** Rows drawn before the "show more" button; the search itself still ranks all of them. */
 const PAGE_SIZE = 15;
@@ -671,7 +672,7 @@ export default function OptimizerPage() {
               </Table.Td>
               <Table.Td className="cell-sprite"><TrainImage trainId={r.engine.id} /></Table.Td>
               <Table.Td data-testid="opt-engine">
-                {engineLabel(r)}
+                <VehicleName train={r.engine} label={engineLabel(r)} />
                 <BuyMenuNote availability={r.engineBuyMenu} />
                 {/* the power the engine makes on the line being planned, which is what the
                     row's own figures were computed from: an electro-diesel states its
@@ -682,7 +683,7 @@ export default function OptimizerPage() {
               </Table.Td>
               <Table.Td className="cell-sprite"><TrainImage trainId={r.wagon.id} /></Table.Td>
               <Table.Td>
-                {wagonLabel(r)}
+                <VehicleName train={r.wagon} label={wagonLabel(r)} />
                 <BuyMenuNote availability={r.wagonBuyMenu} />
                 {/* the wagons hold the consist back: the engine is paid for a speed it
                     never reaches. Marked here rather than beside the speed column, where

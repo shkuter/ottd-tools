@@ -18,6 +18,16 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- A steam engine's name now explains itself on hover. "0-8-4 Abernant" reads out as eight
+  driving wheels — four axles — carrying the weight that becomes tractive effort, four
+  trailing wheels under the firebox and no leading wheels at all; an articulated engine
+  ("2-6-0+0-6-2") says so and has each of its units read out in turn. The hint stands wherever a list
+  names a vehicle: the search, the consist builder, the supply tab, the comparison panel and
+  the imported game. A name with no arrangement in it — every diesel and electric, and all
+  but one vanilla engine — gets no hint, since there would be nothing to say.
+
 ### Fixed
 
 - **BREAKING**: a pair of engine and wagon no longer drops out of the Best train search when

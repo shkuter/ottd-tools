@@ -37,6 +37,7 @@ import type { OptimizerCache } from '../../engine/optimizeCache';
 import { runSupplyInputs, type InputRun } from './inputs';
 import { useSoldIds } from '../savegame/soldIds';
 import { summaryLines } from './summary';
+import { VehicleName } from '../../components/VehicleName';
 
 export default function IndustrySupplyPage() {
   const store = useIndustrySupplyStore();
@@ -250,7 +251,7 @@ export default function IndustrySupplyPage() {
                     <Table.Td>
                       {run.best ? (
                         <>
-                          {engineLabel(run.best)}
+                          <VehicleName train={run.best.engine} label={engineLabel(run.best)} />
                           <BuyMenuNote availability={run.best.engineBuyMenu} />
                         </>
                       ) : (
@@ -263,7 +264,7 @@ export default function IndustrySupplyPage() {
                     <Table.Td>
                       {run.best ? (
                         <>
-                          {wagonLabel(run.best)}
+                          <VehicleName train={run.best.wagon} label={wagonLabel(run.best)} />
                           <BuyMenuNote availability={run.best.wagonBuyMenu} />{' '}
                           <span className="dim">
                             · {num(run.best.lengthTiles, 1)} {t('units.tiles')}

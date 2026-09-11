@@ -16,6 +16,7 @@ import { routeToIncome, routeToOptimizer } from './bridge';
 import { applyIncomeBridge } from './applyBridge';
 import { BridgeButton } from './BridgeButton';
 import { hasFinishedYear } from './game';
+import { ConsistLine } from './ConsistLine';
 import { consistText, trainLabel, townsById } from './labels';
 import { CargoLabel } from './CargoLabel';
 import { CargoBridgeLink } from './CargoBridgeLink';
@@ -253,7 +254,7 @@ function RouteDetail({
         <ul>
           {row.trains.map((train) => (
             <li key={train.id}>
-              {trainLabel(train)} · {consistText(train.consist)} ·{' '}
+              {trainLabel(train)} · <ConsistLine consist={train.consist} /> ·{' '}
               {/* the same year the row above states: a game without a finished one would
                   otherwise show every train a zero as though it had earned nothing */}
               <Money value={comparable ? train.profitLastYear : train.profitThisYear} />

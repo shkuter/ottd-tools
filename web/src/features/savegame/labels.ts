@@ -37,16 +37,36 @@ export function trainLabel(train: Pick<SnapshotTrain, 'name' | 'unitNumber'>): s
  * know keeps its place and its count under a stated name — dropping it would quietly shorten
  * the train.
  */
+/** What stands between two vehicles of a consist, in the string form and in the markup one. */
+export const CONSIST_JOINER = ' + ';
+
 export function consistText(consist: readonly SnapshotConsistEntry[]): string {
   if (consist.length === 0) return t('game.noConsist');
-  return consist.map((entry) => `${vehicleName(entry)} ×${entry.count}`).join(' + ');
+  return consistParts(consist)
+    .map((part) => part.text)
+    .join(CONSIST_JOINER);
 }
 
-function vehicleName(entry: SnapshotConsistEntry): string {
-  if (entry.catalogueId === null) return t('game.unknownVehicle');
-  const train = trainByAnyId.get(entry.catalogueId);
-  // the catalogue's own name, so the tab reads in the same language as the rest of the app
-  return train ? train.name : t('game.unknownVehicle');
+/** One vehicle of a consist: what to write, and which catalogue entry stands behind it. */
+export interface ConsistPart {
+  /** The catalogue vehicle, or null for one the catalogue does not know. */
+  train: { name: string } | null;
+  /** How the line writes it: "Haar ×1". */
+  text: string;
+}
+
+/**
+ * The same line as `consistText()`, in pieces, so that each vehicle can carry its own hint
+ * where the tab has room for markup. The string form stays: a table sorts by it, and the
+ * browser's own tooltip takes nothing else. Both go through here, so they cannot drift.
+ */
+export function consistParts(consist: readonly SnapshotConsistEntry[]): ConsistPart[] {
+  return consist.map((entry) => {
+    const train = entry.catalogueId === null ? null : (trainByAnyId.get(entry.catalogueId) ?? null);
+    // the catalogue's own name, so the tab reads in the same language as the rest of the app
+    const name = train ? train.name : t('game.unknownVehicle');
+    return { train, text: `${name} ×${entry.count}` };
+  });
 }
 
 /**

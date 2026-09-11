@@ -43,6 +43,7 @@ export const SHOWN_ELEMENTS = [
   'Tooltip',
   'TrainImage',
   'TrainSelect',
+  'VehicleName',
   'Warning',
 ];
 

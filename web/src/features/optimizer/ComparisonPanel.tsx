@@ -21,6 +21,7 @@ import {
 } from '../../components/format';
 import type { ComparisonColumn, ComparisonMetric, MetricKind } from './comparison';
 import { INSUFFICIENCY_STRINGS } from './insufficiency';
+import { VehicleName } from '../../components/VehicleName';
 
 /** A row's label: the unit is appended wherever the number does not read without it. */
 function metricLabel(metric: ComparisonMetric, cargo: Cargo | null): string {
@@ -116,7 +117,7 @@ export function ComparisonPanel({
             {columns.map((c) => (
               <Table.Th key={`${c.engine.id}-${c.engineCount}`}>
                 <TrainImage trainId={c.engine.id} />
-                {engineLabel(c)}
+                <VehicleName train={c.engine} label={engineLabel(c)} />
               </Table.Th>
             ))}
           </Table.Tr>

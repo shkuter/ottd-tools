@@ -42,6 +42,7 @@ import { TableFrame } from '../../components/table/TableFrame';
 import { sortRows, type SortState } from '../../components/table/sorting';
 import { WINDOW_COLOURS, type WindowColour } from '../../skin';
 import { useKitWindowStore } from '../../state/kitWindowStore';
+import { VehicleName } from '../../components/VehicleName';
 import {
   SPECIMEN_AVAILABILITY,
   SPECIMEN_CARGO_ICON,
@@ -354,7 +355,7 @@ function Showcase() {
             {rows.map((row) => (
               <Table.Tr key={row.id}>
                 <Table.Td className="cell-vehicle">
-                  <TrainImage trainId={row.id} /> {row.name}
+                  <TrainImage trainId={row.id} /> <VehicleName train={row} />
                 </Table.Td>
                 <Table.Td className="cell-num">{row.power}</Table.Td>
                 <Table.Td className="cell-money">
