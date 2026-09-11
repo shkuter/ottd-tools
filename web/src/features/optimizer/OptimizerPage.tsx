@@ -201,6 +201,14 @@ function SupplyCell({ row, target }: { row: OptimizeResult; target: SupplyTarget
   );
 }
 
+/** Each goal by the name the picker gives it, so a note can say which one is in force. */
+const GOAL_LABEL_KEYS = {
+  profit: 'opt.goalProfit',
+  transported: 'opt.goalTransported',
+  supply: 'opt.goalSupply',
+  cheapest: 'opt.goalCheapest',
+} as const;
+
 export default function OptimizerPage() {
   const {
     cargoLabel, distanceTiles: distance, stationTiles, productionPerMonth, goal, maxTrains,
@@ -364,6 +372,45 @@ export default function OptimizerPage() {
   const shown = ordered.slice(0, visibleCount);
   const hiddenCount = ordered.length - shown.length;
 
+  const goalLabel = t(GOAL_LABEL_KEYS[activeGoal]);
+  // What the goal itself cannot tell apart, counted over the rows the filters left rather
+  // than over the page of them on screen: "show more" and re-sorting change what is visible,
+  // and a count that moved with them would read as if the answer itself had changed.
+  const equivalentCount = ordered.filter((r) => r.equivalentToBest).length;
+  // A lone equivalent row is the best row itself, and "ranks no lower than the best" said
+  // about the best row says nothing: there the ranking does separate the rows. Above half,
+  // one note instead of a column of identical marks — under Haul and Supply nearly every row
+  // ranks the same, and fifty marks would say nothing.
+  //
+  // Supply is always the note: its column shows a ratio while the ranking reads the
+  // conversion, so a mark beside that number would claim two visibly different figures are
+  // equal. Without this the goal would have neither mark nor note when few rows tie — which
+  // today's data never produces, but nothing in the code would have prevented it.
+  const equivalentNote =
+    equivalentCount > 1 &&
+    (activeGoal === 'supply' || equivalentCount > ordered.length / 2);
+  const equivalentMarks = equivalentCount > 1 && !equivalentNote;
+
+  /** Names the cell holding the figure the goal ranks by — the one a mark may sit in. */
+  function figureCell(column: typeof activeGoal) {
+    return activeGoal === column ? 'opt-goal-figure' : undefined;
+  }
+
+  /**
+   * The mark goes beside the figure the goal ranks by, so it reads as "this figure ties with
+   * the best" rather than as something about the vehicle. Supply never gets one: its column
+   * shows a ratio while the ranking reads the conversion, so there the note speaks instead.
+   */
+  function mark(row: (typeof shown)[number], column: typeof activeGoal) {
+    if (!equivalentMarks || !row.equivalentToBest || activeGoal !== column) return null;
+    return (
+      <sup className="equivalent-mark" title={t('opt.equivalentHint', { goal: goalLabel })}>
+        {/* a sign rather than a word, like the "?" of BuyMenuNote: nothing to translate */}
+        =
+      </sup>
+    );
+  }
+
   function applyToConsist(index: number) {
     const r = shown[index];
     consistStore.clear();
@@ -444,10 +491,18 @@ export default function OptimizerPage() {
               value={activeGoal}
               onChange={(v) => setGoal(v as typeof goal)}
               data={[
-                { value: 'profit', label: t('opt.goalProfit') },
-                { value: 'transported', label: t('opt.goalTransported'), disabled: !goalAvailable },
-                { value: 'supply', label: t('opt.goalSupply'), disabled: !supplyAvailable },
-                { value: 'cheapest', label: t('opt.goalCheapest'), disabled: !goalAvailable },
+                { value: 'profit', label: t(GOAL_LABEL_KEYS.profit) },
+                {
+                  value: 'transported',
+                  label: t(GOAL_LABEL_KEYS.transported),
+                  disabled: !goalAvailable,
+                },
+                { value: 'supply', label: t(GOAL_LABEL_KEYS.supply), disabled: !supplyAvailable },
+                {
+                  value: 'cheapest',
+                  label: t(GOAL_LABEL_KEYS.cheapest),
+                  disabled: !goalAvailable,
+                },
               ]}
             />
           )}
@@ -557,6 +612,15 @@ export default function OptimizerPage() {
           cargo={cargo}
           onClose={compare.close}
         />
+      )}
+      {equivalentNote && (
+        <p className="hint" data-testid="equivalent-note">
+          {t('opt.equivalentNote', {
+            count: num(equivalentCount),
+            total: num(ordered.length),
+            goal: goalLabel,
+          })}
+        </p>
       )}
       <TableFrame pinEdges rowCount={shown.length} emptyMessage={emptyMessage}>
         <Table.Thead>
@@ -721,12 +785,24 @@ export default function OptimizerPage() {
               </Table.Td>
               {supplyTarget && <SupplyCell row={r} target={supplyTarget} />}
               {activeGoal === 'transported' && (
-                <Table.Td className="cell-num">{num(r.hauledPerYear)}</Table.Td>
+                <Table.Td className="cell-num" data-testid={figureCell('transported')}>
+                  {num(r.hauledPerYear)}
+                  {mark(r, 'transported')}
+                </Table.Td>
               )}
               <Table.Td className="cell-money"><Money value={r.incomePerTrip} /></Table.Td>
-              <Table.Td className="cell-money"><Money value={r.runningCostPerYear} /></Table.Td>
+              <Table.Td className="cell-money" data-testid={figureCell('cheapest')}>
+                <Money value={r.runningCostPerYear} />
+                {mark(r, 'cheapest')}
+              </Table.Td>
               <Table.Td className="cell-money"><Money value={r.buyCostTotal} /></Table.Td>
-              <Table.Td className={"cell-money " + (r.profitPerYear >= 0 ? "profit" : "money-neg")}><Money value={r.profitPerYear} /></Table.Td>
+              <Table.Td
+                className={'cell-money ' + (r.profitPerYear >= 0 ? 'profit' : 'money-neg')}
+                data-testid={figureCell('profit')}
+              >
+                <Money value={r.profitPerYear} />
+                {mark(r, 'profit')}
+              </Table.Td>
               <Table.Td className="cell-num">
                 {r.paybackYears ? num(r.paybackYears, 1) : '—'}
               </Table.Td>

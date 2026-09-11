@@ -241,6 +241,13 @@ interface GoalStrategy {
   /** Orders a pair before the shared tie-breaks: negative = a first, 0 = undecided. */
   primary(a: RankKeys, b: RankKeys): number;
   /**
+   * What the goal measures, as a value two rows can be compared for equality by. Separate
+   * from `primary` on purpose: `primary` answers "which of these two comes first" and is
+   * allowed to leave that undecided — the profit goal does exactly that, leaving profit to
+   * the shared tie-break below — so a zero from it says nothing about the rows being equal.
+   */
+  figure(keys: RankKeys): string;
+  /**
    * Why the goal will not show this row, or null when it will. Only the cheapest goal ever
    * refuses one: "cheapest" is meaningless without "enough", so the conditions belong to the
    * goal rather than to the search. A goal that leaves this out shows everything it ranks.
@@ -338,6 +345,8 @@ function goalStrategy(goal: OptimizeGoal): GoalStrategy {
         if (a.supplyHolds !== b.supplyHolds) return a.supplyHolds > b.supplyHolds ? -1 : 1;
         return 0;
       },
+      // both keys, in the order they are compared: the conversion alone cannot see the window
+      figure: (keys) => `${keys.supply}|${keys.supplyHolds}`,
     };
   }
   if (goal === 'cheapest') {
@@ -348,6 +357,7 @@ function goalStrategy(goal: OptimizeGoal): GoalStrategy {
       sweepsShorter: () => true,
       stopsSweep: () => false,
       primary: (a, b) => (a.running === b.running ? 0 : a.running < b.running ? -1 : 1),
+      figure: (keys) => String(keys.running),
       refuses: insufficiency,
     };
   }
@@ -358,14 +368,32 @@ function goalStrategy(goal: OptimizeGoal): GoalStrategy {
       sweepsShorter: () => true,
       stopsSweep: () => false,
       primary: (a, b) => (a.hauled === b.hauled ? 0 : a.hauled > b.hauled ? -1 : 1),
+      figure: (keys) => String(keys.hauled),
     };
   }
   return {
     // Filling the station is optimal unless the industry cannot keep the consist full.
     sweepsShorter: sourceCannotFillConsist,
     stopsSweep: sourceCannotFillConsist,
+    // the profit goal leaves the order to the shared tie-break, which begins with profit —
+    // so profit is what it measures, even though `primary` never says so
     primary: () => 0,
+    figure: (keys) => String(keys.profit),
   };
+}
+
+/**
+ * A row as the answer hands it out: whether the goal sees it as equal to the best row there.
+ * Not part of `OptimizeResult` itself, because a row alone has nothing to be equal *to* —
+ * the property belongs to a row's place in an answer, and the search is what has one.
+ */
+export interface RankedResult extends OptimizeResult {
+  /**
+   * The goal's own figure is the same as the best row's. Under "Haul" and "Supply" that is
+   * almost every row — the order there comes from the shared tie-breaks, not from the goal —
+   * and saying so is the point.
+   */
+  equivalentToBest: boolean;
 }
 
 /**
@@ -374,7 +402,7 @@ function goalStrategy(goal: OptimizeGoal): GoalStrategy {
  * all" are different messages, and only the search knows which it is.
  */
 export interface ConsistSearch {
-  rows: OptimizeResult[];
+  rows: RankedResult[];
   /** Conditions that turned at least one row away; empty when the goal refused nothing. */
   refused: Insufficiency[];
 }
@@ -386,7 +414,7 @@ export function optimizeConsists(
   meta: TrainsMeta,
   topN = 30,
   cache: OptimizerCache = createOptimizerCache(),
-): OptimizeResult[] {
+): RankedResult[] {
   return searchConsists(trains, params, meta, topN, cache).rows;
 }
 
@@ -814,8 +842,15 @@ export function searchConsists(
     const prev = best.get(key);
     if (!prev || better(r, prev)) best.set(key, r);
   }
-  const rows = [...best.values()]
+  const ordered = [...best.values()]
     .sort((a, b) => (better(a, b) ? -1 : better(b, a) ? 1 : 0))
     .slice(0, topN);
+  // Measured against the first row in the goal's own order, before anyone re-sorts the table
+  // by price or speed: otherwise "the best row" would mean something different every time.
+  const bestFigure = ordered.length > 0 ? strategy.figure(rank(ordered[0]!)) : null;
+  const rows: RankedResult[] = ordered.map((r) => ({
+    ...r,
+    equivalentToBest: strategy.figure(rank(r)) === bestFigure,
+  }));
   return { rows, refused: orderedInsufficiencies(refused) };
 }

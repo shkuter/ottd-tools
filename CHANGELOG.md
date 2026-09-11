@@ -18,6 +18,16 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- Best train says when the goal cannot tell its rows apart. Under Haul and Supply nearly every
+  row of an answer scores exactly what the best row scores — the order there comes from yearly
+  profit, purchase price, the wagon and fleet size, not from the goal — and the list used to
+  present that as a ranking. Now a note above the table says how many rows rank the same and
+  what actually orders them; where only a few rows tie, they carry a mark instead. Equality is
+  exact, by the same rounded figures the ranking uses: a percentage tolerance is not
+  transitive and would make the answer depend on the order the search happened to sweep in.
+
 ## [0.25.0] - 2026-09-11
 
 ### Changed
