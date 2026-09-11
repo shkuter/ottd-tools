@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-09-11
+
 ### Added
 
 - Vehicles of the base set are named the way the game names them, in both languages. The name
