@@ -8,6 +8,7 @@ import { NetworkSummary } from './NetworkSummary';
 import { NetworkMaintenance } from './NetworkMaintenance';
 import { CorridorUpgrade } from './CorridorUpgrade';
 import { SignalDensity } from './SignalDensity';
+import { trainName } from '../../i18n/names';
 
 /**
  * What the network costs to own, and what to trim.
@@ -24,7 +25,7 @@ export default function NetworkPage() {
   const vehicles = entries.reduce((count, entry) => count + entry.count, 0);
   const engine = entries.find((entry) => entry.train.kind === 'engine')?.train ?? null;
   const consist = engine
-    ? t('networkPage.consistWithEngine', { engine: engine.name, vehicles: num(vehicles) })
+    ? t('networkPage.consistWithEngine', { engine: trainName(engine), vehicles: num(vehicles) })
     : t('networkPage.consistVehicles', { vehicles: num(vehicles) });
 
   return (

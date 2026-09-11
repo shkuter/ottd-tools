@@ -2,6 +2,7 @@
 import importlib
 import json
 import os
+import re
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -49,6 +50,37 @@ def bootstrap_firs():
         utils=importlib.import_module("utils"),
         DocHelper=importlib.import_module("docs.doc_helper").DocHelper,
     )
+
+
+GAME_LANG_DIR = os.path.join(VENDOR, "openttd", "src", "lang")
+# One block per train of the base set, in the order the vehicle table states them
+TRAIN_NAME_PREFIX = "STR_VEHICLE_NAME_TRAIN_"
+def train_names(language, expected=None):
+    """Vehicle names of the base set, in the order the game numbers them.
+
+    A vehicle's name is not looked up by its own string id but counted from the first of the
+    block: `STR_VEHICLE_NAME_TRAIN_ENGINE_RAIL_KIRBY_PAUL_TANK_STEAM + local_id`
+    (engine.cpp). The block runs through the table as it stands — engines and wagons of the
+    plain track, then of the monorail, then of the maglev — so the number crosses those
+    boundaries and only the order matters.
+
+    `expected` is how many vehicles the caller has. A block that no longer matches would
+    rename half the catalogue with names that all look plausible, and nothing downstream
+    could notice, so the mismatch stops the build here.
+    """
+    path = os.path.join(GAME_LANG_DIR, f"{language}.txt")
+    names = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            if line.startswith(TRAIN_NAME_PREFIX):
+                # no markup to strip: not one of these 232 strings carries a {tag}
+                names.append(line.partition(":")[2].strip())
+    if expected is not None and len(names) != expected:
+        raise SystemExit(
+            f"{TRAIN_NAME_PREFIX}*: {len(names)} strings in {language}.txt against "
+            f"{expected} vehicles — the locale block no longer matches the table"
+        )
+    return names
 
 
 def display_mph(internal):

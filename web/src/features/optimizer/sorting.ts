@@ -1,15 +1,19 @@
 import type { OptimizeResult } from '../../engine/optimize';
 import type { SortState, SortValues } from '../../components/table/sorting';
 import { supplyFigure } from '../../engine/supply';
+import { trainName } from '../../i18n/names';
+import type { Locale } from '../../state/localeStore';
 
 /**
  * What each sortable column of the optimizer compares by. The mechanics of sorting are shared
  * (components/table/sorting.ts); this map is what makes them specific to a result row.
  */
-export function optimizerSortValues() {
+export function optimizerSortValues(locale?: Locale) {
   return {
-    engine: (r: OptimizeResult) => r.engine.name,
-    wagon: (r: OptimizeResult) => r.wagon.name,
+    // by the displayed name, with the locale passed in: the call sits inside a memo, and
+    // the language has to be its stated dependency rather than arrive with the collator
+    engine: (r: OptimizeResult) => trainName(r.engine, locale),
+    wagon: (r: OptimizeResult) => trainName(r.wagon, locale),
     cargoTrip: (r: OptimizeResult) => r.cargoPerTrip,
     speed: (r: OptimizeResult) => r.loadedSpeedInternal,
     gradeSpeed: (r: OptimizeResult) => r.gradeSpeedInternal,

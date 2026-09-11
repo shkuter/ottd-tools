@@ -7,6 +7,8 @@ import { vehicleWeightT } from '../../engine/vehicle';
 import { trainBuyCost, trainRunningCostPerYear } from '../../engine/costs';
 import type { SpeedUnit } from '../../engine/units';
 import { capacityPerTile, capacityTimesSpeed } from './metrics';
+import { trainName } from '../../i18n/names';
+import type { Locale } from '../../state/localeStore';
 
 export type CatalogueColumn =
   | 'name'
@@ -55,11 +57,12 @@ export function catalogueSortValues(
   game: GameSettings,
   calc: CalcSettings,
   speedUnit: SpeedUnit,
+  locale?: Locale,
 ): SortValues<Train, CatalogueColumn> {
   const track = activeRailtype(game, calc.trackType);
   const railtypes = activeRailtypes(game);
   return {
-    name: (train) => train.name,
+    name: (train) => trainName(train, locale),
     intro_year: (train) => train.intro_year,
     power_hp: (train) => poweredOutputOn(train, track, railtypes) || null,
     speed: (train) => topSpeedOn(train, track) || null,

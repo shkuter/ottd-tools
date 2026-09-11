@@ -18,7 +18,7 @@ import os
 import re
 import sys
 
-from common import VENDOR, vendor_meta, write_json
+from common import VENDOR, train_names, vendor_meta, write_json
 from grf_sprites import read_palette
 
 OTTD = os.path.join(VENDOR, "openttd")
@@ -356,6 +356,7 @@ def build_trains():
     infos = parse_engine_info()
     rvis = parse_rail_vehicle_info()
     labels = parse_cargo_labels()
+    names = train_names("english", expected=len(rvis))
 
     items = []
     for info in infos:
@@ -363,8 +364,9 @@ def build_trains():
         if idx >= len(rvis):
             break  # дальше идут дорожные машины/суда/самолёты
         rvi = rvis[idx]
-        # name: the table comment matches the lang string ("Kirby Paul Tank (Steam)")
-        name = re.sub(r"\s*\(.*?\)\s*$", "", info["comment"]).strip()
+        # The name the game shows, suffix and all: the player looks the vehicle up in the
+        # buy menu by what the calculator shows, and "Kirby Paul Tank" is not what stands there.
+        name = names[idx]
         is_wagon = rvi["type"] == "wagon"
         # base_intro = DAYS_TILL_ORIGINAL_BASE_YEAR + intro_days (table/engines.h MT),
         # т.е. дни от 1 января 1920 — из них берётся и год, и месяц появления

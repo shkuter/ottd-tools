@@ -4,9 +4,11 @@
  * name. Both come out of `consistParts()`, and this is the assertion that keeps them equal —
  * a second spelling of the same train is exactly what the tab must never show.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { consistParts, consistText } from '../labels';
 import { trains } from '../../../dataset';
+import { vanillaTrains } from '../../../vanilla';
+import { useLocaleStore } from '../../../state/localeStore';
 import en from '../../../i18n/en.json';
 
 const known = trains.find((train) => train.name.startsWith('0-8-0'))!;
@@ -36,5 +38,22 @@ describe('consistParts', () => {
   it('has no pieces for an empty consist, where the string form names it', () => {
     expect(consistParts([])).toEqual([]);
     expect(consistText([])).toBe(en['game.noConsist']);
+  });
+});
+
+describe('состав партии зовёт машины языком интерфейса', () => {
+  afterEach(() => useLocaleStore.getState().setLocale('en'));
+
+  it('на русском — именем из игры', () => {
+    // сценарий спеки: списки импортированной партии называют машину так же, как каталог
+    const kirby = vanillaTrains.find((t) => t.id === 'vanilla_0')!;
+    useLocaleStore.getState().setLocale('ru');
+    expect(consistParts([{ catalogueId: kirby.id, count: 1 }])[0].text).toBe(
+      'Паровоз Kirby Paul Tank ×1',
+    );
+    useLocaleStore.getState().setLocale('en');
+    expect(consistParts([{ catalogueId: kirby.id, count: 1 }])[0].text).toBe(
+      'Kirby Paul Tank (Steam) ×1',
+    );
   });
 });

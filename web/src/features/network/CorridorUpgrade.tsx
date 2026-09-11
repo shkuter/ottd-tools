@@ -9,6 +9,7 @@ import type { RouteWithFlowParams } from '../../engine/trip';
 import { useRouteStore } from '../../state/routeStore';
 import { useCorridor } from './figures';
 import { NETWORK_ANCHORS } from './panels';
+import { trainName } from '../../i18n/names';
 
 /**
  * Does converting this corridor to another track pay for itself?
@@ -73,7 +74,7 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
           value={replacement?.id ?? null}
           onChange={(v) => setCorridor({ engineId: v })}
           data={candidates
-            .map((train) => ({ value: train.id, label: train.name }))
+            .map((train) => ({ value: train.id, label: trainName(train) }))
             .sort((a, b) => a.label.localeCompare(b.label, intlLocale(locale)))}
         />
       </div>

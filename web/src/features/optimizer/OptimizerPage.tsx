@@ -39,7 +39,14 @@ import {
 } from '../../dataset';
 import { poweredOutputOn } from '../../engine/tracktypes';
 import { intlLocale, t, useLocale } from '../../i18n';
-import { cargoName, cargoUnits, matchesTrainName, industryName, sortCargos } from '../../i18n/names';
+import {
+  cargoName,
+  cargoUnits,
+  industryName,
+  matchesTrainName,
+  sortCargos,
+  trainName,
+} from '../../i18n/names';
 import {
   engineLabel, num, percent, speedUnitLabel, speedValue, unitSuffix, wagonLabel, withUnit,
 } from '../../components/format';
@@ -332,17 +339,28 @@ export default function OptimizerPage() {
   const doubtful = useMemo(
     () => doubtfulGroups(results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, {
         collator,
+        locale,
         soldIds,
       }),
-    [results, trains, excludedIds, searchInput.year, game, calc.capacityIndex, collator, soldIds],
+    [
+      results,
+      trains,
+      excludedIds,
+      searchInput.year,
+      game,
+      calc.capacityIndex,
+      collator,
+      soldIds,
+      locale,
+    ],
   );
 
   const matching = useMemo(
     () => {
       if (!engineFilter) return results;
-      return results.filter((r) => matchesTrainName(r.engine, engineFilter));
+      return results.filter((r) => matchesTrainName(r.engine, engineFilter, locale));
     },
-    [results, engineFilter],
+    [results, engineFilter, locale],
   );
   // Drawing fifty rows of sprites costs more than the search itself, and the answer is in
   // the first few anyway — the rest is one click away. The page resets on a new set of rows,
@@ -365,8 +383,8 @@ export default function OptimizerPage() {
   // Sorting is a view over the rows the search returned, not a second ranking: it reorders
   // what is on screen and leaves the set and the numbers alone.
   const ordered = useMemo(
-    () => sortRows(matching, sort, optimizerSortValues(), collator),
-    [matching, sort, collator],
+    () => sortRows(matching, sort, optimizerSortValues(locale), collator),
+    [matching, sort, collator, locale],
   );
 
   const shown = ordered.slice(0, visibleCount);
@@ -567,8 +585,8 @@ export default function OptimizerPage() {
                 onChange={() => toggleExcluded(ids)}
                 label={
                   ambiguous
-                    ? `${train.name} (${num(capacity)} ${cargoUnits(cargo?.units)})`
-                    : train.name
+                    ? `${trainName(train, locale)} (${num(capacity)} ${cargoUnits(cargo?.units)})`
+                    : trainName(train, locale)
                 }
               />
             ))}
@@ -608,7 +626,7 @@ export default function OptimizerPage() {
         <ComparisonPanel
           columns={compare.comparison.columns}
           metrics={compare.comparison.metrics}
-          wagonName={compare.comparison.wagon.name}
+          wagonName={trainName(compare.comparison.wagon, locale)}
           cargo={cargo}
           onClose={compare.close}
         />

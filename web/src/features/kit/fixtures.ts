@@ -43,7 +43,8 @@ export const SPECIMEN_ROWS = [
   { id: 'bean_feast', name: '2-6-4 Bean Feast', power: 1300, cost: 12_400, profit: 8_900 },
   { id: 'buffalo', name: '0-6-2 Buffalo', power: 900, cost: 9_100, profit: 2_150 },
   { id: 'cheese_bug', name: '2-6-2 Cheese Bug', power: 700, cost: 7_600, profit: -430 },
-  { id: SPECIMEN_VANILLA_TRAIN, name: 'Kirby Paul Tank', power: 300, cost: 5_200, profit: -1_780 },
+  // the name as the data spells it: the page draws it through VehicleName, which translates
+  { id: SPECIMEN_VANILLA_TRAIN, name: 'Kirby Paul Tank (Steam)', power: 300, cost: 5_200, profit: -1_780 },
 ];
 
 /** A series for the chart specimen: a shape to look at, not a computation. */

@@ -10,6 +10,7 @@ import { LOCALES, useLocaleStore, type Locale } from '../state/localeStore';
 import cargosRu from './cargos.ru.json';
 import industriesRu from './industries.ru.json';
 import railtypesRu from './railtypes.ru.json';
+import vehiclesRu from './vehicles.ru.json';
 import { t } from './index';
 
 const CARGO_NAMES: Record<string, Record<string, string>> = { ru: cargosRu.names };
@@ -18,6 +19,10 @@ const INDUSTRY_NAMES: Record<string, Record<string, string>> = { ru: industriesR
 // одна карта лейблов на все наборы: лейбл означает один и тот же путь, кто бы его ни
 // поставлял, и имена в словаре — наши собственные (сторожит locales.test.ts)
 const RAILTYPE_NAMES: Record<string, Record<string, string>> = { ru: railtypesRu };
+// Vehicles of the base set, keyed by our id: the name is a display string, and two different
+// wagons are allowed to be called the same thing. Iron Horse is absent on purpose — the set
+// gives no Russian strings and the game shows its vehicles in English too.
+const VEHICLE_NAMES: Record<string, Record<string, string>> = { ru: vehiclesRu };
 
 /**
  * Translated cargo name, or the English one where the dictionary has none. The locale is
@@ -53,11 +58,35 @@ export function industryName(
 }
 
 /**
+ * The vehicle's name as the game shows it in this language. Vehicles of the base set are
+ * named by the game's own locale; everything else keeps the name its set gave it.
+ *
+ * The locale is an argument for the same reason it is on `cargoName()`: the callers sit in
+ * memoised list columns, and a name built without it would freeze in the language it was
+ * first rendered in.
+ */
+export function trainName(
+  train: { id: string; name: string },
+  locale: Locale = useLocaleStore.getState().locale,
+): string {
+  return VEHICLE_NAMES[locale]?.[train.id] ?? train.name;
+}
+
+/**
  * Does this vehicle answer to what the player typed? Shared, because the catalogue and the
  * optimizer each offer this search and must agree on what matches.
+ *
+ * Matched against the displayed name: the player types what is on screen, and on Russian
+ * "Паровоз" has to find the steam engines it names. Hence the locale argument: the callers
+ * filter inside a memo, and one that did not key on the language would keep showing the rows
+ * the previous language matched.
  */
-export function matchesTrainName(train: { name: string }, needle: string): boolean {
-  return train.name.toLowerCase().includes(needle.toLowerCase());
+export function matchesTrainName(
+  train: { id: string; name: string },
+  needle: string,
+  locale: Locale = useLocaleStore.getState().locale,
+): boolean {
+  return trainName(train, locale).toLowerCase().includes(needle.toLowerCase());
 }
 
 /**

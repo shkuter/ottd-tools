@@ -1,6 +1,7 @@
 import { intlLocale, t } from '../i18n';
 import { displaySpeed } from '../engine/units';
 import { CURRENCIES, useSettingsStore, type CurrencyCode } from '../state/settingsStore';
+import { trainName } from '../i18n/names';
 
 /** Деньги: базовая валюта расчётов — фунт, конвертация по курсам игры. */
 export function money(value: number): string {
@@ -54,22 +55,22 @@ export function percent(share: number): string {
  * no count at all.
  */
 export function engineLabel(
-  row: { engine: { name: string }; engineCount: number },
+  row: { engine: { id: string; name: string }; engineCount: number },
 ): string {
-  const name = row.engine.name;
+  const name = trainName(row.engine);
   return row.engineCount > 1 ? `${row.engineCount}× ${name}` : name;
 }
 
-export function wagonLabel(row: { wagon: { name: string }; wagonCount: number }): string {
-  return `${row.wagonCount}× ${row.wagon.name}`;
+export function wagonLabel(row: { wagon: { id: string; name: string }; wagonCount: number }): string {
+  return `${row.wagonCount}× ${trainName(row.wagon)}`;
 }
 
 /** Both halves in one line, for places that name a consist outside a table. */
 export function consistLabel(
   row: {
-    engine: { name: string };
+    engine: { id: string; name: string };
     engineCount: number;
-    wagon: { name: string };
+    wagon: { id: string; name: string };
     wagonCount: number;
   },
 ): string {

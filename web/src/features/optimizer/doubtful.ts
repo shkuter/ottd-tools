@@ -20,6 +20,8 @@ import {
 } from '../../engine/availability';
 import { purchaseEntries, purchaseKey } from '../../engine/purchase';
 import type { OptimizeResult } from '../../engine/optimize';
+import { trainName } from '../../i18n/names';
+import type { Locale } from '../../state/localeStore';
 
 export interface DoubtfulGroup {
   /** Все id пункта: чекбокс выключает их разом. */
@@ -47,6 +49,17 @@ export interface DoubtfulOptions {
    * строка выдачи другую.
    */
   soldIds?: ReadonlySet<string> | null;
+  /**
+   * Язык, на котором машины называются: и подпись чекбокса, и признак одноимённости
+   * читаются с экрана, а совпадают имена в разных языках по-разному — «Wood Truck» носят
+   * три ванильные машины, а по-русски это «Вагон для дерева» и два «Вагона для древесины».
+   *
+   * Теста на это нет, и построить его пока не на чем: среди машин, попадающих в список
+   * сомнительных, ни одна пара одноимённых по языкам не расходится (перебор по пяти годам
+   * и трём грузам не нашёл ни одной). Локаль передаётся, потому что подпись и счёт имён
+   * обязаны читать одно и то же, а не потому, что расхождение поймано.
+   */
+  locale?: Locale;
 }
 
 export function doubtfulGroups(
@@ -56,7 +69,7 @@ export function doubtfulGroups(
   year: number,
   game: GameSettings,
   capacityIndex: number,
-  { collator, soldIds = null }: DoubtfulOptions,
+  { collator, soldIds = null, locale }: DoubtfulOptions,
 ): DoubtfulGroup[] {
   // отмечена в выдаче — значит и в списке: строка ставит «?» по обеим границам жизни
   // машины, и выключать надо ровно то, что помечено
@@ -80,7 +93,7 @@ export function doubtfulGroups(
 
   // счёт идёт по подписи строки: пункт помечается неоднозначным, когда одноимённых
   // в списке несколько
-  const displayName = (train: Train) => train.name;
+  const displayName = (train: Train) => trainName(train, locale);
   const nameCounts = new Map<string, number>();
   for (const entry of groups) {
     const name = displayName(entry.train);

@@ -18,6 +18,16 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- Vehicles of the base set are named the way the game names them, in both languages. The name
+  now comes from the game's own locale by the number the game addresses it with, rather than
+  from a comment in the vehicle table: on Russian the catalogue says «Паровоз Kirby Paul Tank»
+  and «Угольная платформа», exactly as the buy menu does, and on English it keeps the traction
+  suffix the game shows — `Kirby Paul Tank (Steam)`. Search and sorting follow the displayed
+  name, so typing «Паровоз» finds the steam engines. Iron Horse vehicles are untouched: that
+  set ships no Russian names and the game shows them in English too.
+
 ### Changed
 
 - Best train says when the goal cannot tell its rows apart. Under Haul and Supply nearly every

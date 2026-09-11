@@ -17,7 +17,15 @@ import tomllib
 import argparse
 import sys
 
-from common import I18N_DIR, VENDOR, bootstrap_firs, load_json, write_dictionary
+from common import (
+    GAME_LANG_DIR,
+    I18N_DIR,
+    VENDOR,
+    bootstrap_firs,
+    load_json,
+    train_names,
+    write_dictionary,
+)
 
 fx = bootstrap_firs()
 firs = fx.firs
@@ -36,7 +44,7 @@ UNITS = {
     "items": "шт.",
     "passengers": "пасс.",
 }
-GAME_LANG_DIR = os.path.join(VENDOR, "openttd", "src", "lang")
+
 
 # Track type names that are ours rather than a translation, and why each has to be.
 #
@@ -336,6 +344,20 @@ def railtype_names(game_lang, fixes=None):
     return names
 
 
+def vehicle_names():
+    """Vehicle id -> the name the game shows in that language.
+
+    Addressed by number, like the game does it: `STR_VEHICLE_NAME_TRAIN_*` runs through the
+    table as it stands — engines and wagons of the plain track, then the monorail, then the
+    maglev — and the vehicle's `engine_id` counts from the first string of that block. A name
+    the locale left in English (the monorail Wizzowow Z99) is carried over as it is: the
+    dictionary repeats the game, it does not correct it.
+    """
+    trains = load_json("vanilla_trains.json")["items"]
+    names = train_names("russian", expected=len(trains))
+    return {train["id"]: names[train["engine_id"]] for train in trains}
+
+
 def main(check=False):
     firs.main()
     economies = list(firs.economy_manager)
@@ -390,8 +412,10 @@ def main(check=False):
     }, check)
     railtypes = railtype_names(game_lang, fixes)
     ok &= write_dictionary(os.path.join(I18N_DIR, "railtypes.ru.json"), railtypes, check)
+    vehicles = vehicle_names()
+    ok &= write_dictionary(os.path.join(I18N_DIR, "vehicles.ru.json"), vehicles, check)
     print(f"cargos: {len(cargos)}, industries: {len(industries)}, "
-          f"railtypes: {len(railtypes)}")
+          f"railtypes: {len(railtypes)}, vehicles: {len(vehicles)}")
     if not ok:
         sys.exit(1)
 

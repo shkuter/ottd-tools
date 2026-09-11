@@ -141,15 +141,15 @@ export default function ConsistPage() {
       if (!canRunOn(train, track, railtypes)) return false;
       // one buy-menu rule for every list, see engine/availability.ts
       if (availability.get(train.id)!.state === 'unavailable') return false;
-      if (search && !matchesTrainName(train, search)) return false;
+      if (search && !matchesTrainName(train, search, locale)) return false;
       if (filterCargo && !canCarryIn(game, train, filterCargo)) return false;
       return true;
     });
-  }, [catalogue, kindFilter, search, track, railtypes, filterCargo, game, availability]);
+  }, [catalogue, kindFilter, search, track, railtypes, filterCargo, game, availability, locale]);
 
   const sortValue = useMemo(
-    () => catalogueSortValues(game, calc, speedUnit),
-    [game, calc, speedUnit],
+    () => catalogueSortValues(game, calc, speedUnit, locale),
+    [game, calc, speedUnit, locale],
   );
 
   const sorted = useMemo(() => {

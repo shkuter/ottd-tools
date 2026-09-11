@@ -10,6 +10,7 @@
 
 import { Tooltip } from '@mantine/core';
 import { useLocale } from '../i18n';
+import { trainName } from '../i18n/names';
 import { parseWhyteNotation, whyteNotationLines } from './whyteNotation';
 
 export function VehicleName({
@@ -17,7 +18,7 @@ export function VehicleName({
   label,
 }: {
   /** The vehicle: the arrangement is read off its own name, never off the label. */
-  train: { name: string };
+  train: { id: string; name: string };
   /**
    * How this list writes the vehicle — `engineLabel()` puts the section count in front
    * ("2× Haar"). Defaults to the bare name.
@@ -25,7 +26,9 @@ export function VehicleName({
   label?: string;
 }) {
   const locale = useLocale();
-  const text = label ?? train.name;
+  // the axle arrangement lives in the name the set gave the vehicle; the label is what this
+  // list writes, which on Russian is the game's own name for a vehicle of the base set
+  const text = label ?? trainName(train, locale);
   const notation = parseWhyteNotation(train.name);
   if (!notation) return <>{text}</>;
   return (

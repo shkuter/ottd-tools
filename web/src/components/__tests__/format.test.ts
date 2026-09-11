@@ -3,6 +3,7 @@ import { useLocaleStore } from '../../state/localeStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { consistLabel, engineLabel, money, speed, wagonLabel } from '../format';
 import { trains } from '../../dataset';
+import { vanillaTrains } from '../../vanilla';
 
 describe('format.speed', () => {
   beforeEach(() => {
@@ -73,5 +74,22 @@ describe('подписи состава называют машину так ж�
 
   it('один локомотив идёт без счётчика', () => {
     expect(engineLabel({ ...row, engineCount: 1 })).toBe(engine.name);
+  });
+});
+
+describe('подписи машин следуют языку', () => {
+  const kirby = vanillaTrains.find((t) => t.id === 'vanilla_0')!;
+  const wagon = vanillaTrains.find((t) => t.id === 'vanilla_33')!;
+
+  beforeEach(() => useLocaleStore.setState({ locale: 'ru' }));
+
+  it('зовёт ванильную машину так же, как игра', () => {
+    // именно ванильная: у машин Iron Horse словаря нет по замыслу, и на них подмена
+    // «имя из данных вместо отображаемого» была бы незаметна
+    expect(engineLabel({ engine: kirby, engineCount: 1 })).toBe('Паровоз Kirby Paul Tank');
+    expect(wagonLabel({ wagon, wagonCount: 3 })).toBe('3× Хоппер для зерна');
+    expect(consistLabel({ engine: kirby, engineCount: 1, wagon, wagonCount: 2 })).toBe(
+      'Паровоз Kirby Paul Tank + 2× Хоппер для зерна',
+    );
   });
 });

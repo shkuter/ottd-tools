@@ -150,7 +150,8 @@ def main():
     vanilla_cargos = load_json("vanilla_cargos.json")["items"]
     check(len(vanilla_trains) > 100, f"vanilla: мало машин: {len(vanilla_trains)}")
     check(len(vanilla_cargos) >= 25, f"vanilla: мало грузов: {len(vanilla_cargos)}")
-    kirby = next((t for t in vanilla_trains if t["name"] == "Kirby Paul Tank"), None)
+    # by id, not by name: the name is a display string that follows the game's locale
+    kirby = next((t for t in vanilla_trains if t["id"] == "vanilla_0"), None)
     check(kirby is not None and kirby["cost_factor"] == 7,
           "vanilla: Kirby Paul Tank не найден или цена не 7")
     coal_v = next((c for c in vanilla_cargos if c["label"] == "COAL"), None)

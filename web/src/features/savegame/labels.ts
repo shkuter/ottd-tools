@@ -5,7 +5,7 @@
 
 import { activeCargoByLabel, trainByAnyId } from '../../dataset';
 import { t } from '../../i18n';
-import { cargoName } from '../../i18n/names';
+import { cargoName, trainName } from '../../i18n/names';
 import type { GameSettings } from '../../engine/settings';
 import type { Cargo } from '../../types';
 import type {
@@ -50,7 +50,7 @@ export function consistText(consist: readonly SnapshotConsistEntry[]): string {
 /** One vehicle of a consist: what to write, and which catalogue entry stands behind it. */
 export interface ConsistPart {
   /** The catalogue vehicle, or null for one the catalogue does not know. */
-  train: { name: string } | null;
+  train: { id: string; name: string } | null;
   /** How the line writes it: "Haar ×1". */
   text: string;
 }
@@ -64,7 +64,7 @@ export function consistParts(consist: readonly SnapshotConsistEntry[]): ConsistP
   return consist.map((entry) => {
     const train = entry.catalogueId === null ? null : (trainByAnyId.get(entry.catalogueId) ?? null);
     // the catalogue's own name, so the tab reads in the same language as the rest of the app
-    const name = train ? train.name : t('game.unknownVehicle');
+    const name = train ? trainName(train) : t('game.unknownVehicle');
     return { train, text: `${name} ×${entry.count}` };
   });
 }

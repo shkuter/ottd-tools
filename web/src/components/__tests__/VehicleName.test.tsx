@@ -17,7 +17,7 @@ const show = (ui: React.ReactNode) => render(<MantineProvider>{ui}</MantineProvi
 
 describe('имя машины', () => {
   it('объясняет формулу машины, у которой она есть', async () => {
-    show(<VehicleName train={{ name: '0-8-4 Abernant' }} />);
+    show(<VehicleName train={{ id: 'abernant', name: '0-8-4 Abernant' }} />);
     await userEvent.hover(screen.getByText('0-8-4 Abernant'));
     expect(await screen.findByText(/Driving wheels: 8 \(4 axles\)/)).toBeTruthy();
   });
@@ -26,7 +26,7 @@ describe('имя машины', () => {
     // меряем на своём узле: MantineProvider кладёт в контейнер ещё и свой лист стилей
     show(
       <span data-testid="host">
-        <VehicleName train={{ name: 'Kirby Paul Tank' }} />
+        <VehicleName train={{ id: 'kirby', name: 'Kirby Paul Tank' }} />
       </span>,
     );
     const host = screen.getByTestId('host');
@@ -37,7 +37,7 @@ describe('имя машины', () => {
 
   it('показывает подпись списка, объясняя машину за ней', async () => {
     // в подписи формулы нарочно нет: подсказка обязана браться из имени машины
-    show(<VehicleName train={{ name: '0-8-0 Haar' }} label="2× Haar" />);
+    show(<VehicleName train={{ id: 'haar', name: '0-8-0 Haar' }} label="2× Haar" />);
     await userEvent.hover(screen.getByText('2× Haar'));
     expect(await screen.findByText(/Whyte notation 0-8-0/)).toBeTruthy();
   });

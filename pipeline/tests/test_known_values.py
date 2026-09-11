@@ -4,6 +4,7 @@
 на 4.31.0 (10.09.2026) значения этих машин те же, что и были,
 FIRS — с исходниками и конверсией NML price_factor -> prop 0x12.
 """
+import json
 import os
 import pathlib
 import re
@@ -12,10 +13,16 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from common import VENDOR, load_json  # noqa: E402
+from common import I18N_DIR, VENDOR, load_json, train_names  # noqa: E402
 import extract_vanilla as vanilla  # noqa: E402
 
 IRON_HORSE_RAILTYPES = os.path.join(VENDOR, "iron-horse", "src", "railtypes")
+
+
+def load_json_i18n(filename):
+    """Словарь названий: они лежат рядом с интерфейсом, а не в каталоге данных."""
+    with open(os.path.join(I18N_DIR, filename), encoding="utf-8") as f:
+        return json.load(f)
 
 
 class IronHorseKnownValues(unittest.TestCase):
@@ -427,6 +434,38 @@ class Railtypes(unittest.TestCase):
             self.assertIn(train["railtype"], self.vanilla, train["id"])
 
 
+class VanillaVehicleNames(unittest.TestCase):
+    """Имена машин берутся из локали игры по номеру, а номер — вещь хрупкая."""
+
+    def test_names_come_from_the_game_locale(self):
+        trains = {t["engine_id"]: t["name"] for t in load_json("vanilla_trains.json")["items"]}
+        # суффикс тяги не срезается: игрок ищет машину в меню покупки по тому, что видит
+        self.assertEqual(trains[0], "Kirby Paul Tank (Steam)")
+        # номер проходит сквозь границы блоков таблицы: 54 — первый монорельсовый движок,
+        # хотя до него уже кончились и движки, и вагоны обычной колеи
+        self.assertEqual(trains[54], "'X2001' (Electric)")
+
+    def test_every_name_matches_its_string(self):
+        """Не выборочно, а все 116: сдвиг в середине выглядел бы правдоподобно."""
+        names = train_names("english")
+        for train in load_json("vanilla_trains.json")["items"]:
+            self.assertEqual(train["name"], names[train["engine_id"]], train["id"])
+
+    def test_russian_dictionary_matches_its_strings(self):
+        names = train_names("russian")
+        ru = load_json_i18n("vehicles.ru.json")
+        for train in load_json("vanilla_trains.json")["items"]:
+            self.assertEqual(ru[train["id"]], names[train["engine_id"]], train["id"])
+
+    def test_a_shifted_block_stops_the_build(self):
+        # если строк станет меньше или больше, чем машин, номера поедут и половина каталога
+        # переименуется правдоподобными чужими именами — заметить это будет нечем
+        with self.assertRaises(SystemExit):
+            train_names("english", expected=1)
+        with self.assertRaises(SystemExit):
+            train_names("russian", expected=999)
+
+
 class VanillaSpriteIds(unittest.TestCase):
     """Base-set sprite numbers: they address OpenGFX2 graphics directly.
 
@@ -485,7 +524,8 @@ class VanillaSpriteIds(unittest.TestCase):
         self.assertEqual(self.cargos["oil"]["label"], "OIL_")
         self.assertEqual(self.cargos["goods"]["label"], "GOOD")
         self.assertEqual(self.trains["vanilla_22"]["default_cargos"], ["MAIL"])  # SH '125'
-        grain_hopper = next(t for t in self.trains.values() if t["name"] == "Grain Hopper")
+        # по id: имя «Grain Hopper» носят три машины — у каждой колеи свой хоппер
+        grain_hopper = self.trains["vanilla_33"]
         self.assertEqual(grain_hopper["default_cargos"], ["GRAI", "WHEA", "MAIZ"])  # MCT_
         self.assertIsNone(grain_hopper["model_life"])  # engine.cpp:141 — wagons never expire
 

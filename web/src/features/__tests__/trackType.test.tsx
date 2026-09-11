@@ -177,11 +177,13 @@ describe('what the catalogue shows on a track', () => {
     const user = userEvent.setup();
     draw(<ConsistPage />);
 
-    // the game's own monorail and maglev engines, by the names it gives them
+    // the game's own monorail and maglev engines, by the names it gives them in this
+    // language: the maglev is "Lev1 «Левиафан»" on Russian, and the search follows what the
+    // player sees rather than what the data stores
     expect(await listsVehicle(user, 'Монорельсовая ж/д', 'X2001')).toBe(true);
-    expect(await listsVehicle(user, 'Магнитная ж/д', 'Leviathan')).toBe(true);
+    expect(await listsVehicle(user, 'Магнитная ж/д', 'Левиафан')).toBe(true);
     expect(await listsVehicle(user, 'Ж/д', 'X2001')).toBe(false);
-    expect(await listsVehicle(user, 'Ж/д', 'Leviathan')).toBe(false);
+    expect(await listsVehicle(user, 'Ж/д', 'Левиафан')).toBe(false);
   });
 });
 

@@ -10,7 +10,8 @@ const vanillaMeta = activeTrainsMeta(vanillaGame);
 /** Prices below show the bare formula, so difficulty stays at the neutral ×8/8. */
 const neutralGame = { ...vanillaGame, constructionCost: 1 as const, vehicleCosts: 1 as const };
 
-const kirby = vanillaTrains.find((t) => t.name === 'Kirby Paul Tank')!;
+// by id: the name is a display string and follows the game's locale
+const kirby = vanillaTrains.find((t) => t.id === 'vanilla_0')!;
 const sh125 = vanillaTrains.find((t) => t.name.includes('SH \'125\''))!;
 const coalWagon = vanillaTrains.find((t) => t.kind === 'wagon' && t.default_cargos.includes('COAL'))!;
 const mail = vanillaCargos.find((c) => c.label === 'MAIL')!;
@@ -45,7 +46,8 @@ describe('vanilla train adapter', () => {
     const electric = vanillaTrains.filter(
       (t) => t.kind === 'engine' && t.running_cost_base === 'RUNNING_COST_ELECTRIC' && t.base_track_type === 'RAIL',
     );
-    expect(electric.map((t) => t.name)).toContain("'AsiaStar'");
+    // the name comes from the game's locale whole, traction suffix and all
+    expect(electric.map((t) => t.name)).toContain("'AsiaStar' (Electric)");
     for (const t of electric) expect(Object.keys(t.power_by_source ?? {})).toEqual(['OHLE']);
     expect(vanillaTrains.filter((t) => t.base_track_type === 'MONO').length).toBeGreaterThan(0);
     expect(vanillaTrains.filter((t) => t.base_track_type === 'MAGLEV').length).toBeGreaterThan(0);
@@ -56,7 +58,7 @@ describe('vanilla train adapter', () => {
     expect(passengers).toBeDefined();
     expect(vanillaCargos.find((c) => c.label === 'OIL_')).toBeDefined();
     expect(vanillaCargos.every((c) => c.label.length === 4)).toBe(true);
-    const grain = vanillaTrains.find((t) => t.name === 'Grain Hopper')!;
+    const grain = vanillaTrains.find((t) => t.id === 'vanilla_33')!;
     expect(grain.default_cargos).toEqual(['GRAI', 'WHEA', 'MAIZ']);
   });
 

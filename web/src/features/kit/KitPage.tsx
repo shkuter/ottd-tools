@@ -43,6 +43,7 @@ import { sortRows, type SortState } from '../../components/table/sorting';
 import { WINDOW_COLOURS, type WindowColour } from '../../skin';
 import { useKitWindowStore } from '../../state/kitWindowStore';
 import { VehicleName } from '../../components/VehicleName';
+import { trainName } from '../../i18n/names';
 import {
   SPECIMEN_AVAILABILITY,
   SPECIMEN_CARGO_ICON,
@@ -320,7 +321,9 @@ function Showcase() {
     SPECIMEN_ROWS,
     sort,
     {
-      name: (row) => row.name,
+      // by what the row shows: VehicleName draws the localized name, and a list sorted by
+      // the raw one would order itself by names nobody sees
+      name: (row) => trainName(row),
       power: (row) => row.power,
       cost: (row) => row.cost,
       profit: (row) => row.profit,

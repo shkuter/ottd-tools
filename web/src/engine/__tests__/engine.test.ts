@@ -115,7 +115,8 @@ describe('игровые значения по умолчанию', () => {
     // ровно дефолт, без правок: наборы выключены, и Kirby — машина активного набора.
     // Вернись дефолт к Iron Horse — тест упадёт здесь, а не промолчит
     const game = DEFAULT_GAME_SETTINGS;
-    const kirby = activeTrains(game).find((t) => t.name === 'Kirby Paul Tank')!;
+    // по id: имя следует локали игры и несёт суффикс тяги
+    const kirby = activeTrains(game).find((t) => t.id === 'vanilla_0')!;
     expect(trainBuyCost(kirby, activeTrainsMeta(game), game)).toBe(8203);
   });
 });
