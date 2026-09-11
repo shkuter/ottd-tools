@@ -53,8 +53,11 @@ def bootstrap_firs():
 
 
 GAME_LANG_DIR = os.path.join(VENDOR, "openttd", "src", "lang")
-# One block per train of the base set, in the order the vehicle table states them
+# One block holding every train of the base set, a string per vehicle, in the order the
+# vehicle table states them
 TRAIN_NAME_PREFIX = "STR_VEHICLE_NAME_TRAIN_"
+
+
 def train_names(language, expected=None):
     """Vehicle names of the base set, in the order the game numbers them.
 
