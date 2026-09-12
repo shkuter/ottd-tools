@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-09-12
+
 ### Added
 
 - The calculator opens in the language the browser says you read. Someone who has never picked
