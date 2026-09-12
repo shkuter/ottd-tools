@@ -6,6 +6,7 @@ import SettingsPage from './features/settings/SettingsPage';
 import FirsPage from './features/firs/FirsPage';
 import { datasetMeta } from './dataset';
 import { t, useLocale } from './i18n';
+import { LOCALES, useLocaleStore } from './state/localeStore';
 import { useSettingsStore } from './state/settingsStore';
 import { Warning } from './components/Warning';
 import { SavegameImportLauncher } from './features/savegame-import/SavegameImportLauncher';
@@ -145,21 +146,42 @@ export default function App() {
         </Suspense>
       </Box>
       <Box component="footer" className="app-footer">
-        {t('footer.version')} {__APP_VERSION__} ({__APP_DATE__}) · {t('footer.data')}: Iron Horse{' '}
-        {datasetMeta.iron_horse} · FIRS {datasetMeta.firs} ·{' '}
-        OpenTTD {datasetMeta.openttd}
-        {/* The translation revision only matters where names actually come from it. */}
-        {locale !== 'en' && ` (${t('footer.translation')} ${datasetMeta.firs_ru})`}
-        <br />
-        {t('footer.graphics')}:{' '}
-        <Anchor href="https://github.com/OpenTTD/OpenGFX2/">OpenGFX2 Classic</Anchor>,{' '}
-        <Anchor href="https://github.com/andythenorth/iron-horse">Iron Horse</Anchor>,{' '}
-        <Anchor href="https://github.com/andythenorth/firs">FIRS</Anchor> —{' '}
-        {/* GPL asks that whoever gets the site can get its source: both links say where. */}
-        <Anchor href="https://github.com/shkuter/ottd-tools/blob/master/LICENSE">GPL-2.0</Anchor>
-        {' · '}
-        <Anchor href="https://github.com/shkuter/ottd-tools">{t('footer.source')}</Anchor>
+        <div className="footer-meta">
+          {t('footer.version')} {__APP_VERSION__} ({__APP_DATE__}) · {t('footer.data')}: Iron Horse{' '}
+          {datasetMeta.iron_horse} · FIRS {datasetMeta.firs} ·{' '}
+          OpenTTD {datasetMeta.openttd}
+          {/* The translation revision only matters where names actually come from it. */}
+          {locale !== 'en' && ` (${t('footer.translation')} ${datasetMeta.firs_ru})`}
+          <br />
+          {t('footer.graphics')}:{' '}
+          <Anchor href="https://github.com/OpenTTD/OpenGFX2/">OpenGFX2 Classic</Anchor>,{' '}
+          <Anchor href="https://github.com/andythenorth/iron-horse">Iron Horse</Anchor>,{' '}
+          <Anchor href="https://github.com/andythenorth/firs">FIRS</Anchor> —{' '}
+          {/* GPL asks that whoever gets the site can get its source: both links say where. */}
+          <Anchor href="https://github.com/shkuter/ottd-tools/blob/master/LICENSE">GPL-2.0</Anchor>
+          {' · '}
+          <Anchor href="https://github.com/shkuter/ottd-tools">{t('footer.source')}</Anchor>
+        </div>
+        <LanguageSwitch />
       </Box>
     </div>
+  );
+}
+
+/**
+ * The other language, named in itself. Not run through t(): the label is addressed to
+ * someone who does not read the language currently on screen. It leads nowhere, so it is a
+ * button that reads as a link — dashed underline, the way the skin tells the two apart.
+ *
+ * Two languages, so the other one is simply the one this is not. A third would make this a
+ * menu rather than a switch, which is why the count is asserted in the test.
+ */
+function LanguageSwitch() {
+  const { locale, setLocale } = useLocaleStore();
+  const other = locale === 'ru' ? 'en' : 'ru';
+  return (
+    <Button variant="subtle" className="btn-link language-switch" onClick={() => setLocale(other)}>
+      {LOCALES[other].name}
+    </Button>
   );
 }

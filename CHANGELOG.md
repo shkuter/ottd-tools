@@ -18,6 +18,17 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- The calculator opens in the language the browser says you read. Someone who has never picked
+  a language gets Russian when Russian is the first language in their browser's preferences
+  that the calculator has a dictionary for, and English otherwise; the detection runs afresh
+  on every start, so a changed browser language reaches the interface. Picking a language
+  ends it for good — that choice is stored and wins from then on, as it already did for
+  anyone who had picked one before.
+- A language switch in the footer, named after the language it switches to («English»,
+  «Русский»). The one on the settings screen stays where it is; both set the same thing.
+
 ### Changed
 
 - The savegame import is reachable from every tab: a button pinned to the top-right corner of

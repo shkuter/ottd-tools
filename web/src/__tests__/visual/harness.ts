@@ -25,6 +25,8 @@ import { SNAPSHOT_DB } from '../../savegame/snapshotStore';
 const WEB_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 /** The window every check starts in; a check that resizes it puts this back afterwards. */
 export const VIEWPORT = { width: 1440, height: 900 };
+/** The narrowest window the interface is built for; checks that resize restore VIEWPORT. */
+export const NARROW = { width: 400, height: 900 };
 
 /**
  * The game the checks measure: the NewGRF sets are off in a fresh calculator, and a set that
@@ -99,7 +101,17 @@ async function openHarness(): Promise<Harness> {
   // a fixed viewport, or an assertion about horizontal scrolling would depend on
   // the window of whoever runs the checks; a fresh context, or whatever the last
   // run left behind would decide what the checks see
-  const context = await browser.newContext({ viewport: VIEWPORT, reducedMotion: 'reduce' });
+  /*
+   * The language is pinned, not inherited: with no stored choice the app now opens in the
+   * language the browser asks for, and the checks measure boxes whose width is the width of
+   * English words. CHROME_PATH is a supported way in here, and that browser may well read
+   * Russian.
+   */
+  const context = await browser.newContext({
+    viewport: VIEWPORT,
+    reducedMotion: 'reduce',
+    locale: 'en-US',
+  });
   const page = await context.newPage();
 
   /*

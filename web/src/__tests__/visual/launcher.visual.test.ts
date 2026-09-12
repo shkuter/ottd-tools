@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { harnessFixture, VIEWPORT } from './harness';
+import { harnessFixture, NARROW, VIEWPORT } from './harness';
 import { KIT, ROUTES } from './routes';
 
 /**
@@ -10,8 +10,6 @@ import { KIT, ROUTES } from './routes';
  */
 
 const harness = harnessFixture();
-/** The narrowest window the interface is built for. */
-const NARROW = { width: 400, height: 900 };
 
 afterEach(async () => {
   await harness().page.setViewportSize(VIEWPORT);

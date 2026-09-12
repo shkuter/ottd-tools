@@ -433,7 +433,17 @@ main {
   padding: 16px var(--skin-shell-pad-x);
 }
 
+/*
+ * The versions and sources on the left, the language switch against the right edge. It
+ * wraps rather than floats: on a narrow window the switch drops below the text instead of
+ * wedging itself into the line of licence links.
+ */
 .app-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 4px 16px;
   padding: 10px var(--skin-shell-pad-x);
   font-size: var(--skin-font-small);
 }
@@ -895,6 +905,12 @@ h4 {
 
 .btn-link .mantine-Button-label {
   white-space: normal;
+}
+
+/* the language switch stands in a line of small print: .btn-link already strips the plate,
+   and what is left is the footer's own size instead of a button's */
+.app-footer .language-switch {
+  font-size: inherit;
 }
 
 /* ---------- FIRS chains ---------- */
