@@ -59,6 +59,12 @@ export default function SettingsPage() {
       <h2>{t('settings.title')}</h2>
       <p className="hint">{t('settings.intro')}</p>
 
+      {/* the settings of a game come from the game first and are edited by hand second,
+          so the import stands ahead of what it fills in */}
+      <Fieldset className="settings-group" legend={t('savegame.title')}>
+        <SavegameImportPanel />
+      </Fieldset>
+
       <Fieldset
         className="settings-group"
         legend={
@@ -260,10 +266,6 @@ export default function SettingsPage() {
             </NestedRow>
           </>
         )}
-      </Fieldset>
-
-      <Fieldset className="settings-group" legend={t('savegame.title')}>
-        <SavegameImportPanel />
       </Fieldset>
 
       <Fieldset className="settings-group" legend={t('settings.display')}>

@@ -198,4 +198,11 @@ export const PORTALS: ((page: Page, group: WindowColour) => Promise<void>)[] = [
   (page) => openDropdown(page),
   showTooltip,
   (page) => showNotification(page),
+  (page) => showWindow(page),
 ];
+
+/** Opens the window specimen — the shape a confirmation is asked in. */
+export async function showWindow(page: Page) {
+  await page.getByTestId('kit-window-open').click();
+  await page.waitForSelector('.mantine-Modal-content');
+}

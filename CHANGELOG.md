@@ -18,6 +18,17 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- The savegame import is reachable from every tab: a button pinned to the top-right corner of
+  the window opens the file dialog straight away, and the differences are confirmed in a window
+  over the page you are on instead of on the settings screen. Applying leaves the window open
+  with the snapshot summary, so the silent settings change says it happened. On the settings
+  screen the import section moved to the top, ahead of the settings it fills in.
+- The header is laid out in two rows: the site's name with its line, and the tab menu across
+  the full width underneath. Only the name's row keeps clear of the import button in the
+  corner, so the menu is no longer squeezed by it.
+
 ## [0.26.0] - 2026-09-11
 
 ### Added

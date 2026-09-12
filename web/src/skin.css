@@ -58,6 +58,14 @@
   --bevel: round(calc(1px * var(--skin-scale)), 1px);
   --skin-radius: 0;
 
+  /* The shell's own margins — the page around the game's widgets, which the game has no
+     metric for: the side gutter and top padding of the header (which main and the footer
+     keep to as well), and the width the header holds for the corner button until the button
+     has been measured (only a browser without ResizeObserver is laid out with it). */
+  --skin-shell-pad-x: 20px;
+  --skin-shell-pad-y: 14px;
+  --skin-launcher-width-fallback: 160px;
+
   /* FS_NORMAL 10, FS_SMALL 6, FS_LARGE 18; the heading step between the last
      two is interpolated, the game has no size there */
   --skin-font: round(calc(10px * var(--skin-scale)), 1px);
@@ -184,6 +192,10 @@
   /* the game underlays coloured text with black rather than trusting contrast
      (gfx.cpp:603) — see the TEXT COLOURS section for who gets it */
   --skin-text-shadow: 1px 1px 0 var(--ottd-pc-black);
+
+  /* the shade the page is left under while a window stands over it: the game has no overlay
+     of its own, so this is its black, thinned enough to keep the page readable underneath */
+  --skin-overlay: color-mix(in srgb, var(--ottd-tc-black) 55%, transparent);
   --skin-heading: var(--ottd-tc-gold);
   --skin-link: var(--ottd-tc-orange);
 
@@ -363,13 +375,38 @@ body {
   flex-direction: column;
 }
 
+/*
+ * The name of the site with its line, and the menu under them across the whole width.
+ */
 .app-header {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 14px 20px 0;
+  flex-direction: column;
+  align-items: stretch;
+  padding: var(--skin-shell-pad-y) var(--skin-shell-pad-x) 0;
+}
+
+/*
+ * The room on the right is for the import button, which is pinned to the corner of the
+ * window and is not part of the header. Only this row shares that corner, so only this row
+ * gives up the width — the menu below it runs the full width. The width comes from the
+ * button itself (SavegameImportLauncher measures it in a layout effect, before the first
+ * paint), because the caption is one length in English and another in Russian; padding
+ * rather than a spacer, which would wrap away when the row wraps.
+ */
+.app-title {
+  padding-right: calc(
+    var(--skin-shell-pad-x) +
+      var(--savegame-launcher-width, var(--skin-launcher-width-fallback))
+  );
+}
+
+.savegame-launcher {
+  position: fixed;
+  /* the corner of the window, in the header's own padding */
+  top: var(--skin-shell-pad-y);
+  right: var(--skin-shell-pad-x);
+  /* over the page, under the window it opens */
+  z-index: 10;
 }
 
 .app-header h1 {
@@ -383,6 +420,7 @@ body {
 nav {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 /*
@@ -392,11 +430,11 @@ nav {
  * their horizontal one, where the content really is wider than the column.
  */
 main {
-  padding: 16px 20px;
+  padding: 16px var(--skin-shell-pad-x);
 }
 
 .app-footer {
-  padding: 10px 20px;
+  padding: 10px var(--skin-shell-pad-x);
   font-size: var(--skin-font-small);
 }
 

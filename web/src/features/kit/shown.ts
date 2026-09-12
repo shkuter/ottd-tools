@@ -21,6 +21,7 @@ export const SHOWN_ELEMENTS = [
   'IconSwitch',
   'LineChart',
   'List',
+  'Modal',
   'Money',
   'NestedSettingRow',
   'NumberInput',

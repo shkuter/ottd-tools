@@ -8,6 +8,7 @@ import { datasetMeta } from './dataset';
 import { t, useLocale } from './i18n';
 import { useSettingsStore } from './state/settingsStore';
 import { Warning } from './components/Warning';
+import { SavegameImportLauncher } from './features/savegame-import/SavegameImportLauncher';
 import { usePageviews } from './analytics';
 import { useKitWindowStore } from './state/kitWindowStore';
 import { getSnapshotState, subscribeSnapshot } from './savegame/snapshotStore';
@@ -65,7 +66,9 @@ export default function App() {
   return (
     <div className="app">
       <Box component="header" className="app-header">
-        <div>
+        {/* the name and its line stand on the row the corner button shares, so that row is
+            the one that keeps room for it; the menu below runs the whole width */}
+        <div className="app-title">
           <Title order={1}>{t('app.title')}</Title>
           <Text className="subtitle">{t('app.subtitle')}</Text>
         </div>
@@ -88,6 +91,8 @@ export default function App() {
           </Group>
         </Box>
       </Box>
+      {/* the import is reachable from every page, not only from the settings screen */}
+      <SavegameImportLauncher />
       <Box component="main">
         {/* the warning is about Iron Horse refusing to load with inflation; a vanilla game
             runs it perfectly well, and vanilla is what a fresh calculator computes */}

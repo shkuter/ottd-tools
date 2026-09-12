@@ -19,7 +19,8 @@
   .mantine-Button-root,
   .mantine-ActionIcon-root,
   .mantine-NumberInput-control,
-  .mantine-Pagination-control {
+  .mantine-Pagination-control,
+  .mantine-Modal-close {
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
@@ -31,13 +32,15 @@
   .mantine-Button-root:hover,
   .mantine-ActionIcon-root:hover,
   .mantine-NumberInput-control:hover,
-  .mantine-Pagination-control:hover {
+  .mantine-Pagination-control:hover,
+  .mantine-Modal-close:hover {
     background: var(--skin-button-hover);
   }
 
   .mantine-Button-root:active,
   .mantine-ActionIcon-root:active,
-  .mantine-Pagination-control[data-active] {
+  .mantine-Pagination-control[data-active],
+  .mantine-Modal-close:active {
     border-color: var(--skin-edges-button-lowered);
     background: var(--skin-button-active);
     color: var(--skin-button-text);
@@ -560,7 +563,8 @@
   .mantine-Menu-dropdown,
   .mantine-Combobox-dropdown,
   .mantine-Notification-root,
-  .mantine-Alert-root {
+  .mantine-Alert-root,
+  .mantine-Modal-content {
     border-radius: var(--skin-radius);
     border-style: solid;
     border-width: var(--bevel);
@@ -920,5 +924,74 @@
 
   .mantine-ScrollArea-scrollbar {
     background: var(--skin-window-sunken);
+  }
+
+  /* ==========================================================================
+     WINDOWS — a modal is a window of the game: a raised frame (from SURFACES),
+     a caption bar with the cross in it, and the page behind it left in shade.
+     The bar and the row of buttons stay put; only what is between them scrolls.
+     ========================================================================== */
+
+  .mantine-Modal-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mantine-Modal-header {
+    flex: none;
+    background: var(--skin-window);
+    border-bottom: var(--bevel) solid var(--skin-edge-lo);
+    padding: var(--skin-pad-frametext);
+    min-height: 0;
+  }
+
+  .mantine-Modal-title {
+    color: var(--skin-caption-text);
+    text-shadow: var(--skin-text-shadow);
+  }
+
+  /* the cross is a button of the caption, plated by the BUTTONS block, and sized like
+     every other control rather than by the library's own rem */
+  .mantine-Modal-close {
+    width: var(--skin-control-height);
+    height: var(--skin-control-height);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .mantine-Modal-overlay {
+    background: var(--skin-overlay);
+  }
+
+  /* the content between the caption and the buttons is what scrolls */
+  .mantine-Modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--skin-pad-frametext);
+  }
+
+  /* A row pinned to the bottom sticks to the bottom of the padding box, so the padding
+     below it stays a gap the content keeps scrolling through. The row carries that padding
+     itself instead. */
+  .mantine-Modal-body:has(.window-actions) {
+    padding-bottom: 0;
+  }
+
+  /*
+   * The row that confirms or cancels stays on the bottom edge of the window while the
+   * differences scroll behind it: a table of settings is easily taller than the screen, and
+   * a confirmation that has to be scrolled to reads as one that is not there.
+   *
+   * Inside the window only. The settings screen shows the same panel in the flow of the page,
+   * where a row pinned to the bottom of the viewport would float over the settings.
+   */
+  .mantine-Modal-body .window-actions {
+    position: sticky;
+    bottom: 0;
+    /* the whole width, or the content keeps scrolling past the buttons beside them */
+    width: 100%;
+    background: var(--skin-window);
+    border-top: var(--bevel) solid var(--skin-edge-lo);
+    padding: var(--skin-pad-frametext) 0;
   }
 }

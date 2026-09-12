@@ -8,6 +8,7 @@ import {
   Fieldset,
   Group,
   List,
+  Modal,
   Pagination,
   Paper,
   SegmentedControl,
@@ -314,6 +315,7 @@ type ListColumn = 'name' | 'power' | 'cost' | 'profit';
  * the note at the top of this file.
  */
 function Showcase() {
+  const [windowOpen, setWindowOpen] = useState(false);
   const [sort, setSort] = useState<SortState<ListColumn>>({ column: 'profit', descending: true });
   const [page, setPage] = useState(2);
   const collator = new Intl.Collator(intlLocale());
@@ -381,6 +383,25 @@ function Showcase() {
       </div>
 
       <Pagination total={5} value={page} onChange={setPage} data-testid="kit-pagination" />
+
+      {/* a window renders into a portal, so it is only ever seen in the colour group the
+          picker names — same as the dropdown and the notification. One of it on the page:
+          the open state is one, and a copy per group would open every window at once */}
+      <Title order={3}>{t('kit.section.window')}</Title>
+      <Button data-testid="kit-window-open" onClick={() => setWindowOpen(true)}>
+        {t('kit.windowOpen')}
+      </Button>
+      <Modal
+        opened={windowOpen}
+        onClose={() => setWindowOpen(false)}
+        title={t('kit.windowTitle')}
+        closeButtonProps={{ 'aria-label': t('kit.windowCloseLabel') }}
+      >
+        <div data-testid="kit-window">
+          <Text>{t('kit.windowText')}</Text>
+          <Button onClick={() => setWindowOpen(false)}>{t('kit.windowClose')}</Button>
+        </div>
+      </Modal>
 
       <Title order={3}>{t('kit.section.chart')}</Title>
       <div data-testid="kit-chart">

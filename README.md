@@ -6,8 +6,8 @@
 
 Calculator for OpenTTD, with optional support for the Iron Horse (Pony roster) and FIRS 5
 NewGRF sets. Out of the box it computes vanilla OpenTTD: the calculator assumes nothing about
-your game until you tell it — switch the sets on in the settings, or import a savegame and let
-it read them off your game.
+your game until you tell it — switch the sets on in the settings, or import a savegame — the
+button is in the corner of the window on every tab — and let it read them off your game.
 
 - **Best train** — the job first, the train second: distance, station length, cargo and
   industry output go in, and a swept catalogue comes back ranked by profit, haul, supply or
