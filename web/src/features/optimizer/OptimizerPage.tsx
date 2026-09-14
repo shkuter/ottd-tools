@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
   Button,
@@ -272,6 +272,31 @@ export default function OptimizerPage() {
   );
   // Nothing takes this cargo — there is nothing to keep supplied, so the goal is not offered.
   const supplyAvailable = goalAvailable && supplyTarget !== null;
+
+  /*
+   * The reason a goal is unavailable is given on the goal itself, not only in the line under
+   * the row: as a title on the whole option, hatch included, for the pointer, and as the
+   * description of its radio for a screen reader. Mantine renders both with no prop per
+   * option, so they are set here — the option is the label drawn right after its radio. The
+   * reason the page states is the missing output; a supply goal with no consumer has none.
+   * A layout effect, as in SettingRow: the attributes are in place before the frame is painted.
+   */
+  const goalHintId = useId();
+  const goalReason = goalAvailable ? undefined : t('opt.goalNeedsProduction');
+  const goalControl = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const radios = goalControl.current?.querySelectorAll<HTMLInputElement>('input[type="radio"]') ?? [];
+    for (const radio of radios) {
+      const option = radio.nextElementSibling;
+      if (goalReason && radio.disabled) {
+        radio.setAttribute('aria-describedby', goalHintId);
+        option?.setAttribute('title', goalReason);
+      } else {
+        radio.removeAttribute('aria-describedby');
+        option?.removeAttribute('title');
+      }
+    }
+  });
   const activeGoal =
     (goal === 'supply' && !supplyAvailable) || !goalAvailable ? 'profit' : goal;
 
@@ -505,6 +530,7 @@ export default function OptimizerPage() {
         <Field label={t('opt.goal')} width="content">
           {({ labelId }) => (
             <SegmentedControl
+              ref={goalControl}
               aria-labelledby={labelId}
               value={activeGoal}
               onChange={(v) => setGoal(v as typeof goal)}
@@ -550,7 +576,11 @@ export default function OptimizerPage() {
           onChange={setSubsidised}
         />
       </Group>
-      {!goalAvailable && <p className="hint goal-hint">{t('opt.goalNeedsProduction')}</p>}
+      {!goalAvailable && (
+        <p id={goalHintId} className="hint goal-hint">
+          {goalReason}
+        </p>
+      )}
       <PrefillNote
         origin={prefillOrigin}
         current={{ cargoLabel, distanceTiles: distance, productionPerMonth }}

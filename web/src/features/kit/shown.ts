@@ -51,12 +51,15 @@ export const SHOWN_ELEMENTS = [
 /** Elements that need no specimen of their own, and why. */
 export const EXEMPT_ELEMENTS: Record<string, string> = {
   Box: 'a div in library clothes — it draws nothing of its own',
+  FileButton: 'a hidden file input behind a Button — the button is what is drawn, and it is shown',
   Image: 'the box a picture is drawn in; the pictures themselves are shown',
   Input: 'the wrapper Field is built from — the field is shown',
   MantineProvider: 'the shell that hands out the theme; it draws nothing',
   StrandedVehicles: 'a warning about its own occasion — Warning is shown',
   TrackTypeField: 'a dropdown that reads a setting — the dropdown itself is shown',
-  UnstyledButton: 'a link in the clothes of a cargo cell — the cell and the link are shown',
+  UnstyledButton:
+    'a link in the clothes of a cargo cell, and the keyboard stop inside a sortable header — ' +
+    'the cell, the link and the sortable header are shown',
   YearField: 'a number field that reads a setting — the number field is shown',
 };
 

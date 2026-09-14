@@ -278,6 +278,30 @@ describe('цель «Мин. расходы» на вкладке', () => {
     expect(screen.getByText(/needs the industry output/i)).toBeTruthy();
   });
 
+  it('называет причину у самих недоступных целей — подсказкой и описанием для скринридера', async () => {
+    givenSearch({ productionPerMonth: 0 });
+    draw();
+    const hint = screen.getByText(/needs the industry output/i);
+    for (const goal of ['transported', 'supply', 'cheapest']) {
+      // описание радиокнопки — строка, на которую указывает её aria-describedby
+      await waitFor(() => {
+        const described = goalInput(goal)!.getAttribute('aria-describedby');
+        expect(described && document.getElementById(described)?.textContent).toBe(hint.textContent);
+      });
+      // под указателем причину показывает title на всём пункте, со штриховкой вокруг надписи
+      expect(goalInput(goal)!.nextElementSibling!.getAttribute('title')).toBe(hint.textContent);
+    }
+    expect(goalInput('profit')!.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('не описывает цели причиной, когда выпуск задан', async () => {
+    givenSearch({ productionPerMonth: 1200 });
+    draw();
+    await waitFor(() => expect(goalInput('transported')!.disabled).toBe(false));
+    expect(goalInput('transported')!.hasAttribute('aria-describedby')).toBe(false);
+    expect(document.querySelector('.mantine-SegmentedControl-control [title]')).toBeNull();
+  });
+
   it('возвращается к ранжированию по прибыли, если выпуск обнулили под ней', async () => {
     givenSearch({ goal: 'cheapest' });
     draw();

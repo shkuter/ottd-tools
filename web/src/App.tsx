@@ -6,14 +6,14 @@ import SettingsPage from './features/settings/SettingsPage';
 import FirsPage from './features/firs/FirsPage';
 import { datasetMeta } from './dataset';
 import { t, useLocale } from './i18n';
-import { LOCALES, useLocaleStore } from './state/localeStore';
+import { LOCALES, useLocaleStore, type Locale } from './state/localeStore';
 import { useSettingsStore } from './state/settingsStore';
 import { Warning } from './components/Warning';
 import { SavegameImportLauncher } from './features/savegame-import/SavegameImportLauncher';
 import { usePageviews } from './analytics';
 import { useKitWindowStore } from './state/kitWindowStore';
 import { getSnapshotState, subscribeSnapshot } from './savegame/snapshotStore';
-import { TABS } from './tabs';
+import { TABS, type Tab } from './tabs';
 
 // the income tab pulls in recharts and the catalogue is a page of its own;
 // nothing else needs either, so both tabs load with their own chunk
@@ -41,6 +41,20 @@ export default function App() {
   // t() reads the locale outside React, so the whole tree re-renders from here
   const locale = useLocale();
   const { pathname } = useLocation();
+
+  /*
+   * The browser tab names the calculator's tab, so pages are told apart in the history and in
+   * bookmarks. Declared before the pageview hook on purpose: effects of one component run in
+   * the order they are declared, and the count has to go out with the title of the page that
+   * was arrived at, not of the one that was left.
+   */
+  const fileName = imported?.fileName;
+  useEffect(() => {
+    const tab = TABS.find((entry) => entry.path === pathname);
+    const site = t('app.title', undefined, locale);
+    document.title = tab ? `${tabName(tab, fileName, locale)} — ${site}` : site;
+  }, [pathname, locale, fileName]);
+
   usePageviews();
 
   useEffect(() => {
@@ -84,9 +98,7 @@ export default function App() {
               .filter((tab) => tab.path !== '/game' || imported !== null)
               .map((tab) => (
                 <Button key={tab.path} component={NavLink} to={tab.path} size="compact-md">
-                  {/* the file name titles the game tab; the label stands in for a
-                      savegame that arrived without one */}
-                  {tab.path === '/game' ? imported!.fileName || t(tab.label) : t(tab.label)}
+                  {tabName(tab, fileName, locale)}
                 </Button>
               ))}
           </Group>
@@ -166,6 +178,15 @@ export default function App() {
       </Box>
     </div>
   );
+}
+
+/**
+ * What a tab is called, in the menu and in the browser's title alike — one rule, so the two
+ * cannot drift apart. The file name titles the game tab; the label stands in for a savegame
+ * that arrived without one.
+ */
+function tabName(tab: Tab, fileName: string | undefined, locale: Locale) {
+  return tab.path === '/game' && fileName ? fileName : t(tab.label, undefined, locale);
 }
 
 /**

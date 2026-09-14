@@ -35,4 +35,10 @@ describe('theme', () => {
     // the window grey has to reach Mantine's dark surfaces too
     expect(theme.colors?.dark).toEqual(colourTuple(gradients.grey));
   });
+
+  it('honours a system that asks for less motion', () => {
+    // Mantine animates its windows, dropdowns and switches whatever the system asks for unless
+    // the theme says otherwise; the rendered result is checked in the visual suite
+    expect(theme.respectReducedMotion).toBe(true);
+  });
 });

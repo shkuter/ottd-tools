@@ -137,11 +137,16 @@ export const theme: MantineThemeOverride = createTheme({
       h1: { fontSize: 'var(--skin-font-large)' },
       h2: { fontSize: 'var(--skin-font-heading)' },
       h3: { fontSize: 'var(--skin-font)' },
-      h4: { fontSize: 'var(--skin-font-small)' },
-      h5: { fontSize: 'var(--skin-font-small)' },
-      h6: { fontSize: 'var(--skin-font-small)' },
+      // a subheading is read, so it is not set below the text it heads: FS_SMALL is the game's
+      // size for labels on maps and graphs. What tells it apart is its colour and case
+      h4: { fontSize: 'var(--skin-font)' },
+      h5: { fontSize: 'var(--skin-font)' },
+      h6: { fontSize: 'var(--skin-font)' },
     },
   },
+
+  // a system asking for less motion gets windows, dropdowns and switches that change at once
+  respectReducedMotion: true,
 
   /* vsep_normal 2 and its multiples: the gaps the game leaves between widgets */
   spacing: {

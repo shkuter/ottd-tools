@@ -57,6 +57,10 @@
   --skin-scale: 1.5;
   --bevel: round(calc(1px * var(--skin-scale)), 1px);
   --skin-radius: 0;
+  /* the width of the dashed frame round whatever the keyboard is on. Only the width is a token:
+     its colour is the window's text, which follows the colour group, and a var() written into a
+     shorthand token here would freeze at the base theme */
+  --skin-focus-width: calc(2 * var(--bevel));
 
   /* The shell's own margins — the page around the game's widgets, which the game has no
      metric for: the side gutter and top padding of the header (which main and the footer
@@ -409,6 +413,17 @@ body {
   z-index: 10;
 }
 
+/*
+ * A narrow window has no empty margin beside the content for a pinned button to sit over: as
+ * the page scrolls it would lie across the text. There it stands in the corner of the header
+ * and leaves with it. No ancestor is positioned, so the corner is the document's.
+ */
+@media (max-width: 700px) {
+  .savegame-launcher {
+    position: absolute;
+  }
+}
+
 .app-header h1 {
   margin: 0;
 }
@@ -445,7 +460,9 @@ main {
   align-items: flex-end;
   gap: 4px 16px;
   padding: 10px var(--skin-shell-pad-x);
-  font-size: var(--skin-font-small);
+  /* read, not glanced at: versions, sources and the language switch are set at FS_NORMAL, and
+     the links in the line are the size of the text around them */
+  font-size: var(--skin-font);
 }
 
 h2 {
@@ -645,7 +662,7 @@ h4 {
 
 .intro-toggles .intro-reset {
   padding: 1px 8px;
-  font-size: var(--skin-font-small);
+  font-size: var(--skin-font);
 }
 
 /* a superscript mark beside a name or a figure: the "?" on a vehicle that may not have
@@ -1019,8 +1036,15 @@ h4 {
 
 /* the keyboard cursor: the same frame the game draws around a focused widget */
 .graph-node[data-focused] {
-  outline: calc(2 * var(--bevel)) dashed var(--skin-text);
+  outline: var(--skin-focus-width) dashed var(--skin-text);
   outline-offset: var(--bevel);
+}
+
+/* the canvas itself takes the keyboard before any node does; it clips what overflows it, so its
+   frame is drawn inside its edge */
+.graph-canvas:focus-visible {
+  outline: var(--skin-focus-width) dashed var(--skin-text);
+  outline-offset: calc(-1 * var(--skin-focus-width));
 }
 
 /*
@@ -1309,6 +1333,13 @@ a:not(.mantine-Button-root):not(.mantine-ActionIcon-root) {
   text-decoration-color: currentcolor;
 }
 
+/* A plain link — a router link in a line of text, which carries none of Mantine's classes — is
+   framed the way every other control is, rather than in the browser's own blue ring. */
+a:focus-visible {
+  outline: var(--skin-focus-width) dashed var(--skin-text);
+  outline-offset: var(--bevel);
+}
+
 /*
  * A button that reads as a link but leads nowhere — it sets a value, opens a
  * tab, undoes an entry — is underlined dashed. The broken line is the older
@@ -1579,7 +1610,7 @@ h3,
  */
 h4,
 .app-header .subtitle {
-  font-size: var(--skin-font-small);
+  font-size: var(--skin-font);
 }
 
 .grf-error {

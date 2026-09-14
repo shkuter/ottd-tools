@@ -1,4 +1,4 @@
-import { Table } from '@mantine/core';
+import { Table, UnstyledButton } from '@mantine/core';
 import { nextSort, type SortState } from './sorting';
 
 /**
@@ -33,18 +33,25 @@ export function SortableTh<C extends string>({
       className={`sortable${active ? ' sorted' : ''}${className ? ` ${className}` : ''}`}
       title={title}
       colSpan={colSpan}
+      aria-sort={active ? (sort.descending ? 'descending' : 'ascending') : undefined}
       onClick={() => onSort(next)}
     >
-      {children}
-      {/* the arrow is a shape of the skin rather than a glyph of the font: a glyph
-          carries its font's own size and baseline, and would never line up with
-          the same arrow on a dropdown or a stepper */}
-      {active && (
-        <span
-          className="sort-mark"
-          data-direction={sort.descending ? 'descending' : 'ascending'}
-        />
-      )}
+      {/* The button is what the keyboard reaches, and it has no handler of its own: Enter and
+          Space fire a click on it, which bubbles up to the header just as a click of the mouse
+          does. Every way in therefore takes exactly one step of the cycle, and a click on the
+          cell around the button still sorts. */}
+      <UnstyledButton type="button" className="sort-button">
+        {children}
+        {/* the arrow is a shape of the skin rather than a glyph of the font: a glyph
+            carries its font's own size and baseline, and would never line up with
+            the same arrow on a dropdown or a stepper */}
+        {active && (
+          <span
+            className="sort-mark"
+            data-direction={sort.descending ? 'descending' : 'ascending'}
+          />
+        )}
+      </UnstyledButton>
     </Table.Th>
   );
 }

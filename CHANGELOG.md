@@ -18,6 +18,23 @@ of what users see):
 
 ## [Unreleased]
 
+### Changed
+
+- The browser tab names the open calculator tab, such as "Route income — OTTD Tools", instead of the same title everywhere.
+
+### Fixed
+
+- Every control shows a dashed frame when the keyboard reaches it, drawn in the window's text colour the way the game marks a selected widget. Fields used to show nothing, and buttons and tabs had a yellow ring on yellow.
+- Sortable column headers take Tab, Enter and Space, and tell screen readers which way a list is sorted.
+- The "Load savegame" button is a real button now: Tab reaches it and Enter opens the file picker, both in the corner of the window and on the settings tab.
+- A setting's control is named after the setting and described by its hint; a switch is no longer announced only as "on" or "off".
+- The fields of the industry supply table name their value and their cargo.
+- The add and remove buttons of the consist builder name their vehicle.
+- On windows up to 700px wide, the import button scrolls away with the header instead of lying over the page.
+- Windows, dropdowns and switches stop animating when the system asks for reduced motion.
+- The footer, the language switch, the site's subtitle and subheadings are set at the normal text size instead of 9px.
+- The lettering of an unavailable goal on the Best train tab no longer runs across its hatch pattern, and the goal itself carries the reason it is unavailable, both as a tooltip and for screen readers.
+
 ## [0.27.0] - 2026-09-12
 
 ### Added

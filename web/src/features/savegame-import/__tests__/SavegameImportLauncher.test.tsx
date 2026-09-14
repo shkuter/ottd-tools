@@ -62,9 +62,9 @@ function launcher() {
   return screen.getByLabelText(t('savegame.importButton'));
 }
 
-/** The plate the caption is written on; the input inside it carries no text of its own. */
+/** The button the caption is written on; the file input beside it carries no text of its own. */
 function launcherCaption() {
-  return document.querySelector('.savegame-launcher label')!.textContent;
+  return document.querySelector('.savegame-launcher button')!.textContent;
 }
 
 async function chooseFile() {

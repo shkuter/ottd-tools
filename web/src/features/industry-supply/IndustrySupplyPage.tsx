@@ -205,13 +205,14 @@ export default function IndustrySupplyPage() {
                 const key = inputKey(industry.id, run.cargoLabel);
                 const params = store.inputs[key] ?? EMPTY_INPUT;
                 const state = summary.states[index];
+                const cargoTitle = run.cargo ? cargoName(run.cargo) : run.cargoLabel;
                 return (
                   <Table.Tr key={run.cargoLabel}>
                     <Table.Td>
                       {/* Icon and name on one line, the way the cargo select shows them. */}
                       <span className="supply-cargo">
                         <CargoIcon icon={run.cargo?.icon ?? ''} />
-                        {run.cargo ? cargoName(run.cargo) : run.cargoLabel}
+                        {cargoTitle}
                       </span>
                     </Table.Td>
                     <Table.Td className="cell-num">
@@ -220,6 +221,8 @@ export default function IndustrySupplyPage() {
                         startValue={STEP_FROM_EMPTY}
                         value={params.distanceTiles || ''}
                         placeholder={t('supply.unsetField')}
+                        // a field in a row is named by what it sets and by the row's cargo
+                        aria-label={t('supply.distanceFor', { cargo: cargoTitle })}
                         onChange={(v) =>
                           store.setInput(key, { distanceTiles: Math.max(0, Number(v) || 0) })
                         }
@@ -233,6 +236,7 @@ export default function IndustrySupplyPage() {
                         startValue={10}
                         value={params.productionPerMonth || ''}
                         placeholder={t('supply.unsetField')}
+                        aria-label={t('supply.productionFor', { cargo: cargoTitle })}
                         onChange={(v) =>
                           store.setInput(key, {
                             productionPerMonth: Math.max(0, Number(v) || 0),

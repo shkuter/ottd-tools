@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { harnessFixture } from './harness';
 import { snapshot } from './collect';
-import { ROUTES } from './routes';
+import { KIT, ROUTES } from './routes';
 
 /**
  * One weight: the game's font ships in a single face, so a rule asking for bold
@@ -30,3 +30,52 @@ describe.each(ROUTES)('$path', ({ path, ready }) => {
   });
 });
 
+/**
+ * What is read is not set below the body size. FS_SMALL is the game's size for labels on maps
+ * and graphs; the footer, the language switch, the site's line under its name, subheadings and
+ * the lettering on buttons are text to read, and at FS_SMALL they came out at 9px. Chart and
+ * graph labels are not in the list: they keep whatever size their drawing needs.
+ */
+const TEXT_TO_READ = [
+  '.app-footer .footer-meta',
+  '.app-footer a',
+  '.app-footer .language-switch',
+  '.app-header .subtitle',
+  'main h4',
+  'main h5',
+  'main h6',
+  '.mantine-Button-label',
+].join(', ');
+
+describe.each([...ROUTES, KIT])('$path', ({ path, ready }) => {
+  it('sets what is read at no less than the body size', async () => {
+    const page = await harness().goto(path, ready);
+    const found = await page.evaluate((selector) => {
+      const probe = document.createElement('div');
+      probe.style.fontSize = 'var(--skin-font)';
+      document.body.append(probe);
+      const body = parseFloat(getComputedStyle(probe).fontSize);
+      probe.remove();
+
+      const size = (element: Element) => parseFloat(getComputedStyle(element).fontSize);
+      const footer = document.querySelector('.app-footer .footer-meta')!;
+      return {
+        body,
+        small: [...document.querySelectorAll(selector)]
+          .filter((element) => element.textContent?.trim() && size(element) < body - 0.5)
+          .map(
+            (element) =>
+              `${element.className}: ${getComputedStyle(element).fontSize} — ${element.textContent!.trim().slice(0, 30)}`,
+          ),
+        footerText: size(footer),
+        footerLinks: [...footer.querySelectorAll('a')].map(size),
+      };
+    }, TEXT_TO_READ);
+
+    expect(found.body, 'the body size did not resolve').toBeGreaterThan(0);
+    expect(found.small, 'text to be read is set below the body size').toEqual([]);
+    for (const link of found.footerLinks) {
+      expect(link, 'a footer link is not the size of the text around it').toBe(found.footerText);
+    }
+  });
+});

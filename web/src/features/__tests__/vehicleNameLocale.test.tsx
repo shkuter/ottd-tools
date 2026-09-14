@@ -79,7 +79,7 @@ describe('каталог и язык', () => {
     draw();
     await waitFor(() => expect(listed().length).toBeGreaterThan(0));
     // сортируем по имени: порядок обязан следовать тем именам, что на экране
-    await user.click(screen.getByText('Название', { selector: 'th' }));
+    await user.click(screen.getByRole('columnheader', { name: 'Название' }));
     await waitFor(() => expect(listed().length).toBeGreaterThan(0));
     const ruOrder = listed();
     expect(ruOrder[0]).toMatch(/[А-Яа-я]/);

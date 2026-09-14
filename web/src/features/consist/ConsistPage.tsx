@@ -35,7 +35,7 @@ import { standsInBuyMenu, vehicleAvailability } from '../../engine/availability'
 import { BuyMenuNote } from '../../components/BuyMenuNote';
 import { useSoldIds } from '../savegame/soldIds';
 import { intlLocale, t, useLocale } from '../../i18n';
-import { cargoName, cargoUnits, matchesTrainName, sortCargos } from '../../i18n/names';
+import { cargoName, cargoUnits, matchesTrainName, sortCargos, trainName } from '../../i18n/names';
 import { money, num, speed, speedUnitLabel, speedValue, withUnit } from '../../components/format';
 import { CargoSelect } from '../../components/PictureSelect';
 import { fieldWidth } from '../../skin';
@@ -304,7 +304,8 @@ export default function ConsistPage() {
                   <Table.Td>
                     <ActionIcon
                       className="btn-add"
-                      aria-label={t('consist.add')}
+                      // dozens of these stand in a column; the name says which vehicle it adds
+                      aria-label={t('consist.addNamed', { name: trainName(train) })}
                       onClick={() => addToConsist(train.id)}
                     >
                       +
@@ -352,7 +353,10 @@ export default function ConsistPage() {
                   onChange={(v) => setCount(train.id, Number(v) || 0)}
                   w={84}
                 />
-                <ActionIcon aria-label={t('consist.remove')} onClick={() => removeFromConsist(train.id)}>
+                <ActionIcon
+                  aria-label={t('consist.removeNamed', { name: trainName(train) })}
+                  onClick={() => removeFromConsist(train.id)}
+                >
                   ×
                 </ActionIcon>
               </Group>

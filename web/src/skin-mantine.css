@@ -127,6 +127,78 @@
     --skin-hatch-colour: var(--skin-hatch);
   }
 
+  /*
+   * The lettering of an unavailable option stands on the plate itself. The hatch around it
+   * says the option cannot be chosen; letters drawn across the pattern read as a damaged
+   * sprite rather than as text. The negative margin gives back the width the backing takes,
+   * so the option is no wider than the available ones beside it.
+   */
+  .mantine-SegmentedControl-label[data-disabled] .mantine-SegmentedControl-innerLabel {
+    background-color: var(--skin-button);
+    padding-inline: var(--skin-hsep-normal);
+    margin-inline: calc(-1 * var(--skin-hsep-normal));
+  }
+
+  /* ==========================================================================
+     KEYBOARD FOCUS — the frame the game draws round the widget it has selected
+
+     A dashed frame in the colour of the window's text: the one the chain graph
+     already draws round its focused node (.graph-node[data-focused], skin.css).
+     Mantine's own ring is the primary colour, which here is the yellow of the
+     very plates it would ring, so it could not be seen on them. The text colour
+     follows the window's colour group, and so does the frame.
+
+     A button shows it for the keyboard only (:focus-visible); a field shows it
+     whenever the caret is in it, because that is where typing goes. A control
+     that hides its input draws the frame on the part that is seen.
+     ========================================================================== */
+
+  .mantine-focus-auto:focus-visible,
+  .mantine-Input-input:focus,
+  .mantine-SegmentedControl-input:focus-visible + .mantine-SegmentedControl-label,
+  .mantine-Switch-input:focus-visible + .mantine-Switch-track,
+  /* a chart takes the keyboard too (recharts' accessibility layer), and the chart package
+     rings it in the primary colour */
+  .mantine-LineChart-root svg:focus-visible,
+  .mantine-AreaChart-root svg:focus-visible,
+  .mantine-BarChart-root svg:focus-visible {
+    outline: var(--skin-focus-width) dashed var(--skin-text);
+    outline-offset: var(--bevel);
+  }
+
+  /* An option of a switch row stands flush against the row, which clips what overflows it, so
+     its frame is drawn inside its own edge, where nothing can cut it off. */
+  .mantine-SegmentedControl-input:focus-visible + .mantine-SegmentedControl-label {
+    outline-offset: calc(-1 * var(--skin-focus-width));
+  }
+
+  /*
+   * In a list, a frame reaching past its cell is cut off by the scrolling list at its edge and
+   * painted over by the pinned cell of the next row, so a plate in a cell — a row action, a
+   * button, a field — is framed inside its own edge, where its padding keeps the frame off the
+   * lettering. Controls with no plate keep the outer frame: a button that reads as a link has
+   * no padding, so a frame inside would cross its words, and a checkbox would lose its tick.
+   * The rendered-page check holds them to the same result — no side cut off or covered.
+   */
+  .table-wrap .mantine-Table-td :is(.mantine-ActionIcon-root, .mantine-Button-root:not(.btn-link)):focus-visible,
+  .table-wrap .mantine-Table-td .mantine-Input-input:focus {
+    outline-offset: calc(-1 * var(--skin-focus-width));
+  }
+
+  /*
+   * The button of a sortable header runs right up to the letters of its caption, so a frame
+   * drawn inside it would cross them. The header cell is framed instead: its padding keeps the
+   * frame off the caption, and inside the cell nothing can cut it off.
+   */
+  .mantine-Table-th .sort-button:focus-visible {
+    outline: none;
+  }
+
+  .mantine-Table-th:has(> .sort-button:focus-visible) {
+    outline: var(--skin-focus-width) dashed var(--skin-text);
+    outline-offset: calc(-1 * var(--skin-focus-width));
+  }
+
   /* Mantine dims a disabled label and description; the game does not. TC_GREY
      carries TC_NO_SHADE, so the shadow inherited from the theme carrier goes. */
   .mantine-InputWrapper-label[data-disabled],
@@ -708,6 +780,17 @@
   .table-wrap .mantine-Table-th.sortable {
     cursor: pointer;
     user-select: none;
+  }
+
+  /* The button inside a sortable header is only there for the keyboard: it takes the header's
+     type, colour and alignment, and spans the cell so the arrow stays beside the caption. */
+  .mantine-Table-th .sort-button {
+    width: 100%;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
+    text-shadow: inherit;
+    white-space: inherit;
   }
 
   .table-wrap .mantine-Table-th.sorted {

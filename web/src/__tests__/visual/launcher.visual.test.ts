@@ -67,7 +67,7 @@ describe.each([...ROUTES, KIT])('$path', (route) => {
 });
 
 describe('the import button', () => {
-  it('stays in the corner while the header scrolls away', async () => {
+  it('stays in the corner of a wide window while the header scrolls away', async () => {
     const page = await harness().goto('/optimizer', '.page-optimizer');
     const before = await boxes(page);
 
@@ -80,12 +80,27 @@ describe('the import button', () => {
     expect(after.header.top).toBeLessThan(before.header.top);
   });
 
+  it('leaves with the header on a narrow window instead of lying over the page', async () => {
+    const page = await harness().goto('/optimizer', '.page-optimizer');
+    await page.setViewportSize(NARROW);
+    const before = await boxes(page);
+
+    await page.evaluate(() => window.scrollTo(0, 400));
+    const after = await boxes(page);
+
+    expect(after.button.top, 'the button stayed pinned over the page').toBeLessThan(before.button.top);
+    // it moves exactly as the header does, so what is under it is the header's corner at any
+    // scroll — and the header is kept clear of it by the check above
+    expect(after.button.top - before.button.top).toBeCloseTo(after.header.top - before.header.top, 0);
+    await page.evaluate(() => window.scrollTo(0, 0));
+  });
+
   it('shows its whole caption at 400px', async () => {
     const page = await harness().goto('/optimizer', '.page-optimizer');
     await page.setViewportSize(NARROW);
 
     const caption = await page.evaluate(() => {
-      const label = document.querySelector('.savegame-launcher label')!;
+      const label = document.querySelector('.savegame-launcher button')!;
       const box = label.getBoundingClientRect();
       return {
         text: (label.textContent ?? '').trim(),
