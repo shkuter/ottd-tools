@@ -128,7 +128,8 @@ describe('the import button in the corner', () => {
     await chooseFile();
     await differenceShown();
     await userEvent.click(screen.getByRole('button', { name: t('savegame.apply') }));
-    await screen.findByText(new RegExp(t('savegame.snapshotSaved', { summary: '' }).slice(0, 12)));
+    // applying loads its module on demand, which a cold CI runner can take longer than a second to do
+    await screen.findByText(new RegExp(t('savegame.snapshotSaved', { summary: '' }).slice(0, 12)), {}, { timeout: 10_000 });
 
     expect(launcherCaption()).toBe(before);
   });
