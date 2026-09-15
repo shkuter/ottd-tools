@@ -23,6 +23,23 @@ export function defaultCompanyId(companies: readonly SnapshotCompany[]): number 
 const NOT_USED_BY_THE_FORECAST = new Set<keyof SnapshotSettings['calc']>(['trackType']);
 
 /**
+ * The multipliers of the Base Costs set. While the set is off, the engine reads none of them
+ * (`basecostBuyFactor` and its siblings return 1), so with it off on both sides a value left
+ * over from an earlier game changes no figure — naming it would report a drift that is not
+ * there. Listed by name rather than matched by prefix: `basecostGrf` itself is the switch and
+ * is always compared.
+ */
+const BASE_COSTS_MULTIPLIER_KEYS = new Set<keyof SnapshotSettings['game']>([
+  'basecostLocomotive',
+  'basecostWagon',
+  'basecostTrainRunningSteam',
+  'basecostTrainRunningDiesel',
+  'basecostTrainRunningElectric',
+  'basecostInfrastructure',
+  'basecostRailConstruction',
+]);
+
+/**
  * Translation keys of the settings that have drifted since the import, so the tab can say
  * which figures its forecasts are not using. Compared field by field: what matters to the
  * user is that the calculator now stands somewhere else, not by how much.
@@ -35,7 +52,9 @@ export function differingSettings(
   current: SnapshotSettings,
 ): string[] {
   const keys: string[] = [];
+  const baseCostsInert = !snapshot.game.basecostGrf && !current.game.basecostGrf;
   for (const key of Object.keys(snapshot.game) as (keyof SnapshotSettings['game'])[]) {
+    if (baseCostsInert && BASE_COSTS_MULTIPLIER_KEYS.has(key)) continue;
     if (snapshot.game[key] !== current.game[key]) keys.push(SETTING_LABEL_KEYS[key]);
   }
   for (const key of Object.keys(snapshot.calc) as (keyof SnapshotSettings['calc'])[]) {

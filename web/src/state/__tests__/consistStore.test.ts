@@ -13,7 +13,7 @@ const vanillaWagon = vanillaTrains.find((t) => t.kind === 'wagon')!;
 
 async function rehydrateFrom(json: unknown) {
   // merge() receives the live state, so start each case from the defaults
-  useConsistStore.setState({ entries: [], capacityIndex: 2, cargoLabel: 'COAL' });
+  useConsistStore.setState({ entries: [], capacityIndex: 2 });
   const storage = memoryStorage({ [KEY]: JSON.stringify(json) });
   useConsistStore.persist.setOptions({ storage: createJSONStorage(() => storage) });
   await useConsistStore.persist.rehydrate();
@@ -23,14 +23,13 @@ async function rehydrateFrom(json: unknown) {
 describe('consistStore persist', () => {
   it('оживляет Train по id из каталога и отбрасывает пропавшие машины', async () => {
     await rehydrateFrom({
-      state: { items: [{ id: engine.id, count: 2 }, { id: 'gone_with_the_update', count: 3 }, { id: wagon.id, count: 5 }], capacityIndex: 4, cargoLabel: null },
+      state: { items: [{ id: engine.id, count: 2 }, { id: 'gone_with_the_update', count: 3 }, { id: wagon.id, count: 5 }], capacityIndex: 4 },
       version: 0,
     });
     const s = useConsistStore.getState();
     expect(s.entries.map((e) => [e.train.id, e.count])).toEqual([[engine.id, 2], [wagon.id, 5]]);
     expect(s.entries[0].train).toBe(engine);
     expect(s.capacityIndex).toBe(4);
-    expect(s.cargoLabel).toBeNull();
   });
 
   it('пустое хранилище → дефолты', async () => {
@@ -38,7 +37,6 @@ describe('consistStore persist', () => {
     const s = useConsistStore.getState();
     expect(s.entries).toEqual([]);
     expect(s.capacityIndex).toBe(2);
-    expect(s.cargoLabel).toBe('COAL');
   });
 
   it('состав ванильной партии переживает перезагрузку', async () => {
@@ -59,6 +57,22 @@ describe('consistStore persist', () => {
     await rehydrateFrom({ state: {}, version: 0 });
     useConsistStore.getState().setEntries([{ train: vanillaEngine, count: 1 }]);
     expect(useConsistStore.getState().entries).toEqual([{ train: vanillaEngine, count: 1 }]);
+  });
+
+  it('состав, сохранённый вместе с грузом прежней версией, оживает без груза', async () => {
+    // груз теперь общий и живёт в routeStore; старое поле merge пропускает, а следующая
+    // запись стора его уже не повторяет
+    const storage = await rehydrateFrom({
+      state: { items: [{ id: engine.id, count: 1 }], capacityIndex: 3, cargoLabel: 'PASS' },
+      version: 0,
+    });
+    const s = useConsistStore.getState();
+    expect(s.entries.map((e) => [e.train.id, e.count])).toEqual([[engine.id, 1]]);
+    expect(s.capacityIndex).toBe(3);
+    expect(s).not.toHaveProperty('cargoLabel');
+
+    s.add(wagon.id);
+    expect(JSON.parse(storage.dump()[KEY]).state).not.toHaveProperty('cargoLabel');
   });
 
   it('в storage уходят только id и count', async () => {

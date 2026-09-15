@@ -7,15 +7,21 @@
  * @vitest-environment jsdom
  */
 import { MantineProvider } from '@mantine/core';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import { Notifications, notifications } from '@mantine/notifications';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import OptimizerPage from '../OptimizerPage';
 import { useOptimizerStore, type OptimizerState } from '../../../state/optimizerStore';
 import { useSettingsStore } from '../../../state/settingsStore';
+import { TRIP_BEFORE, tripOf } from '../../../state/__tests__/tripFixture';
 import { useLocaleStore } from '../../../state/localeStore';
 import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../../engine/settings';
+import { useConsistStore } from '../../../state/consistStore';
+import { useRouteStore } from '../../../state/routeStore';
+import { trains } from '../../../dataset';
+import { t } from '../../../i18n';
 
 function draw() {
   return render(
@@ -370,5 +376,77 @@ describe('цель «Мин. расходы» на вкладке', () => {
     // Сам поиск нашёл достаточно; это фильтр ни с чем не совпал, и условия цели тут ни при чём.
     expect(screen.getByText(/fits the current filters/i)).toBeTruthy();
     expect(screen.queryByText(/cargo left standing at the station/i)).toBeNull();
+  });
+});
+
+describe('кнопка «→» в выдаче', () => {
+  const engine = trains.find((train) => train.kind === 'engine')!;
+
+  /** Вкладка вместе с приёмником переноса и уведомлениями, как в оболочке. */
+  function drawWithIncome() {
+    return render(
+      <MantineProvider forceColorScheme="dark">
+        <Notifications transitionDuration={0} />
+        <MemoryRouter initialEntries={['/optimizer']}>
+          <Routes>
+            <Route path="/optimizer" element={<OptimizerPage />} />
+            <Route path="/income" element={<div>income tab</div>} />
+          </Routes>
+        </MemoryRouter>
+      </MantineProvider>,
+    );
+  }
+
+  const arrows = () => screen.getAllByRole('button', { name: t('opt.apply') });
+  const restore = () => screen.queryAllByRole('button', { name: t('notify.restoreConsist') });
+
+  beforeEach(() => {
+    useRouteStore.setState(TRIP_BEFORE);
+  });
+
+  afterEach(() => {
+    act(() => notifications.clean());
+  });
+
+  it('подписана действием с названием вкладки из меню', () => {
+    givenSearch({});
+    useConsistStore.setState({ entries: [] });
+    draw();
+    expect(arrows()[0].getAttribute('title')).toContain(t('nav.income'));
+  });
+
+  it('поверх собранного состава даёт вернуть и состав, и рейс, не меняя вкладку', async () => {
+    givenSearch({});
+    useConsistStore.setState({ entries: [{ train: engine, count: 1 }] });
+    drawWithIncome();
+
+    await userEvent.click(arrows()[0]);
+    expect(screen.getByText('income tab')).toBeTruthy();
+    expect(useConsistStore.getState().entries).not.toEqual([{ train: engine, count: 1 }]);
+    expect(useRouteStore.getState().cargoLabel).toBe('COAL');
+
+    const [button] = await waitFor(() => {
+      expect(restore()).toHaveLength(1);
+      return restore();
+    });
+    await userEvent.click(button);
+
+    expect(useConsistStore.getState().entries).toEqual([{ train: engine, count: 1 }]);
+    expect(tripOf(useRouteStore.getState())).toEqual(TRIP_BEFORE);
+    // отмена вкладку не меняет
+    expect(screen.getByText('income tab')).toBeTruthy();
+  });
+
+  it('поверх пустого конструктора переносит состав без уведомления', async () => {
+    givenSearch({});
+    useConsistStore.setState({ entries: [] });
+    drawWithIncome();
+
+    await userEvent.click(arrows()[0]);
+
+    expect(screen.getByText('income tab')).toBeTruthy();
+    expect(useConsistStore.getState().entries.length).toBeGreaterThan(0);
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(restore()).toHaveLength(0);
   });
 });

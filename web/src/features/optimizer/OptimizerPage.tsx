@@ -73,6 +73,7 @@ import { sortRows } from '../../components/table/sorting';
 import { SortableTh } from '../../components/table/SortableTh';
 import { TableFrame } from '../../components/table/TableFrame';
 import { useConsistStore } from '../../state/consistStore';
+import { replaceConsistWithUndo } from '../../components/consistReplacedNotice';
 import { useRouteStore } from '../../state/routeStore';
 import { CargoSelect } from '../../components/PictureSelect';
 import { TrainImage } from '../../components/TrainImage';
@@ -456,20 +457,23 @@ export default function OptimizerPage() {
 
   function applyToConsist(index: number) {
     const r = shown[index];
-    consistStore.clear();
-    consistStore.add(r.engine.id);
-    if (r.engineCount > 1) consistStore.setCount(r.engine.id, r.engineCount);
-    consistStore.add(r.wagon.id);
-    consistStore.setCount(r.wagon.id, r.wagonCount);
-    consistStore.setCargoLabel(cargoLabel);
-    routeStore.setCargoLabel(cargoLabel);
-    // The row was computed for the settled distance, so that is what travels with it:
-    // inside the debounce window the field already holds a distance no row was priced at.
-    routeStore.setDistanceTiles(searchInput.distance);
-    // The output and the loading branch travel too: both tabs settle a route by the same
-    // model, and a row carried over without them would be recomputed by a different one.
-    routeStore.setProductionPerMonth(searchInput.productionPerMonth);
-    routeStore.setWaitForFullLoad(r.waitForFullLoad);
+    // the consist is replaced at once, and whatever was in the builder is offered back
+    replaceConsistWithUndo(() => {
+      consistStore.clear();
+      consistStore.add(r.engine.id);
+      if (r.engineCount > 1) consistStore.setCount(r.engine.id, r.engineCount);
+      consistStore.add(r.wagon.id);
+      consistStore.setCount(r.wagon.id, r.wagonCount);
+      // one cargo for the consist and the trip, kept by the route store
+      routeStore.setCargoLabel(cargoLabel);
+      // The row was computed for the settled distance, so that is what travels with it:
+      // inside the debounce window the field already holds a distance no row was priced at.
+      routeStore.setDistanceTiles(searchInput.distance);
+      // The output and the loading branch travel too: both tabs settle a route by the same
+      // model, and a row carried over without them would be recomputed by a different one.
+      routeStore.setProductionPerMonth(searchInput.productionPerMonth);
+      routeStore.setWaitForFullLoad(r.waitForFullLoad);
+    }, t('notify.consistReplaced'));
     navigate('/income');
   }
 

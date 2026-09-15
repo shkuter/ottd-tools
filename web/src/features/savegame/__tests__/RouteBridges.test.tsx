@@ -7,8 +7,9 @@
  * @vitest-environment jsdom
  */
 import { MantineProvider } from '@mantine/core';
+import { Notifications, notifications } from '@mantine/notifications';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RoutesTab } from '../RoutesTab';
@@ -17,11 +18,16 @@ import { useConsistStore } from '../../../state/consistStore';
 import { useOptimizerStore } from '../../../state/optimizerStore';
 import { useRouteStore } from '../../../state/routeStore';
 import { useLocaleStore } from '../../../state/localeStore';
+import { useSettingsStore } from '../../../state/settingsStore';
+import { TRIP_BEFORE, tripOf } from '../../../state/__tests__/tripFixture';
 import type { Snapshot } from '../../../savegame/snapshot';
+import { trains } from '../../../dataset';
+import { t } from '../../../i18n';
 
 function draw(snapshot: Snapshot = GAME_SNAPSHOT.snapshot) {
   return render(
     <MantineProvider forceColorScheme="dark">
+      <Notifications transitionDuration={0} />
       <MemoryRouter initialEntries={['/game']}>
         <Routes>
           <Route
@@ -48,7 +54,10 @@ beforeEach(() => {
   useOptimizerStore.setState({ distanceTiles: 300, prefillOrigin: null });
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  act(() => notifications.clean());
+  cleanup();
+});
 
 describe('the ways out of a route row', () => {
   it('carries the trip to the income tab and lands there', async () => {
@@ -64,6 +73,40 @@ describe('the ways out of a route row', () => {
     expect(useRouteStore.getState().productionPerMonth).toBe(80);
     expect(useRouteStore.getState().waitForFullLoad).toBe(true);
     expect(useRouteStore.getState().prefillOrigin!.label).toContain('Checkford');
+  });
+
+  it('offers the previous consist and trip back when it replaced a built consist', async () => {
+    const engine = trains.find((train) => train.kind === 'engine')!;
+    useRouteStore.setState(TRIP_BEFORE);
+    // an Iron Horse consist, shown only while that set is on — as it is in the game imported here
+    useSettingsStore.getState().setGame('trainSet', 'iron_horse');
+    useConsistStore.setState({ entries: [{ train: engine, count: 1 }] });
+    draw();
+
+    await userEvent.click(
+      within(routeRow(/Checkford — Renderbury Works/)).getByRole('button', { name: /Route income/ }),
+    );
+    expect(useRouteStore.getState().distanceTiles).toBe(96);
+
+    const button = await waitFor(() =>
+      screen.getByRole('button', { name: t('notify.restoreConsist') }),
+    );
+    await userEvent.click(button);
+
+    expect(useConsistStore.getState().entries).toEqual([{ train: engine, count: 1 }]);
+    expect(tripOf(useRouteStore.getState())).toEqual(TRIP_BEFORE);
+    // the undo leaves the player where they are
+    expect(screen.getByText('income tab')).toBeTruthy();
+  });
+
+  it('carries the trip over an empty builder without offering anything back', async () => {
+    draw();
+    await userEvent.click(
+      within(routeRow(/Checkford — Renderbury Works/)).getByRole('button', { name: /Route income/ }),
+    );
+    expect(screen.getByText('income tab')).toBeTruthy();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(screen.queryByRole('button', { name: t('notify.restoreConsist') })).toBeNull();
   });
 
   it('carries cargo, leg and flow to the optimizer through the cargo itself', async () => {

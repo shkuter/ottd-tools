@@ -25,7 +25,8 @@ import type { OptimizerPrefill } from '../../state/optimizerStore';
 import { incomePrefillValues, type IncomeBridge } from './bridge';
 
 /**
- * Route income: the consist goes to its own store, the trip to the route store. A partial
+ * Route income: the consist goes to its own store, the trip to the route store — and with the
+ * trip the cargo, which is the one the consist builder shows as well. A partial
  * bridge writes the consist and the cargo only — every other input stays whatever the user
  * last worked with, because the route said nothing about it.
  */
@@ -34,7 +35,6 @@ export function applyIncomeBridge(bridge: IncomeBridge, label: string): void {
   const route = useRouteStore.getState();
 
   consist.setEntries(bridge.entries);
-  consist.setCargoLabel(bridge.cargo.label);
   route.setCargoLabel(bridge.cargo.label);
 
   if (bridge.trip !== null) {
@@ -50,10 +50,9 @@ export function applyIncomeBridge(bridge: IncomeBridge, label: string): void {
 
 /**
  * A cargo alone, from the chain graph: the income tab and the consist builder switch to it
- * and nothing else moves, as the partial route bridge does it.
+ * — it is one value the two share — and nothing else moves, as the partial route bridge does it.
  */
 export function applyCargoIncomeBridge(values: Pick<RoutePrefill, 'cargoLabel'>, label: string): void {
-  useConsistStore.getState().setCargoLabel(values.cargoLabel);
   const route = useRouteStore.getState();
   route.setCargoLabel(values.cargoLabel);
   route.setPrefillOrigin({ source: 'graph', label, values });

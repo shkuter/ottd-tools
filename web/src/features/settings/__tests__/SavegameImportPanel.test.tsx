@@ -6,6 +6,7 @@
  */
 import 'fake-indexeddb/auto';
 import { MantineProvider } from '@mantine/core';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -38,7 +39,12 @@ vi.mock('../../../savegame/client', () => ({
 function panel() {
   return render(
     <MantineProvider>
-      <SavegameImportPanel />
+      <MemoryRouter initialEntries={['/settings']}>
+        <Routes>
+          <Route path="/settings" element={<SavegameImportPanel />} />
+          <Route path="/game" element={<div>game tab</div>} />
+        </Routes>
+      </MemoryRouter>
     </MantineProvider>,
   );
 }
@@ -85,6 +91,21 @@ describe('savegame import panel', () => {
     await waitFor(() => expect(useSettingsStore.getState().game.dayLengthFactor).toBe(5));
     resetSnapshotStateForTests();
     expect((await loadSnapshot()).record?.fileName).toBe('londworth.sav');
+  });
+
+  it('after confirming, offers the way to the game tab', async () => {
+    panel();
+    await chooseFile();
+    await screen.findByText(/Коэффициент уменьшения скорости экономики/);
+    await userEvent.click(screen.getByRole('button', { name: 'Применить' }));
+    await screen.findByText(/Снапшот сохранён/);
+
+    // both buttons of the summary stand in the row of buttons, like the differences' ones
+    const open = screen.getByRole('button', { name: 'Открыть партию' });
+    expect(open.closest('.window-actions')).toBeTruthy();
+    await userEvent.click(open);
+
+    expect(await screen.findByText('game tab')).toBeTruthy();
   });
 
   it('cancelling changes nothing and stores no snapshot', async () => {

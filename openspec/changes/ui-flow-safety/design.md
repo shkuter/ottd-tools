@@ -42,9 +42,13 @@
 - `captureConsistAndRoute()` снимает то, что замена может переписать: consist `entries`; route
   `cargoLabel`, `distanceTiles`, `amount`, `manualDays`, `productionPerMonth`, `waitForFullLoad`,
   `prefillOrigin`. `restoreConsistAndRoute(snapshot)` пишет это обратно одним вызовом на стор.
+- Поля рейса — один список ключей (`TRIP_FIELDS`), из него и тип снимка (`Pick<RouteState, …>`),
+  и сам снимок: поле, добавленное в список, отмена вернёт, а забытое видно в одном месте.
 - `replaceConsist(write: () => void)` (там же, без UI): снимает снимок, выполняет `write`, и если
-  прежний состав был непустым, возвращает снимок, иначе `null`.
-- `notifyConsistReplaced(snapshot)` (`features/consist/consistReplacedNotice.tsx`): сначала
+  прежний состав был непустым, возвращает снимок, иначе `null`. «Непустой» — по машинам активного
+  набора (`activeEntries`): записи выключенного набора в конструкторе не видны, и предлагать их
+  «вернуть» значило бы восстанавливать состав, которого пользователь не видел.
+- `notifyConsistReplaced(snapshot)` (`components/consistReplacedNotice.tsx`): сначала
   скрывает прежнее уведомление замены (`notifications.hide` по его `id`), затем показывает новое
   со своим `id` на каждую замену. Вытеснять надо явно: в Mantine 9 `notifications.show` с `id`,
   который уже показан, молча ничего не делает (`notifications.store.mjs`, `showNotification`), и
@@ -53,11 +57,19 @@
   `restoreConsistAndRoute(snapshot)` и скрывает своё уведомление.
   Навигации в кнопке нет: отмена не меняет вкладку (спека), так что внешний к роутеру
   `<Notifications/>` не мешает.
-- Вызовы: `applyToConsist` (оптимизатор), обработчик моста в `RoutesTab`, кнопка очистки
-  `ConsistPage` (заменяет текущее уведомление `notify.consistCleared`).
+- Замена по пустому конструктору уведомления не показывает, но висящее от прежней замены
+  уведомление убирает: иначе его кнопка вернула бы состав, бывший до обеих замен, и стёрла бы
+  только что перенесённый (сценарий «Отмена устарела» — «пользователь сделал вторую замену»,
+  какой бы та ни была).
+- `replaceConsistWithUndo(write, message)` (там же): запись и уведомление одним вызовом. Все три
+  пути — `applyToConsist` (оптимизатор), обработчик моста в `RoutesTab`, кнопка очистки
+  `ConsistPage` (заменяет прежнее уведомление `notify.consistCleared`) — зовут только его, так
+  что четвёртый путь не может заменить состав и забыть про отмену.
 
 *Почему так:* снимок/восстановление — чистая логика сторов, её тестирует стор-тест без DOM; UI
-только показывает. Модуль в `state/` рядом со сторами, как `upgrade.ts`.
+только показывает. Логика — в `state/` рядом со сторами, как `upgrade.ts`; уведомление — в
+`components/`, потому что его зовут три фичи (оптимизатор, конструктор, партия), и держать его
+внутри одной из них значило бы связать фичи между собой.
 
 *Отвергнуто:* хранить «предыдущий состав» в самом `consistStore` — это persist-поле, которое
 переживёт перезагрузку и сделает отмену многошаговой и неявной; модальное подтверждение до
@@ -118,15 +130,25 @@ useRouteStore } = await import('../routeStore')`), на состоянии, со
   без названия вкладки плюс отдельная ссылка; en-строки `firs.bridge.toSupply`,
   `firs.chain.noteSupplied`, `firs.chain.bridge` — «Industry supply tab»;
   `firs.chain.noteNoGame` en/ru — «the imported game's tab» / «вкладке импортированной партии».
+  Кнопки переноса с других вкладок — тоже действием с названием вкладки: `firs.bridge.toIncome`
+  → «Open in Route income with this cargo» / «Открыть в «Доходе рейса» с этим грузом»,
+  `game.toOptimizerCargo` → «Find a train for this cargo in Best train» / «Подобрать поезд под
+  этот груз в «Лучшем поезде»»; ru `settings.firsHint` — «вкладка «Цепочки FIRS» скрыта».
   Русские формулировки — по образцу существующих строк.
-- `ConsistPage`: под `summary-table` при непустом составе — `Anchor component={NavLink}
-  to="/income"` «Calculate route income →» / «Посчитать доход рейса →».
+- `ConsistPage`: под `summary-table` при непустом составе — `NavLink to="/income"` «Calculate
+  route income →» / «Посчитать доход рейса →», голым `NavLink`, как соседние ссылки между
+  вкладками (`RoutePage`, `NetworkPage`).
+- Строки, описательно называвшие вкладки («the route income tab», «the network tab», «на
+  вкладке дохода рейса», «на вкладке сети»), называют их как в меню: «the Route income tab»,
+  «на вкладке «Доход рейса»» и т. д.
 - `RoutePage`: пустое состояние прибыльности при пустом составе — сообщение и `NavLink` на
-  `/consist` с названием вкладки; при пустом наборе грузов — прежний текст без ссылки. У
+  `/consist` с названием вкладки; при непустом составе и пустом наборе грузов — свой текст
+  `combined.noCargo` без ссылки: «сначала соберите состав» там было бы неправдой. У
   `TableFrame` проп `emptyMessage` сейчас строка в `<p>`: он расширяется до `ReactNode`, чтобы
   ссылка стояла внутри той же рамки пустого состояния (спека: «в той же рамке»).
 - Тест подписей — юнит: en-словарь не содержит «Consist tab», «Supply tab», «Game tab»,
-  «Open in Profitability».
+  «Open in Profitability», «route income tab», «network tab»; ru — «вкладке дохода рейса»,
+  «вкладке сети».
 
 ### D6. «Открыть партию» в сводке импорта
 

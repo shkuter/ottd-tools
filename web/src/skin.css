@@ -1521,16 +1521,6 @@ a:focus-visible {
    ODDS AND ENDS
    ========================================================================== */
 
-.btn-danger {
-  border-color: var(--skin-edges-button-raised);
-  color: var(--ottd-red-darkest);
-}
-
-.btn-danger:hover {
-  background: var(--ottd-red-light);
-  color: var(--ottd-tc-black);
-}
-
 .grf-error {
   color: var(--skin-loss);
 }

@@ -7,8 +7,6 @@ interface ConsistState {
   entries: ConsistEntry[];
   /** Индекс GRF-параметра вместимости вагонов (0..4, default 2). */
   capacityIndex: number;
-  /** Label груза для расчёта вместимости/веса. */
-  cargoLabel: string | null;
   add: (trainId: string) => void;
   remove: (trainId: string) => void;
   setCount: (trainId: string, count: number) => void;
@@ -16,14 +14,18 @@ interface ConsistState {
   setEntries: (entries: ConsistEntry[]) => void;
   clear: () => void;
   setCapacityIndex: (index: number) => void;
-  setCargoLabel: (label: string | null) => void;
 }
 
-/** В localStorage храним только id+count; Train-объекты оживляем из каталога. */
+/**
+ * Only id and count go to localStorage; the Train objects are brought back from the catalogue.
+ *
+ * There is no cargo here: the consist and the trip share one, and the route store keeps it. A
+ * `cargoLabel` saved by earlier versions is carried over by `upgrade.ts`; the merge below
+ * simply does not read it.
+ */
 interface PersistedConsist {
   items?: { id: string; count: number }[];
   capacityIndex?: number;
-  cargoLabel?: string | null;
 }
 
 export const useConsistStore = create<ConsistState>()(
@@ -31,7 +33,6 @@ export const useConsistStore = create<ConsistState>()(
     (set) => ({
       entries: [],
       capacityIndex: 2,
-      cargoLabel: 'COAL',
       add: (trainId) =>
         set((state) => {
           const existing = state.entries.find((e) => e.train.id === trainId);
@@ -58,14 +59,12 @@ export const useConsistStore = create<ConsistState>()(
       setEntries: (entries) => set({ entries }),
       clear: () => set({ entries: [] }),
       setCapacityIndex: (capacityIndex) => set({ capacityIndex }),
-      setCargoLabel: (cargoLabel) => set({ cargoLabel }),
     }),
     {
       name: 'ottd-tools-consist',
       partialize: (state) => ({
         items: state.entries.map((e) => ({ id: e.train.id, count: e.count })),
         capacityIndex: state.capacityIndex,
-        cargoLabel: state.cargoLabel,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as PersistedConsist;
@@ -79,7 +78,6 @@ export const useConsistStore = create<ConsistState>()(
           ...current,
           entries,
           capacityIndex: p.capacityIndex ?? current.capacityIndex,
-          cargoLabel: p.cargoLabel !== undefined ? p.cargoLabel : current.cargoLabel,
         };
       },
     },

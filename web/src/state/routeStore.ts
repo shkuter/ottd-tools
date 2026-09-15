@@ -82,7 +82,7 @@ export interface RoutePrefill {
 /** The half of the tab a company card fills in: the counts, and nothing else. */
 export type NetworkPrefill = Pick<RoutePrefill, 'network'>;
 
-interface RouteState {
+export interface RouteState {
   cargoLabel: string;
   distanceTiles: number;
   amount: number;

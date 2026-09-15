@@ -59,8 +59,11 @@ export function TableFrame({
 }: {
   /** How many rows the page is passing in; the frame decides what an empty one looks like. */
   rowCount: number;
-  /** What to say when there are none — each tab filters by something of its own. */
-  emptyMessage: string;
+  /**
+   * What to say when there are none — each tab filters by something of its own. A node rather
+   * than a string, so the message can carry a link to the tab where the cause is fixed.
+   */
+  emptyMessage: React.ReactNode;
   pinEdges?: boolean;
   /**
    * Hold only the first column, for a table whose last column is data rather than the action

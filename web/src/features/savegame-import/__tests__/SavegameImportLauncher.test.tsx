@@ -144,6 +144,24 @@ describe('the import button in the corner', () => {
     expect(field.value, 'the tab under the window lost what was typed into it').toBe(typed);
   });
 
+  it('opens the game tab from the summary and closes the window', async () => {
+    shell('/optimizer');
+    await chooseFile();
+    await differenceShown();
+    await userEvent.click(screen.getByRole('button', { name: t('savegame.apply') }));
+    await waitFor(() => expect(document.querySelector('.savegame-saved')).toBeTruthy());
+
+    const open = screen.getByRole('button', { name: t('savegame.openGame') });
+    // the summary's buttons stand in the window's row of buttons, as the differences' do
+    expect(open.closest('.window-actions')).toBeTruthy();
+    expect(screen.getByRole('button', { name: t('savegame.close') }).closest('.window-actions'))
+      .toBe(open.closest('.window-actions'));
+    await userEvent.click(open);
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.querySelector('.page-game')).toBeTruthy();
+  });
+
   it('closes on Escape without applying anything', async () => {
     shell();
     await chooseFile();

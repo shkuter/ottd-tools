@@ -5,6 +5,8 @@ import { runStateUpgrades } from '../upgrade';
 const SETTINGS = 'ottd-tools-settings';
 const OPTIMIZER = 'ottd-tools-optimizer';
 const SUPPLY = 'ottd-tools-industry-supply';
+const CONSIST = 'ottd-tools-consist';
+const ROUTE = 'ottd-tools-route';
 
 /** A localStorage-alike: the upgrade step has no storage of its own, it is handed one. */
 function storage(initial: Record<string, unknown> = {}): Storage & { peek: (k: string) => unknown } {
@@ -108,6 +110,76 @@ describe('carrying electrification into the track type', () => {
   });
 });
 
+describe('carrying the consist cargo into the route', () => {
+  const routeCargoIn = (s: ReturnType<typeof storage>) =>
+    (s.peek(ROUTE) as { state?: { cargoLabel?: string } } | null)?.state?.cargoLabel;
+
+  it("makes the builder's cargo the shared one when the route saved none", () => {
+    const s = storage({ [CONSIST]: { state: { items: [], cargoLabel: 'PASS' }, version: 0 } });
+    runStateUpgrades(s);
+    expect(routeCargoIn(s)).toBe('PASS');
+    // written in the shape persist reads back, with the version the route store declares
+    expect((s.peek(ROUTE) as { version: number }).version).toBe(0);
+  });
+
+  it('keeps the rest of a route saved without a cargo', () => {
+    const s = storage({
+      [CONSIST]: { state: { cargoLabel: 'PASS' }, version: 0 },
+      [ROUTE]: { state: { distanceTiles: 64, amount: 30 }, version: 0 },
+    });
+    runStateUpgrades(s);
+    expect(s.peek(ROUTE)).toEqual({
+      state: { distanceTiles: 64, amount: 30, cargoLabel: 'PASS' },
+      version: 0,
+    });
+  });
+
+  it("leaves the route's own cargo alone: its figures were computed from it", () => {
+    const route = { state: { cargoLabel: 'COAL', distanceTiles: 64 }, version: 0 };
+    const s = storage({ [CONSIST]: { state: { cargoLabel: 'PASS' }, version: 0 }, [ROUTE]: route });
+    runStateUpgrades(s);
+    expect(s.peek(ROUTE)).toEqual(route);
+  });
+
+  it('writes nothing when the builder had no cargo chosen', () => {
+    const s = storage({ [CONSIST]: { state: { cargoLabel: null }, version: 0 } });
+    runStateUpgrades(s);
+    expect(s.peek(ROUTE)).toBeNull();
+  });
+
+  it('runs on a clean profile without throwing or writing a route', () => {
+    const s = storage();
+    expect(() => runStateUpgrades(s)).not.toThrow();
+    expect(s.peek(ROUTE)).toBeNull();
+  });
+
+  it('reaches a browser that already ran the first step', () => {
+    const s = storage({
+      [CONSIST]: { state: { cargoLabel: 'PASS' }, version: 0 },
+      'ottd-tools-upgrades': { state: {}, version: 1 },
+    });
+    runStateUpgrades(s);
+    expect(routeCargoIn(s)).toBe('PASS');
+  });
+
+  it('reaches the live route store, not just the storage', async () => {
+    localStorage.setItem(CONSIST, JSON.stringify({ state: { cargoLabel: 'PASS' }, version: 0 }));
+    vi.resetModules();
+    await import('../upgradeOnLoad');
+    const { useRouteStore } = await import('../routeStore');
+    expect(useRouteStore.getState().cargoLabel).toBe('PASS');
+  });
+
+  it('keeps the route cargo in the live store when both were saved', async () => {
+    localStorage.setItem(CONSIST, JSON.stringify({ state: { cargoLabel: 'PASS' }, version: 0 }));
+    localStorage.setItem(ROUTE, JSON.stringify({ state: { cargoLabel: 'COAL' }, version: 0 }));
+    vi.resetModules();
+    await import('../upgradeOnLoad');
+    const { useRouteStore } = await import('../routeStore');
+    expect(useRouteStore.getState().cargoLabel).toBe('COAL');
+  });
+});
+
 describe('the storage keys', () => {
   // the upgrade module cannot import the stores (importing one hydrates it), so it spells
   // the keys out as strings; this checks them against the real ones, so that a rename cannot
@@ -116,6 +188,10 @@ describe('the storage keys', () => {
     const { useOptimizerStore } = await import('../optimizerStore');
     const { useIndustrySupplyStore } = await import('../industrySupplyStore');
     const { SETTINGS_KEY } = await import('../settingsStore');
+    const { useConsistStore } = await import('../consistStore');
+    const { ROUTE_KEY } = await import('../routeStore');
+    expect(useConsistStore.persist.getOptions().name).toBe(CONSIST);
+    expect(ROUTE_KEY).toBe(ROUTE);
     expect(useOptimizerStore.persist.getOptions().name).toBe(OPTIMIZER);
     expect(useIndustrySupplyStore.persist.getOptions().name).toBe(SUPPLY);
     expect(SETTINGS_KEY).toBe(SETTINGS);

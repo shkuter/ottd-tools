@@ -13,7 +13,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
+import { NavLink } from 'react-router';
 import { SortableTh } from '../../components/table/SortableTh';
 import { TableFrame } from '../../components/table/TableFrame';
 import { sortRows, type SortState } from '../../components/table/sorting';
@@ -44,6 +44,9 @@ import { TrackTypeField } from '../../components/TrackTypeField';
 import { StrandedVehicles } from '../../components/StrandedVehicles';
 import { canRunOn, poweredOutputOn, topSpeedOn } from '../../engine/tracktypes';
 import { useConsistStore } from '../../state/consistStore';
+import { useRouteStore } from '../../state/routeStore';
+import { replaceConsistWithUndo } from '../../components/consistReplacedNotice';
+import { useActiveCargo } from '../useActiveCargo';
 import { useSettingsStore } from '../../state/settingsStore';
 import { YearField } from '../../components/YearField';
 import { consistStats, type SpeedLimitSource } from '../../engine/consist';
@@ -57,12 +60,13 @@ const PAGE_SIZE = 50;
 
 export default function ConsistPage() {
   const stored = useConsistStore((s) => s.entries);
-  const cargoLabel = useConsistStore((s) => s.cargoLabel);
+  // the cargo is the route's: the builder and the income tab show one and the same
+  const cargoLabel = useRouteStore((s) => s.cargoLabel);
   const addToConsist = useConsistStore((s) => s.add);
   const removeFromConsist = useConsistStore((s) => s.remove);
   const setCount = useConsistStore((s) => s.setCount);
   const clearConsist = useConsistStore((s) => s.clear);
-  const setCargoLabel = useConsistStore((s) => s.setCargoLabel);
+  const setCargoLabel = useRouteStore((s) => s.setCargoLabel);
   const { game, calc, speedUnit } = useSettingsStore();
   const entries = useMemo(() => activeEntries(stored, game), [stored, game]);
   const [kindFilter, setKindFilter] = useState<'all' | 'engine' | 'wagon'>('all');
@@ -82,17 +86,20 @@ export default function ConsistPage() {
   const locale = useLocale();
   const cargoList = useMemo(() => sortCargos(activeCargos(game), locale), [game, locale]);
   /**
-   * A cargo chosen before the economy changed can fall outside the new set. Unlike the tabs
-   * that need a cargo to compute at all, this one treats "none" as a valid choice, so the
-   * stale label is cleared rather than replaced — the capacity row then reads zero, the way
-   * it does before a cargo is picked, and the catalogue filter stops narrowing by a cargo
-   * the game no longer has.
+   * The panel's cargo is the one the income tab prices, so it follows that tab's rule: a cargo
+   * that fell out of the set gives way to the first one of the new set — the same one the income
+   * tab lands on — and is written back, so both tabs keep agreeing.
+   */
+  const cargo = useActiveCargo(cargoList, cargoLabel, setCargoLabel);
+  /**
+   * The catalogue filter is another matter: it only narrows the list, and "no cargo" is a valid
+   * choice for it. A stale label is cleared rather than replaced, so the filter stops narrowing by
+   * a cargo the game no longer has instead of starting to narrow by one nobody picked.
    */
   useEffect(() => {
     const available = new Set(cargoList.map((c) => c.label));
-    if (cargoLabel && !available.has(cargoLabel)) setCargoLabel(null);
     if (cargoFilter && !available.has(cargoFilter)) setCargoFilter('');
-  }, [cargoList, cargoFilter, cargoLabel, setCargoLabel]);
+  }, [cargoList, cargoFilter]);
   /**
    * Набор держит семейства визуальных вариантов (десяток «Mail Van» с одними числами и
    * разными спрайтами), поэтому каталог показывает пункты списка покупки — то, что игрок
@@ -115,7 +122,6 @@ export default function ConsistPage() {
     () => (cargoFilter ? activeCargoByLabel(game).get(cargoFilter) ?? null : null),
     [cargoFilter, game],
   );
-  const cargo = cargoLabel ? (activeCargoByLabel(game).get(cargoLabel) ?? null) : null;
   /**
    * The two computed columns stand only while a cargo narrows the list: capacity units differ
    * between cargos, so the figures are comparable within one and meaningless across all.
@@ -366,10 +372,7 @@ export default function ConsistPage() {
         {entries.length > 0 && (
           <Button
             className="btn-clear"
-            onClick={() => {
-              clearConsist();
-              notifications.show({ message: t('notify.consistCleared') });
-            }}
+            onClick={() => replaceConsistWithUndo(clearConsist, t('notify.consistCleared'))}
           >
             {t('consist.clear')}
           </Button>
@@ -380,9 +383,9 @@ export default function ConsistPage() {
           cargos={cargoList}
           label={t('consist.cargoForCapacity')}
           searchable
-          placeholder={t('consist.none')}
-          value={cargoLabel ?? null}
-          onChange={(v) => setCargoLabel(v)}
+          allowDeselect={false}
+          value={cargo?.label ?? null}
+          onChange={(v) => v && setCargoLabel(v)}
           data={cargoOptions}
         />
 
@@ -424,6 +427,10 @@ export default function ConsistPage() {
               <StatRow label={t('consist.stats.runningCost')} value={money(stats.runningCostTotal)} />
             </Table.Tbody>
           </Table>
+        )}
+        {/* the next step for a built consist is on another tab: what it earns on a route */}
+        {entries.length > 0 && (
+          <NavLink to="/income">{t('consist.toIncome')}</NavLink>
         )}
       </Paper>
     </div>

@@ -42,7 +42,7 @@ beforeEach(() => {
     waitForFullLoad: false,
     prefillOrigin: null,
   });
-  useConsistStore.setState({ entries: [], cargoLabel: 'WOOD' });
+  useConsistStore.setState({ entries: [] });
   useOptimizerStore.setState({
     cargoLabel: 'WOOD',
     distanceTiles: 300,
@@ -204,7 +204,6 @@ describe('applyCargoIncomeBridge', () => {
     useRouteStore.getState().setDistanceTiles(123);
     applyCargoIncomeBridge({ cargoLabel: 'IORE' }, 'Iron Ore');
     expect(useRouteStore.getState().cargoLabel).toBe('IORE');
-    expect(useConsistStore.getState().cargoLabel).toBe('IORE');
     // the rest of the tab is left alone
     expect(useRouteStore.getState().distanceTiles).toBe(123);
     const origin = useRouteStore.getState().prefillOrigin;

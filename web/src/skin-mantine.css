@@ -46,6 +46,18 @@
     color: var(--skin-button-text);
   }
 
+  /*
+   * A button that destroys something is still a plate of the game, lettered in the colour the
+   * game gives a loss. Written here, after the plain plates and with their class in the
+   * selector: in skin.css the same layer loads earlier, and the plain rule of equal weight won
+   * there — the danger button came out lettered like every other.
+   */
+  .mantine-Button-root.btn-danger,
+  .mantine-Button-root.btn-danger:hover,
+  .mantine-Button-root.btn-danger:active {
+    color: var(--skin-loss);
+  }
+
   /* a subtle button is a link with a hit area, not a plate — so it is shaded
      like a link, not left flat like the lettering on a plate below */
   .mantine-Button-root[data-variant='subtle'],

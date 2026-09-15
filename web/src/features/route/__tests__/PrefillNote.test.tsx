@@ -6,7 +6,7 @@
  */
 import { MantineProvider } from '@mantine/core';
 import { MemoryRouter } from 'react-router';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import RoutePage from '../RoutePage';
@@ -20,6 +20,7 @@ import { useSettingsStore } from '../../../state/settingsStore';
 import { cargoByLabel, trains } from '../../../dataset';
 import { vanillaTrains } from '../../../vanilla';
 import type { IncomeBridge } from '../../savegame/bridge';
+import en from '../../../i18n/en.json';
 
 const engine = trains.find((t) => t.kind === 'engine')!;
 const cargo = cargoByLabel.get('COAL') ?? [...cargoByLabel.values()][0]!;
@@ -147,6 +148,19 @@ describe('a consist left over from another vehicle set', () => {
     draw();
 
     // the tab states no trip at all rather than one priced with the wrong catalogue
-    expect(screen.getByText('Build a consist first on the Consist tab')).toBeTruthy();
+    expect(document.querySelector('.route-profit .table-empty')!.textContent).toContain(
+      'Build a consist first',
+    );
+  });
+});
+
+describe('the profitability with no consist', () => {
+  it('leads to the consist builder by the name the menu gives it', () => {
+    useConsistStore.setState({ entries: [] });
+    draw();
+
+    const empty = document.querySelector<HTMLElement>('.route-profit .table-empty')!;
+    const link = within(empty).getByRole('link', { name: en['nav.consist'] });
+    expect(link.getAttribute('href')).toBe('/consist');
   });
 });

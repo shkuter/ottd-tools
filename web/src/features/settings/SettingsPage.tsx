@@ -1,4 +1,4 @@
-import { Button, Fieldset, Group, NumberInput, Select, Switch } from '@mantine/core';
+import { Fieldset, Group, NumberInput, Select, Switch } from '@mantine/core';
 import { activeEconomy, economies, trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
 import { currencyLabel, unitSuffix } from '../../components/format';
@@ -11,7 +11,7 @@ import {
 } from '../../state/settingsStore';
 import { BASECOST_MULTIPLIERS, TRAIN_SETS, type GameSettings } from '../../engine/settings';
 import type { SpeedUnit } from '../../engine/units';
-import { resetPersistedState } from '../../state';
+import { ResetEverythingButton } from './ResetEverythingButton';
 import { LOCALES, useLocaleStore, type Locale } from '../../state/localeStore';
 import { SavegameImportPanel } from './SavegameImportPanel';
 import { useYearField } from '../../components/useYearField';
@@ -38,15 +38,6 @@ export default function SettingsPage() {
   const { locale, setLocale } = useLocaleStore();
   const priceYear = useYearField(calc.priceYear, (v) => setCalc('priceYear', v));
   const startingYear = useYearField(game.startingYear, (v) => setGame('startingYear', v));
-
-  async function resetAll() {
-    // awaited: the imported game lives in IndexedDB, and reloading before the delete lands
-    // would bring it back
-    await resetPersistedState();
-    // route, optimizer and FIRS state only leaves memory on a reload, so a
-    // notification here would be swept away with the page
-    location.reload();
-  }
 
   const difficultyData = numericData([
     { value: 0, label: `${t('settings.low')} (×0.75)` },
@@ -501,9 +492,7 @@ export default function SettingsPage() {
 
       <Fieldset className="settings-group" legend={t('settings.storage')}>
         <p className="hint">{t('settings.storageHint')}</p>
-        <Button className="btn-danger" onClick={() => void resetAll()}>
-          {t('settings.reset')}
-        </Button>
+        <ResetEverythingButton />
       </Fieldset>
     </div>
   );

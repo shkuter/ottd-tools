@@ -18,9 +18,18 @@ of what users see):
 
 ## [Unreleased]
 
+### Added
+
+- Replacing the consist — with "→" on Best train, with a route card of the imported game, or with the builder's clear button — shows a notification with "Restore the previous consist" for about ten seconds. The undo brings back the vehicles together with the cargo and the trip fields the action wrote.
+- "Reset everything" asks first, in a game-style window that lists what will be wiped: the settings, the consist and the route, and the imported game if there is one.
+- The summary after a savegame import offers "Open game", which goes to the imported game's tab.
+- A link "Calculate route income →" under the figures of a built consist, and a link to the Consist builder where Route income has no consist to price.
+
 ### Changed
 
 - The browser tab names the open calculator tab, such as "Route income — OTTD Tools", instead of the same title everywhere.
+- The consist builder and Route income share one cargo: picking it in either place picks it in both, and the profitability is priced for the cargo the builder shows. A cargo saved by the builder alone carries over on update; where both were saved, the Route income one stays, so its figures do not change.
+- The consist panel's cargo can no longer be left empty: a cargo missing from a new economy gives way to the economy's first cargo, as on Route income.
 
 ### Fixed
 
@@ -34,6 +43,9 @@ of what users see):
 - Windows, dropdowns and switches stop animating when the system asks for reduced motion.
 - The footer, the language switch, the site's subtitle and subheadings are set at the normal text size instead of 9px.
 - The lettering of an unavailable goal on the Best train tab no longer runs across its hatch pattern, and the goal itself carries the reason it is unavailable, both as a tooltip and for screen readers.
+- The imported game's tab no longer reports Base Costs multipliers as changed while the Base Costs set is off both in the game and in the calculator.
+- Captions name tabs as the menu does: "→" reads "Open in Route income", the route card's button "Calculate in Route income", and English hints no longer mention a "Consist tab", "Supply tab" or "Game tab".
+- The "Reset everything" button is drawn in the loss colour again; the plain button rule used to override it.
 
 ## [0.27.0] - 2026-09-12
 

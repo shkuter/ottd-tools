@@ -13,6 +13,7 @@ import type { Snapshot } from '../../savegame/snapshot';
 import type { SnapshotSettings } from '../../savegame/snapshotStore';
 import { routeRows, stationStops, type RouteRow } from './routeRows';
 import { routeToIncome, routeToOptimizer } from './bridge';
+import { replaceConsistWithUndo } from '../../components/consistReplacedNotice';
 import { applyIncomeBridge } from './applyBridge';
 import { BridgeButton } from './BridgeButton';
 import { hasFinishedYear } from './game';
@@ -296,7 +297,7 @@ function RouteBridge({ row, title, snapshot }: { row: RouteRow; title: string; s
       action={t('game.toIncome')}
       bridge={routeToIncome(row, snapshot)}
       onTake={(values) => {
-        applyIncomeBridge(values, title);
+        replaceConsistWithUndo(() => applyIncomeBridge(values, title), t('notify.consistReplaced'));
         void navigate('/income');
       }}
     />

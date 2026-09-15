@@ -333,3 +333,24 @@ describe('track types a set names alike', () => {
     expect(options.map((o) => o.name).join(' ')).toContain('AAAA');
   });
 });
+
+describe('names of tabs in the strings', () => {
+  // a caption that names a tab has to use the name the menu shows; these are the words of tabs
+  // and panels that were never in the menu, and the descriptive names that stood in for the
+  // real ones ("the route income tab" beside a menu that says "Route income")
+  it.each([
+    ['en', 'Consist tab'],
+    ['en', 'Supply tab'],
+    ['en', 'Game tab'],
+    ['en', 'Open in Profitability'],
+    ['en', 'route income tab'],
+    ['en', 'network tab'],
+    ['ru', 'вкладке дохода рейса'],
+    ['ru', 'вкладке сети'],
+    ['ru', 'вкладка цепочек FIRS'],
+  ] as const)('%s never says "%s"', (language, words) => {
+    const dictionary: Record<string, string> = language === 'en' ? en : ru;
+    const offending = Object.entries(dictionary).filter(([, text]) => text.includes(words));
+    expect(offending.map(([key]) => key)).toEqual([]);
+  });
+});

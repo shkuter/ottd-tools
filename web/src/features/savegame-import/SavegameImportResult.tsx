@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { useNavigate } from 'react-router';
 import { Button, Group, Table, Text } from '@mantine/core';
 import { t } from '../../i18n';
 import type { ImportDiff } from '../../savegame/diff';
@@ -38,6 +39,12 @@ export function SavegameImportResult({
   /** how the reader gets rid of what is shown, where it stands over the page */
   onClose?: () => void;
 }) {
+  const navigate = useNavigate();
+  // the next step after an import is the game itself; going there takes away what is shown
+  const openGame = () => {
+    void navigate('/game');
+    (onClose ?? reset)();
+  };
   return (
     <>
       {state.phase === 'error' && <Text className="savegame-error">{state.message}</Text>}
@@ -59,7 +66,14 @@ export function SavegameImportResult({
           <Text className="savegame-saved">
             {t('savegame.snapshotSaved', { summary: snapshotSummary(state.snapshot) })}
           </Text>
-          {onClose && <Button onClick={onClose}>{t('savegame.close')}</Button>}
+          <Group gap="xs" className="window-actions">
+            <Button onClick={openGame}>{t('savegame.openGame')}</Button>
+            {onClose && (
+              <Button variant="default" onClick={onClose}>
+                {t('savegame.close')}
+              </Button>
+            )}
+          </Group>
         </>
       )}
     </>

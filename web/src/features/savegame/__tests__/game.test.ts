@@ -124,6 +124,45 @@ describe('settings that drifted since the import', () => {
   });
 });
 
+describe('Base Costs multipliers', () => {
+  // a vanilla game imported after one with Base Costs: the store still holds the old
+  // multipliers, the snapshot the defaults — and with the set off on both sides, neither is read
+  const offWithDouble = {
+    ...DEFAULT_GAME_SETTINGS,
+    basecostGrf: false,
+    basecostLocomotive: 2,
+    basecostWagon: 2,
+  };
+
+  it('are not named while the set is off in the game and in the calculator', () => {
+    const drifted = differingSettings(snapshotSettings({ basecostGrf: false }, {}), {
+      game: offWithDouble,
+      calc: DEFAULT_CALC_SETTINGS,
+    });
+    expect(drifted).toEqual([]);
+  });
+
+  it('are named as before once the set is on in the calculator', () => {
+    const drifted = differingSettings(snapshotSettings({ basecostGrf: false }, {}), {
+      game: { ...offWithDouble, basecostGrf: true },
+      calc: DEFAULT_CALC_SETTINGS,
+    });
+    expect(drifted).toEqual([
+      SETTING_LABEL_KEYS.basecostGrf,
+      SETTING_LABEL_KEYS.basecostLocomotive,
+      SETTING_LABEL_KEYS.basecostWagon,
+    ]);
+  });
+
+  it('are named as before when the set is on in the game only', () => {
+    const drifted = differingSettings(
+      snapshotSettings({ basecostGrf: true, basecostLocomotive: 2 }, {}),
+      { game: DEFAULT_GAME_SETTINGS, calc: DEFAULT_CALC_SETTINGS },
+    );
+    expect(drifted).toContain(SETTING_LABEL_KEYS.basecostLocomotive);
+  });
+});
+
 describe('the reasons a route states instead of a forecast', () => {
   it('are all named in the dictionary', () => {
     // the key is built from the reason, so a reason without an entry renders as itself

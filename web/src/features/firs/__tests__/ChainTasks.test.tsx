@@ -107,7 +107,7 @@ describe('ChainTasks', () => {
   it('points at the game tab while no game is imported', () => {
     useFirsStore.setState({ chainTargetId: 'coke_oven' });
     draw();
-    expect(screen.getByText(/Import a game on the Game tab/)).toBeTruthy();
+    expect(screen.getByText(/on the imported game's tab/)).toBeTruthy();
   });
 
   it('says what "supplied" does and does not claim once a game is there', () => {

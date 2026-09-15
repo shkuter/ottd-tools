@@ -225,7 +225,20 @@ export default function RoutePage() {
         <Paper component="section" className="route-profit" p="sm">
           <Title order={3}>{t('combined.title')}</Title>
           {profit == null ? (
-            <TableFrame rowCount={0} emptyMessage={t('combined.needConsist')} />
+            <TableFrame
+              rowCount={0}
+              emptyMessage={
+                // with no cargo in the set there is nothing a consist would fix, so no link
+                entries.length === 0 ? (
+                  <>
+                    {t('combined.needConsist')}{' '}
+                    <NavLink to="/consist">{t('nav.consist')}</NavLink>
+                  </>
+                ) : (
+                  t('combined.noCargo')
+                )
+              }
+            />
           ) : (
             <>
               <Text className="hint">

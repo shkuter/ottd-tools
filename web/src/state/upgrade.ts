@@ -18,10 +18,12 @@
 const SETTINGS_KEY = 'ottd-tools-settings';
 const OPTIMIZER_KEY = 'ottd-tools-optimizer';
 const INDUSTRY_SUPPLY_KEY = 'ottd-tools-industry-supply';
+const CONSIST_KEY = 'ottd-tools-consist';
+const ROUTE_KEY = 'ottd-tools-route';
 /** Records which upgrades have run, so each one runs once and later ones still run. */
 const UPGRADE_KEY = 'ottd-tools-upgrades';
 /** Highest upgrade step defined below. */
-const UPGRADE_VERSION = 1;
+const UPGRADE_VERSION = 2;
 /**
  * Settings schema version, spelled out for the same reason as the keys. It is only used
  * when this module writes a settings key that did not exist; a test keeps it equal to the
@@ -88,6 +90,34 @@ function carryElectrificationIntoTrackType(storage: Storage): void {
 }
 
 /**
+ * The consist builder used to keep a cargo of its own beside the route's, and the two drifted
+ * apart: the builder showed the capacity for one cargo while the income tab priced another.
+ * They are one value now, kept by the route store — the income and the profitability have
+ * always been computed from that one, so its figures stay as they were.
+ *
+ * A cargo saved only by the builder therefore becomes the shared one. Where the route had
+ * saved a cargo of its own, that one stands and nothing is written: this step then does
+ * nothing at all, which also makes it safe to run on a browser that has seen it before.
+ *
+ * The builder's field is left in its key: its store no longer reads it and drops it on its
+ * next write, and an older build rolled back to still finds it there.
+ */
+function carryConsistCargoIntoRoute(storage: Storage): void {
+  const label = read(storage, CONSIST_KEY)?.state?.cargoLabel;
+  if (typeof label !== 'string' || label === '') return;
+
+  const route = read(storage, ROUTE_KEY);
+  if (route?.state?.cargoLabel !== undefined) return;
+  write(storage, ROUTE_KEY, {
+    // the route store declares no version, and persist's own default is 0; a key written
+    // from nothing carries it so the store reads the state rather than asking for a migrate
+    version: 0,
+    ...route,
+    state: { ...route?.state, cargoLabel: label },
+  });
+}
+
+/**
  * Runs the upgrades that have not run yet, before any store reads its key.
  *
  * Steps are gated by version rather than by "has this ever run": a second step added later
@@ -103,6 +133,7 @@ export function runStateUpgrades(storage: Storage = localStorage): void {
   if (version >= UPGRADE_VERSION) return;
 
   if (version < 1) carryElectrificationIntoTrackType(storage);
+  if (version < 2) carryConsistCargoIntoRoute(storage);
 
   write(storage, UPGRADE_KEY, { state: {}, version: UPGRADE_VERSION });
 }
