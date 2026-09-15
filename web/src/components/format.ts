@@ -2,12 +2,22 @@ import { intlLocale, t } from '../i18n';
 import { displaySpeed } from '../engine/units';
 import { CURRENCIES, useSettingsStore, type CurrencyCode } from '../state/settingsStore';
 import { trainName } from '../i18n/names';
+import { plural, type CountKey } from '../i18n/plural';
 
-/** Деньги: базовая валюта расчётов — фунт, конвертация по курсам игры. */
+/**
+ * Money: every calculation is in pounds, converted at the game's own rates.
+ *
+ * The sign is written by hand in front of the whole amount: `toLocaleString` puts a hyphen
+ * between the symbol and the digits ("£-98"), and a minus (U+2212) before the symbol is how a
+ * loss is written ("−£98", "−98 ₽"). An amount that rounds to zero carries no sign: `n < 0` is
+ * false for the `-0` that rounding a small loss gives.
+ */
 export function money(value: number): string {
   const { rate, symbol, position } = CURRENCIES[useSettingsStore.getState().currency];
-  const formatted = Math.round(value * rate).toLocaleString(intlLocale());
-  return position === 'prefix' ? symbol + formatted : formatted + symbol;
+  const rounded = Math.round(value * rate);
+  const digits = Math.abs(rounded).toLocaleString(intlLocale());
+  const sign = rounded < 0 ? '−' : '';
+  return position === 'prefix' ? sign + symbol + digits : sign + digits + symbol;
 }
 
 /**
@@ -42,6 +52,15 @@ export function num(value: number, digits = 0): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: digits,
   });
+}
+
+/**
+ * A number with the word that goes with it, agreed by the plural rules of the language:
+ * "1 year", "5 лет". The form follows the figure as printed, so both take the same `digits`.
+ * A column heading naming a unit with no number beside it keeps `withUnit` and `units.*`.
+ */
+export function countLabel(key: CountKey, value: number, digits = 0): string {
+  return `${num(value, digits)} ${plural(key, value, digits)}`;
 }
 
 /** A 0..1 share as whole percent, the way both tabs print the delivered share. */
@@ -94,12 +113,25 @@ export function withUnit(label: string, unit: string): string {
 /**
  * The unit as a field shows it, beside the number the user is typing: " tiles".
  *
- * The space belongs to the unit rather than to each caller — five fields ask for
+ * The space belongs to the unit rather than to each caller — every field asks for
  * the same suffix, and one of them writing it differently is exactly the kind of
- * drift this change is about.
+ * drift this change is about. A unit that agrees with the number goes through
+ * `countSuffix` instead.
  */
 export function unitSuffix(unit: string): string {
   return ` ${unit}`;
+}
+
+/** Decimals a typed value can carry; the plural rules see all of them rather than a rounding. */
+const FIELD_DIGITS = 10;
+
+/**
+ * The suffix of a field whose unit agrees with the number typed into it: " tile" beside 1,
+ * " tiles" beside 3. The field prints the value as typed, with no rounding of its own, so the
+ * form is taken from the value itself; an empty field reads as zero.
+ */
+export function countSuffix(key: CountKey, value: number | string): string {
+  return unitSuffix(plural(key, Number(value) || 0, FIELD_DIGITS));
 }
 
 /** The currency symbol on its own, for a heading that names what a column holds. */

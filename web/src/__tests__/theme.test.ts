@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colourTuple, PRIMARY_SHADE, theme } from '../theme';
+import { buildTheme, colourTuple, PRIMARY_SHADE } from '../theme';
 import { gradients } from '../skin';
 import { SHADES } from '../skin';
 
@@ -28,6 +28,9 @@ describe('colourTuple', () => {
 });
 
 describe('theme', () => {
+  // the fields below do not depend on the language, so either theme answers for them
+  const theme = buildTheme('en');
+
   it('takes its colours from the base set and squares off the corners', () => {
     expect(theme.defaultRadius).toBe(0);
     expect(theme.primaryColor).toBe('yellow');
@@ -40,5 +43,15 @@ describe('theme', () => {
     // Mantine animates its windows, dropdowns and switches whatever the system asks for unless
     // the theme says otherwise; the rendered result is checked in the visual suite
     expect(theme.respectReducedMotion).toBe(true);
+  });
+});
+
+describe('buildTheme', () => {
+  it('gives the number field the decimal separator of the language', () => {
+    const separator = (locale: 'en' | 'ru') =>
+      (buildTheme(locale).components?.NumberInput?.defaultProps as { decimalSeparator?: string })
+        ?.decimalSeparator;
+    expect(separator('ru')).toBe(',');
+    expect(separator('en')).toBe('.');
   });
 });

@@ -1,4 +1,6 @@
+import { useRef } from 'react';
 import { Table } from '@mantine/core';
+import { usePinnedLeadingColumns } from './usePinnedLeadingColumns';
 
 /**
  * Scrolls the list so that the cell the keyboard just reached stands clear of the pinned cells
@@ -49,12 +51,18 @@ function keepClearOfPinnedCells(event: React.FocusEvent<HTMLDivElement>) {
  * would park its values over the neighbour's. Either mode is a class on the frame rather than
  * on every cell: which cells are the edge ones is exactly what `:first-child` / `:last-child`
  * already say.
+ *
+ * `pinLeading` holds several first columns instead of one, for a list whose row is recognised
+ * by more than its first cell: on Best train that is the rank together with the engine — the
+ * number, the comparison tick, the sprite and the name. Which cells those are cannot be said
+ * with `:first-child`, so the offsets are measured (see usePinnedLeadingColumns).
  */
 export function TableFrame({
   rowCount,
   emptyMessage,
   pinEdges = false,
   pinStart = false,
+  pinLeading,
   children,
 }: {
   /** How many rows the page is passing in; the frame decides what an empty one looks like. */
@@ -71,13 +79,24 @@ export function TableFrame({
    * column a row is recognised by is held either way.
    */
   pinStart?: boolean;
+  /**
+   * How many first columns of the table to hold, counted as columns rather than cells — a
+   * heading spanning two columns counts as two. Replaces the first-column pin of `pinEdges` or
+   * `pinStart`; the last column of `pinEdges` is held as before.
+   */
+  pinLeading?: number;
   /** The rows themselves — a frame with none of them says so instead. */
   children?: React.ReactNode;
 }) {
-  const pinned = pinEdges || pinStart;
+  const frame = useRef<HTMLDivElement>(null);
+  usePinnedLeadingColumns(frame, pinLeading);
+  const pinned = pinEdges || pinStart || !!pinLeading;
   return (
     <div
-      className={`table-wrap${pinEdges ? ' pin-edges' : ''}${pinStart ? ' pin-start' : ''}`}
+      ref={frame}
+      className={`table-wrap${pinEdges ? ' pin-edges' : ''}${pinStart ? ' pin-start' : ''}${
+        pinLeading ? ' pin-leading' : ''
+      }`}
       onFocus={pinned ? keepClearOfPinnedCells : undefined}
     >
       {rowCount === 0 ? (

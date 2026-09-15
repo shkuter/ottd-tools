@@ -18,6 +18,7 @@ export const SHOWN_ELEMENTS = [
   'Fieldset',
   'Group',
   'GuiIcon',
+  'HowComputed',
   'IconSwitch',
   'LineChart',
   'List',
@@ -51,6 +52,7 @@ export const SHOWN_ELEMENTS = [
 /** Elements that need no specimen of their own, and why. */
 export const EXEMPT_ELEMENTS: Record<string, string> = {
   Box: 'a div in library clothes — it draws nothing of its own',
+  Collapse: 'the folding part of HowComputed, drawn only inside it — HowComputed is shown',
   FileButton: 'a hidden file input behind a Button — the button is what is drawn, and it is shown',
   Image: 'the box a picture is drawn in; the pictures themselves are shown',
   Input: 'the wrapper Field is built from — the field is shown',

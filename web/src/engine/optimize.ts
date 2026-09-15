@@ -544,6 +544,9 @@ export function searchConsists(
     supply: Math.round(supplyScore(r.supply) * 1000) / 1000,
     supplyHolds: r.supply && holdsSupplied(r.supply.verdict) ? 1 : 0,
   });
+  // The Best train tab names this order in words above the list — the `opt.rankedBy.*` strings
+  // of en.json and ru.json, one per goal, up to the fleet size. A key added, removed or moved
+  // here is to be named there too, or the line will describe an order the search no longer has.
   const better = (a: OptimizeResult, b: OptimizeResult) => {
     const ra = rank(a);
     const rb = rank(b);

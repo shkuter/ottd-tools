@@ -5,7 +5,9 @@
  * @vitest-environment jsdom
  */
 import { MantineProvider } from '@mantine/core';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { t } from '../../../i18n';
+import { useUiStore } from '../../../state/uiStore';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NetworkMaintenance } from '../NetworkMaintenance';
@@ -37,6 +39,7 @@ beforeEach(() => {
   useRouteStore.setState({
     network: { railPieces: { RAIL: 1000 }, signals: 200, stations: 40 },
   });
+  useUiStore.setState({ howComputedOpen: {} });
 });
 
 afterEach(cleanup);
@@ -74,7 +77,27 @@ describe('network upkeep panel', () => {
     });
     draw();
     expect(amounts().every((v) => v === 0)).toBe(true);
-    expect(screen.getByText(/Infrastructure maintenance is off/)).toBeTruthy();
+    expect(screen.getByText(/Infrastructure maintenance is off/)).toBeVisible();
+  });
+
+  it('names the counting rule at every track field, and folds the full rules', async () => {
+    draw();
+    const rules = [...document.querySelectorAll('.network-inputs .mantine-InputWrapper-description')];
+    const trackFields = [...document.querySelectorAll('.network-inputs input')].filter(
+      (input) => input.closest('.mantine-InputWrapper-root')?.textContent?.includes(t('units.trackPieces')) ||
+        input.closest('.mantine-InputWrapper-root')?.querySelector('.mantine-InputWrapper-description'),
+    );
+    expect(rules.length).toBeGreaterThan(0);
+    expect(rules).toHaveLength(trackFields.length);
+    for (const rule of rules) {
+      expect(rule.textContent).toBe(t('network.pieceRuleShort'));
+      expect(rule).toBeVisible();
+    }
+
+    const hint = screen.getByText(/whether or not anything runs on them/);
+    expect(hint).not.toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: t('howComputed.title') }));
+    await waitFor(() => expect(hint).toBeVisible());
   });
 });
 

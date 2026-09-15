@@ -198,6 +198,21 @@
   }
 
   /*
+   * A checkbox in a held leading cell — the comparison tick of Best train — can keep neither
+   * frame: outside its box the frame is covered by the held cells beside it and by those of the
+   * next row, and inside it the frame would cover the tick. The cell is framed instead, inside
+   * its own edge, the way a sortable header frames its button below.
+   */
+  .table-wrap .mantine-Table-td.pin-lead .mantine-Checkbox-input:focus-visible {
+    outline: none;
+  }
+
+  .table-wrap .mantine-Table-td.pin-lead:has(.mantine-Checkbox-input:focus-visible) {
+    outline: var(--skin-focus-width) dashed var(--skin-text);
+    outline-offset: calc(-1 * var(--skin-focus-width));
+  }
+
+  /*
    * The button of a sortable header runs right up to the letters of its caption, so a frame
    * drawn inside it would cross them. The header cell is framed instead: its padding keeps the
    * frame off the caption, and inside the cell nothing can cut it off.
@@ -433,6 +448,13 @@
      purpose: that is the only way to see the edge columns hold while the middle scrolls. */
   .kit-list .mantine-Table-table {
     min-width: 900px;
+  }
+
+  /* The list held by its leading columns is as wide as its content, like Best train's: squeezed
+     into the column, the sprites would shrink to nothing and there would be nothing to scroll
+     under four held columns. */
+  .kit-list-leading .mantine-Table-table {
+    width: max-content;
   }
 
   .mantine-Select-wrapper {
@@ -805,6 +827,39 @@
     white-space: inherit;
   }
 
+  /*
+   * The heading of "How it's computed" (an UnstyledButton) reads as a caption of the window —
+   * the body size, the window's own lettering — with the shared arrow beside it, turned to
+   * point along the line while folded and down once open.
+   */
+  .how-computed-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--skin-hsep-normal);
+    font-size: var(--skin-font);
+    color: var(--skin-text);
+    /* shaded like the body text of the window: a browser gives a button no shadow of its own,
+       and the game shades every colour but black */
+    text-shadow: var(--skin-text-shadow-body);
+  }
+
+  .how-computed-toggle::before {
+    content: '';
+    display: inline-block;
+    width: var(--skin-arrow);
+    height: var(--skin-arrow);
+    background: currentcolor;
+    mask-image: var(--skin-arrow-shape);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    transform: rotate(-90deg);
+  }
+
+  .how-computed-toggle[aria-expanded='true']::before {
+    transform: none;
+  }
+
   .table-wrap .mantine-Table-th.sorted {
     color: var(--skin-link);
     /* a colour of the palette, so it is shaded — the header it came from is dimmed and flat */
@@ -817,8 +872,8 @@
    * order above the cells it covers. The hover shade has to be repeated for the same reason:
    * it is painted on the row, and the row is what scrolls away underneath.
    */
-  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-th:first-child,
-  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-td:first-child {
+  .table-wrap:is(.pin-edges, .pin-start):not(.pin-leading) .mantine-Table-th:first-child,
+  .table-wrap:is(.pin-edges, .pin-start):not(.pin-leading) .mantine-Table-td:first-child {
     position: sticky;
     left: 0;
     z-index: 1;
@@ -831,7 +886,7 @@
     z-index: 1;
   }
 
-  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-td:first-child,
+  .table-wrap:is(.pin-edges, .pin-start):not(.pin-leading) .mantine-Table-td:first-child,
   .table-wrap.pin-edges .mantine-Table-td:last-child {
     background: var(--skin-list-bg);
   }
@@ -843,8 +898,8 @@
    * and the scrolling part begins, the way the game separates a fixed pane
    * from a scrolling one.
    */
-  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-th:first-child,
-  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-td:first-child {
+  .table-wrap:is(.pin-edges, .pin-start):not(.pin-leading) .mantine-Table-th:first-child,
+  .table-wrap:is(.pin-edges, .pin-start):not(.pin-leading) .mantine-Table-td:first-child {
     border-right: var(--bevel) solid var(--skin-edge-lo);
   }
 
@@ -861,16 +916,44 @@
     position: static;
   }
 
-  .table-wrap:is(.pin-edges, .pin-start) .mantine-Table-th:first-child,
+  .table-wrap:is(.pin-edges, .pin-start):not(.pin-leading) .mantine-Table-th:first-child,
   .table-wrap.pin-edges .mantine-Table-th:last-child {
     background: var(--skin-list-head-bg);
   }
 
-  .table-wrap:is(.pin-edges, .pin-start)
+  .table-wrap:is(.pin-edges, .pin-start):not(.pin-leading)
     .mantine-Table-tbody
     .mantine-Table-tr:hover
     .mantine-Table-td:first-child,
   .table-wrap.pin-edges .mantine-Table-tbody .mantine-Table-tr:hover .mantine-Table-td:last-child {
+    background: var(--skin-list-hover);
+  }
+
+  /*
+   * Several leading columns held at once (TableFrame pinLeading): which cells they are and
+   * where each one stands is measured and written onto the cells, so the rules only say what a
+   * held cell looks like — the same background, header shade and hover as a pinned first
+   * column. The edge goes on the last of them alone: between the held columns it would read as
+   * a seam inside the part that does not move.
+   */
+  .table-wrap.pin-leading :is(.mantine-Table-th, .mantine-Table-td).pin-lead {
+    position: sticky;
+    z-index: 1;
+  }
+
+  .table-wrap.pin-leading .mantine-Table-td.pin-lead {
+    background: var(--skin-list-bg);
+  }
+
+  .table-wrap.pin-leading .mantine-Table-th.pin-lead {
+    background: var(--skin-list-head-bg);
+  }
+
+  .table-wrap.pin-leading :is(.mantine-Table-th, .mantine-Table-td).pin-lead-last {
+    border-right: var(--bevel) solid var(--skin-edge-lo);
+  }
+
+  .table-wrap.pin-leading .mantine-Table-tbody .mantine-Table-tr:hover .mantine-Table-td.pin-lead {
     background: var(--skin-list-hover);
   }
 
@@ -956,6 +1039,15 @@
   .mantine-BarChart-root .recharts-text {
     color: var(--skin-field-text);
     text-shadow: var(--skin-text-shadow);
+  }
+
+  /* The caption of an axis is recharts text too, but recharts writes a grey fill of its own
+     onto it (#808080, no colour of the game's palette), where the figures get currentColor. It
+     is lettered like the figures it names; the colour comes from the rule above. */
+  .mantine-LineChart-axisLabel,
+  .mantine-AreaChart-axisLabel,
+  .mantine-BarChart-axisLabel {
+    fill: currentcolor;
   }
 
   /* ==========================================================================

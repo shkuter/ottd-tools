@@ -62,6 +62,20 @@ describe('clearing the consist', () => {
   });
 });
 
+describe('the consist figures', () => {
+  it('agrees the length with its unit when the consist is one tile long', () => {
+    // two half-tile vehicles make exactly one tile
+    const halfTile = vanillaTrains.find(
+      (train) => train.kind === 'engine' && !train.dual_headed && train.length === 8,
+    )!;
+    useConsistStore.setState({ entries: [{ train: halfTile, count: 2 }] });
+    draw();
+    const row = screen.getByText(t('consist.stats.length')).closest('tr')!;
+    expect(row.textContent).toContain('1 tile');
+    expect(row.textContent).not.toContain('1 tiles');
+  });
+});
+
 describe('the way on to the income tab', () => {
   it('stands under the figures of a built consist', () => {
     useConsistStore.setState({ entries: [{ train: engine, count: 1 }] });

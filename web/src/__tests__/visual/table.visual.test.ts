@@ -154,3 +154,165 @@ describe.each(PINNED)('$path', (route) => {
     ).toBeLessThanOrEqual(0);
   });
 });
+
+/**
+ * A list held by more than its first column: Best train holds the rank together with the engine
+ * — the number, the comparison tick, the sprite and the name — and the specimen page holds a list
+ * shaped the same way. Each held cell stands where the columns before it end, so they sit side by
+ * side without covering one another, and the edge is drawn once, after the last of them. On a
+ * window where they would take more than half the list, only the number is held.
+ *
+ * The widths the check sets are read off the list itself — twice the width of the held columns,
+ * plus and minus a margin — so the check does not depend on the data or the language.
+ */
+const LEADING = [
+  { path: '/optimizer', ready: '.page-optimizer', frame: '.page-optimizer .table-wrap.pin-leading' },
+  { path: '/kit', ready: '.page-kit', frame: '[data-testid="kit-list-leading"] .table-wrap.pin-leading' },
+];
+const HELD = 4;
+
+interface Leading {
+  error?: string;
+  /** the width of the held columns together, and of the first alone */
+  sum: number;
+  first: number;
+  scrolled: number;
+  /** how far each cell of the first row moved when the list was scrolled to its end */
+  moved: number[];
+  /** how far each held cell reaches over the next one, after the scroll */
+  overlaps: number[];
+  edges: string[];
+  inline: string[];
+  held: boolean[];
+  /** the offsets the held cells should have: the widths of the columns before each */
+  expectedLefts: number[];
+  lastRowHeld: boolean;
+}
+
+/** Sets the frame to `width` (or leaves it), scrolls it end to end and reads the first row. */
+function measureLeading({ selector, count, width }: { selector: string; count: number; width: number | null }) {
+  return (async (): Promise<Leading> => {
+    const empty = { sum: 0, first: 0, scrolled: 0, moved: [], overlaps: [], edges: [], inline: [], held: [], expectedLefts: [], lastRowHeld: false };
+    const wrap = document.querySelector<HTMLElement>(selector);
+    if (!wrap) return { ...empty, error: 'no list holding its leading columns' };
+    // the offsets are rewritten by a resize observer, which reports before the next frame
+    const frames = () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    if (width !== null) {
+      wrap.style.width = `${width}px`;
+      await frames();
+    }
+    const rows = wrap.querySelectorAll('tbody tr');
+    const row = rows[0];
+    if (!row) return { ...empty, error: 'the list has no rows' };
+    const cells = [...row.children] as HTMLElement[];
+    const lead = cells.slice(0, count);
+    const widths = lead.map((cell) => cell.getBoundingClientRect().width);
+    const expectedLefts = widths.map((_, i) => widths.slice(0, i).reduce((a, b) => a + b, 0));
+
+    wrap.scrollLeft = 0;
+    await frames();
+    const before = cells.map((cell) => cell.getBoundingClientRect().left);
+    wrap.scrollLeft = wrap.scrollWidth;
+    await frames();
+    const scrolled = wrap.scrollLeft;
+    const after = cells.map((cell) => cell.getBoundingClientRect().left);
+    const boxes = lead.map((cell) => cell.getBoundingClientRect());
+    const last = rows[rows.length - 1].children[count - 1] as HTMLElement | undefined;
+    const result = {
+      sum: widths.reduce((a, b) => a + b, 0),
+      first: widths[0],
+      scrolled,
+      moved: cells.map((_, i) => Math.abs(before[i] - after[i])),
+      overlaps: boxes.slice(1).map((box, i) => boxes[i].right - box.left),
+      edges: lead.map((cell) => getComputedStyle(cell).borderRightWidth),
+      inline: lead.map((cell) => cell.style.left),
+      held: lead.map((cell) => cell.classList.contains('pin-lead')),
+      expectedLefts,
+      lastRowHeld: !!last?.classList.contains('pin-lead'),
+    };
+    wrap.scrollLeft = 0;
+    return result;
+  })();
+}
+
+describe.each(LEADING)('$path, a list held by its leading columns', (list) => {
+  it('holds the rank and the vehicle side by side, and only the rank on a narrow window', async () => {
+    const page = await harness().goto(list.path, list.ready);
+    const measure = (width: number | null) =>
+      page.evaluate(measureLeading, { selector: list.frame, count: HELD, width });
+
+    const natural = await measure(null);
+    expect(natural.error, 'the list this checks').toBeUndefined();
+    const threshold = 2 * natural.sum;
+
+    try {
+      // wide: every held column stays, side by side, with one edge after the name
+      const wide = await measure(threshold + 200);
+      expect(wide.scrolled, 'nothing was scrolled, so nothing was proven').toBeGreaterThan(0);
+      for (let i = 0; i < HELD; i++) {
+        expect(wide.moved[i], `held column ${i + 1} must not move`).toBeLessThan(1);
+        expect(wide.held[i], `column ${i + 1} is held`).toBe(true);
+        expect(parseFloat(wide.inline[i]), `column ${i + 1} stands after the ones before it`).toBeCloseTo(
+          wide.expectedLefts[i],
+          0,
+        );
+      }
+      expect(wide.moved.at(-1), 'the action column is held too').toBeLessThan(1);
+      expect(Math.max(...wide.moved.slice(HELD, -1)), 'the figures scroll').toBeGreaterThan(0);
+      for (const overlap of wide.overlaps) {
+        expect(overlap, 'held columns do not cover one another').toBeLessThanOrEqual(1);
+      }
+      expect(wide.edges.slice(0, HELD - 1), 'no edge between the held columns').toEqual(
+        Array(HELD - 1).fill('0px'),
+      );
+      expect(wide.edges[HELD - 1], 'the edge stands after the name').not.toBe('0px');
+
+      // narrow: only the number is held, and the others lose what the wide window gave them
+      const narrowWidth = Math.max(threshold - 200, natural.first + 100);
+      expect(narrowWidth, 'the held columns are too narrow to try the fallback').toBeLessThan(threshold);
+      const narrow = await measure(narrowWidth);
+      expect(narrow.moved[0], 'the number stays').toBeLessThan(1);
+      expect(narrow.held[0]).toBe(true);
+      expect(narrow.edges[0], 'the edge moves to the number').not.toBe('0px');
+      for (let i = 1; i < HELD; i++) {
+        expect(narrow.inline[i], `column ${i + 1} keeps no offset`).toBe('');
+        expect(narrow.held[i], `column ${i + 1} is not held`).toBe(false);
+      }
+
+      // and back
+      const again = await measure(threshold + 200);
+      expect(again.held, 'the wide window holds all four again').toEqual(Array(HELD).fill(true));
+    } finally {
+      await page.evaluate((selector) => {
+        const wrap = document.querySelector<HTMLElement>(selector);
+        if (wrap) wrap.style.width = '';
+      }, list.frame);
+    }
+  });
+});
+
+describe('/optimizer, the held columns after the rows change', () => {
+  it('recomputes the offsets after a re-sort and after "show more"', async () => {
+    const page = await harness().goto('/optimizer', '.page-optimizer');
+    const selector = '.page-optimizer .table-wrap.pin-leading';
+    const measure = () => page.evaluate(measureLeading, { selector, count: HELD, width: null });
+
+    // by the engine: the order of the rows changes, and with it the widest name in the column
+    await page.locator('.page-optimizer thead th:nth-child(3) .sort-button').click();
+    const sorted = await measure();
+    expect(sorted.error).toBeUndefined();
+    for (let i = 0; i < HELD; i++) {
+      expect(parseFloat(sorted.inline[i])).toBeCloseTo(sorted.expectedLefts[i], 0);
+    }
+
+    const more = page.locator('.page-optimizer .table-more button').first();
+    expect(await more.count(), 'the answer is long enough to show more of').toBeGreaterThan(0);
+    await more.click();
+    const longer = await measure();
+    expect(longer.lastRowHeld, 'a row shown later is held like the first').toBe(true);
+    for (let i = 0; i < HELD; i++) {
+      expect(parseFloat(longer.inline[i])).toBeCloseTo(longer.expectedLefts[i], 0);
+    }
+  });
+});

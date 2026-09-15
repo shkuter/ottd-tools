@@ -1,5 +1,5 @@
 import { t } from '../../i18n';
-import { num } from '../../components/format';
+import { countLabel } from '../../components/format';
 import type { CorridorUpgradeResult } from '../../engine/corridorUpgrade';
 import type { MaintenanceLine, NetworkMaintenance } from '../../engine/infrastructure';
 import type { SignalDensityResult } from '../../engine/signals';
@@ -52,7 +52,9 @@ export function networkActions(
   if (signals && !signals.tooSparse && signals.yearlySaving > 0) {
     actions.push({
       panel: 'signals',
-      label: t('networkPage.actionSignals', { count: num(signals.recommendedSignals) }),
+      label: t('networkPage.actionSignals', {
+        count: countLabel('count.signalHeads', signals.recommendedSignals),
+      }),
       yearly: signals.yearlySaving,
       share: share(signals.yearlySaving, upkeep.yearly),
     });

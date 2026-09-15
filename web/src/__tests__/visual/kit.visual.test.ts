@@ -31,7 +31,9 @@ const SPECIMENS = [
   'kit-pictures',
   'kit-showcase',
   'kit-list',
+  'kit-list-leading',
   'kit-list-empty',
+  'kit-how-computed',
   'kit-pagination',
   'kit-chart',
 ];

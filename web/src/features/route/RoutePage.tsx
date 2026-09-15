@@ -5,7 +5,10 @@ import { NavLink } from 'react-router';
 import { activeTrainsMeta } from '../../dataset';
 import { t } from '../../i18n';
 import { cargoName, cargoUnits } from '../../i18n/names';
-import { currencySymbol, money, num, percent, speed, unitSuffix, withUnit } from '../../components/format';
+import {
+  countLabel, countSuffix, currencySymbol, money, num, percent, speed, unitSuffix, withUnit,
+} from '../../components/format';
+import { HowComputed } from '../../components/HowComputed';
 import { Money } from '../../components/Money';
 import { CargoSelect } from '../../components/PictureSelect';
 import { TrackTypeField } from '../../components/TrackTypeField';
@@ -44,6 +47,16 @@ export default function RoutePage() {
   const consistDays =
     routeTrip && routeTrip.economics.loadedSpeedInternal > 0 ? routeTrip.economics.daysLoaded : null;
   const days = route.manualDays ?? consistDays ?? 0;
+  // the figure the days field shows, and the one its unit agrees with
+  const fieldDays = route.manualDays ?? Number(days.toFixed(1));
+  // Where the time in the field comes from, said at the field: a figure typed by hand and one
+  // worked out from the consist look the same, and only one of them follows the consist.
+  const daysSource =
+    route.manualDays != null
+      ? t('route.daysManual')
+      : consistDays != null
+        ? t('route.daysAuto', { speed: speed(stats.balancingSpeedInternal) })
+        : t('route.daysNoConsist');
 
   const income = spec
     ? transportedGoodsIncome(
@@ -107,7 +120,7 @@ export default function RoutePage() {
           <NumberInput
             className="field"
             label={t('route.distance')}
-            suffix={unitSuffix(t('units.tiles'))}
+            suffix={countSuffix('count.tiles', route.distanceTiles)}
             min={1}
             value={route.distanceTiles}
             onChange={(v) => route.setDistanceTiles(Number(v) || 1)}
@@ -123,12 +136,22 @@ export default function RoutePage() {
           <NumberInput
             className="field"
             label={t('route.days')}
-            suffix={unitSuffix(t('units.days'))}
+            suffix={countSuffix('count.days', fieldDays)}
             min={0}
             step={0.5}
-            value={route.manualDays ?? Number(days.toFixed(1))}
+            description={daysSource}
+            value={fieldDays}
             onChange={(v) => route.setManualDays(Number(v) || 0)}
           />
+          {/* the way back to the consist's own time, right under the field it resets and only
+              while there is a typed time to reset: offered beside a computed time it would
+              undo nothing */}
+          {route.manualDays != null && consistDays != null && (
+            <Button variant="subtle" className="btn-link" onClick={() => route.setManualDays(null)}>
+              {t('route.daysFromConsist')}: {countLabel('count.days', consistDays, 1)} (
+              {speed(stats.balancingSpeedInternal)})
+            </Button>
+          )}
           <NumberInput
             className="field"
             label={t('route.production')}
@@ -149,12 +172,6 @@ export default function RoutePage() {
             checked={route.waitForFullLoad}
             onChange={(e) => route.setWaitForFullLoad(e.currentTarget.checked)}
           />
-          {consistDays != null && (
-            <Button variant="subtle" className="btn-link" onClick={() => route.setManualDays(null)}>
-              {t('route.daysFromConsist')}: {num(consistDays, 1)} {t('units.days')} (
-              {speed(stats.balancingSpeedInternal)})
-            </Button>
-          )}
 
           {cargo && (
             <Table className="summary-table" withRowBorders={false}>
@@ -181,12 +198,14 @@ export default function RoutePage() {
         </Paper>
 
         <section className="route-chart">
-          <Title order={3}>{withUnit(t('route.chart'), currencySymbol())}</Title>
+          <Title order={3}>{t('route.chart')}</Title>
           {/* Drawn the way the game draws its own graphs (the production graph of an
               industry, the finances of a company): a dark sunken field, a solid grid on
-              both axes, plain figures down the side with the unit named in the heading
-              rather than at every tick, and one thick line in a colour of the palette.
-              The dashed upright marks the trip currently entered. */}
+              both axes, plain figures down the side with the unit named once in the caption
+              of each axis rather than at every tick, and one thick line in a colour of the
+              palette. There is no legend: the line is one, and what it shows is named by the
+              heading and by the caption of the value axis. The dashed upright marks the trip
+              currently entered. */}
           <LineChart
             h={240}
             data={chart}
@@ -196,8 +215,8 @@ export default function RoutePage() {
             strokeWidth={3}
             gridAxis="xy"
             gridProps={{ strokeDasharray: '0' }}
-            withLegend
-            legendProps={{ verticalAlign: 'middle', align: 'right', layout: 'vertical' }}
+            xAxisLabel={withUnit(t('route.days'), t('units.days'))}
+            yAxisLabel={withUnit(t('route.income'), currencySymbol())}
             series={[{ name: 'income', color: 'yellow.5', label: t('route.income') }]}
             xAxisProps={{
               type: 'number',
@@ -209,16 +228,18 @@ export default function RoutePage() {
                fraction of the step between points, so it is rounded like every
                other figure rather than shown to fourteen decimals */
             tooltipProps={{
-              labelFormatter: (label) => `${num(Number(label), 1)} ${t('units.days')}`,
+              labelFormatter: (label) => countLabel('count.days', Number(label), 1),
             }}
-            yAxisProps={{ width: 64, tickFormatter: (value: number) => num(value, 0) }}
+            /* wide enough for the figures and the turned caption beside them, which would
+               otherwise stand on the tick labels */
+            yAxisProps={{ width: 80, tickFormatter: (value: number) => num(value, 0) }}
             referenceLines={[{ x: days, color: 'gray.3', strokeDasharray: '4 3' }]}
           />
           {/* what the marked trip comes to, under the field rather than inside it:
               a label placed in a corner of the plot lands on whichever axis tick
               happens to be there, and which tick that is depends on the figures */}
           <Text className="chart-mark">
-            {num(days, 1)} {t('units.days')} → {money(income)}
+            {countLabel('count.days', days, 1)} → {money(income)}
           </Text>
         </section>
 
@@ -242,7 +263,7 @@ export default function RoutePage() {
           ) : (
             <>
               <Text className="hint">
-                {cargoName(cargo)} · {num(route.distanceTiles)} {t('units.tiles')} ·{' '}
+                {cargoName(cargo)} · {countLabel('count.tiles', route.distanceTiles)} ·{' '}
                 {speed(stats.balancingSpeedInternal)} · {num(stats.capacityForCargo)}{' '}
                 {cargoUnits(cargo?.units)}
               </Text>
@@ -251,7 +272,7 @@ export default function RoutePage() {
                   <Table.Tr>
                     <Table.Td>{t('combined.roundTrip')}</Table.Td>
                     <Table.Td className="cell-num">
-                      {num(profit.roundTripDays, 1)} {t('units.days')}
+                      {countLabel('count.days', profit.roundTripDays, 1)}
                     </Table.Td>
                   </Table.Tr>
                   <Table.Tr>
@@ -262,7 +283,7 @@ export default function RoutePage() {
                     <Table.Tr>
                       <Table.Td>{t('combined.accumulationWait')}</Table.Td>
                       <Table.Td className="cell-num">
-                        {num(profit.waitDays, 1)} {t('units.days')}
+                        {countLabel('count.days', profit.waitDays, 1)}
                       </Table.Td>
                     </Table.Tr>
                   )}
@@ -312,15 +333,19 @@ export default function RoutePage() {
                   <Table.Tr>
                     <Table.Td>{t('combined.payback')}</Table.Td>
                     <Table.Td className="cell-num">
-                      {profit.paybackYears ? `${num(profit.paybackYears, 1)} ${t('units.years')}` : '—'}
+                      {profit.paybackYears ? countLabel('count.years', profit.paybackYears, 1) : '—'}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
               </Table>
-              <Text className="hint">{t('combined.assumptions')}</Text>
             </>
           )}
-          </Paper>
+          {/* the model of the trip, folded at the end of the panel rather than standing between
+              the fields and the answer; the route's own notes stay where they are */}
+          <HowComputed id="route">
+            <Text className="hint">{t('combined.assumptions')}</Text>
+          </HowComputed>
+        </Paper>
 
         {/* the panels that price the network itself moved to their own tab; someone who
             looked for them under the profitability panel is told where they went */}

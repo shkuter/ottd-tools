@@ -18,9 +18,10 @@ const harness = harnessFixture();
 
 /**
  * Where a control draws its frame: on itself, on the part drawn right after a hidden input
- * (a switch's track, a row option's plate), or on the header cell a sort button fills.
+ * (a switch's track, a row option's plate), on the header cell a sort button fills, or on the
+ * held list cell a checkbox stands in (skin-mantine.css, the comparison tick of Best train).
  */
-type FrameOn = 'self' | 'next' | 'header';
+type FrameOn = 'self' | 'next' | 'header' | 'cell';
 
 interface Control {
   readonly name: string;
@@ -48,6 +49,7 @@ const KIT_CONTROLS: readonly Control[] = [
   { name: 'dropdown', focus: '.page-kit .mantine-Select-input:not(:disabled)', frame: 'self' },
   { name: 'link', focus: '.app-footer a', frame: 'self' },
   { name: 'sortable header', focus: '.page-kit .mantine-Table-th .sort-button', frame: 'header' },
+  { name: 'disclosure heading', focus: '.page-kit .how-computed-toggle', frame: 'self' },
 ];
 
 /** The frame on the control, and everything that could keep it from being seen whole. */
@@ -58,7 +60,13 @@ async function frameOf(page: Page, { focus, frame, captioned = true }: Control) 
   return page.evaluate(({ frame, captioned }) => {
     const focused = document.activeElement!;
     const drawn =
-      frame === 'next' ? focused.nextElementSibling! : frame === 'header' ? focused.closest('th')! : focused;
+      frame === 'next'
+        ? focused.nextElementSibling!
+        : frame === 'header'
+          ? focused.closest('th')!
+          : frame === 'cell'
+            ? focused.closest('td')!
+            : focused;
     const style = getComputedStyle(drawn);
     const probe = document.createElement('div');
     probe.style.color = 'var(--skin-text)';
@@ -169,11 +177,13 @@ const LIST_CONTROLS: readonly (Control & { readonly path: string })[] = [
   { path: '/consist', name: 'row action', focus: '.page-consist tbody .btn-add', frame: 'self' },
   { path: '/consist', name: 'sortable header', focus: '.page-consist th .sort-button', frame: 'header' },
   { path: '/optimizer', name: 'sortable header', focus: '.page-optimizer th .sort-button', frame: 'header' },
+  // the tick stands in a held leading cell, which any frame reaching past it would be covered
+  // by, and a frame inside the box would cover the tick — so the cell is what is framed
   {
     path: '/optimizer',
     name: 'checkbox',
     focus: '.page-optimizer tbody .mantine-Checkbox-input',
-    frame: 'self',
+    frame: 'cell',
   },
   { path: '/game', name: 'button that reads as a link', focus: '.page-game tbody .btn-link', frame: 'self' },
 ];

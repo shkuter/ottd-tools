@@ -50,11 +50,48 @@ const KEPT_IN_ENGLISH = new Set([
   'savegame.grf.alteredCosts',
 ]);
 
+/**
+ * A word agreed with a number is stored once per plural category, and languages differ in how
+ * many categories they have: Russian has "few" and "many", English does not. Those keys are
+ * checked by category rather than against the English set. The `CountKey` type of plural.ts is
+ * read off the English `other` forms, so the check that every base carries all its categories
+ * in every dictionary is also what keeps that type naming every base there is.
+ */
+const PLURAL_KEY = /^(count\.[\w.]+)\.(zero|one|two|few|many|other)$/;
+
 describe('locales', () => {
   it('every locale has exactly the English key set', () => {
-    const expected = Object.keys(en).sort();
+    const plain = (strings: Record<string, string>) =>
+      Object.keys(strings).filter((key) => !PLURAL_KEY.test(key)).sort();
+    const expected = plain(en);
     for (const [locale, strings] of Object.entries(dictionaries)) {
-      expect(Object.keys(strings).sort(), locale).toEqual(expected);
+      expect(plain(strings), locale).toEqual(expected);
+    }
+  });
+
+  it('every word agreed with a number has exactly the plural categories of its language', () => {
+    // gathered from every dictionary, so a word agreed in one language only is still checked
+    // against the categories of the others
+    const bases = new Set(
+      Object.values(dictionaries).flatMap((strings) =>
+        Object.keys(strings).flatMap((key) => PLURAL_KEY.exec(key)?.[1] ?? []),
+      ),
+    );
+    expect(bases.size, 'the dictionaries hold words agreed with numbers').toBeGreaterThan(0);
+    for (const [locale, strings] of Object.entries(dictionaries)) {
+      const categories = new Intl.PluralRules(LOCALES[locale as Locale].numbers)
+        .resolvedOptions()
+        .pluralCategories.slice()
+        .sort();
+      for (const base of bases) {
+        const present = Object.keys(strings)
+          .flatMap((key) => {
+            const match = PLURAL_KEY.exec(key);
+            return match && match[1] === base ? [match[2]] : [];
+          })
+          .sort();
+        expect(present, `${locale}/${base}`).toEqual(categories);
+      }
     }
   });
 

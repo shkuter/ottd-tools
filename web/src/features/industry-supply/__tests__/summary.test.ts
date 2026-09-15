@@ -4,6 +4,8 @@ import { assessIndustrySupply, type InputOutcome } from '../../../engine/supply'
 import { industriesMeta, industryById } from '../../../dataset';
 import { supplyWindowDays } from '../../../engine/supply';
 import type { InputRun } from '../inputs';
+import type { IndustrySupply } from '../../../engine/supply';
+import { useLocaleStore } from '../../../state/localeStore';
 
 const windowDays = supplyWindowDays(industriesMeta.supply_window_ticks);
 const industry = (id: string) => industryById.get(id)!;
@@ -82,5 +84,27 @@ describe('supply summary lines', () => {
       outcome({ deliveredPerWindow: 700 }), null, null,
     ]);
     expect(lines.join()).toContain('250%');
+  });
+});
+
+describe('the advice on the input to fix first', () => {
+  /** A conversion summary whose bottleneck is one input needing `trains` trains. */
+  const advice = (trains: number) => {
+    const [input] = runsOf('coke_oven', 'STEELTOWN', [outcome({ verdict: 'misses' })]);
+    const summary = {
+      rule: 'conversion',
+      states: ['misses'],
+      conversion: 0,
+      incomplete: false,
+      bottleneck: { kind: 'fleet', input, trains },
+      pool: null,
+    } as unknown as IndustrySupply<InputRun>;
+    return summaryLines({ summary, maxTrains: 4, windowDays }).map((line) => line.text);
+  };
+
+  it('agrees the fleet with its noun', () => {
+    useLocaleStore.setState({ locale: 'en' });
+    expect(advice(1).join('\n')).toContain('inside the window with 1 train,');
+    expect(advice(3).join('\n')).toContain('inside the window with 3 trains,');
   });
 });

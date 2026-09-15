@@ -50,6 +50,25 @@ describe('format.money', () => {
     useSettingsStore.setState({ currency: 'GBP' });
     expect(money(46)).toBe('£46');
   });
+
+  it('убыток пишется минусом U+2212 перед знаком валюты, а не дефисом после него', () => {
+    useLocaleStore.setState({ locale: 'en' });
+    useSettingsStore.setState({ currency: 'GBP' });
+    expect(money(-98)).toBe('−£98');
+    expect(money(-98)).not.toContain('-');
+  });
+
+  it('у рубля минус стоит перед числом', () => {
+    useSettingsStore.setState({ currency: 'RUB' });
+    // −98 £ по курсу 80 — это −7 840 ₽
+    expect(money(-98).replace(/\s/g, ' ')).toBe('−7 840 ₽');
+  });
+
+  it('сумма, округлившаяся до нуля, идёт без знака', () => {
+    useLocaleStore.setState({ locale: 'en' });
+    useSettingsStore.setState({ currency: 'GBP' });
+    expect(money(-0.4)).toBe('£0');
+  });
 });
 
 describe('подписи состава называют машину так же, как её видит игрок', () => {

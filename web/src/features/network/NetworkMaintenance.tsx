@@ -4,6 +4,8 @@ import { STEP_FROM_EMPTY } from '../../components/numberField';
 import { num, unitSuffix } from '../../components/format';
 import { PrefillNote } from '../../components/PrefillNote';
 import { Money } from '../../components/Money';
+import { HowComputed } from '../../components/HowComputed';
+import { fieldWidth } from '../../skin';
 import { useRouteStore } from '../../state/routeStore';
 import { useSettingsStore } from '../../state/settingsStore';
 import { lineName, useMaintenance } from './figures';
@@ -38,8 +40,12 @@ export function NetworkMaintenance() {
           <NumberInput
             key={railtype.label}
             className="field"
+            {...fieldWidth('normal')}
             label={name}
             suffix={unitSuffix(t('units.trackPieces'))}
+            // the rule is named where the count is typed: a double track counted in tiles is
+            // half its pieces, and that mistake is made in this field, not in the notes below
+            description={t('network.pieceRuleShort')}
             min={0}
             allowDecimal={false}
             startValue={STEP_FROM_EMPTY}
@@ -50,6 +56,7 @@ export function NetworkMaintenance() {
         ))}
         <NumberInput
           className="field"
+          {...fieldWidth('narrow')}
           label={t('network.signals')}
           min={0}
           allowDecimal={false}
@@ -59,6 +66,7 @@ export function NetworkMaintenance() {
         />
         <NumberInput
           className="field"
+          {...fieldWidth('narrow')}
           label={t('network.stations')}
           min={0}
           allowDecimal={false}
@@ -87,7 +95,11 @@ export function NetworkMaintenance() {
           </Table.Tr>
         </Table.Tbody>
       </Table>
-      <Text className="hint">{t('network.hint')}</Text>
+      {/* the full counting rules — bridges, crossings, station tiles, signal heads — folded
+          under the total; the short rule stays at the fields */}
+      <HowComputed id="network.maintenance">
+        <Text className="hint">{t('network.hint')}</Text>
+      </HowComputed>
     </Paper>
   );
 }

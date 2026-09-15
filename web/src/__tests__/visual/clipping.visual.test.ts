@@ -72,3 +72,39 @@ describe.each(ROUTES)('$path', (route) => {
     expect(await page.evaluate(clipped), 'every word fits the box drawn around it').toEqual([]);
   });
 });
+
+/**
+ * A field's value with its unit, which the sweep above cannot see: an input keeps its value in
+ * an attribute rather than in text. The network blocks size their fields off the width scale,
+ * so the longest counts a real game gives are typed in and each input is asked whether its
+ * value scrolls inside it — in both languages, since the unit is longer in Russian.
+ */
+describe('/network, the fields with their values', () => {
+  it.each(['en', 'ru'])('shows every value whole in %s', async (locale) => {
+    const page = await harness().goto('/network', '.page-network');
+    await page.evaluate((chosen) => {
+      localStorage.setItem('ottd-tools-locale', JSON.stringify({ state: { locale: chosen }, version: 0 }));
+    }, locale);
+    await page.reload();
+    await page.waitForSelector('.page-network');
+
+    const fields = page.locator('.network-inputs .mantine-NumberInput-input');
+    const count = await fields.count();
+    expect(count, 'the network blocks have number fields').toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) await fields.nth(i).fill('10372');
+
+    const cut = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLInputElement>('.network-inputs .mantine-NumberInput-input')]
+        .filter((input) => input.scrollWidth > input.clientWidth + 1)
+        .map((input) => `"${input.value}" needs ${input.scrollWidth}px of ${input.clientWidth}`),
+    );
+    try {
+      expect(cut, 'every value fits its field').toEqual([]);
+    } finally {
+      await page.evaluate(() => {
+        localStorage.removeItem('ottd-tools-route');
+        localStorage.removeItem('ottd-tools-locale');
+      });
+    }
+  });
+});

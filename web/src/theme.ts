@@ -1,5 +1,6 @@
 import {
   createTheme,
+  NumberInput,
   Select,
   type ComboboxProps,
   type CSSVariablesResolver,
@@ -7,6 +8,8 @@ import {
   type MantineThemeOverride,
 } from '@mantine/core';
 import { gradients } from './skin';
+import { decimalSeparatorOf } from './i18n';
+import type { Locale } from './state/localeStore';
 
 /**
  * Mantine's theme, built from the colours of the base set.
@@ -92,73 +95,85 @@ const gameLikeDropdown: ComboboxProps = {
   },
 };
 
-export const theme: MantineThemeOverride = createTheme({
-  components: {
-    Select: Select.extend({ defaultProps: { comboboxProps: gameLikeDropdown } }),
-  },
-
-  // the game paints its windows grey and fills its buttons yellow
-  colors: {
-    gray: colourTuple(gradients.grey),
-    dark: colourTuple(gradients.grey),
-    yellow: colourTuple(gradients.yellow),
-    green: colourTuple(gradients.green),
-    red: colourTuple(gradients.red),
-    ottdBlue: colourTuple(gradients.darkBlue),
-  },
-  primaryColor: 'yellow',
-  primaryShade: PRIMARY_SHADE,
-
-  // OpenTTD draws square widgets with 2px bevels; the bevels are skin.css's job
-  defaultRadius: 0,
-
-  fontFamily: "'OpenTTD Sans', 'Segoe UI', system-ui, sans-serif",
-  fontFamilyMonospace: "'OpenTTD Mono', ui-monospace, monospace",
-
-  /*
-   * The font steps are the skin's own tokens rather than a second copy of the
-   * arithmetic: --skin-font is the game's FS_NORMAL times --skin-scale, and the
-   * others follow it (skin.css). Mantine reaches for `sm` when a component is
-   * given no size, so the game's size goes in both `sm` and `md`: the controls
-   * come out game-sized without a size prop on every call, and
-   * --mantine-font-size-md still means the body size.
-   */
-  fontSizes: {
-    xs: 'var(--skin-font-small)',
-    sm: 'var(--skin-font)',
-    md: 'var(--skin-font)',
-    lg: 'var(--skin-font-heading)',
-    xl: 'var(--skin-font-large)',
-  },
-  headings: {
-    // the game's font has one face; a bolder heading would be a synthesised one
-    fontWeight: '400',
-    sizes: {
-      h1: { fontSize: 'var(--skin-font-large)' },
-      h2: { fontSize: 'var(--skin-font-heading)' },
-      h3: { fontSize: 'var(--skin-font)' },
-      // a subheading is read, so it is not set below the text it heads: FS_SMALL is the game's
-      // size for labels on maps and graphs. What tells it apart is its colour and case
-      h4: { fontSize: 'var(--skin-font)' },
-      h5: { fontSize: 'var(--skin-font)' },
-      h6: { fontSize: 'var(--skin-font)' },
+/**
+ * The theme for one interface language. Only the number field depends on it: it shows and takes
+ * the decimal separator of the language ("43,2" in Russian). Typing the other separator still
+ * works — the field accepts both '.' and ',' by default — so a number typed out of habit is not
+ * lost, and the value handed on is the same number either way. The shell rebuilds the theme when
+ * the language changes (SkinProvider).
+ */
+export function buildTheme(locale: Locale): MantineThemeOverride {
+  return createTheme({
+    components: {
+      Select: Select.extend({ defaultProps: { comboboxProps: gameLikeDropdown } }),
+      NumberInput: NumberInput.extend({
+        defaultProps: { decimalSeparator: decimalSeparatorOf(locale) },
+      }),
     },
-  },
 
-  // a system asking for less motion gets windows, dropdowns and switches that change at once
-  respectReducedMotion: true,
+    // the game paints its windows grey and fills its buttons yellow
+    colors: {
+      gray: colourTuple(gradients.grey),
+      dark: colourTuple(gradients.grey),
+      yellow: colourTuple(gradients.yellow),
+      green: colourTuple(gradients.green),
+      red: colourTuple(gradients.red),
+      ottdBlue: colourTuple(gradients.darkBlue),
+    },
+    primaryColor: 'yellow',
+    primaryShade: PRIMARY_SHADE,
 
-  /* vsep_normal 2 and its multiples: the gaps the game leaves between widgets */
-  spacing: {
-    xs: scaled(2),
-    sm: scaled(4),
-    md: scaled(6),
-    lg: scaled(8),
-    xl: scaled(10),
-  },
+    // OpenTTD draws square widgets with 2px bevels; the bevels are skin.css's job
+    defaultRadius: 0,
 
-  cursorType: 'pointer',
-});
+    fontFamily: "'OpenTTD Sans', 'Segoe UI', system-ui, sans-serif",
+    fontFamilyMonospace: "'OpenTTD Mono', ui-monospace, monospace",
+
+    /*
+     * The font steps are the skin's own tokens rather than a second copy of the
+     * arithmetic: --skin-font is the game's FS_NORMAL times --skin-scale, and the
+     * others follow it (skin.css). Mantine reaches for `sm` when a component is
+     * given no size, so the game's size goes in both `sm` and `md`: the controls
+     * come out game-sized without a size prop on every call, and
+     * --mantine-font-size-md still means the body size.
+     */
+    fontSizes: {
+      xs: 'var(--skin-font-small)',
+      sm: 'var(--skin-font)',
+      md: 'var(--skin-font)',
+      lg: 'var(--skin-font-heading)',
+      xl: 'var(--skin-font-large)',
+    },
+    headings: {
+      // the game's font has one face; a bolder heading would be a synthesised one
+      fontWeight: '400',
+      sizes: {
+        h1: { fontSize: 'var(--skin-font-large)' },
+        h2: { fontSize: 'var(--skin-font-heading)' },
+        h3: { fontSize: 'var(--skin-font)' },
+        // a subheading is read, so it is not set below the text it heads: FS_SMALL is the game's
+        // size for labels on maps and graphs. What tells it apart is its colour and case
+        h4: { fontSize: 'var(--skin-font)' },
+        h5: { fontSize: 'var(--skin-font)' },
+        h6: { fontSize: 'var(--skin-font)' },
+      },
+    },
+
+    // a system asking for less motion gets windows, dropdowns and switches that change at once
+    respectReducedMotion: true,
+
+    /* vsep_normal 2 and its multiples: the gaps the game leaves between widgets */
+    spacing: {
+      xs: scaled(2),
+      sm: scaled(4),
+      md: scaled(6),
+      lg: scaled(8),
+      xl: scaled(10),
+    },
+
+    cursorType: 'pointer',
+  });
+}
 
 /**
  * Point Mantine at the skin's own tokens instead of giving it a second set of

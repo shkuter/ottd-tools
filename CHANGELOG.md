@@ -24,12 +24,21 @@ of what users see):
 - "Reset everything" asks first, in a game-style window that lists what will be wiped: the settings, the consist and the route, and the imported game if there is one.
 - The summary after a savegame import offers "Open game", which goes to the imported game's tab.
 - A link "Calculate route income →" under the figures of a built consist, and a link to the Consist builder where Route income has no consist to price.
+- A "Ranked by" line above the Best train results names what orders the rows for the goal in force: the goal's own figure, then yearly profit, purchase price, the wagon and fleet size.
+- "How it's computed" blocks, folded by default, under the Best train results, at the end of the Route income profitability panel and in each Network block. The model's assumptions and counting rules moved there; lines about the state of the calculation stay in view. Whether each block is open is remembered across reloads and is kept by "Reset everything", like the language.
 
 ### Changed
 
 - The browser tab names the open calculator tab, such as "Route income — OTTD Tools", instead of the same title everywhere.
 - The consist builder and Route income share one cargo: picking it in either place picks it in both, and the profitability is priced for the cargo the builder shows. A cargo saved by the builder alone carries over on update; where both were saved, the Route income one stays, so its figures do not change.
 - The consist panel's cargo can no longer be left empty: a cargo missing from a new economy gives way to the economy's first cargo, as on Route income.
+- On Best train, the column of the figure the goal ranks by (Profit/year, Run/yr or Haul/yr) stands right after the wagons instead of at the far right; the Supply column keeps its place.
+- On Best train, the rank, the comparison tick, the engine's picture and its name stay in place while the list scrolls sideways; on a window too narrow for all four, only the rank does.
+- Network blocks open their answer with it: the corridor block with the yearly delta, the signal block with the saving.
+- The income chart has no legend; its axes are captioned with days in transit and income in the chosen currency.
+- "From consist speed" on Route income stands right under the time in transit and appears only when the time was typed by hand; the field says whether its time is typed or worked out from the consist.
+- An industry supply input with a route but no consist that can haul it reads "nothing can haul it" instead of "falls out of the window".
+- The Best train hint for the unavailable goals invites setting Output rather than reading as an error, and names the field as the form does.
 
 ### Fixed
 
@@ -46,6 +55,10 @@ of what users see):
 - The imported game's tab no longer reports Base Costs multipliers as changed while the Base Costs set is off both in the game and in the calculator.
 - Captions name tabs as the menu does: "→" reads "Open in Route income", the route card's button "Calculate in Route income", and English hints no longer mention a "Consist tab", "Supply tab" or "Game tab".
 - The "Reset everything" button is drawn in the loss colour again; the plain button rule used to override it.
+- A negative amount is written with a minus sign in front of the currency symbol ("−£98", "−98 ₽") instead of "£-98"; an amount that rounds to zero carries no sign.
+- Words beside numbers agree with them: "1 year", "1 route", "1 tile" and "1 level" in English, including the units of number fields, and "1 год", "3 года", "5 лет" in Russian.
+- Number fields use a decimal comma in the Russian interface and switch with the language; typing a dot still works.
+- The fields of the Network blocks take their widths from the skin's field scale instead of a fixed 140px.
 
 ## [0.27.0] - 2026-09-12
 

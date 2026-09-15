@@ -14,7 +14,7 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { activeIndustries, industriesMeta, industrySupplyInputs } from '../../dataset';
 import { t, useLocale } from '../../i18n';
 import { cargoName, industryName, sortIndustries } from '../../i18n/names';
-import { engineLabel, num, unitSuffix, wagonLabel, withUnit } from '../../components/format';
+import { countLabel, countSuffix, engineLabel, num, wagonLabel, withUnit } from '../../components/format';
 import { STEP_FROM_EMPTY } from '../../components/numberField';
 import { CargoIcon } from '../../components/CargoIcon';
 import { fieldWidth } from '../../skin';
@@ -103,7 +103,9 @@ export default function IndustrySupplyPage() {
 
   const windowDays = supplyWindowDays(industriesMeta.supply_window_ticks);
   // Translated at render time, like every string that lands inside a memo on the other tabs.
-  const stateLabel = (state: InputState) => t(`supply.state.${state}`);
+  // `unserved` is a label only: such an input still counts as missing the window everywhere the
+  // conversion, the bottleneck and the ceiling are worked out.
+  const stateLabel = (state: InputState | 'unserved') => t(`supply.state.${state}`);
 
   return (
     <div className="page-industry-supply">
@@ -126,7 +128,7 @@ export default function IndustrySupplyPage() {
         <NumberInput
           {...fieldWidth('narrow')}
           label={t('opt.stationTiles')}
-          suffix={unitSuffix(t('units.tiles'))}
+          suffix={countSuffix('count.tiles', store.stationTiles)}
           min={1}
           max={16}
           value={store.stationTiles}
@@ -166,7 +168,7 @@ export default function IndustrySupplyPage() {
             <NumberInput
               {...fieldWidth('narrow')}
               label={t('supply.commonDistance')}
-              suffix={unitSuffix(t('units.tiles'))}
+              suffix={countSuffix('count.tiles', store.commonDistanceTiles)}
               description={t('supply.commonDistanceHint')}
               min={1}
               value={store.commonDistanceTiles}
@@ -271,7 +273,7 @@ export default function IndustrySupplyPage() {
                           <VehicleName train={run.best.wagon} label={wagonLabel(run.best)} />
                           <BuyMenuNote availability={run.best.wagonBuyMenu} />{' '}
                           <span className="dim">
-                            · {num(run.best.lengthTiles, 1)} {t('units.tiles')}
+                            · {countLabel('count.tiles', run.best.lengthTiles, 1)}
                           </span>
                         </>
                       ) : (
@@ -281,7 +283,12 @@ export default function IndustrySupplyPage() {
                     <Table.Td className="cell-num">
                       {run.outcome?.ratio != null ? num(run.outcome.ratio, 2) : '—'}
                     </Table.Td>
-                    <Table.Td className={`supply-${state}`}>{stateLabel(state)}</Table.Td>
+                    {/* a route nothing can haul is not "falling out of the window": that
+                        promises a more frequent fleet would fix it, and there is no fleet at
+                        all. Coloured as a missed input all the same — it is one */}
+                    <Table.Td className={`supply-${state}`}>
+                      {stateLabel(run.outcome?.unserved ? 'unserved' : state)}
+                    </Table.Td>
                   </Table.Tr>
                 );
               })}

@@ -5,7 +5,10 @@
  * @vitest-environment jsdom
  */
 import { MantineProvider } from '@mantine/core';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { t } from '../../../i18n';
+import { useUiStore } from '../../../state/uiStore';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SignalDensity } from '../SignalDensity';
 import { activeRailtype, cargoByLabel, trains, trainsMeta } from '../../../dataset';
@@ -72,6 +75,7 @@ beforeEach(() => {
     network: { railPieces: { RAIL: 10372 }, signals: 1612, stations: 0 },
     signals: EMPTY_SIGNALS,
   });
+  useUiStore.setState({ howComputedOpen: {} });
 });
 
 afterEach(cleanup);
@@ -81,8 +85,8 @@ describe('signal density panel', () => {
     draw();
     expect(screen.getByText('Braking distance')).toBeTruthy();
     expect(screen.getByText('Useful spacing')).toBeTruthy();
-    // eight figures: speed, braking, useful spacing, current spacing, recommended heads,
-    // upkeep now, upkeep at that spacing, saving
+    // eight figures: saving, then speed, braking, useful spacing, current spacing,
+    // recommended heads, upkeep now, upkeep at that spacing
     expect(cells()).toHaveLength(8);
   });
 
@@ -99,9 +103,9 @@ describe('signal density panel', () => {
     // a loaded freight train never reaches its own limit, so the two differ — which is what
     // makes this worth asserting rather than reading either figure
     expect(settled).toBeLessThan(physics.maxSpeedInternal);
-    // the first figure of the table is the speed braking is computed from
+    // the figure after the saving is the speed braking is computed from
     // ConvertKmhishSpeedToDisplaySpeed (strings.cpp): both steps truncate, as in the game
-    expect(Number(cells()[0]!.replace(/[^\d]/g, ''))).toBe(
+    expect(Number(cells()[1]!.replace(/[^\d]/g, ''))).toBe(
       Math.trunc(Math.trunc(settled * 10 * 1.609344) / 16),
     );
   });
@@ -124,22 +128,55 @@ describe('signal density panel', () => {
     });
     draw();
     expect(screen.getByRole('alert').textContent).toMatch(/capacity suffers/);
-    expect(cells().at(-1)).toMatch(/^[^\d]*0/);
+    // the saving opens the table
+    expect(cells()[0]).toMatch(/^[^\d]*0/);
   });
 
   it('says the descent does nothing under the original acceleration model', () => {
     // the block reads the game off the route it was handed, so that is where the case sets it
     draw({ ...ROUTE, game: { ...GAME, accelerationModel: 'original' } });
-    expect(screen.getByText(/does not enter the calculation/)).toBeTruthy();
+    expect(screen.getByText(/does not enter the calculation/)).toBeVisible();
   });
 
   it('says the game charges nothing when upkeep is switched off', () => {
     draw({ ...ROUTE, game: { ...GAME, infrastructureMaintenance: false } });
-    expect(screen.getByText(/network costs nothing to keep/)).toBeTruthy();
+    expect(screen.getByText(/network costs nothing to keep/)).toBeVisible();
   });
 
-  it('explains the original braking model instead of measuring a braking distance', () => {
+  it('explains the original braking model instead of measuring a braking distance', async () => {
     draw({ ...ROUTE, game: { ...GAME, brakingModel: 'original' } });
-    expect(screen.getByText(/stops dead at a signal and occupies exactly one block/)).toBeTruthy();
+    // the braking row says there is none in view; why the spacing falls back is folded
+    expect(screen.getByText(t('signals.noBraking'))).toBeVisible();
+    const why = screen.getByText(/stops dead at a signal and occupies exactly one block/);
+    expect(why).not.toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: t('howComputed.title') }));
+    await waitFor(() => expect(why).toBeVisible());
+  });
+
+  it('folds the counting rule, and asks for what it is missing in view', async () => {
+    useRouteStore.setState({ network: { railPieces: {}, signals: 0, stations: 0 } });
+    draw();
+    expect(screen.getByText(/State the length of the network/)).toBeVisible();
+    const rule = screen.getByText(/measured in tiles along one track/);
+    expect(rule).not.toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: t('howComputed.title') }));
+    await waitFor(() => expect(rule).toBeVisible());
+  });
+
+  it('opens its answer with the saving, the rest in the order it always had', () => {
+    draw();
+    const labels = [...document.querySelectorAll('tbody tr')].map(
+      (tr) => tr.querySelector('td')?.textContent ?? '',
+    );
+    expect(labels).toEqual([
+      t('signals.saving'),
+      t('signals.speed'),
+      t('signals.brakingDistance'),
+      t('signals.usefulSpacing'),
+      t('signals.currentSpacing'),
+      t('signals.recommended'),
+      t('signals.upkeepNow'),
+      t('signals.upkeepRecommended'),
+    ]);
   });
 });

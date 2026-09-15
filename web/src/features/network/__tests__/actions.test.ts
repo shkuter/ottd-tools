@@ -7,6 +7,7 @@ import { costliestLine, networkActions } from '../actions';
 import type { CorridorUpgradeResult } from '../../../engine/corridorUpgrade';
 import type { NetworkMaintenance } from '../../../engine/infrastructure';
 import type { SignalDensityResult } from '../../../engine/signals';
+import { useLocaleStore } from '../../../state/localeStore';
 
 const UPKEEP: NetworkMaintenance = {
   lines: [
@@ -58,6 +59,15 @@ describe('what to trim', () => {
     const actions = networkActions(UPKEEP, corridor(2_000_000), signals({ tooSparse: true }), 'Electrified railway');
 
     expect(actions.map((action) => action.panel)).toEqual(['corridor']);
+  });
+
+  it('agrees the number of heads with its noun', () => {
+    useLocaleStore.setState({ locale: 'en' });
+    const label = (recommendedSignals: number) =>
+      networkActions(UPKEEP, null, signals({ recommendedSignals }), '')[0].label;
+
+    expect(label(1)).toBe('Thin the signals to 1 head');
+    expect(label(723)).toBe('Thin the signals to 723 heads');
   });
 
   it('has nothing to say before the panels do', () => {

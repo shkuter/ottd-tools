@@ -2,7 +2,7 @@ import { NavLink } from 'react-router';
 import { Paper, Text, Title } from '@mantine/core';
 import { t } from '../../i18n';
 import { cargoName } from '../../i18n/names';
-import { num } from '../../components/format';
+import { countLabel } from '../../components/format';
 import { useRouteParams } from '../route/useRouteParams';
 import { NetworkSummary } from './NetworkSummary';
 import { NetworkMaintenance } from './NetworkMaintenance';
@@ -25,8 +25,11 @@ export default function NetworkPage() {
   const vehicles = entries.reduce((count, entry) => count + entry.count, 0);
   const engine = entries.find((entry) => entry.train.kind === 'engine')?.train ?? null;
   const consist = engine
-    ? t('networkPage.consistWithEngine', { engine: trainName(engine), vehicles: num(vehicles) })
-    : t('networkPage.consistVehicles', { vehicles: num(vehicles) });
+    ? t('networkPage.consistWithEngine', {
+        engine: trainName(engine),
+        vehicles: countLabel('count.vehicles', vehicles),
+      })
+    : t('networkPage.consistVehicles', { vehicles: countLabel('count.vehicles', vehicles) });
 
   return (
     <>
@@ -39,8 +42,7 @@ export default function NetworkPage() {
             {routeParams && cargo
               ? t('networkPage.routeSummary', {
                   cargo: cargoName(cargo),
-                  distance: num(routeParams.distanceTiles),
-                  tiles: t('units.tiles'),
+                  distance: countLabel('count.tiles', routeParams.distanceTiles),
                   consist,
                 })
               : t('networkPage.needRoute')}{' '}

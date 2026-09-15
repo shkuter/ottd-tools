@@ -37,6 +37,12 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
+/*
+ * The blocks keep their "How it's computed" text mounted while it is folded, and the corridor's
+ * assumptions name the route income tab as well; the trip line is the one shown.
+ */
+const IGNORE_FOLDED = 'script, style, .how-computed *';
+
 describe('network tab', () => {
   it('states the trip it borrowed, and links to where it is entered', () => {
     const engine = trains.find((train) => train.kind === 'engine' && train.power_hp > 0)!;
@@ -52,12 +58,34 @@ describe('network tab', () => {
 
     draw();
 
-    const summary = screen.getByText(/route income tab/i);
+    const summary = screen.getByText(/route income tab/i, { ignore: IGNORE_FOLDED });
     expect(summary.textContent).toContain('120');
     // what pulls it, and how many vehicles the builder holds — engine included
     expect(summary.textContent).toContain(engine.name);
     expect(summary.textContent).toContain('6');
     expect(screen.getByRole('link', { name: 'Route income' }).getAttribute('href')).toBe('/income');
+  });
+
+  it('agrees the vehicle count with its noun when the consist is a single engine', () => {
+    const engine = trains.find((train) => train.kind === 'engine' && train.power_hp > 0)!;
+    useConsistStore.setState({ entries: [{ train: engine, count: 1 }] });
+
+    draw();
+
+    const summary = screen.getByText(/route income tab/i, { ignore: IGNORE_FOLDED });
+    expect(summary.textContent).toContain('1 vehicle in all');
+    expect(summary.textContent).not.toContain('1 vehicles');
+  });
+
+  it('agrees the distance with its unit on a one-tile trip', () => {
+    const engine = trains.find((train) => train.kind === 'engine' && train.power_hp > 0)!;
+    useConsistStore.setState({ entries: [{ train: engine, count: 1 }] });
+    useRouteStore.setState({ distanceTiles: 1 });
+
+    draw();
+
+    const summary = screen.getByText(/route income tab/i, { ignore: IGNORE_FOLDED });
+    expect(summary.textContent).toContain(', 1 tile,');
   });
 
   it('follows the trip when it changes on the other tab', () => {
@@ -67,7 +95,7 @@ describe('network tab', () => {
     useRouteStore.setState({ network: { railPieces: { RAIL: 5_000 }, signals: 800, stations: 0 } });
 
     const { rerender } = draw();
-    expect(screen.getByText(/route income tab/i).textContent).toContain('120');
+    expect(screen.getByText(/route income tab/i, { ignore: IGNORE_FOLDED }).textContent).toContain('120');
 
     const before = document.querySelector('#network-signals')!.textContent!;
 
@@ -92,7 +120,7 @@ describe('network tab', () => {
       </MantineProvider>,
     );
 
-    const note = screen.getByText(/route income tab/i).textContent!;
+    const note = screen.getByText(/route income tab/i, { ignore: IGNORE_FOLDED }).textContent!;
     expect(note).toContain('250');
     expect(note).toContain('21');
     // and the panels answer about the new consist, not the old one: a longer train brakes

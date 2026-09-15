@@ -94,6 +94,10 @@
   `.pin-lead-last`.
 - `keepClearOfPinnedCells` не меняется: он уже берёт правый край самой правой sticky-ячейки
   слева.
+- Рамка фокуса у отметки сравнения в закреплённой ячейке рисуется **на самой ячейке** (внутрь,
+  inset), а не вокруг флажка: рамка, выходящая за бокс флажка, уходит под соседнюю закреплённую
+  ячейку, а рамка внутри бокса закрыла бы саму отметку. `focus.visual` проверяет этот элемент в
+  режиме `'cell'` — рамку ищет на `td`, в котором стоит флажок.
 
 *Почему измеряем, а не пишем в CSS:* ширины имени и спрайта зависят от данных и языка.
 *Отвергнуто:* перенести `#` и отметку внутрь ячейки имени, чтобы хватило `:first-child`. Ранг
@@ -118,6 +122,10 @@
   `inert` — отдельный `inert` не ставится. Тесты поэтому проверяют невидимость, а не отсутствие
   текста в DOM. Длительность анимации следует `respectReducedMotion` темы. Оформление — в `skin.css`, классом `.how-computed`, на
   токенах `--skin-*`: кегль основной, цвет текста окна, стрелка — общим правилом стрелок.
+- Идентификаторы — закрытый тип `HowComputedId` (`state/uiStore.ts`), а не свободные строки:
+  id — ключ, переживающий перезагрузку, опечатка молча открыла бы несуществующий блок.
+  Специмен на `/kit` получает свой id `kit.specimen`: он хранится так же, как настоящие
+  (страница рисует компонент как есть), но не совпадает ни с одним блоком вкладок.
 - Идентификаторы и содержимое:
   - `optimizer` — под таблицей (после «показать ещё»): `opt.assumptionProduction`/`opt.assumption`
     и легенда «?» (`vehicle.doubtLegend`/`opt.introLegend`/`opt.introLegendExact`). Строка
@@ -151,12 +159,16 @@
 - `CorridorUpgrade`: строка `corridor.yearlyDelta` переносится первой в `Table.Tbody`.
   `SignalDensity`: `signals.saving` — первой. Остальные строки сохраняют порядок. Тест
   `CorridorUpgrade.test.tsx` ищет порог по тексту, поэтому перестановка его не ломает.
-- Ширины: механизм `data-width` из `.filters` распространяется на `.network-inputs` (селекторы
-  через `:is(.filters, .network-inputs)`), а `width: 140px` уходит. Ступень выбирается правилом
+- Ширины: механизм `data-width` из `.filters` распространяется на `.network-inputs` — в тех же
+  правилах шкалы, одним списком селекторов на ступень, — а `width: 140px` уходит. В блоках сети
+  ступень получает **всё поле** (`.network-inputs > :has([data-width])`: подпись, описание и
+  ввод), а не только обёртку ввода: название пути и короткое правило под длиной длиннее ступени и
+  переносятся внутри неё, а не раздвигают поле шире соседей. Ступень выбирается правилом
   шкалы по содержимому с единицей: счётчики без единицы (поезда) — `narrow`; счётчики с
   единицей «кусков пути»/«уровней высоты» — `normal`; целевой путь — `wide`; `.field-engine`
-  остаётся `wide + sprite`. Проверка — `clipping.visual`/`controls.visual` в обоих языках: ни
-  одно значение с единицей не обрезано.
+  остаётся `wide + sprite`. Проверка — `clipping.visual` в обоих языках: во все числовые поля
+  блоков вводится «10372» (самый длинный счётчик реальной партии), и ни одно значение с единицей
+  не прокручивается внутри поля; `controls.visual` сверяет ширины со шкалой.
 
 ### D5. Минус в `money()`
 
@@ -208,24 +220,50 @@ t('units.days'))` и `yAxisLabel = withUnit(t('route.income'), currencySymbol())
   digits })` — те же параметры, что у `num()`, поэтому форма считается по показанному числу —
   и читает `${key}.${category}` с откатом на `.other`. `countLabel(key, value, digits)` в
   `components/format.ts` возвращает `num(value, digits) + ' ' + plural(...)`.
-- Ключи: `count.years.{one,few,many,other}`, `count.days.*`, `count.trains.*`,
-  `count.routes.*`, `count.stations.*`. Формы лет: ru — one «год» (1, 21), few «года» (3),
+- Ключи (тип `CountKey` в `i18n/plural.ts` выводится из них): `count.years.{one,few,many,other}`, `count.days.*`, `count.trains.*`,
+  `count.routes.*`, `count.stations.*`, `count.vehicles.*`, `count.signalHeads.*`,
+  `count.tiles.*`, `count.heightLevels.*`, `count.pieces.*` (ru — one «кусок», few «куска», many «кусков», other «куска»; en — `piece`/`pieces`). Формы лет: ru — one «год» (1, 21), few «года» (3),
   many «лет» (5, 11), other «года» (дробное: «1,5 года»); en — one «year», other «years». В ru
-  формы дней остаются «дн.» во всех категориях (сокращение не склоняется), в en — `day`/`days`. `units.years`/`units.days` остаются для
-  заголовков через `withUnit`.
+  формы дней, клеток и уровней остаются «дн.», «кл.», «ур.» во всех категориях (сокращение не
+  склоняется), в en — `day`/`days`, `tile`/`tiles`, `level`/`levels`. `units.years`/`units.days`/
+  `units.tiles` остаются для заголовков через `withUnit`; `units.heightLevels` удалён — заголовка
+  с уровнями нет.
 - Места: окупаемость в `RoutePage`; дни с числом в `RoutePage` (кнопка «По скорости», подпись
-  графика, круг, ожидание, подсказка графика), в `CorridorUpgrade` (круг рейса);
-  `savegame.snapshotSummary` собирается из `count.trains/routes/stations`.
-- `locales.test.ts`: для каждого ключа `count.*` в каждом словаре есть все категории
-  `new Intl.PluralRules(<locale>).resolvedOptions().pluralCategories`. Проверка «ru содержит
-  все ключи en» остаётся.
+  графика, круг, ожидание, подсказка графика), в `CorridorUpgrade` (круг рейса). Клетки с числом:
+  длина состава в `ConsistPage`, тормозной путь в `SignalDensity`, строка рейса в `RoutePage`,
+  длина вагона в `IndustrySupplyPage`, плечо в `ChainTasks`, расстояние в сводке рейса
+  `NetworkPage` (`networkPage.routeSummary` больше не пишет `{tiles}`).
+- Суффиксы полей, где единица стоит при введённом числе, — `countSuffix(key, value)` из
+  `components/format.ts`: форма берётся по самому значению (поле его не округляет), пустое поле
+  читается как ноль. Клетки — расстояние и длина станции в `RoutePage`, `OptimizerPage`,
+  `IndustrySupplyPage` (плюс общее расстояние), холм в `SettingsPage`; дни — поле времени рейса в
+  `RoutePage`; уровни — спуск в `SignalDensity`. `unitSuffix` остаётся для единиц без форм
+  (`units.trackPieces`, единицы груза). Ключ
+  `savegame.snapshotSummary` удалён: сводка импорта — три части `countLabel` (`count.trains`,
+  `count.routes`, `count.stations`), склеенные в `features/savegame-import/snapshotSummary.ts`,
+  потому что у каждого слова своё число и шаблон с тремя местами согласовать нечем.
+- Там же, где слово стоит при числе внутри фразы, число подставляется уже со словом
+  (`countLabel`), а фраза слова не пишет: `supply.bottleneckFleet` и `opt.supplyHintFleet`
+  (`count.trains`), `networkPage.consistVehicles`/`consistWithEngine` (`count.vehicles`),
+  `networkPage.actionSignals` (`count.signalHeads`), `signals.tooSparse` (`count.pieces` — и текущий, и полезный шаг, оба дробные), `opt.branchWait`/`branchNoWait`/
+  `supplyHintInterval` (`count.days` — и интервал, и окно, чтобы в одной подсказке был один
+  подход). Русские формулировки перестроены так, чтобы слово стояло
+  в именительном падеже после числа («нужно 3 поезда», «в составе 5 машин», «останется 1
+  голова»). Без согласования остаются места, где число не бывает единицей: окно снабжения
+  в `opt.supplyHintPool`, `supply.intro`, `supply.pool` (≈93 дня), `game.stopCount` (от четырёх остановок),
+  а также списки порогов.
+- `locales.test.ts`: ключи `count.*` из сверки «набор ключей каждого словаря равен набору en»
+  исключены — у языков разное число категорий. Вместо неё отдельная проверка по языку: для
+  каждой основы `count.*`, найденной **в любом** словаре (объединение, чтобы основа только из ru
+  тоже проверялась), в каждом словаре ровно категории
+  `new Intl.PluralRules(<locale>).resolvedOptions().pluralCategories`.
 - Разделитель: `theme.ts` экспортирует `buildTheme(locale)` с
-  `components.NumberInput.defaultProps = { decimalSeparator: locale === 'ru' ? ',' : '.' }`
-  (разделитель берётся из `Intl.NumberFormat(intlLocale(locale)).formatToParts(1.1)`, а не
-  пишется руками). В `main.tsx` провайдер оборачивается компонентом, который берёт
-  `useLocale()` и мемоизирует тему по языку. `export const theme = buildTheme('en')` остаётся
-  (его импортирует `__tests__/theme.test.ts`, и остальные поля темы от языка не зависят), тест
-  дополняется кейсом `buildTheme('ru')`. `allowedDecimalSeparators` не задаётся: у `NumberInput`
+  `components.NumberInput.defaultProps = { decimalSeparator: decimalSeparatorOf(locale) }`;
+  `decimalSeparatorOf` живёт в `i18n/` рядом с `intlLocale` и берёт разделитель из
+  `Intl.NumberFormat(intlLocale(locale)).formatToParts(1.1)`, а не пишет его руками. В `main.tsx` провайдер оборачивается компонентом, который берёт
+  `useLocale()` и мемоизирует тему по языку. Отдельной экспортированной
+  темы нет: `__tests__/theme.test.ts` сам зовёт `buildTheme('en')` для полей, не зависящих от
+  языка, и проверяет разделитель у `buildTheme('en')` и `buildTheme('ru')`. `allowedDecimalSeparators` не задаётся: у `NumberInput`
   по умолчанию он уже `['.', ',']`, так что точка с клавиатуры в ru не теряется — это проверяет
   юнит-тест набором `43.2` и `43,2`.
 

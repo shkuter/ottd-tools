@@ -1,10 +1,12 @@
 import { NumberInput, Paper, Table, Text, Title } from '@mantine/core';
 import { t } from '../../i18n';
 import { STEP_FROM_EMPTY } from '../../components/numberField';
-import { num, speedUnitLabel, speedValue, unitSuffix } from '../../components/format';
+import { countLabel, countSuffix, num, speedUnitLabel, speedValue } from '../../components/format';
 import { Money } from '../../components/Money';
 import { SummaryRow as Row } from '../../components/SummaryRow';
 import { Warning } from '../../components/Warning';
+import { HowComputed } from '../../components/HowComputed';
+import { fieldWidth } from '../../skin';
 import type { RouteWithFlowParams } from '../../engine/trip';
 import { useRouteStore } from '../../state/routeStore';
 import { useSignals } from './figures';
@@ -36,8 +38,9 @@ export function SignalDensity({ route }: { route: RouteWithFlowParams | null }) 
       <div className="network-inputs">
         <NumberInput
           className="field"
+          {...fieldWidth('normal')}
           label={t('signals.descent')}
-          suffix={unitSuffix(t('units.heightLevels'))}
+          suffix={countSuffix('count.heightLevels', signals.descentLevels)}
           min={0}
           allowDecimal={false}
           // empty rather than a zero nobody typed, as the upkeep block has it
@@ -46,7 +49,6 @@ export function SignalDensity({ route }: { route: RouteWithFlowParams | null }) 
           onChange={(v) => setSignals({ descentLevels: Math.max(0, Number(v) || 0) })}
         />
       </div>
-      <Text className="hint">{t('signals.spacingRule')}</Text>
       {/* a descent only lengthens braking under the realistic acceleration model, so a number
           typed here does nothing at all under the original one — said out loud rather than
           left as a field with no effect */}
@@ -60,12 +62,19 @@ export function SignalDensity({ route }: { route: RouteWithFlowParams | null }) 
         <>
           <Table className="summary-table stats-wide" withRowBorders={false}>
             <Table.Tbody>
+              {/* the answer first, the figures it comes from after it in their own order */}
+              <Table.Tr>
+                <Table.Td>{t('signals.saving')}</Table.Td>
+                <Table.Td className={`cell-num big ${result.yearlySaving > 0 ? 'profit' : ''}`}>
+                  <Money value={result.yearlySaving} />
+                </Table.Td>
+              </Table.Tr>
               <Row label={t('signals.speed')}>
                 {speedValue(result.speedInternal)} {speedUnitLabel()}
               </Row>
               <Row label={t('signals.brakingDistance')}>
                 {result.realisticBraking
-                  ? `${num(result.brakingTiles, 1)} ${t('units.tiles')}`
+                  ? countLabel('count.tiles', result.brakingTiles, 1)
                   : t('signals.noBraking')}
               </Row>
               {/* both spacings in one unit: a spacing along a track is the same number of
@@ -89,29 +98,30 @@ export function SignalDensity({ route }: { route: RouteWithFlowParams | null }) 
               <Row label={t('signals.upkeepRecommended')}>
                 <Money value={result.yearlyRecommended} />
               </Row>
-              <Table.Tr>
-                <Table.Td>{t('signals.saving')}</Table.Td>
-                <Table.Td className={`cell-num big ${result.yearlySaving > 0 ? 'profit' : ''}`}>
-                  <Money value={result.yearlySaving} />
-                </Table.Td>
-              </Table.Tr>
             </Table.Tbody>
           </Table>
           {result.tooSparse && (
             <Warning>
               {t('signals.tooSparse', {
                 // tooSparse cannot be true without a current spacing to compare against
-                n: num(result.currentSpacing!, 1),
-                useful: num(result.usefulSpacing, 1),
+                n: countLabel('count.pieces', result.currentSpacing!, 1),
+                useful: countLabel('count.pieces', result.usefulSpacing, 1),
               })}
             </Warning>
           )}
-          {!result.realisticBraking && <Text className="hint">{t('signals.originalModel')}</Text>}
           {!route?.game?.infrastructureMaintenance && (
             <Text className="hint">{t('network.disabled')}</Text>
           )}
         </>
       )}
+      {/* why the spacing is counted as it is; under the original braking model also why it
+          falls back to the train's length — the braking row already says there is none */}
+      <HowComputed id="network.signals">
+        <Text className="hint">{t('signals.spacingRule')}</Text>
+        {result && !result.realisticBraking && (
+          <Text className="hint">{t('signals.originalModel')}</Text>
+        )}
+      </HowComputed>
     </Paper>
   );
 }

@@ -55,7 +55,8 @@ function readRow() {
 
 /** Field widths standing on no step of the scale, with the scale for the message. */
 function offTheScale() {
-  const rows = [...document.querySelectorAll('main .filters')];
+  // the fields of the network blocks take the same scale as a filter row
+  const rows = [...document.querySelectorAll('main .filters, main .network-inputs')];
   if (rows.length === 0) return null;
 
   // the steps are stated in characters, so the browser resolves them rather than
@@ -81,6 +82,9 @@ function offTheScale() {
     // buttons is as wide as its own labels, which are a different width in
     // every language (see FieldWidth in skin.ts)
     if (field.getAttribute('data-width') === 'content') continue;
+    // the engine of the corridor carries its sprite beside the name: a wide step plus the
+    // sprite column, on no step of its own (skin.css, .field-engine)
+    if (field.closest('.field-engine')) continue;
     const width = Math.round(field.getBoundingClientRect().width);
     if (width === 0 || scale.some((step) => Math.abs(step - width) <= 1)) continue;
     const label = field

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   ActionIcon,
   Alert,
@@ -30,6 +30,7 @@ import { BuyMenuNote } from '../../components/BuyMenuNote';
 import { CargoIcon } from '../../components/CargoIcon';
 import { Field } from '../../components/Field';
 import { GuiIcon } from '../../components/GuiIcon';
+import { HowComputed } from '../../components/HowComputed';
 import { IconSwitch } from '../../components/IconSwitch';
 import { Money } from '../../components/Money';
 import { CargoSelect, TrainSelect } from '../../components/PictureSelect';
@@ -256,6 +257,14 @@ function Specimen({ showTooltip }: { showTooltip: boolean }) {
         </Table.Tbody>
       </Table>
 
+      {/* the folded explanation under an answer, in every colour group: its heading is a
+          control of the window, lettered and framed like one */}
+      <div data-testid="kit-how-computed">
+        <HowComputed id="kit.specimen">
+          <Text className="hint">{t('kit.body')}</Text>
+        </HowComputed>
+      </div>
+
       {/* a short list in a box too small for it, so the scrollbar is on screen */}
       <div className="table-wrap" style={{ maxHeight: 140 }}>
         <Table>
@@ -369,6 +378,68 @@ function Showcase() {
                 <Table.Td className={`cell-money ${row.profit < 0 ? 'loss' : 'profit'}`}>
                   <Money value={row.profit} />
                 </Table.Td>
+                <Table.Td className="cell-action">
+                  <ActionIcon aria-label={t('kit.rowAction')}>→</ActionIcon>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </TableFrame>
+      </div>
+
+      {/* the same rows held by more than their first column, the way Best train holds its rank
+          and engine: the number, the tick, the sprite and the name stay while the rest scrolls.
+          The figures are shown three times on purpose, so the list is wide enough to scroll
+          under four held columns on any window */}
+      <div className="kit-list kit-list-leading" data-testid="kit-list-leading">
+        <TableFrame pinEdges pinLeading={4} rowCount={rows.length} emptyMessage={t('kit.listEmpty')}>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th className="cell-num">#</Table.Th>
+              <Table.Th className="cell-pick" />
+              <SortableTh column="name" sort={sort} onSort={setSort} colSpan={2}>
+                {t('kit.col.name')}
+              </SortableTh>
+              {[0, 1, 2].map((copy) => (
+                <Fragment key={copy}>
+                  <SortableTh column="power" sort={sort} onSort={setSort} className="cell-num">
+                    {t('kit.col.power')}
+                  </SortableTh>
+                  <SortableTh column="cost" sort={sort} onSort={setSort} className="cell-money">
+                    {t('kit.col.cost')}
+                  </SortableTh>
+                  <SortableTh column="profit" sort={sort} onSort={setSort} className="cell-money">
+                    {t('kit.col.profit')}
+                  </SortableTh>
+                </Fragment>
+              ))}
+              <Table.Th className="cell-action" />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.map((row, index) => (
+              <Table.Tr key={row.id}>
+                <Table.Td className="cell-num">{index + 1}</Table.Td>
+                <Table.Td className="cell-pick">
+                  <Checkbox size="xs" aria-label={trainName(row)} />
+                </Table.Td>
+                <Table.Td className="cell-sprite">
+                  <TrainImage trainId={row.id} />
+                </Table.Td>
+                <Table.Td>
+                  <VehicleName train={row} />
+                </Table.Td>
+                {[0, 1, 2].map((copy) => (
+                  <Fragment key={copy}>
+                    <Table.Td className="cell-num">{row.power}</Table.Td>
+                    <Table.Td className="cell-money">
+                      <Money value={row.cost} />
+                    </Table.Td>
+                    <Table.Td className={`cell-money ${row.profit < 0 ? 'loss' : 'profit'}`}>
+                      <Money value={row.profit} />
+                    </Table.Td>
+                  </Fragment>
+                ))}
                 <Table.Td className="cell-action">
                   <ActionIcon aria-label={t('kit.rowAction')}>→</ActionIcon>
                 </Table.Td>

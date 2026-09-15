@@ -161,18 +161,41 @@ export async function dropdownMetrics(page: Page, field: Locator): Promise<Dropd
 /** The specimens of the tier of one: the list, the frame with nothing in it, the chart. */
 export const showcase = {
   list: (page: Page) => page.locator('[data-testid="kit-list"]'),
+  /** the list holding several leading columns, as Best train holds its rank and engine */
+  listLeading: (page: Page) => page.locator('[data-testid="kit-list-leading"]'),
   emptyList: (page: Page) => page.locator('[data-testid="kit-list-empty"]'),
   chart: (page: Page) => page.locator('[data-testid="kit-chart"] .mantine-LineChart-root'),
 };
 
-/** Every picture of the page, and whether each one is actually drawn. */
+/**
+ * Every picture of the page, and whether each one is actually drawn.
+ *
+ * Sprites load lazily (TrainImage), so one below the fold has not been fetched yet and is
+ * neither drawn nor missing: each is brought on screen and given the chance to load or fail
+ * before it is measured. A sprite sized by its own picture measures nothing until then, and one
+ * sized by its cell would pass without its file ever having been asked for.
+ */
 export async function pictures(page: Page) {
-  return page.evaluate(() =>
-    [...document.querySelectorAll('[data-testid^="kit-"] img')].map((image) => ({
-      src: (image as HTMLImageElement).src,
+  return page.evaluate(async () => {
+    const images = [...document.querySelectorAll<HTMLImageElement>('[data-testid^="kit-"] img')];
+    for (const image of images) {
+      image.scrollIntoView({ block: 'center' });
+      if (!image.complete) {
+        await new Promise<void>((resolve) => {
+          image.addEventListener('load', () => resolve(), { once: true });
+          image.addEventListener('error', () => resolve(), { once: true });
+          setTimeout(resolve, 5000);
+        });
+      }
+    }
+    // a failed picture hides itself from its own error handler; one frame lets that land
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    window.scrollTo(0, 0);
+    return images.map((image) => ({
+      src: image.src,
       drawn: image.getBoundingClientRect().width > 0,
-    })),
-  );
+    }));
+  });
 }
 
 /** Brings the tooltip plate on screen inside the given colour group. */

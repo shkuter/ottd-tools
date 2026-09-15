@@ -1,3 +1,9 @@
+/*
+ * DOM matchers such as toBeVisible. A folded block keeps its text mounted and only hides it
+ * (Mantine's Collapse), so whether something is on screen cannot be asked as "is it in the DOM".
+ */
+import '@testing-library/jest-dom/vitest';
+
 /**
  * Vitest runs under node, where `localStorage` does not exist and zustand's persist
  * middleware silently skips itself. A tiny in-memory Storage keeps the stores persistable

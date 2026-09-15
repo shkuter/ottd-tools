@@ -5,7 +5,9 @@
  * @vitest-environment jsdom
  */
 import { MantineProvider } from '@mantine/core';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { t } from '../../../i18n';
+import { useUiStore } from '../../../state/uiStore';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CorridorUpgrade } from '../CorridorUpgrade';
@@ -62,6 +64,7 @@ beforeEach(() => {
   useLocaleStore.getState().setLocale('en');
   useSettingsStore.setState({ game: GAME, calc: CALC });
   useRouteStore.setState({ corridor: EMPTY_CORRIDOR, network: { railPieces: {}, signals: 0, stations: 0 } });
+  useUiStore.setState({ howComputedOpen: {} });
 });
 
 afterEach(cleanup);
@@ -140,20 +143,66 @@ describe('corridor upgrade panel', () => {
     expect(thresholdRow()).not.toMatch(/short/);
   });
 
-  it('names its assumptions where the figures are, and the unit where the field is', () => {
-    // tasks 5.3: the caveats are part of the answer, not a footnote somebody may not reach
-    useRouteStore.setState({ corridor: { ...EMPTY_CORRIDOR, target: 'ELRL', pieces: 1000 } });
+  it('names the counting rule at the length field without anything opened', () => {
+    useRouteStore.setState({ corridor: { ...EMPTY_CORRIDOR, target: 'ELRL' } });
     draw();
-    expect(screen.getByText(/Length in track pieces/)).toBeTruthy();
-    cleanup();
+    const field = screen.getByLabelText(t('corridor.pieces'));
+    const root = field.closest('.mantine-InputWrapper-root')!;
+    const rule = root.querySelector('.mantine-InputWrapper-description');
+    expect(rule?.textContent).toBe(t('network.pieceRuleShort'));
+    expect(rule).toBeVisible();
+    // the block still says what it is missing, in view
+    expect(screen.getByText(t('corridor.needPieces'))).toBeVisible();
+  });
 
+  it('folds the full rule and the assumptions under "How it\'s computed"', async () => {
     const electric = trains.find((t) => t.id === 'peasweep')!;
     useRouteStore.setState({
       corridor: { target: 'ELRL', pieces: 1000, trains: 4, engineId: electric.id },
     });
     draw();
-    expect(screen.getByText(/not a payback time/)).toBeTruthy();
-    expect(screen.getByText(/bought at full price/)).toBeTruthy();
-    expect(screen.getByText(/figured on level track/)).toBeTruthy();
+    const folded = [
+      screen.getByText(/Length in track pieces/),
+      screen.getByText(/not a payback time/),
+    ];
+    for (const text of folded) expect(text).not.toBeVisible();
+
+    await userEvent.click(screen.getByRole('button', { name: t('howComputed.title') }));
+    for (const text of folded) await waitFor(() => expect(text).toBeVisible());
+    expect(screen.getByText(/bought at full price/)).toBeVisible();
+    expect(screen.getByText(/figured on level track/)).toBeVisible();
+  });
+
+  it('keeps the warning about a hand-entered time in view', () => {
+    const electric = trains.find((t) => t.id === 'peasweep')!;
+    useRouteStore.setState({
+      corridor: { target: 'ELRL', pieces: 1000, trains: 4, engineId: electric.id },
+    });
+    draw({ ...ROUTE, loadedDaysOverride: 20 });
+    expect(screen.getByText(t('corridor.manualDays'))).toBeVisible();
+  });
+
+  it('opens its answer with the yearly delta, the rest in the order it always had', () => {
+    const electric = trains.find((t) => t.id === 'peasweep')!;
+    useRouteStore.setState({
+      corridor: { target: 'ELRL', pieces: 1000, trains: 4, engineId: electric.id },
+    });
+    draw();
+    const labels = [...document.querySelectorAll('tbody tr')].map(
+      (tr) => tr.querySelector('td')?.textContent ?? '',
+    );
+    expect(labels).toEqual([
+      t('corridor.yearlyDelta'),
+      t('corridor.roundTrip'),
+      t('corridor.tripsPerYear'),
+      t('corridor.incomePerTrip'),
+      t('corridor.runningCost'),
+      t('corridor.gradeSpeed'),
+      t('corridor.trainProfit'),
+      t('corridor.maintenanceDelta'),
+      t('corridor.threshold'),
+      t('corridor.capital'),
+      t('corridor.breakEven'),
+    ]);
   });
 });

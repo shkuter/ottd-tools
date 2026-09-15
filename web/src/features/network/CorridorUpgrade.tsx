@@ -1,6 +1,8 @@
 import { NumberInput, Paper, Select, Table, Text, Title } from '@mantine/core';
 import { intlLocale, t, useLocale } from '../../i18n';
-import { num, speedUnitLabel, speedValue, unitSuffix } from '../../components/format';
+import { countLabel, num, speedUnitLabel, speedValue, unitSuffix } from '../../components/format';
+import { HowComputed } from '../../components/HowComputed';
+import { fieldWidth } from '../../skin';
 import { Money } from '../../components/Money';
 import { STEP_FROM_EMPTY } from '../../components/numberField';
 import { TrainSelect } from '../../components/PictureSelect';
@@ -41,6 +43,7 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
       <div className="network-inputs">
         <Select
           className="field"
+          {...fieldWidth('wide')}
           label={t('corridor.target')}
           value={target?.label ?? null}
           onChange={(v) => setCorridor({ target: v ?? '' })}
@@ -48,8 +51,12 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
         />
         <NumberInput
           className="field"
+          {...fieldWidth('normal')}
           label={t('corridor.pieces')}
           suffix={unitSuffix(t('units.trackPieces'))}
+          // the same short rule as the upkeep fields, from the same string, so the two cannot
+          // come to say it differently; the full rule is under "How it's computed"
+          description={t('network.pieceRuleShort')}
           min={0}
           allowDecimal={false}
           startValue={STEP_FROM_EMPTY}
@@ -58,6 +65,7 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
         />
         <NumberInput
           className="field"
+          {...fieldWidth('narrow')}
           label={t('corridor.trains')}
           min={1}
           allowDecimal={false}
@@ -78,7 +86,6 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
             .sort((a, b) => a.label.localeCompare(b.label, intlLocale(locale)))}
         />
       </div>
-      <Text className="hint">{t('corridor.pieceRule')}</Text>
       {/* a hand-entered leg applies to both sides, so a faster engine buys no time here —
           said out loud rather than left to be read off two identical round trips */}
       {route?.loadedDaysOverride != null && (
@@ -91,9 +98,19 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
         <>
           <Table className="summary-table stats-wide" withRowBorders={false}>
             <Table.Tbody>
+              {/* the answer first: whether the conversion pays is the yearly delta, and the
+                  figures it is made of follow it in the order they always stood */}
+              <Table.Tr>
+                <Table.Td>{t('corridor.yearlyDelta')}</Table.Td>
+                <Table.Td
+                  className={`cell-num big ${result.yearlyDelta >= 0 ? 'profit' : 'loss'}`}
+                >
+                  <Money value={result.yearlyDelta} />
+                </Table.Td>
+              </Table.Tr>
               <Row label={t('corridor.roundTrip')}>
                 {num(result.before.economics.roundTripDays, 1)} →{' '}
-                {num(result.after.economics.roundTripDays, 1)} {t('units.days')}
+                {countLabel('count.days', result.after.economics.roundTripDays, 1)}
               </Row>
               <Row label={t('corridor.tripsPerYear')}>
                 {num(result.before.economics.tripsPerYear, 1)} →{' '}
@@ -118,14 +135,6 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
               <Row label={t('corridor.maintenanceDelta')}>
                 <Money value={result.maintenanceDelta} />
               </Row>
-              <Table.Tr>
-                <Table.Td>{t('corridor.yearlyDelta')}</Table.Td>
-                <Table.Td
-                  className={`cell-num big ${result.yearlyDelta >= 0 ? 'profit' : 'loss'}`}
-                >
-                  <Money value={result.yearlyDelta} />
-                </Table.Td>
-              </Table.Tr>
               <Row label={t('corridor.threshold')}>
                 {result.threshold == null
                   ? t('corridor.neverPays')
@@ -143,9 +152,14 @@ export function CorridorUpgrade({ route }: { route: RouteWithFlowParams | null }
               </Row>
             </Table.Tbody>
           </Table>
-          <Text className="hint">{t('corridor.assumptions')}</Text>
         </>
       )}
+      {/* the counting rule and the assumptions, whatever state the answer is in: they explain
+          the block, not one result of it */}
+      <HowComputed id="network.corridor">
+        <Text className="hint">{t('corridor.pieceRule')}</Text>
+        <Text className="hint">{t('corridor.assumptions')}</Text>
+      </HowComputed>
     </Paper>
   );
 }

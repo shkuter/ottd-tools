@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActionIcon,
   Button,
@@ -39,6 +39,7 @@ import {
 } from '../../dataset';
 import { poweredOutputOn } from '../../engine/tracktypes';
 import { intlLocale, t, useLocale } from '../../i18n';
+import { loadingBranchHint, supplyCommonHints } from './rowHints';
 import {
   cargoName,
   cargoUnits,
@@ -48,7 +49,7 @@ import {
   trainName,
 } from '../../i18n/names';
 import {
-  engineLabel, num, percent, speedUnitLabel, speedValue, unitSuffix, wagonLabel, withUnit,
+  countSuffix, engineLabel, num, percent, speedUnitLabel, speedValue, wagonLabel, withUnit,
 } from '../../components/format';
 import { Money } from '../../components/Money';
 import {
@@ -80,6 +81,7 @@ import { TrainImage } from '../../components/TrainImage';
 import { useActiveCargo } from '../useActiveCargo';
 import { PrefillNote } from '../../components/PrefillNote';
 import { VehicleName } from '../../components/VehicleName';
+import { HowComputed } from '../../components/HowComputed';
 
 /** Rows drawn before the "show more" button; the search itself still ranks all of them. */
 const PAGE_SIZE = 15;
@@ -112,20 +114,12 @@ function ratingBreakdown(r: StationRating): string {
  * noise. Struck through when the order is the thing costing the route its haul.
  */
 function LoadingBranchMark({ row }: { row: OptimizeResult }) {
-  if (!row.branchesDiffer || !row.otherBranch) return null;
-  // What the branch that lost would have given, so the tooltip compares rather than asserts.
-  const other = {
-    interval: num(row.otherBranch.pickupIntervalDays, 1),
-    cargo: num(row.otherBranch.cargoPerTrip),
-  };
+  const hint = loadingBranchHint(row);
+  if (!hint) return null;
   return (
     <sup
       className={row.waitForFullLoad ? 'branch-mark' : 'branch-mark branch-mark--off'}
-      title={
-        row.waitForFullLoad
-          ? t('opt.branchWait', { days: num(row.waitDays, 1), ...other })
-          : t('opt.branchNoWait', other)
-      }
+      title={hint}
     >
       {t('opt.fullLoadMark')}
     </sup>
@@ -161,13 +155,7 @@ function SupplyCell({ row, target }: { row: OptimizeResult; target: SupplyTarget
 
   // Both rules name the interval, the window and the fleet that would hold it; the pool adds
   // its own numbers on top of that rather than in place of it.
-  const common = [
-    t('opt.supplyHintInterval', {
-      interval: num(row.pickupIntervalDays, 1),
-      window: num(supply.windowDays, 1),
-    }),
-    t('opt.supplyHintFleet', { trains: String(supply.trainsForWindow ?? 1) }),
-  ];
+  const common = supplyCommonHints(row, supply);
 
   if (figure.kind === 'bonus') {
     const hint = [
@@ -414,6 +402,8 @@ export default function OptimizerPage() {
   );
 
   const shown = ordered.slice(0, visibleCount);
+  /** One row of the list as drawn. */
+  type ShownRow = (typeof shown)[number];
   const hiddenCount = ordered.length - shown.length;
 
   const goalLabel = t(GOAL_LABEL_KEYS[activeGoal]);
@@ -445,7 +435,7 @@ export default function OptimizerPage() {
    * the best" rather than as something about the vehicle. Supply never gets one: its column
    * shows a ratio while the ranking reads the conversion, so there the note speaks instead.
    */
-  function mark(row: (typeof shown)[number], column: typeof activeGoal) {
+  function mark(row: ShownRow, column: typeof activeGoal) {
     if (!equivalentMarks || !row.equivalentToBest || activeGoal !== column) return null;
     return (
       <sup className="equivalent-mark" title={t('opt.equivalentHint', { goal: goalLabel })}>
@@ -454,6 +444,71 @@ export default function OptimizerPage() {
       </sup>
     );
   }
+
+  /*
+   * The figure the goal ranks by stands right after the wagons, beside the consist it belongs to,
+   * instead of a screen to the right of it. Each of the three columns is drawn by one entry here,
+   * header and cell alike; the column in force is drawn after the wagons and skipped at its old
+   * place, so it can neither appear twice nor go missing. Supply has no entry: its column shows a
+   * ratio while the goal ranks by the conversion, so it keeps its place and the line above the
+   * list says what the rows are ranked by.
+   */
+  const goalColumns: Record<
+    Exclude<typeof activeGoal, 'supply'>,
+    { head: ReactNode; cell: (r: ShownRow) => ReactNode }
+  > = {
+    transported: {
+      head: (
+        <SortableTh column="hauled" sort={sort} onSort={setSort} className="cell-num">
+          {cargo ? withUnit(t('opt.hauled'), cargoUnits(cargo.units)) : t('opt.hauled')}
+        </SortableTh>
+      ),
+      cell: (r) => (
+        <Table.Td className="cell-num" data-testid={figureCell('transported')}>
+          {num(r.hauledPerYear)}
+          {mark(r, 'transported')}
+        </Table.Td>
+      ),
+    },
+    cheapest: {
+      head: (
+        <SortableTh column="running" sort={sort} onSort={setSort} className="cell-money">
+          {t('table.running')}
+        </SortableTh>
+      ),
+      cell: (r) => (
+        <Table.Td className="cell-money" data-testid={figureCell('cheapest')}>
+          <Money value={r.runningCostPerYear} />
+          {mark(r, 'cheapest')}
+        </Table.Td>
+      ),
+    },
+    profit: {
+      head: (
+        <SortableTh column="profit" sort={sort} onSort={setSort} className="cell-money">
+          {t('opt.profitYear')}
+        </SortableTh>
+      ),
+      cell: (r) => (
+        <Table.Td
+          className={'cell-money ' + (r.profitPerYear >= 0 ? 'profit' : 'money-neg')}
+          data-testid={figureCell('profit')}
+        >
+          <Money value={r.profitPerYear} />
+          {mark(r, 'profit')}
+        </Table.Td>
+      ),
+    },
+  };
+  /** The goal column drawn after the wagons; none under Supply. */
+  const goalColumnAfterWagons = activeGoal === 'supply' ? null : goalColumns[activeGoal];
+  /**
+   * Running cost and yearly profit at their own place further right — unless that column is the
+   * one in force and already stands after the wagons. Hauled has no place of its own: it is
+   * shown only while it is the goal.
+   */
+  const columnAtOwnPlace = (column: 'cheapest' | 'profit') =>
+    activeGoal === column ? null : goalColumns[column];
 
   function applyToConsist(index: number) {
     const r = shown[index];
@@ -495,7 +550,7 @@ export default function OptimizerPage() {
         <NumberInput
           {...fieldWidth('narrow')}
           label={t('opt.distance')}
-          suffix={unitSuffix(t('units.tiles'))}
+          suffix={countSuffix('count.tiles', distance)}
           min={10}
           value={distance}
           onChange={(v) => setDistance(Number(v) || 10)}
@@ -503,7 +558,7 @@ export default function OptimizerPage() {
         <NumberInput
           {...fieldWidth('narrow')}
           label={t('opt.stationTiles')}
-          suffix={unitSuffix(t('units.tiles'))}
+          suffix={countSuffix('count.tiles', stationTiles)}
           min={1}
           max={16}
           value={stationTiles}
@@ -592,21 +647,12 @@ export default function OptimizerPage() {
       {cargo && (
         <p className="hint">
           {cargoName(cargo)} · {economies.find((e) => e.id === economyId)?.name ?? t('settings.vanilla')} ·{' '}
-          {t('route.payment')}: {num(cargoPaymentRate(cargo, economyId, game, calc))} ·{' '}
-          {productionPerMonth > 0 ? t('opt.assumptionProduction') : t('opt.assumption')}
+          {t('route.payment')}: {num(cargoPaymentRate(cargo, economyId, game, calc))}
         </p>
       )}
       {soldIds && <p className="hint">{t('vehicle.listFromGame')}</p>}
       {doubtful.length > 0 && (
         <>
-          <p className="hint">
-            <span className="intro-warn">?</span>{' '}
-            {doubtful.some((d) => d.availability.reason === 'retire')
-              ? t('vehicle.doubtLegend')
-              : introRandomisationActive(game)
-                ? t('opt.introLegend')
-                : t('opt.introLegendExact')}
-          </p>
           <Group className="intro-toggles" gap="xs">
             <Text className="hint">{t('opt.introInclude')}</Text>
             {doubtful.map(({ ids, train, availability, capacity, ambiguous }) => (
@@ -665,6 +711,12 @@ export default function OptimizerPage() {
           onClose={compare.close}
         />
       )}
+      {/* what orders the rows, named for the goal in force rather than the one picked: with no
+          output the search ranks by profit whatever the switch was left on. Chosen at render
+          time, so it follows the language like every other string of the tab */}
+      <p className="hint" data-testid="ranked-by">
+        {t(`opt.rankedBy.${activeGoal}`)}
+      </p>
       {equivalentNote && (
         <p className="hint" data-testid="equivalent-note">
           {t('opt.equivalentNote', {
@@ -674,7 +726,9 @@ export default function OptimizerPage() {
           })}
         </p>
       )}
-      <TableFrame pinEdges rowCount={shown.length} emptyMessage={emptyMessage}>
+      {/* a row is recognised by its rank and its engine together, so the number, the tick,
+          the sprite and the name all hold while the figures scroll */}
+      <TableFrame pinEdges pinLeading={4} rowCount={shown.length} emptyMessage={emptyMessage}>
         <Table.Thead>
           <Table.Tr>
             <Table.Th className="cell-num">#</Table.Th>
@@ -685,6 +739,7 @@ export default function OptimizerPage() {
             <SortableTh column="wagon" sort={sort} onSort={setSort} colSpan={2}>
               {t('opt.wagons')}
             </SortableTh>
+            {goalColumnAfterWagons?.head}
             <SortableTh
               column="cargoTrip"
               sort={sort}
@@ -750,23 +805,14 @@ export default function OptimizerPage() {
                 {t('opt.supply')}
               </SortableTh>
             )}
-            {activeGoal === 'transported' && (
-              <SortableTh column="hauled" sort={sort} onSort={setSort} className="cell-num">
-                {cargo ? withUnit(t('opt.hauled'), cargoUnits(cargo.units)) : t('opt.hauled')}
-              </SortableTh>
-            )}
             <SortableTh column="incomeTrip" sort={sort} onSort={setSort} className="cell-money">
               {t('opt.incomeTrip')}
             </SortableTh>
-            <SortableTh column="running" sort={sort} onSort={setSort} className="cell-money">
-              {t('table.running')}
-            </SortableTh>
+            {columnAtOwnPlace('cheapest')?.head}
             <SortableTh column="cost" sort={sort} onSort={setSort} className="cell-money">
               {t('table.cost')}
             </SortableTh>
-            <SortableTh column="profit" sort={sort} onSort={setSort} className="cell-money">
-              {t('opt.profitYear')}
-            </SortableTh>
+            {columnAtOwnPlace('profit')?.head}
             <SortableTh column="payback" sort={sort} onSort={setSort} className="cell-num">
               {withUnit(t('opt.payback'), t('units.years'))}
             </SortableTh>
@@ -808,6 +854,7 @@ export default function OptimizerPage() {
                   <sup className="intro-warn" title={t('opt.wagonCapsSpeed')}>!</sup>
                 )}
               </Table.Td>
+              {goalColumnAfterWagons?.cell(r)}
               <Table.Td className="cell-num">
                 {num(r.cargoPerTrip)}
                 {r.cargoPerTrip < r.capacity - 0.5 && (
@@ -836,25 +883,10 @@ export default function OptimizerPage() {
                 {r.stationRating ? percent(r.stationRating.deliveredShare) : '—'}
               </Table.Td>
               {supplyTarget && <SupplyCell row={r} target={supplyTarget} />}
-              {activeGoal === 'transported' && (
-                <Table.Td className="cell-num" data-testid={figureCell('transported')}>
-                  {num(r.hauledPerYear)}
-                  {mark(r, 'transported')}
-                </Table.Td>
-              )}
               <Table.Td className="cell-money"><Money value={r.incomePerTrip} /></Table.Td>
-              <Table.Td className="cell-money" data-testid={figureCell('cheapest')}>
-                <Money value={r.runningCostPerYear} />
-                {mark(r, 'cheapest')}
-              </Table.Td>
+              {columnAtOwnPlace('cheapest')?.cell(r)}
               <Table.Td className="cell-money"><Money value={r.buyCostTotal} /></Table.Td>
-              <Table.Td
-                className={'cell-money ' + (r.profitPerYear >= 0 ? 'profit' : 'money-neg')}
-                data-testid={figureCell('profit')}
-              >
-                <Money value={r.profitPerYear} />
-                {mark(r, 'profit')}
-              </Table.Td>
+              {columnAtOwnPlace('profit')?.cell(r)}
               <Table.Td className="cell-num">
                 {r.paybackYears ? num(r.paybackYears, 1) : '—'}
               </Table.Td>
@@ -885,6 +917,24 @@ export default function OptimizerPage() {
           </Text>
         </Group>
       )}
+      {/* the model behind the figures and the meaning of the "?" mark, folded under the answer;
+          what the tab says about its own state — the goal hint, the list taken from the game,
+          the switches for doubtful vehicles — stays where it is */}
+      <HowComputed id="optimizer">
+        <p className="hint">
+          {productionPerMonth > 0 ? t('opt.assumptionProduction') : t('opt.assumption')}
+        </p>
+        {doubtful.length > 0 && (
+          <p className="hint">
+            <span className="intro-warn">?</span>{' '}
+            {doubtful.some((d) => d.availability.reason === 'retire')
+              ? t('vehicle.doubtLegend')
+              : introRandomisationActive(game)
+                ? t('opt.introLegend')
+                : t('opt.introLegendExact')}
+          </p>
+        )}
+      </HowComputed>
     </div>
   );
 }

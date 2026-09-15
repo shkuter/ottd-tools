@@ -3,17 +3,8 @@ import { useNavigate } from 'react-router';
 import { Button, Group, Table, Text } from '@mantine/core';
 import { t } from '../../i18n';
 import type { ImportDiff } from '../../savegame/diff';
-import type { Snapshot } from '../../savegame/snapshot';
 import type { SavegameImport } from './useSavegameImport';
-
-/** "92 trains, 55 routes, 100 stations" — what the panel says about a snapshot. */
-function snapshotSummary(snapshot: Snapshot): string {
-  return t('savegame.snapshotSummary', {
-    trains: snapshot.trains.length,
-    routes: snapshot.routes.length,
-    stations: snapshot.stations.filter((s) => !s.isWaypoint).length,
-  });
-}
+import { snapshotSummary } from './snapshotSummary';
 
 function infoValue(kind: string, value: number, choiceKeys?: readonly string[]): string {
   if (kind === 'flag') return t(value ? 'settings.on' : 'settings.off');

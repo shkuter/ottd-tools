@@ -56,6 +56,53 @@ describe('the income chart', () => {
     ).toEqual([fromToken(tokens, '--skin-field-text')]);
     expect(measured.spilling, 'and they stay on it').toBe(0);
   });
+
+  it('names its axes and draws no legend', async () => {
+    const page = await harness().goto('/income', '.page-route');
+    const shot = await page.evaluate(snapshot);
+    const tokens = shot.themes.grey;
+
+    const measured = await page.evaluate(() => {
+      const section = document.querySelector<HTMLElement>('.route-chart');
+      const root = section?.querySelector<HTMLElement>('.mantine-LineChart-root');
+      if (!section || !root) return { error: 'no chart' as const };
+      const box = root.getBoundingClientRect();
+      // the chart package's own class on an axis caption: recharts gives it no class of its own
+      const labels = [...root.querySelectorAll<SVGTextElement>('.mantine-LineChart-axisLabel')];
+      const ticks = [...root.querySelectorAll('.recharts-cartesian-axis-tick text')].map((tick) =>
+        tick.getBoundingClientRect(),
+      );
+      const crosses = (a: DOMRect, b: DOMRect) =>
+        a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      return {
+        legends: section.querySelectorAll('.recharts-legend-wrapper, [class*="legend" i]').length,
+        labels: labels.map((label) => label.textContent ?? ''),
+        colours: [...new Set(labels.map((label) => getComputedStyle(label).fill))],
+        outside: labels
+          .map((label) => label.getBoundingClientRect())
+          .filter((r) => r.left < box.left - 1 || r.right > box.right + 1 || r.top < box.top - 1 || r.bottom > box.bottom + 1)
+          .length,
+        onTicks: labels
+          .map((label) => label.getBoundingClientRect())
+          .filter((r) => ticks.some((tick) => crosses(r, tick))).length,
+        mark: document.querySelector('.chart-mark')?.textContent ?? '',
+        referenceLines: root.querySelectorAll('.recharts-reference-line').length,
+      };
+    });
+
+    expect(measured.error, 'the tab draws a chart').toBeUndefined();
+    if ('error' in measured) return;
+    expect(measured.legends, 'one line needs no legend').toBe(0);
+    expect(measured.labels, 'both axes are named').toHaveLength(2);
+    expect(
+      measured.colours.map((colour) => painted(colour, 'an axis caption')),
+      'lettered like the figures on the plate',
+    ).toEqual([fromToken(tokens, '--skin-field-text')]);
+    expect(measured.outside, 'the captions stay on the plate').toBe(0);
+    expect(measured.onTicks, 'no caption stands on a figure').toBe(0);
+    expect(measured.referenceLines, 'the trip is still marked on the curve').toBeGreaterThan(0);
+    expect(measured.mark, 'and named under it').toContain('→');
+  });
 });
 
 describe('the chain graph', () => {

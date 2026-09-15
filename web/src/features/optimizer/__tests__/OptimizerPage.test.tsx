@@ -20,6 +20,7 @@ import { useLocaleStore } from '../../../state/localeStore';
 import { DEFAULT_CALC_SETTINGS, DEFAULT_GAME_SETTINGS } from '../../../engine/settings';
 import { useConsistStore } from '../../../state/consistStore';
 import { useRouteStore } from '../../../state/routeStore';
+import { useUiStore } from '../../../state/uiStore';
 import { trains } from '../../../dataset';
 import { t } from '../../../i18n';
 
@@ -281,13 +282,13 @@ describe('цель «Мин. расходы» на вкладке', () => {
       expect(goalInput(goal)!.disabled).toBe(true);
     }
     expect(goalInput('profit')!.disabled).toBe(false);
-    expect(screen.getByText(/needs the industry output/i)).toBeTruthy();
+    expect(screen.getByText(/Set Output above/)).toBeTruthy();
   });
 
   it('называет причину у самих недоступных целей — подсказкой и описанием для скринридера', async () => {
     givenSearch({ productionPerMonth: 0 });
     draw();
-    const hint = screen.getByText(/needs the industry output/i);
+    const hint = screen.getByText(/Set Output above/);
     for (const goal of ['transported', 'supply', 'cheapest']) {
       // описание радиокнопки — строка, на которую указывает её aria-describedby
       await waitFor(() => {
@@ -448,5 +449,155 @@ describe('кнопка «→» в выдаче', () => {
     expect(useConsistStore.getState().entries.length).toBeGreaterThan(0);
     await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
     expect(restore()).toHaveLength(0);
+  });
+});
+
+/** Ячейки первой строки выдачи. */
+const firstRowCells = () => [...document.querySelectorAll('tbody tr:first-child td')];
+
+/** Заголовок, под которым стоит столбец таблицы с этим номером: шапка складывает спаны. */
+function headOfColumn(column: number) {
+  let start = 0;
+  for (const th of document.querySelectorAll<HTMLTableCellElement>('thead th')) {
+    const span = th.colSpan || 1;
+    if (column < start + span) return th.textContent ?? '';
+    start += span;
+  }
+  return '';
+}
+
+describe('колонка числа цели', () => {
+  it.each([
+    ['прибыль', {}, () => t('opt.profitYear')],
+    ['мин. расходы', { goal: 'cheapest' }, () => t('table.running')],
+    ['вывоз', { goal: 'transported' }, () => t('opt.hauled')],
+  ] as const)('при цели «%s» стоит сразу после вагонов', (_name, over, heading) => {
+    givenSearch(over);
+    draw();
+    const cells = firstRowCells();
+    const figure = cells.findIndex((td) => td.getAttribute('data-testid') === 'opt-goal-figure');
+    const engine = cells.findIndex((td) => td.getAttribute('data-testid') === 'opt-engine');
+    // за именем локомотива — спрайт и имя вагона, а следом уже число цели
+    expect(engine).toBeGreaterThan(0);
+    expect(figure).toBe(engine + 3);
+    expect(headOfColumn(figure)).toContain(heading());
+    // колонка не задвоилась и не пропала: столбцов в шапке столько же, сколько ячеек в строке
+    const columns = [...document.querySelectorAll<HTMLTableCellElement>('thead th')].reduce(
+      (n, th) => n + (th.colSpan || 1),
+      0,
+    );
+    expect(cells).toHaveLength(columns);
+  });
+
+  it('у «Снабжения» колонки после вагонов не переставляет', () => {
+    givenSearch({ goal: 'supply' });
+    draw();
+    expect(goalInput('supply')!.checked).toBe(true);
+    const cells = firstRowCells();
+    const engine = cells.findIndex((td) => td.getAttribute('data-testid') === 'opt-engine');
+    expect(headOfColumn(engine + 3)).toContain(t('opt.cargoTrip'));
+  });
+});
+
+describe('строка «Ранжировано по»', () => {
+  const rankedBy = () => screen.getByTestId('ranked-by').textContent ?? '';
+
+  /** Слова стоят в строке и идут в заданном порядке — порядке сравнения в переборе. */
+  function inOrder(text: string, words: readonly string[]) {
+    const at = words.map((word) => text.toLowerCase().indexOf(word));
+    expect(at.every((i) => i >= 0), `${text} — ${words.join(', ')}`).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+  }
+
+  // общий разбор равенства в `better`: прибыль, цена покупки, вагон, размер флота
+  // «smaller fleet», not «fleet»: the cheapest goal names the fleet's running cost first
+  const TIES = ['profit', 'purchase price', 'wagon', 'smaller fleet'];
+
+  it.each([
+    ['profit', {}, []],
+    ['cheapest', { goal: 'cheapest' }, ['running cost']],
+    ['transported', { goal: 'transported' }, ['hauled']],
+    ['supply', { goal: 'supply' }, ['conversion', 'supply window']],
+  ] as const)('при цели %s называет её показатель и ведущие ключи порядка', (goal, over, lead) => {
+    givenSearch(over);
+    draw();
+    expect(goalInput(goal)!.checked).toBe(true);
+    inOrder(rankedBy(), [...lead, ...TIES]);
+    // служебный хвост — число вагонов, локомотив, число локомотивов — строка не называет
+    expect(rankedBy()).not.toMatch(/number of|identifier|engine/i);
+  });
+
+  it('называет прибыль, когда выбран «Вывоз», а выпуск не задан', () => {
+    givenSearch({ goal: 'transported', productionPerMonth: 0 });
+    draw();
+    expect(rankedBy()).toBe(t('opt.rankedBy.profit'));
+    const figure = firstRowCells().findIndex(
+      (td) => td.getAttribute('data-testid') === 'opt-goal-figure',
+    );
+    expect(headOfColumn(figure)).toContain(t('opt.profitYear'));
+  });
+
+  it('не меняется от сортировки по колонке', async () => {
+    givenSearch({ goal: 'cheapest' });
+    draw();
+    const before = rankedBy();
+    const cost = [...document.querySelectorAll<HTMLElement>('thead .sort-button')].find((b) =>
+      b.textContent?.includes(t('table.cost')),
+    )!;
+    await userEvent.click(cost);
+    expect(document.querySelector('thead .sorted')).toBeTruthy();
+    expect(rankedBy()).toBe(before);
+  });
+});
+
+describe('подсказка о выпуске', () => {
+  it.each(['en', 'ru'] as const)(
+    'в %s называет поле так, как его подписывает форма, и приглашает его задать',
+    (locale) => {
+      useLocaleStore.setState({ locale });
+      givenSearch({ productionPerMonth: 0 });
+      draw();
+      const hint = document.querySelector('.goal-hint')!.textContent ?? '';
+      expect(hint.toLowerCase()).toContain(t('opt.production').toLowerCase());
+      // на экране нет поля «производство» — только «Выпуск»
+      expect(hint).not.toMatch(/production|производств/i);
+    },
+  );
+});
+
+describe('«Как считается» на вкладке', () => {
+  beforeEach(() => {
+    useUiStore.setState({ howComputedOpen: {} });
+  });
+
+  it('прячет допущения модели под выдачу, а строки состояния оставляет на виду', async () => {
+    givenSearch({ productionPerMonth: 0 });
+    draw();
+    // свёрнутый текст остаётся в DOM и только спрятан, поэтому проверяется видимость
+    const assumption = screen.getByText(t('opt.assumption'));
+    expect(assumption).not.toBeVisible();
+    expect(document.querySelector('.goal-hint')).toBeVisible();
+
+    await userEvent.click(screen.getByRole('button', { name: t('howComputed.title') }));
+    // Collapse leaves its folded state on the next frame, so the text shows up a moment later
+    await waitFor(() => expect(assumption).toBeVisible());
+  });
+
+  it('расшифровку «?» прячет, а флажки сомнительных машин — нет', async () => {
+    // в 1900 году у ростера Iron Horse есть машины, чьё появление под вопросом
+    useSettingsStore.setState({
+      game: { ...DEFAULT_GAME_SETTINGS, trainSet: 'iron_horse', firs: true },
+      calc: { ...DEFAULT_CALC_SETTINGS, priceYear: 1900 },
+    });
+    givenSearch({});
+    draw();
+    const toggles = document.querySelector('.intro-toggles');
+    expect(toggles, 'в этой задаче есть сомнительные машины').toBeTruthy();
+    expect(toggles).toBeVisible();
+    const legend = document.querySelector('.how-computed .intro-warn')!.parentElement!;
+    expect(legend).not.toBeVisible();
+
+    await userEvent.click(screen.getByRole('button', { name: t('howComputed.title') }));
+    await waitFor(() => expect(legend).toBeVisible());
   });
 });

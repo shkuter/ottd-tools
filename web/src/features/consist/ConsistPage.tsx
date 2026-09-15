@@ -36,7 +36,7 @@ import { BuyMenuNote } from '../../components/BuyMenuNote';
 import { useSoldIds } from '../savegame/soldIds';
 import { intlLocale, t, useLocale } from '../../i18n';
 import { cargoName, cargoUnits, matchesTrainName, sortCargos, trainName } from '../../i18n/names';
-import { money, num, speed, speedUnitLabel, speedValue, withUnit } from '../../components/format';
+import { countLabel, money, num, speed, speedUnitLabel, speedValue, withUnit } from '../../components/format';
 import { CargoSelect } from '../../components/PictureSelect';
 import { fieldWidth } from '../../skin';
 import { TrainImage } from '../../components/TrainImage';
@@ -405,7 +405,7 @@ export default function ConsistPage() {
               />
               <StatRow
                 label={t('consist.stats.length')}
-                value={`${num(stats.lengthTiles, 2)} ${t('units.tiles')}`}
+                value={countLabel('count.tiles', stats.lengthTiles, 2)}
               />
               <StatRow
                 label={t('consist.stats.speedLimit')}

@@ -4,7 +4,7 @@ import { TableFrame } from '../../components/table/TableFrame';
 import { activeIndustries, cargoByLabel, industriesMeta, industryById } from '../../dataset';
 import { t, useLocale } from '../../i18n';
 import { cargoName, industryName, sortIndustries } from '../../i18n/names';
-import { num } from '../../components/format';
+import { countLabel, num } from '../../components/format';
 import { supplyRule } from '../../engine/supply';
 import { fieldWidth } from '../../skin';
 import { useFirsStore } from '../../state/firsStore';
@@ -219,7 +219,7 @@ function legLabel(task: GameTask): string {
   if (!task.source) return '—';
   // the number carries the unit the way every other list prints it; the key only says which
   // side of town the haul is on, so no key has to decline a Russian noun after a number
-  const tiles = `${num(task.source.tiles)} ${t('units.tiles')}`;
+  const tiles = countLabel('count.tiles', task.source.tiles);
   // a leg whose towns are unknown says only its length: there is no side of town to name
   return task.source.legClass === 'unknown-town'
     ? tiles

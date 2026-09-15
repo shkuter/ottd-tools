@@ -7,8 +7,7 @@
  * without a DOM.
  */
 import { t } from '../../i18n';
-import { num } from '../../components/format';
-import { consistLabel } from '../../components/format';
+import { consistLabel, countLabel, num } from '../../components/format';
 import { cargoName } from '../../i18n/names';
 import type { IndustrySupply } from '../../engine/supply';
 import type { InputRun } from './inputs';
@@ -74,7 +73,7 @@ export function summaryLines({ summary, maxTrains, windowDays }: SummaryParams):
         bottleneck.kind === 'fleet'
           ? t('supply.bottleneckFleet', {
               cargo: inputCargoName(bottleneck.input),
-              trains: String(bottleneck.trains),
+              trains: countLabel('count.trains', bottleneck.trains),
               consist: bottleneck.input.leanest ? consistLabel(bottleneck.input.leanest) : '',
               limit: String(maxTrains),
             })

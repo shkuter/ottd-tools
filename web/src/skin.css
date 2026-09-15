@@ -535,19 +535,29 @@ h4 {
  * wide as the label. A field built by Field carries the attribute on its own
  * root instead, and is sized directly. Only what carries the attribute is
  * sized: a button in the row stays as wide as its own label, as in the game.
+ *
+ * The fields of a network block stand on the same scale: a count with no unit
+ * is narrow, a count in pieces or height levels normal, the track to convert to
+ * wide. There the whole field takes the step, label and description included,
+ * not only its input: a railtype's name and the short rule under a length are
+ * longer than the step, and they wrap inside it rather than widen the field
+ * past its neighbours.
  */
 .filters .mantine-Input-wrapper:has([data-width='narrow']),
-.filters > [data-width='narrow']:not(input) {
+.filters > [data-width='narrow']:not(input),
+.network-inputs > :has([data-width='narrow']) {
   width: var(--skin-field-narrow);
 }
 
 .filters .mantine-Input-wrapper:has([data-width='normal']),
-.filters > [data-width='normal']:not(input) {
+.filters > [data-width='normal']:not(input),
+.network-inputs > :has([data-width='normal']) {
   width: var(--skin-field-normal);
 }
 
 .filters .mantine-Input-wrapper:has([data-width='wide']),
-.filters > [data-width='wide']:not(input) {
+.filters > [data-width='wide']:not(input),
+.network-inputs > :has([data-width='wide']) {
   width: var(--skin-field-wide);
 }
 
@@ -1178,10 +1188,6 @@ h4 {
   margin-bottom: var(--skin-hsep-wide);
 }
 
-.network-inputs .field {
-  width: 140px;
-}
-
 /* The engine field carries a sprite in its left section, so it is a cargo field's width plus
    the sprite column: the longest engine name needs every pixel of the cargo width for itself
    (High Speed Driving Van Trailer is 230px of text against 249px of room). */
@@ -1470,6 +1476,18 @@ a:focus-visible {
 
 .sort-mark[data-direction='ascending'] {
   transform: rotate(180deg);
+}
+
+/*
+ * "How it's computed": the rules and assumptions behind an answer, folded under it. Its
+ * heading is a Mantine button, styled in skin-mantine.css beside the sortable header's.
+ */
+.how-computed {
+  margin-top: var(--skin-hsep-wide);
+}
+
+.how-computed-body {
+  padding-top: var(--skin-hsep-normal);
 }
 
 /* the catalogue names a vehicle beside its sprite in one cell, and Mantine's Image is a block,
