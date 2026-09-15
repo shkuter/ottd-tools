@@ -18,6 +18,8 @@ of what users see):
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-09-15
+
 ### Added
 
 - Replacing the consist — with "→" on Best train, with a route card of the imported game, or with the builder's clear button — shows a notification with "Restore the previous consist" for about ten seconds. The undo brings back the vehicles together with the cargo and the trip fields the action wrote.
