@@ -139,18 +139,6 @@
     --skin-hatch-colour: var(--skin-hatch);
   }
 
-  /*
-   * The lettering of an unavailable option stands on the plate itself. The hatch around it
-   * says the option cannot be chosen; letters drawn across the pattern read as a damaged
-   * sprite rather than as text. The negative margin gives back the width the backing takes,
-   * so the option is no wider than the available ones beside it.
-   */
-  .mantine-SegmentedControl-label[data-disabled] .mantine-SegmentedControl-innerLabel {
-    background-color: var(--skin-button);
-    padding-inline: var(--skin-hsep-normal);
-    margin-inline: calc(-1 * var(--skin-hsep-normal));
-  }
-
   /* ==========================================================================
      KEYBOARD FOCUS — the frame the game draws round the widget it has selected
 
@@ -962,8 +950,8 @@
    * scrolling part, shown while the frame is wider than it shows and not scrolled to the end.
    * It fades in from the list's own background and ends where the column held at the right edge
    * begins, so that column's edge stays in sight; it stands clear of the frame's border and of
-   * its scrollbar, and takes no press or scroll. The arrow is the shared one, turned to point
-   * right. On a frame too narrow for the words the arrow stays alone.
+   * its scrollbar, and takes no press or scroll. It carries no words, only the shared arrow
+   * turned to point right.
    */
   .table-frame {
     position: relative;
@@ -1006,12 +994,6 @@
     mask-repeat: no-repeat;
     mask-position: center;
     transform: rotate(-90deg);
-  }
-
-  @container (max-width: 20em) {
-    .table-overflow-hint__text {
-      display: none;
-    }
   }
 
   /* Last, because a pinned header paints its own background and this has the same weight: the

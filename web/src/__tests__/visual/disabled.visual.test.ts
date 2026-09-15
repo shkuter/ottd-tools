@@ -97,35 +97,4 @@ describe('an unavailable option of a switch', () => {
       ).not.toContain(`${option.image} ${option.colour}`);
     }
   });
-
-  it('keeps its lettering off the hatch', async () => {
-    /* The pattern is laid round the lettering, not under it: letters drawn across a
-       checkerboard read as a damaged sprite. The lettering stands on the plate's own
-       fill, while the option around it stays hatched. */
-    const page = await harness().goto('/optimizer', '.page-optimizer');
-    const output = page.getByLabel(en['opt.production'], { exact: true });
-    await output.fill('0');
-    await output.blur();
-    await page.waitForSelector('.mantine-SegmentedControl-label[data-disabled]');
-
-    const letterings = await page.evaluate(() =>
-      [
-        ...document.querySelectorAll(
-          '.filters .mantine-SegmentedControl-label[data-disabled] .mantine-SegmentedControl-innerLabel',
-        ),
-      ].map((lettering) => ({
-        backing: getComputedStyle(lettering).backgroundColor,
-        backingImage: getComputedStyle(lettering).backgroundImage,
-        plate: getComputedStyle(lettering.closest('.mantine-SegmentedControl-label')!).backgroundColor,
-        hatch: getComputedStyle(lettering.closest('.mantine-SegmentedControl-label')!).backgroundImage,
-      })),
-    );
-
-    expect(letterings.length, 'no unavailable option to look at').toBeGreaterThan(0);
-    for (const lettering of letterings) {
-      expect(lettering.hatch, 'the option lost its hatch').not.toBe('none');
-      expect(lettering.backingImage, 'the hatch runs under the letters').toBe('none');
-      expect(lettering.backing, 'the letters do not stand on the plate').toBe(lettering.plate);
-    }
-  });
 });

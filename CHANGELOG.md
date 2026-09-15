@@ -30,7 +30,7 @@ of what users see):
 - While no node is picked, the column beside the FIRS chains graph holds a legend: industry cards, cargo badges, repeated cargos, "To …" and supply lines, edge direction, dimming and the controls. It is drawn in the interface colours and cargo icons.
 - The Settings tab opens with a table of contents linking each group.
 - A setting that differs from its default is marked "changed" and has a button that resets that setting alone. It covers every game and calculation setting plus the currency and speed units, never the language.
-- A list wider than its frame shows a "more columns →" hint at its right edge until it is scrolled to the end.
+- A list wider than its frame shows a right arrow over a fade at its right edge until it is scrolled to the end.
 
 ### Changed
 
@@ -60,7 +60,7 @@ of what users see):
 - On windows up to 700px wide, the import button scrolls away with the header instead of lying over the page.
 - Windows, dropdowns and switches stop animating when the system asks for reduced motion.
 - The footer, the language switch, the site's subtitle and subheadings are set at the normal text size instead of 9px.
-- The lettering of an unavailable goal on the Best train tab no longer runs across its hatch pattern, and the goal itself carries the reason it is unavailable, both as a tooltip and for screen readers.
+- An unavailable goal on the Best train tab carries the reason it is unavailable, both as a tooltip and for screen readers.
 - The imported game's tab no longer reports Base Costs multipliers as changed while the Base Costs set is off both in the game and in the calculator.
 - Captions name tabs as the menu does: "→" reads "Open in Route income", the route card's button "Calculate in Route income", and English hints no longer mention a "Consist tab", "Supply tab" or "Game tab".
 - The "Reset everything" button is drawn in the loss colour again; the plain button rule used to override it.

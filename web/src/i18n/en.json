@@ -39,7 +39,6 @@
   "consist.capacitySpeedNoWagonLimits": "Wagon speed limits are off in this game, so a wagon runs at whatever the engine allows: its own limit binds nothing, and “Capacity × speed” stays empty for wagons.",
   "consist.cargoForCapacity": "Cargo",
   "table.name": "Name",
-  "table.moreColumns": "more columns",
   "table.year": "Year",
   "table.power": "Power",
   "table.speed": "Speed",

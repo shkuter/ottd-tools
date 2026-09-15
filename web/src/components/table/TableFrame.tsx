@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 import { Table } from '@mantine/core';
-import { t } from '../../i18n';
 import { usePinnedLeadingColumns } from './usePinnedLeadingColumns';
 import { OVERFLOW_HINT_CLASS, useOverflowHint } from './useOverflowHint';
 
@@ -123,9 +122,7 @@ export function TableFrame({
        * read whole whatever the scroll — and never a tab stop; shown by the stylesheet while the
        * frame carries data-more-end (useOverflowHint).
        */}
-      <span ref={hint} className={OVERFLOW_HINT_CLASS} aria-hidden="true">
-        <span className="table-overflow-hint__text">{t('table.moreColumns')}</span>
-      </span>
+      <span ref={hint} className={OVERFLOW_HINT_CLASS} aria-hidden="true" />
     </div>
   );
 }
