@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { List, Paper, Text, Title } from '@mantine/core';
 import { activeEconomy, cargoByLabel, economyById, industryById } from '../../dataset';
 import { t, useLocale } from '../../i18n';
@@ -12,6 +12,7 @@ import { chainNodes } from './chains';
 import { ChainCompleteness } from './ChainCompleteness';
 import { ChainTasks } from './ChainTasks';
 import { GraphCanvas } from './graph/GraphCanvas';
+import { GraphLegend } from './graph/GraphLegend';
 import { buildGraph, type GraphNames } from './graph/buildGraph';
 import { cachedLayout, layoutGraph } from './graph/layout';
 import type { GraphNode, Layout } from './graph/model';
@@ -176,6 +177,23 @@ export default function FirsPage() {
     [economy, selectedNode],
   );
 
+  // On a narrow window the card stands under the canvas, out of sight: a new pick brings it
+  // into view. Keyed on a change of the pick, not on mounting — the pick outlives a visit to
+  // another tab, and coming back must not scroll the page. Asked of the geometry rather than
+  // of the width breakpoint: what matters is whether the card is seen, wherever CSS put it
+  const side = useRef<HTMLElement>(null);
+  const shownPick = useRef(selectedNode);
+  useEffect(() => {
+    if (selectedNode === shownPick.current) return;
+    shownPick.current = selectedNode;
+    const card = side.current;
+    if (!selectedNode || !card) return;
+    const box = card.getBoundingClientRect();
+    if (box.top >= 0 && box.bottom <= window.innerHeight) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    card.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [selectedNode]);
+
   const select = (baseId: string | null) => {
     setSelectedNode(baseId);
     // an industry node is also the answer to "what do you want to run": picking it on
@@ -220,11 +238,14 @@ export default function FirsPage() {
           nameOf={nameOf}
           modeOf={modeOf}
         />
-        {selectedNode && (
-          <Paper component="aside" className="firs-side" p="sm">
+        {/* the column is always there: the legend until a node is picked, then its card */}
+        <Paper component="aside" className="firs-side" p="sm" ref={side}>
+          {selectedNode ? (
             <NodeCard economyId={economy.id} nodeId={selectedNode} />
-          </Paper>
-        )}
+          ) : (
+            <GraphLegend economy={economy} />
+          )}
+        </Paper>
       </div>
       <ChainTasks economy={economy} snapshot={snapshot} />
       <ChainCompleteness economy={economy} snapshot={snapshot} />

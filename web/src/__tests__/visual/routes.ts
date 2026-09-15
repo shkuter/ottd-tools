@@ -17,6 +17,8 @@ export interface Route {
   readonly window: WindowColour | '';
   /** classes of the containers allowed to scroll sideways on this tab */
   readonly scrollsX?: readonly string[];
+  /** classes of the side panels allowed a vertical scroll of their own on a wide window */
+  readonly scrollsY?: readonly string[];
 }
 
 /**
@@ -24,10 +26,12 @@ export interface Route {
  * wait for (a lazily loaded tab arrives after the shell) and the containers
  * allowed to scroll sideways.
  */
-const PER_TAB: Record<string, { ready: string; scrollsX?: readonly string[] }> = {
+const PER_TAB: Record<string, { ready: string; scrollsX?: readonly string[]; scrollsY?: readonly string[] }> = {
   // the catalogue is wider than its column, which the spec allows
   '/optimizer': { ready: '.page-optimizer', scrollsX: ['table-wrap'] },
-  '/consist': { ready: '.page-consist', scrollsX: ['table-wrap'] },
+  // the consist panel is held beside the catalogue and scrolls inside itself once it is
+  // taller than the window
+  '/consist': { ready: '.page-consist', scrollsX: ['table-wrap'], scrollsY: ['consist-side'] },
   '/income': { ready: '.page-route' },
   '/network': { ready: '.page-network' },
   '/supply': { ready: '.page-industry-supply' },
@@ -35,7 +39,7 @@ const PER_TAB: Record<string, { ready: string; scrollsX?: readonly string[] }> =
   // on the canvas — a snapshot before that would see the loading note and nothing painted
   // in cargo colours; the canvas is panned and zoomed, not scrolled, and the task list of
   // the chain mode scrolls sideways like every other list
-  '/firs': { ready: '.graph-canvas .graph-node', scrollsX: ['table-wrap'] },
+  '/firs': { ready: '.graph-canvas .graph-node', scrollsX: ['table-wrap'], scrollsY: ['firs-side'] },
   '/settings': { ready: '.page-settings' },
   // seeded with a snapshot by the harness, or the tab would not exist to look at
   '/game': { ready: '.page-game', scrollsX: ['table-wrap'] },

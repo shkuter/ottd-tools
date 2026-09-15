@@ -7,6 +7,8 @@ import { useSavegameImport } from './useSavegameImport';
 
 /** What the header reads to keep room for the button; written here, used in skin.css. */
 const WIDTH_PROPERTY = '--savegame-launcher-width';
+/** What a panel held on screen reads to stand below the button (`--skin-sticky-top`). */
+const HEIGHT_PROPERTY = '--savegame-launcher-height';
 
 /**
  * The import as every page offers it: a button pinned to the corner of the window, and the
@@ -26,6 +28,9 @@ export function SavegameImportLauncher() {
    * header reads it as a custom property. A spacer inside the header would not do: the header
    * wraps, and a spacer would wrap away with it.
    *
+   * The height goes the same way, for the side panels held on screen as the page scrolls:
+   * they stand below the button, and the button is as tall as its caption and font make it.
+   *
    * Measured before the browser paints, so the fallback in the stylesheet is only ever what a
    * browser without ResizeObserver falls back to, not what the first frame is laid out with.
    */
@@ -33,9 +38,12 @@ export function SavegameImportLauncher() {
     const element = box.current;
     if (!element) return;
     const root = document.documentElement;
-    // the fractional width, not offsetWidth: rounded down, the room is a pixel short
-    const measure = () =>
-      root.style.setProperty(WIDTH_PROPERTY, `${element.getBoundingClientRect().width}px`);
+    // the fractional size, not offsetWidth: rounded down, the room is a pixel short
+    const measure = () => {
+      const { width, height } = element.getBoundingClientRect();
+      root.style.setProperty(WIDTH_PROPERTY, `${width}px`);
+      root.style.setProperty(HEIGHT_PROPERTY, `${height}px`);
+    };
     measure();
     const observer =
       typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
@@ -44,6 +52,7 @@ export function SavegameImportLauncher() {
       observer?.disconnect();
       // the header would otherwise keep room for a button that is no longer there
       root.style.removeProperty(WIDTH_PROPERTY);
+      root.style.removeProperty(HEIGHT_PROPERTY);
     };
   }, []);
 

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { harnessFixture, NARROW, VIEWPORT } from './harness';
 import { KIT, ROUTES } from './routes';
+import { holdPanel } from './panels';
 
 /**
  * The import button is pinned to the corner of the window, so it is drawn over whatever is
@@ -115,6 +116,59 @@ describe('the import button', () => {
     expect(caption.clipped, 'the caption is cut off').toBe(false);
     expect(caption.left).toBeGreaterThanOrEqual(0);
     expect(caption.right).toBeLessThanOrEqual(caption.width);
+  });
+});
+
+/**
+ * A side panel held on screen stops below the button, not under it: its top follows the
+ * button's real height, which the caption decides in each language.
+ */
+describe.each(['en', 'ru'] as const)('a held side panel under the button (%s)', (locale) => {
+  it.each([
+    { path: '/consist', ready: '.page-consist .consist-side', panel: '.consist-side' },
+    { path: '/firs', ready: '.graph-canvas .graph-node', panel: '.firs-side' },
+  ])('stands below the button on $path', async ({ path, ready, panel }) => {
+    const { page } = harness();
+    await page.evaluate(
+      (language) => localStorage.setItem('ottd-tools-locale', JSON.stringify({ state: { locale: language }, version: 0 })),
+      locale,
+    );
+    try {
+      const opened = await harness().goto(path, ready);
+      if (path === '/firs') {
+        // the column is held with a node picked; without one it holds the legend
+        await opened.evaluate(() => {
+          const canvas = document.querySelector('.graph-canvas')!.getBoundingClientRect();
+          for (const node of document.querySelectorAll<HTMLElement>('.graph-canvas .graph-node--industry')) {
+            const b = node.getBoundingClientRect();
+            const x = b.left + b.width / 2;
+            const y = b.top + b.height / 2;
+            if (x > canvas.left && x < canvas.right && y > canvas.top && y < Math.min(canvas.bottom, innerHeight) &&
+                document.elementFromPoint(x, y)?.closest('.graph-node') === node) {
+              node.click();
+              return;
+            }
+          }
+        });
+        await opened.waitForSelector('.firs-side .node-card');
+      }
+      const held = await holdPanel(page, panel);
+      const headingTop = await page.evaluate((selector) => {
+        const side = document.querySelector(selector)!;
+        return (side.querySelector('h3, h2') ?? side).getBoundingClientRect().top;
+      }, panel);
+      expect(held.error).toBeUndefined();
+      expect(held.scrolled, 'the page did not scroll').toBeGreaterThan(0);
+      expect(held.position).toBe('sticky');
+      expect(held.top, 'the panel is not held at its top').toBeCloseTo(held.heldAt, 0);
+      expect(held.top, 'the button lies over the panel').toBeGreaterThanOrEqual(held.launcherBottom);
+      expect(headingTop).toBeGreaterThanOrEqual(held.launcherBottom);
+    } finally {
+      await page.evaluate(() => {
+        localStorage.removeItem('ottd-tools-locale');
+        window.scrollTo(0, 0);
+      });
+    }
   });
 });
 

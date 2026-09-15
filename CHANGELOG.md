@@ -26,6 +26,11 @@ of what users see):
 - A link "Calculate route income →" under the figures of a built consist, and a link to the Consist builder where Route income has no consist to price.
 - A "Ranked by" line above the Best train results names what orders the rows for the goal in force: the goal's own figure, then yearly profit, purchase price, the wagon and fleet size.
 - "How it's computed" blocks, folded by default, under the Best train results, at the end of the Route income profitability panel and in each Network block. The model's assumptions and counting rules moved there; lines about the state of the calculation stay in view. Whether each block is open is remembered across reloads and is kept by "Reset everything", like the language.
+- The FIRS chains graph pans and zooms under two fingers on a touch screen.
+- While no node is picked, the column beside the FIRS chains graph holds a legend: industry cards, cargo badges, repeated cargos, "To …" and supply lines, edge direction, dimming and the controls. It is drawn in the interface colours and cargo icons.
+- The Settings tab opens with a table of contents linking each group.
+- A setting that differs from its default is marked "changed" and has a button that resets that setting alone. It covers every game and calculation setting plus the currency and speed units, never the language.
+- A list wider than its frame shows a "more columns →" hint at its right edge until it is scrolled to the end.
 
 ### Changed
 
@@ -39,6 +44,10 @@ of what users see):
 - "From consist speed" on Route income stands right under the time in transit and appears only when the time was typed by hand; the field says whether its time is typed or worked out from the consist.
 - An industry supply input with a route but no consist that can haul it reads "nothing can haul it" instead of "falls out of the window".
 - The Best train hint for the unavailable goals invites setting Output rather than reading as an error, and names the field as the form does.
+- On a touch screen one finger over the FIRS chains graph scrolls the page instead of moving the graph.
+- The FIRS chains graph opens at a scale with node labels, centred on the graph or on the picked node; Fit still shows it whole.
+- On a wide window the side panels of the Consist builder and of FIRS chains fit the window and scroll inside themselves when their content is taller.
+- On a narrow window, picking a node on the FIRS chains graph scrolls the page to the node card under the graph, at once when the system asks for reduced motion.
 
 ### Fixed
 
@@ -59,6 +68,8 @@ of what users see):
 - Words beside numbers agree with them: "1 year", "1 route", "1 tile" and "1 level" in English, including the units of number fields, and "1 год", "3 года", "5 лет" in Russian.
 - Number fields use a decimal comma in the Russian interface and switch with the language; typing a dot still works.
 - The fields of the Network blocks take their widths from the skin's field scale instead of a fixed 140px.
+- The import button no longer covers the top of the sticky side panels, in either language.
+- On a touch screen the comparison tick, number field arrows, switches, row action buttons and the language switch take presses over at least 24×24px without changing how they look.
 
 ## [0.27.0] - 2026-09-12
 

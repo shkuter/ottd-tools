@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { afterAll, beforeAll } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { preview, type PreviewServer } from 'vite';
-import { chromium, type Browser, type Page } from 'playwright';
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { SETTINGS_KEY, SETTINGS_VERSION } from '../../state/settingsStore';
 import { GAME_SNAPSHOT } from '../../features/savegame/__tests__/gameSnapshot';
 import { SNAPSHOT_DB } from '../../savegame/snapshotStore';
@@ -44,6 +44,13 @@ export interface Harness {
    * navigation, so a check that calls this puts `DEFAULT_GAME` back when it is done.
    */
   withGame(game: Record<string, unknown>, path: string, ready?: string): Promise<Page>;
+  /**
+   * Opens an app route in a second window that reports a touch screen: `hasTouch` makes the
+   * browser match `(pointer: coarse)` and apply `touch-action` to touches sent through CDP
+   * (design D1 of ui-mobile-graph-settings). The window is shared by the file's checks, seeded
+   * like the first one, and sized to `viewport` on every call.
+   */
+  openTouch(path: string, ready?: string, viewport?: { width: number; height: number }): Promise<Page>;
   close(): Promise<void>;
 }
 
@@ -92,6 +99,27 @@ export function harnessFixture(): () => Harness {
   return () => harness;
 }
 
+/**
+ * Settings the checks decide on rather than inherit: the NewGRF sets are off by default — a
+ * fresh calculator knows nothing about the player's game — and a set that is off hides its
+ * parameters. The fuller page is the one worth measuring: the nesting in the settings is drawn
+ * for those parameters, and nothing off-screen has a colour to read. Seeded before the first
+ * navigation, at the store's own version, so it arrives as a state the store accepts rather
+ * than one it migrates.
+ *
+ * Only when nothing is stored yet: a check that wants another game writes it and reloads
+ * (`withGame`), and a script that seeded on every navigation would undo that on the spot.
+ */
+async function seedSettings(context: BrowserContext) {
+  await context.addInitScript(
+    ({ key, version, game }) => {
+      if (window.localStorage.getItem(key)) return;
+      window.localStorage.setItem(key, JSON.stringify({ state: { game }, version }));
+    },
+    { key: SETTINGS_KEY, version: SETTINGS_VERSION, game: DEFAULT_GAME },
+  );
+}
+
 async function openHarness(): Promise<Harness> {
   const server = await serve();
   const base = server.resolvedUrls?.local?.[0];
@@ -113,38 +141,37 @@ async function openHarness(): Promise<Harness> {
     locale: 'en-US',
   });
   const page = await context.newPage();
+  await seedSettings(context);
 
-  /*
-   * Settings the checks decide on rather than inherit: the NewGRF sets are off by default —
-   * a fresh calculator knows nothing about the player's game — and a set that is off hides
-   * its parameters. The fuller page is the one worth measuring: the nesting in the settings
-   * is drawn for those parameters, and nothing off-screen has a colour to read. Seeded
-   * before the first navigation, at the store's own version, so it arrives as a state the
-   * store accepts rather than one it migrates.
-   *
-   * Only when nothing is stored yet: a check that wants another game writes it and reloads
-   * (`withGame`), and a script that seeded on every navigation would undo that on the spot.
-   */
-  await context.addInitScript(
-    ({ key, version, game }) => {
-      if (window.localStorage.getItem(key)) return;
-      window.localStorage.setItem(key, JSON.stringify({ state: { game }, version }));
-    },
-    { key: SETTINGS_KEY, version: SETTINGS_VERSION, game: DEFAULT_GAME },
-  );
-
-  const goto = async (path: string, ready?: string) => {
-    await page.goto(new URL(path.replace(/^\//, ''), base).href, { waitUntil: 'networkidle' });
+  const open = async (target: Page, path: string, ready?: string) => {
+    await target.goto(new URL(path.replace(/^\//, ''), base).href, { waitUntil: 'networkidle' });
     // the shell itself; a lazily loaded tab is waited for through `ready`
-    await page.waitForSelector('.app-header');
-    if (ready) await page.waitForSelector(ready);
+    await target.waitForSelector('.app-header');
+    if (ready) await target.waitForSelector(ready);
     /* A measurement taken mid-transition reads a colour that is on its way
        somewhere else. reducedMotion alone is a hint the library is free to
        ignore, so the transitions are cut outright. */
-    await page.addStyleTag({
+    await target.addStyleTag({
       content: '*, *::before, *::after { transition: none !important; animation: none !important }',
     });
-    return page;
+    return target;
+  };
+  const goto = (path: string, ready?: string) => open(page, path, ready);
+
+  let touch: { context: BrowserContext; page: Page } | null = null;
+  const openTouch: Harness['openTouch'] = async (path, ready, viewport = NARROW) => {
+    if (!touch) {
+      const touchContext = await browser.newContext({
+        viewport,
+        reducedMotion: 'reduce',
+        locale: 'en-US',
+        hasTouch: true,
+      });
+      await seedSettings(touchContext);
+      touch = { context: touchContext, page: await touchContext.newPage() };
+    }
+    await touch.page.setViewportSize(viewport);
+    return open(touch.page, path, ready);
   };
 
   /*
@@ -194,8 +221,10 @@ async function openHarness(): Promise<Harness> {
   return {
     goto,
     withGame,
+    openTouch,
     page,
     close: async () => {
+      await touch?.context.close();
       await context.close();
       await browser.close();
       await new Promise<void>((resolve, reject) =>

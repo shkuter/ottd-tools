@@ -116,6 +116,19 @@ describe('сравнение машин на вкладке', () => {
     expect(document.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
   });
 
+  it('отметку ставит нажатие по её обёртке, а имя у флажка прежнее', async () => {
+    givenSearch({});
+    draw();
+    const box = screen.getAllByRole('checkbox', { name: /^Compare / })[0] as HTMLInputElement;
+    const hit = box.closest('label.cell-pick__hit');
+    // Обёртка без текста: имя флажку по-прежнему даёт его aria-label, а не содержимое label.
+    expect(hit, 'флажок стоит в расширяемой области нажатия').not.toBeNull();
+    expect(hit!.textContent).toBe('');
+    await userEvent.click(hit!);
+    expect(box.checked).toBe(true);
+    expect(screen.getByText(/Tick one more engine/)).toBeTruthy();
+  });
+
   it('больше четырёх машин рядом не ставит', async () => {
     givenSearch({});
     draw();

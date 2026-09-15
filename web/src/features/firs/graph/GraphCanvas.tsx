@@ -41,7 +41,15 @@ export function GraphCanvas({
   nameOf,
   modeOf,
 }: GraphCanvasProps) {
-  const zoom = useZoomPan(layout);
+  const placed = useMemo(() => (layout ? placeNodes(graph, layout) : []), [graph, layout]);
+  const edges = useMemo(() => (layout ? placeEdges(graph, layout) : []), [graph, layout]);
+  // a pick outlives a visit to another tab, and coming back the eye looks for it: a drawing
+  // too large to open whole opens on it (a clone is the same node, the original is the one)
+  const focus = useMemo(() => {
+    const node = placed.find((n) => n.baseId === selected && !isClone(n.id));
+    return node ? { x: node.x + node.width / 2, y: node.y + node.height / 2 } : null;
+  }, [placed, selected]);
+  const zoom = useZoomPan(layout, focus);
   const [search, setSearch] = useState<string | null>(null);
   // a search names a node of this economy's graph; the same graph in another language
   // keeps it
@@ -49,9 +57,6 @@ export function GraphCanvas({
   /** The node the keyboard cursor sits on; the mouse puts it where it picks. */
   const [focusedId, setFocusedId] = useState<string | null>(null);
   useEffect(() => setFocusedId(null), [economyId]);
-
-  const placed = useMemo(() => (layout ? placeNodes(graph, layout) : []), [graph, layout]);
-  const edges = useMemo(() => (layout ? placeEdges(graph, layout) : []), [graph, layout]);
 
   // one entry per industry or cargo, whatever the number of its clones
   const options = useMemo(

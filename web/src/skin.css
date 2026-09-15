@@ -61,6 +61,12 @@
      its colour is the window's text, which follows the colour group, and a var() written into a
      shorthand token here would freeze at the base theme */
   --skin-focus-width: calc(2 * var(--bevel));
+  /* the least a spot to press measures under a finger (pointer: coarse), whatever the box drawn */
+  --skin-touch-min: 24px;
+  /* the chain graph's edge stroke and the fade of what lies outside a picked chain: read by the
+     canvas and by the legend's samples of both, so the two cannot drift apart */
+  --skin-graph-edge-width: 3px;
+  --skin-graph-dim-opacity: 0.15;
 
   /* The shell's own margins — the page around the game's widgets, which the game has no
      metric for: the side gutter and top padding of the header (which main and the footer
@@ -69,6 +75,18 @@
   --skin-shell-pad-x: 20px;
   --skin-shell-pad-y: 14px;
   --skin-launcher-width-fallback: 160px;
+  /* the button's height until it has measured itself: one control of the scale */
+  --skin-launcher-height-fallback: var(--skin-control-height);
+  /*
+   * Where a side panel held on screen stops: below the import button in the corner, by the
+   * game's gap between widgets that are not neighbours. The height comes from the button
+   * (SavegameImportLauncher), since its caption wraps and its font follows the scale.
+   */
+  --skin-sticky-top: calc(
+    var(--skin-shell-pad-y) +
+      var(--savegame-launcher-height, var(--skin-launcher-height-fallback)) +
+      var(--skin-hsep-wide)
+  );
 
   /* FS_NORMAL 10, FS_SMALL 6, FS_LARGE 18; the heading step between the last
      two is interpolated, the game has no size there */
@@ -715,10 +733,24 @@ h4 {
   min-width: var(--ai-size);
 }
 
+/*
+ * Held beside a list longer than the window, a panel may not be taller than the window: its
+ * end — the totals of the consist, the end of a node card — would sit below the screen for as
+ * long as the list is scrolled. So it is no taller than what is left under its top, and
+ * scrolls inside itself when its content is taller; a short panel draws no bar. It stands
+ * below the import button, not under it (--skin-sticky-top).
+ */
+.consist-side,
+.firs-side {
+  position: sticky;
+  top: var(--skin-sticky-top);
+  max-height: calc(100vh - var(--skin-sticky-top) - var(--skin-shell-pad-y));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .consist-side {
   padding: 14px;
-  position: sticky;
-  top: 12px;
 }
 
 .consist-list {
@@ -790,6 +822,37 @@ h4 {
 .settings-group {
   padding: 14px 16px;
   margin-bottom: 16px;
+  /* a jump to the group stops below the import button, as a held panel does */
+  scroll-margin-top: var(--skin-sticky-top);
+}
+
+/* the table of contents: links to the groups, wrapping onto more lines on a narrow window */
+.settings-toc ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--skin-hsep-normal) var(--skin-hsep-wide);
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * A setting that differs from its default: the word and the button that puts it back, under
+ * the setting's name in the caption column, wrapping inside that column on any language.
+ */
+.setting-changed {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--skin-hsep-wide);
+}
+
+.setting-changed__word {
+  color: var(--skin-value);
+}
+
+.setting-reset {
+  font-size: inherit;
 }
 
 .settings-group h3 {
@@ -961,8 +1024,13 @@ h4 {
   overflow: hidden;
   cursor: grab;
   user-select: none;
-  /* a finger drags the drawing sideways and still scrolls the page up and down past it */
-  touch-action: pan-y;
+  /*
+   * One finger scrolls the page past the canvas, as it does anywhere else: a canvas almost
+   * the height of a phone screen that took single fingers would be a trap the page cannot be
+   * scrolled out of. Pinch-zoom is not granted to the browser, so two fingers that land on
+   * the canvas stay the page's own and pan and zoom the drawing (useZoomPan).
+   */
+  touch-action: pan-x pan-y;
 }
 
 .graph-canvas[data-dragging] {
@@ -986,7 +1054,7 @@ h4 {
 .graph-edge path {
   fill: none;
   stroke: var(--cargo-colour);
-  stroke-width: 3px;
+  stroke-width: var(--skin-graph-edge-width);
 }
 
 .graph-edge polygon {
@@ -1070,7 +1138,7 @@ h4 {
 /* picking a node dims everything that is not tied to it */
 .graph-node[data-dim],
 .graph-edge[data-dim] {
-  opacity: 0.15;
+  opacity: var(--skin-graph-dim-opacity);
 }
 
 .graph-toolbar {
@@ -1094,8 +1162,92 @@ h4 {
 
 .firs-side {
   padding: 14px;
-  position: sticky;
-  top: 12px;
+}
+
+/*
+ * The legend of the graph, in the column the node card takes. Its samples wear the skin's
+ * colours only — the game palette is the canvas's alone (ADR-0008) — so the industry sample
+ * is the industry card's frame and the badge sample a sunken plate with the cargo's icon.
+ */
+.graph-legend__entries,
+.graph-legend__controls {
+  margin: 0 0 var(--skin-hsep-wide);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--skin-hsep-wide);
+}
+
+.graph-legend__entry {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--skin-hsep-wide);
+  align-items: center;
+}
+
+.graph-legend__shape,
+.graph-legend__pair {
+  display: grid;
+  gap: var(--skin-hsep-normal);
+  min-width: 0;
+}
+
+.graph-legend__sample {
+  display: block;
+  box-sizing: border-box;
+  padding: var(--skin-hsep-normal);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.graph-legend__industry {
+  border-style: solid;
+  border-width: var(--bevel);
+  border-color: var(--skin-edges-raised);
+  background: var(--skin-button);
+  color: var(--skin-button-text);
+}
+
+/* the picture of an industry, drawn as the card on the canvas draws it, only smaller */
+.graph-legend__industry img {
+  display: block;
+  width: 100%;
+  height: calc(var(--skin-control-height) * 2);
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.graph-legend__cargo {
+  background: var(--skin-window-sunken);
+  color: var(--skin-text);
+}
+
+.graph-legend__note {
+  display: block;
+  color: var(--skin-muted);
+}
+
+.graph-legend__industry .graph-legend__note {
+  color: inherit;
+}
+
+.graph-legend__edge {
+  width: 100%;
+  height: calc(8px * var(--skin-scale));
+}
+
+.graph-legend__edge path {
+  fill: none;
+  stroke: var(--skin-text);
+  stroke-width: var(--skin-graph-edge-width);
+}
+
+.graph-legend__edge polygon {
+  fill: var(--skin-text);
+}
+
+.graph-legend__industry[data-dim] {
+  opacity: var(--skin-graph-dim-opacity);
 }
 
 .firs-chain,
@@ -1204,9 +1356,12 @@ h4 {
     grid-template-columns: 1fr;
   }
 
+  /* under the main content and not held on screen: as long as its content, with no bar */
   .consist-side,
   .firs-side {
     position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .route-controls {

@@ -1,15 +1,18 @@
 import { useRef } from 'react';
 import { Table } from '@mantine/core';
+import { t } from '../../i18n';
 import { usePinnedLeadingColumns } from './usePinnedLeadingColumns';
+import { OVERFLOW_HINT_CLASS, useOverflowHint } from './useOverflowHint';
 
 /**
  * Scrolls the list so that the cell the keyboard just reached stands clear of the pinned cells
- * of its row. The browser scrolls a focused element into view only while it is out of view
+ * of its row, and of the overflow hint (`hint`, shown only while there are columns further
+ * right). The browser scrolls a focused element into view only while it is out of view
  * altogether; a cell half under a pinned column counts as visible, and its focus frame stays
  * hidden under the column. How far to scroll depends on how wide the pinned columns are, which
  * each list decides, so it is measured here rather than written into the stylesheet.
  */
-function keepClearOfPinnedCells(event: React.FocusEvent<HTMLDivElement>) {
+function keepClearOfPinnedCells(event: React.FocusEvent<HTMLDivElement>, hint: HTMLElement | null) {
   // only for the keyboard: a press of the mouse shows no frame to keep in sight, and a list
   // that jumped under the pointer at every click would move what was about to be clicked
   if (!(event.target as Element).matches(':focus-visible')) return;
@@ -21,6 +24,9 @@ function keepClearOfPinnedCells(event: React.FocusEvent<HTMLDivElement>) {
   const frame = list.getBoundingClientRect();
   let left = frame.left + list.clientLeft;
   let right = left + list.clientWidth;
+  // the hint of columns further right stands over the end of the scrolling part while shown
+  const hintBox = hint?.getBoundingClientRect();
+  if (hintBox && hintBox.width > 0) right = Math.min(right, hintBox.left);
   for (const other of row.children) {
     const style = getComputedStyle(other);
     if (style.position !== 'sticky') continue;
@@ -89,21 +95,37 @@ export function TableFrame({
   children?: React.ReactNode;
 }) {
   const frame = useRef<HTMLDivElement>(null);
+  const hint = useRef<HTMLSpanElement>(null);
   usePinnedLeadingColumns(frame, pinLeading);
-  const pinned = pinEdges || pinStart || !!pinLeading;
+  useOverflowHint(frame);
+  // The scrolling stays with .table-wrap; the holder around it is only there for the hint to
+  // stand over the frame's right edge without scrolling along with the table
   return (
-    <div
-      ref={frame}
-      className={`table-wrap${pinEdges ? ' pin-edges' : ''}${pinStart ? ' pin-start' : ''}${
-        pinLeading ? ' pin-leading' : ''
-      }`}
-      onFocus={pinned ? keepClearOfPinnedCells : undefined}
-    >
-      {rowCount === 0 ? (
-        <p className="table-empty">{emptyMessage}</p>
-      ) : (
-        <Table>{children}</Table>
-      )}
+    <div className="table-frame">
+      <div
+        ref={frame}
+        className={`table-wrap${pinEdges ? ' pin-edges' : ''}${pinStart ? ' pin-start' : ''}${
+          pinLeading ? ' pin-leading' : ''
+        }`}
+        // on every list, pinned or not: the overflow hint stands over the right end of any list
+        // wider than its frame, and a cell reached by the keyboard is kept clear of it as well
+        onFocus={(event) => keepClearOfPinnedCells(event, hint.current)}
+      >
+        {rowCount === 0 ? (
+          <p className="table-empty">{emptyMessage}</p>
+        ) : (
+          <Table>{children}</Table>
+        )}
+      </div>
+      {/*
+       * Columns further right: without this the scrollbar, which a touch screen and some systems
+       * do not show, is the only sign of them. Hidden from assistive technology — the table is
+       * read whole whatever the scroll — and never a tab stop; shown by the stylesheet while the
+       * frame carries data-more-end (useOverflowHint).
+       */}
+      <span ref={hint} className={OVERFLOW_HINT_CLASS} aria-hidden="true">
+        <span className="table-overflow-hint__text">{t('table.moreColumns')}</span>
+      </span>
     </div>
   );
 }

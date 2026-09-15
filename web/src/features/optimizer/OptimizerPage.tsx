@@ -824,13 +824,18 @@ export default function OptimizerPage() {
             <Table.Tr key={`${r.engine.id}-${r.engineCount}-${r.wagon.id}`}>
               <Table.Td className="cell-num">{i + 1}</Table.Td>
               <Table.Td className="cell-pick">
-                <Checkbox
-                  size="xs"
-                  aria-label={t('compare.pick', { engine: engineLabel(r) })}
-                  checked={compare.isPicked(r)}
-                  disabled={!compare.canPickMore && !compare.isPicked(r)}
-                  onChange={() => compare.toggle(r)}
-                />
+                {/* a label with no text of its own: a press anywhere on it ticks the box, so a
+                    touch screen can widen the spot to press without growing the box (skin-mantine.css);
+                    the box keeps its own name */}
+                <label className="cell-pick__hit">
+                  <Checkbox
+                    size="xs"
+                    aria-label={t('compare.pick', { engine: engineLabel(r) })}
+                    checked={compare.isPicked(r)}
+                    disabled={!compare.canPickMore && !compare.isPicked(r)}
+                    onChange={() => compare.toggle(r)}
+                  />
+                </label>
               </Table.Td>
               <Table.Td className="cell-sprite"><TrainImage trainId={r.engine.id} /></Table.Td>
               <Table.Td data-testid="opt-engine">

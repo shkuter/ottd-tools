@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Fieldset, Group, NumberInput, Select, Switch } from '@mantine/core';
 import { activeEconomy, economies, trainsMeta } from '../../dataset';
 import { Warning } from '../../components/Warning';
@@ -18,8 +19,11 @@ import { useYearField } from '../../components/useYearField';
 import { TrackTypeField } from '../../components/TrackTypeField';
 import {
   NestedSettingRow as NestedRow,
+  SettingChangedMark,
   SettingRow as Row,
 } from '../../components/SettingRow';
+import { useSettingDefaults } from './useSettingDefaults';
+import { SETTINGS_GROUPS, type SettingsGroupId } from './groups';
 
 /** A NumberInput hands back a string while it is being typed; settings are numbers. */
 function asNumber(value: string | number, min: number): number {
@@ -38,6 +42,16 @@ export default function SettingsPage() {
   const { locale, setLocale } = useLocaleStore();
   const priceYear = useYearField(calc.priceYear, (v) => setCalc('priceYear', v));
   const startingYear = useYearField(game.startingYear, (v) => setGame('startingYear', v));
+  // the language is not among them: choosing one ends the detection for good, and a reset
+  // to "the default" would have to bring the detection back
+  const defaults = useSettingDefaults();
+
+  // The tab arrives in a chunk of its own, after the browser has already looked for the
+  // group an address names and found nothing: the jump is made again once the groups are here
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (id) document.getElementById(id)?.scrollIntoView();
+  }, []);
 
   const difficultyData = numericData([
     { value: 0, label: `${t('settings.low')} (×0.75)` },
@@ -45,455 +59,640 @@ export default function SettingsPage() {
     { value: 2, label: `${t('settings.high')} (×1.125)` },
   ]);
 
+  /*
+   * What each group holds, by the id SETTINGS_GROUPS gives it: the fieldsets below are drawn in
+   * the order of that list, as the table of contents is, so neither the order nor an id can differ
+   * between the two. A group left out of this record is a type error.
+   */
+  const groups: Record<SettingsGroupId, { legend?: (title: string) => React.ReactNode; body: React.ReactNode }> = {
+    // the settings of a game come from the game first and are edited by hand second,
+    // so the import stands ahead of what it fills in
+    'settings-import': {
+      body: <SavegameImportPanel />,
+    },
+    'settings-jgrpp': {
+      legend: (title) => (
+        <Group gap="xs">
+          {title}
+          <Switch
+            className="group-toggle"
+            checked={game.jgrpp}
+            onChange={(e) => setGame('jgrpp', e.currentTarget.checked)}
+            label={game.jgrpp ? t('settings.on') : t('settings.off')}
+          />
+          <SettingChangedMark label={t('settings.jgrpp')} setting={defaults.game('jgrpp')} />
+        </Group>
+      ),
+      body: (
+        <>
+          <p className="hint">{t('settings.jgrppHint')}</p>
+          {game.jgrpp && (
+            <>
+              <Row
+                label={t('settings.dayLength')}
+                hint={t('settings.dayLengthHint')}
+                setting={defaults.game('dayLengthFactor')}
+              >
+                <NumberInput
+                  min={1}
+                  max={125}
+                  value={game.dayLengthFactor}
+                  onChange={(v) => setGame('dayLengthFactor', asNumber(v, 1))}
+                />
+              </Row>
+              <Row
+                label={t('settings.costsWhenStopped')}
+                hint={t('settings.costsWhenStoppedHint')}
+                setting={defaults.game('costsWhenStopped')}
+              >
+                <NumberInput
+                  min={1}
+                  max={8}
+                  value={game.costsWhenStopped}
+                  onChange={(v) => setGame('costsWhenStopped', asNumber(v, 1))}
+                />
+              </Row>
+              <Row
+                label={t('settings.inflationFixedDates')}
+                hint={t('settings.inflationFixedDatesHint')}
+                setting={defaults.game('inflationFixedDates')}
+              >
+                <Switch
+                  checked={game.inflationFixedDates}
+                  onChange={(e) => setGame('inflationFixedDates', e.currentTarget.checked)}
+                  label={game.inflationFixedDates ? t('settings.on') : t('settings.off')}
+                />
+              </Row>
+              <Row
+                label={t('settings.introRandomisation')}
+                hint={t('settings.introRandomisationHint')}
+                setting={defaults.game('vehicleIntroRandomisation')}
+              >
+                <Switch
+                  checked={game.vehicleIntroRandomisation}
+                  onChange={(e) => setGame('vehicleIntroRandomisation', e.currentTarget.checked)}
+                  label={game.vehicleIntroRandomisation ? t('settings.on') : t('settings.off')}
+                />
+              </Row>
+              <Row
+                label={t('settings.paymentAlgorithm')}
+                hint={t('settings.paymentAlgorithmHint')}
+                setting={defaults.game('paymentAlgorithm')}
+              >
+                <Select
+                  allowDeselect={false}
+                  value={game.paymentAlgorithm}
+                  onChange={(v) =>
+                    v && setGame('paymentAlgorithm', v as typeof game.paymentAlgorithm)
+                  }
+                  data={[
+                    { value: 'modern', label: t('settings.paymentModern') },
+                    { value: 'traditional', label: t('settings.paymentTraditional') },
+                  ]}
+                />
+              </Row>
+            </>
+          )}
+        </>
+      ),
+    },
+    'settings-newgrf': {
+      body: (
+        <>
+          <p className="hint">{t('settings.newgrfHint')}</p>
+          {/* The train roster is one per game — the sets swap the whole catalogue, the
+              track table and the basecost shifts — so it is a choice, not switches. */}
+          <Row
+            label={t('settings.trainSet')}
+            hint={t('settings.trainSetHint')}
+            setting={defaults.game('trainSet')}
+          >
+            <Select
+              allowDeselect={false}
+              value={game.trainSet}
+              onChange={(v) => v && setGame('trainSet', v as GameSettings['trainSet'])}
+              data={TRAIN_SETS.map((set) => ({
+                value: set,
+                label: trainSetName(set),
+              }))}
+            />
+          </Row>
+          {game.trainSet === 'iron_horse' && (
+            <NestedRow
+              label={t('consist.capacityParam')}
+              hint={t('settings.capacityHint')}
+              setting={defaults.calc('capacityIndex')}
+            >
+              <Select
+                allowDeselect={false}
+                value={String(calc.capacityIndex)}
+                onChange={(v) => v && setCalc('capacityIndex', Number(v))}
+                data={trainsMeta.capacity_param_multipliers.map((m, i) => ({
+                  value: String(i),
+                  label: `×${m}${i === 2 ? ` (${t('settings.default')})` : ''}`,
+                }))}
+              />
+            </NestedRow>
+          )}
+          <Row label={t('settings.firs')} hint={t('settings.firsHint')} setting={defaults.game('firs')}>
+            <Switch
+              checked={game.firs}
+              onChange={(e) => setGame('firs', e.currentTarget.checked)}
+              label={game.firs ? t('settings.on') : t('settings.off')}
+            />
+          </Row>
+          {game.firs && (
+            <NestedRow
+              label={t('settings.firsEconomy')}
+              hint={t('settings.firsEconomyHint')}
+              setting={defaults.game('firsEconomy')}
+            >
+              <Select
+                allowDeselect={false}
+                // shows what the calculation actually uses: an id the data lost reads back as
+                // the default, and the field would otherwise sit empty while numbers say otherwise
+                value={activeEconomy(game).id}
+                onChange={(v) => v && setGame('firsEconomy', v)}
+                data={economies.map((eco) => ({ value: eco.id, label: eco.name }))}
+              />
+            </NestedRow>
+          )}
+          {/* Base Costs is a set the game loads like any other, so it stands beside the other
+              two rather than in a section of its own. */}
+          <Row
+            label={t('settings.basecostGrf')}
+            hint={t('settings.basecostGrfHint')}
+            setting={defaults.game('basecostGrf')}
+          >
+            <Switch
+              checked={game.basecostGrf}
+              onChange={(e) => setGame('basecostGrf', e.currentTarget.checked)}
+              label={game.basecostGrf ? t('settings.on') : t('settings.off')}
+            />
+          </Row>
+          {game.basecostGrf && (
+            <>
+              <NestedRow
+                label={t('settings.basecostLoco')}
+                hint={t('settings.basecostHint')}
+                setting={defaults.game('basecostLocomotive')}
+              >
+                <Select
+                  allowDeselect={false}
+                  value={String(game.basecostLocomotive)}
+                  onChange={(v) => v && setGame('basecostLocomotive', Number(v))}
+                  data={numericData(BASECOST_MULTIPLIERS)}
+                />
+              </NestedRow>
+              <NestedRow
+                label={t('settings.basecostWagon')}
+                hint={t('settings.basecostHint')}
+                setting={defaults.game('basecostWagon')}
+              >
+                <Select
+                  allowDeselect={false}
+                  value={String(game.basecostWagon)}
+                  onChange={(v) => v && setGame('basecostWagon', Number(v))}
+                  data={numericData(BASECOST_MULTIPLIERS)}
+                />
+              </NestedRow>
+              <NestedRow
+                label={t('settings.basecostRunningSteam')}
+                hint={t('settings.basecostRunningHint')}
+                setting={defaults.game('basecostTrainRunningSteam')}
+              >
+                <Select
+                  allowDeselect={false}
+                  value={String(game.basecostTrainRunningSteam)}
+                  onChange={(v) => v && setGame('basecostTrainRunningSteam', Number(v))}
+                  data={numericData(BASECOST_MULTIPLIERS)}
+                />
+              </NestedRow>
+              <NestedRow
+                label={t('settings.basecostRunningDiesel')}
+                hint={t('settings.basecostRunningHint')}
+                setting={defaults.game('basecostTrainRunningDiesel')}
+              >
+                <Select
+                  allowDeselect={false}
+                  value={String(game.basecostTrainRunningDiesel)}
+                  onChange={(v) => v && setGame('basecostTrainRunningDiesel', Number(v))}
+                  data={numericData(BASECOST_MULTIPLIERS)}
+                />
+              </NestedRow>
+              <NestedRow
+                label={t('settings.basecostRunningElectric')}
+                hint={t('settings.basecostRunningHint')}
+                setting={defaults.game('basecostTrainRunningElectric')}
+              >
+                <Select
+                  allowDeselect={false}
+                  value={String(game.basecostTrainRunningElectric)}
+                  onChange={(v) => v && setGame('basecostTrainRunningElectric', Number(v))}
+                  data={numericData(BASECOST_MULTIPLIERS)}
+                />
+              </NestedRow>
+              <NestedRow
+                label={t('settings.basecostInfrastructure')}
+                hint={t('settings.basecostInfrastructureHint')}
+                setting={defaults.game('basecostInfrastructure')}
+              >
+                <Select
+                  allowDeselect={false}
+                  value={String(game.basecostInfrastructure)}
+                  onChange={(v) => v && setGame('basecostInfrastructure', Number(v))}
+                  data={numericData(BASECOST_MULTIPLIERS)}
+                />
+              </NestedRow>
+              <NestedRow
+                label={t('settings.basecostRailConstruction')}
+                hint={t('settings.basecostRailConstructionHint')}
+                setting={defaults.game('basecostRailConstruction')}
+              >
+                <Select
+                  allowDeselect={false}
+                  value={String(game.basecostRailConstruction)}
+                  onChange={(v) => v && setGame('basecostRailConstruction', Number(v))}
+                  data={numericData(BASECOST_MULTIPLIERS)}
+                />
+              </NestedRow>
+            </>
+          )}
+        </>
+      ),
+    },
+    'settings-display': {
+      body: (
+        <>
+          <Row label={t('settings.language')} hint={t('settings.languageHint')}>
+            <Select
+              allowDeselect={false}
+              value={locale}
+              onChange={(v) => v && setLocale(v as Locale)}
+              data={Object.entries(LOCALES).map(([code, l]) => ({ value: code, label: l.name }))}
+            />
+          </Row>
+          <Row
+            label={t('settings.currency')}
+            hint={t('settings.currencyHint')}
+            setting={defaults.display('currency')}
+          >
+            <Select
+              allowDeselect={false}
+              value={currency}
+              onChange={(v) => v && setCurrency(v as CurrencyCode)}
+              data={Object.keys(CURRENCIES).map((code) => ({
+                value: code,
+                label: currencyLabel(code as CurrencyCode),
+              }))}
+            />
+          </Row>
+          <Row
+            label={t('settings.speedUnit')}
+            hint={t('settings.speedUnitHint')}
+            setting={defaults.display('speedUnit')}
+          >
+            <Select
+              allowDeselect={false}
+              value={speedUnit}
+              onChange={(v) => v && setSpeedUnit(v as SpeedUnit)}
+              data={[
+                { value: 'imperial', label: t('settings.speedUnit.imperial') },
+                { value: 'metric', label: t('settings.speedUnit.metric') },
+              ]}
+            />
+          </Row>
+        </>
+      ),
+    },
+    'settings-finance': {
+      body: (
+        <>
+          <Row
+            label={t('settings.vehicleCosts')}
+            hint={t('settings.vehicleCostsHint')}
+            setting={defaults.game('vehicleCosts')}
+          >
+            <Select
+              allowDeselect={false}
+              value={String(game.vehicleCosts)}
+              onChange={(v) => v && setGame('vehicleCosts', Number(v) as 0 | 1 | 2)}
+              data={difficultyData}
+            />
+          </Row>
+          <Row
+            label={t('settings.constructionCost')}
+            hint={t('settings.constructionCostHint')}
+            setting={defaults.game('constructionCost')}
+          >
+            <Select
+              allowDeselect={false}
+              value={String(game.constructionCost)}
+              onChange={(v) => v && setGame('constructionCost', Number(v) as 0 | 1 | 2)}
+              data={difficultyData}
+            />
+          </Row>
+          <Row
+            label={t('settings.subsidyMultiplier')}
+            hint={t('settings.subsidyMultiplierHint')}
+            setting={defaults.game('subsidyMultiplier')}
+          >
+            <Select
+              allowDeselect={false}
+              value={String(game.subsidyMultiplier)}
+              onChange={(v) => v && setGame('subsidyMultiplier', Number(v) as 0 | 1 | 2 | 3)}
+              data={numericData([
+                { value: 0, label: '×1.5' },
+                { value: 1, label: '×2' },
+                { value: 2, label: '×3' },
+                { value: 3, label: '×4' },
+              ])}
+            />
+          </Row>
+          <Row
+            label={t('settings.cargoAgingRate')}
+            hint={t('settings.cargoAgingRateHint')}
+            setting={defaults.game('cargoAgingRate')}
+          >
+            <NumberInput
+              min={1}
+              max={1000}
+              value={game.cargoAgingRate}
+              onChange={(v) => setGame('cargoAgingRate', asNumber(v, 1))}
+            />
+          </Row>
+          <Row
+            label={t('settings.infrastructureMaintenance')}
+            hint={t('settings.infrastructureMaintenanceHint')}
+            setting={defaults.game('infrastructureMaintenance')}
+          >
+            <Switch
+              checked={game.infrastructureMaintenance}
+              onChange={(e) => setGame('infrastructureMaintenance', e.currentTarget.checked)}
+              label={game.infrastructureMaintenance ? t('settings.on') : t('settings.off')}
+            />
+          </Row>
+          {/* the linear model is the patchpack's; a game without it grows upkeep by the
+              square root, which is what the switch off means */}
+          {game.jgrpp && (
+            <Row
+              label={t('settings.linearMaintenance')}
+              hint={t('settings.linearMaintenanceHint')}
+              setting={defaults.game('linearMaintenance')}
+            >
+              <Switch
+                checked={game.linearMaintenance}
+                onChange={(e) => setGame('linearMaintenance', e.currentTarget.checked)}
+                label={game.linearMaintenance ? t('settings.on') : t('settings.off')}
+              />
+            </Row>
+          )}
+          <Row
+            label={t('settings.inflation')}
+            hint={t('settings.inflationHint')}
+            setting={defaults.game('inflation')}
+          >
+            <Switch
+              checked={game.inflation}
+              onChange={(e) => setGame('inflation', e.currentTarget.checked)}
+              label={game.inflation ? t('settings.on') : t('settings.off')}
+            />
+          </Row>
+          {/* the fatal error is Iron Horse's; without it inflation is an ordinary setting */}
+          {game.inflation && game.trainSet === 'iron_horse' && (
+            <Warning>
+              <strong>{t('settings.inflationWarnTitle')}</strong>
+              <p className="grf-error">{t('settings.inflationGrfError')}</p>
+              <p>{t('settings.inflationWarnBody')}</p>
+            </Warning>
+          )}
+          {game.inflation && (
+            <Row
+              label={t('settings.interest')}
+              hint={t('settings.interestHint')}
+              setting={defaults.game('inflationInterest')}
+            >
+              <NumberInput
+                min={2}
+                max={4}
+                value={game.inflationInterest}
+                onChange={(v) => setGame('inflationInterest', asNumber(v, 2))}
+              />
+            </Row>
+          )}
+        </>
+      ),
+    },
+    'settings-time': {
+      body: (
+        <>
+          <Row
+            label={t('settings.timekeeping')}
+            hint={t('settings.timekeepingHint')}
+            setting={defaults.game('timekeeping')}
+          >
+            <Select
+              allowDeselect={false}
+              value={game.timekeeping}
+              onChange={(v) => v && setGame('timekeeping', v as typeof game.timekeeping)}
+              data={[
+                { value: 'calendar', label: t('settings.calendar') },
+                { value: 'wallclock', label: t('settings.wallclock') },
+              ]}
+            />
+          </Row>
+          <Row
+            label={t('settings.startingYear')}
+            hint={t('settings.startingYearHint')}
+            setting={defaults.game('startingYear')}
+          >
+            <NumberInput {...startingYear} />
+          </Row>
+        </>
+      ),
+    },
+    'settings-vehicles': {
+      body: (
+        <>
+          <Row
+            label={t('settings.neverExpire')}
+            hint={t('settings.neverExpireHint')}
+            setting={defaults.game('neverExpireVehicles')}
+          >
+            <Switch
+              checked={game.neverExpireVehicles}
+              onChange={(e) => setGame('neverExpireVehicles', e.currentTarget.checked)}
+              label={game.neverExpireVehicles ? t('settings.on') : t('settings.off')}
+            />
+          </Row>
+          <Row
+            label={t('settings.accelModel')}
+            hint={t('settings.accelModelHint')}
+            setting={defaults.game('accelerationModel')}
+          >
+            <Select
+              allowDeselect={false}
+              value={game.accelerationModel}
+              onChange={(v) => v && setGame('accelerationModel', v as typeof game.accelerationModel)}
+              data={[
+                { value: 'realistic', label: t('settings.accelRealistic') },
+                { value: 'original', label: t('settings.accelOriginal') },
+              ]}
+            />
+          </Row>
+          {/* both are the patchpack's: vanilla has no braking model at all, and a train there
+              stops dead at a signal whatever the calculator holds saved */}
+          {game.jgrpp && (
+            <Row
+              label={t('settings.brakingModel')}
+              hint={t('settings.brakingModelHint')}
+              setting={defaults.game('brakingModel')}
+            >
+              <Select
+                allowDeselect={false}
+                value={game.brakingModel}
+                onChange={(v) => v && setGame('brakingModel', v as typeof game.brakingModel)}
+                data={[
+                  { value: 'realistic', label: t('settings.brakingRealistic') },
+                  { value: 'original', label: t('settings.brakingOriginal') },
+                ]}
+              />
+            </Row>
+          )}
+          {game.jgrpp && (
+            <Row
+              label={t('settings.accBrakingPercent')}
+              hint={t('settings.accBrakingPercentHint')}
+              setting={defaults.game('trainAccBrakingPercent')}
+            >
+              <NumberInput
+                min={5}
+                max={200}
+                value={game.trainAccBrakingPercent}
+                onChange={(v) => setGame('trainAccBrakingPercent', asNumber(v, 100))}
+              />
+            </Row>
+          )}
+          <Row
+            label={t('settings.freightTrains')}
+            hint={t('settings.freightTrainsHint')}
+            setting={defaults.game('freightTrains')}
+          >
+            <NumberInput
+              min={1}
+              max={255}
+              value={game.freightTrains}
+              onChange={(v) => setGame('freightTrains', asNumber(v, 1))}
+            />
+          </Row>
+          <Row
+            label={t('settings.slopeSteepness')}
+            hint={t('settings.slopeSteepnessHint')}
+            setting={defaults.game('slopeSteepness')}
+          >
+            <NumberInput
+              min={0}
+              max={10}
+              value={game.slopeSteepness}
+              onChange={(v) => setGame('slopeSteepness', asNumber(v, 0))}
+            />
+          </Row>
+          <Row
+            label={t('settings.wagonSpeedLimits')}
+            hint={t('settings.wagonSpeedLimitsHint')}
+            setting={defaults.game('wagonSpeedLimits')}
+          >
+            <Switch
+              checked={game.wagonSpeedLimits}
+              onChange={(e) => setGame('wagonSpeedLimits', e.currentTarget.checked)}
+              label={game.wagonSpeedLimits ? t('settings.on') : t('settings.off')}
+            />
+          </Row>
+          <Row
+            label={t('settings.gradualLoading')}
+            hint={t('settings.gradualLoadingHint')}
+            setting={defaults.game('gradualLoading')}
+          >
+            <Switch
+              checked={game.gradualLoading}
+              onChange={(e) => setGame('gradualLoading', e.currentTarget.checked)}
+              label={game.gradualLoading ? t('settings.on') : t('settings.off')}
+            />
+          </Row>
+        </>
+      ),
+    },
+    'settings-calc': {
+      body: (
+        <>
+          <Row
+            label={t('settings.trackType')}
+            hint={t('settings.trackTypeHint')}
+            setting={defaults.calc('trackType')}
+          >
+            <TrackTypeField width="wide" withLabel={false} />
+          </Row>
+          <Row
+            label={t('settings.hillTiles')}
+            hint={t('settings.hillTilesHint')}
+            setting={defaults.calc('hillTiles')}
+          >
+            <NumberInput
+              suffix={countSuffix('count.tiles', calc.hillTiles)}
+              min={1}
+              max={64}
+              value={calc.hillTiles}
+              onChange={(v) => setCalc('hillTiles', asNumber(v, 1))}
+            />
+          </Row>
+          <Row
+            label={t('settings.priceYear')}
+            hint={t('settings.priceYearHint')}
+            setting={defaults.calc('priceYear')}
+          >
+            {/* the same editing rule the tabs use: this is one setting, not two fields */}
+            <NumberInput {...priceYear} />
+          </Row>
+        </>
+      ),
+    },
+    'settings-storage': {
+      body: (
+        <>
+          <p className="hint">{t('settings.storageHint')}</p>
+          <ResetEverythingButton />
+        </>
+      ),
+    },
+  };
+
   return (
     <div className="page-settings">
       <h2>{t('settings.title')}</h2>
       <p className="hint">{t('settings.intro')}</p>
 
-      {/* the settings of a game come from the game first and are edited by hand second,
-          so the import stands ahead of what it fills in */}
-      <Fieldset className="settings-group" legend={t('savegame.title')}>
-        <SavegameImportPanel />
-      </Fieldset>
+      {/* plain links to the groups: the address names the group, and the browser moves the
+          place the next Tab starts from along with the page */}
+      <nav className="settings-toc" aria-label={t('settings.toc')}>
+        <ul>
+          {SETTINGS_GROUPS.map((group) => (
+            <li key={group.id}>
+              <a href={`#${group.id}`}>{t(group.titleKey)}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-      <Fieldset
-        className="settings-group"
-        legend={
-          <Group gap="xs">
-            {t('settings.jgrpp')}
-            <Switch
-              className="group-toggle"
-              checked={game.jgrpp}
-              onChange={(e) => setGame('jgrpp', e.currentTarget.checked)}
-              label={game.jgrpp ? t('settings.on') : t('settings.off')}
-            />
-          </Group>
-        }
-      >
-        <p className="hint">{t('settings.jgrppHint')}</p>
-        {game.jgrpp && (
-          <>
-            <Row label={t('settings.dayLength')} hint={t('settings.dayLengthHint')}>
-              <NumberInput
-                min={1}
-                max={125}
-                value={game.dayLengthFactor}
-                onChange={(v) => setGame('dayLengthFactor', asNumber(v, 1))}
-              />
-            </Row>
-            <Row label={t('settings.costsWhenStopped')} hint={t('settings.costsWhenStoppedHint')}>
-              <NumberInput
-                min={1}
-                max={8}
-                value={game.costsWhenStopped}
-                onChange={(v) => setGame('costsWhenStopped', asNumber(v, 1))}
-              />
-            </Row>
-            <Row
-              label={t('settings.inflationFixedDates')}
-              hint={t('settings.inflationFixedDatesHint')}
-            >
-              <Switch
-                checked={game.inflationFixedDates}
-                onChange={(e) => setGame('inflationFixedDates', e.currentTarget.checked)}
-                label={game.inflationFixedDates ? t('settings.on') : t('settings.off')}
-              />
-            </Row>
-            <Row
-              label={t('settings.introRandomisation')}
-              hint={t('settings.introRandomisationHint')}
-            >
-              <Switch
-                checked={game.vehicleIntroRandomisation}
-                onChange={(e) => setGame('vehicleIntroRandomisation', e.currentTarget.checked)}
-                label={game.vehicleIntroRandomisation ? t('settings.on') : t('settings.off')}
-              />
-            </Row>
-            <Row label={t('settings.paymentAlgorithm')} hint={t('settings.paymentAlgorithmHint')}>
-              <Select
-                allowDeselect={false}
-                value={game.paymentAlgorithm}
-                onChange={(v) =>
-                  v && setGame('paymentAlgorithm', v as typeof game.paymentAlgorithm)
-                }
-                data={[
-                  { value: 'modern', label: t('settings.paymentModern') },
-                  { value: 'traditional', label: t('settings.paymentTraditional') },
-                ]}
-              />
-            </Row>
-          </>
-        )}
-      </Fieldset>
-
-      <Fieldset className="settings-group" legend={t('settings.newgrf')}>
-        <p className="hint">{t('settings.newgrfHint')}</p>
-        {/* The train roster is one per game — the sets swap the whole catalogue, the
-            track table and the basecost shifts — so it is a choice, not switches. */}
-        <Row label={t('settings.trainSet')} hint={t('settings.trainSetHint')}>
-          <Select
-            allowDeselect={false}
-            value={game.trainSet}
-            onChange={(v) => v && setGame('trainSet', v as GameSettings['trainSet'])}
-            data={TRAIN_SETS.map((set) => ({
-              value: set,
-              label: trainSetName(set),
-            }))}
-          />
-        </Row>
-        {game.trainSet === 'iron_horse' && (
-          <NestedRow label={t('consist.capacityParam')} hint={t('settings.capacityHint')}>
-            <Select
-              allowDeselect={false}
-              value={String(calc.capacityIndex)}
-              onChange={(v) => v && setCalc('capacityIndex', Number(v))}
-              data={trainsMeta.capacity_param_multipliers.map((m, i) => ({
-                value: String(i),
-                label: `×${m}${i === 2 ? ` (${t('settings.default')})` : ''}`,
-              }))}
-            />
-          </NestedRow>
-        )}
-        <Row label={t('settings.firs')} hint={t('settings.firsHint')}>
-          <Switch
-            checked={game.firs}
-            onChange={(e) => setGame('firs', e.currentTarget.checked)}
-            label={game.firs ? t('settings.on') : t('settings.off')}
-          />
-        </Row>
-        {game.firs && (
-          <NestedRow label={t('settings.firsEconomy')} hint={t('settings.firsEconomyHint')}>
-            <Select
-              allowDeselect={false}
-              // shows what the calculation actually uses: an id the data lost reads back as
-              // the default, and the field would otherwise sit empty while numbers say otherwise
-              value={activeEconomy(game).id}
-              onChange={(v) => v && setGame('firsEconomy', v)}
-              data={economies.map((eco) => ({ value: eco.id, label: eco.name }))}
-            />
-          </NestedRow>
-        )}
-        {/* Base Costs is a set the game loads like any other, so it stands beside the other
-            two rather than in a section of its own. */}
-        <Row label={t('settings.basecostGrf')} hint={t('settings.basecostGrfHint')}>
-          <Switch
-            checked={game.basecostGrf}
-            onChange={(e) => setGame('basecostGrf', e.currentTarget.checked)}
-            label={game.basecostGrf ? t('settings.on') : t('settings.off')}
-          />
-        </Row>
-        {game.basecostGrf && (
-          <>
-            <NestedRow label={t('settings.basecostLoco')} hint={t('settings.basecostHint')}>
-              <Select
-                allowDeselect={false}
-                value={String(game.basecostLocomotive)}
-                onChange={(v) => v && setGame('basecostLocomotive', Number(v))}
-                data={numericData(BASECOST_MULTIPLIERS)}
-              />
-            </NestedRow>
-            <NestedRow label={t('settings.basecostWagon')} hint={t('settings.basecostHint')}>
-              <Select
-                allowDeselect={false}
-                value={String(game.basecostWagon)}
-                onChange={(v) => v && setGame('basecostWagon', Number(v))}
-                data={numericData(BASECOST_MULTIPLIERS)}
-              />
-            </NestedRow>
-            <NestedRow
-              label={t('settings.basecostRunningSteam')}
-              hint={t('settings.basecostRunningHint')}
-            >
-              <Select
-                allowDeselect={false}
-                value={String(game.basecostTrainRunningSteam)}
-                onChange={(v) => v && setGame('basecostTrainRunningSteam', Number(v))}
-                data={numericData(BASECOST_MULTIPLIERS)}
-              />
-            </NestedRow>
-            <NestedRow
-              label={t('settings.basecostRunningDiesel')}
-              hint={t('settings.basecostRunningHint')}
-            >
-              <Select
-                allowDeselect={false}
-                value={String(game.basecostTrainRunningDiesel)}
-                onChange={(v) => v && setGame('basecostTrainRunningDiesel', Number(v))}
-                data={numericData(BASECOST_MULTIPLIERS)}
-              />
-            </NestedRow>
-            <NestedRow
-              label={t('settings.basecostRunningElectric')}
-              hint={t('settings.basecostRunningHint')}
-            >
-              <Select
-                allowDeselect={false}
-                value={String(game.basecostTrainRunningElectric)}
-                onChange={(v) => v && setGame('basecostTrainRunningElectric', Number(v))}
-                data={numericData(BASECOST_MULTIPLIERS)}
-              />
-            </NestedRow>
-            <NestedRow
-              label={t('settings.basecostInfrastructure')}
-              hint={t('settings.basecostInfrastructureHint')}
-            >
-              <Select
-                allowDeselect={false}
-                value={String(game.basecostInfrastructure)}
-                onChange={(v) => v && setGame('basecostInfrastructure', Number(v))}
-                data={numericData(BASECOST_MULTIPLIERS)}
-              />
-            </NestedRow>
-            <NestedRow
-              label={t('settings.basecostRailConstruction')}
-              hint={t('settings.basecostRailConstructionHint')}
-            >
-              <Select
-                allowDeselect={false}
-                value={String(game.basecostRailConstruction)}
-                onChange={(v) => v && setGame('basecostRailConstruction', Number(v))}
-                data={numericData(BASECOST_MULTIPLIERS)}
-              />
-            </NestedRow>
-          </>
-        )}
-      </Fieldset>
-
-      <Fieldset className="settings-group" legend={t('settings.display')}>
-        <Row label={t('settings.language')} hint={t('settings.languageHint')}>
-          <Select
-            allowDeselect={false}
-            value={locale}
-            onChange={(v) => v && setLocale(v as Locale)}
-            data={Object.entries(LOCALES).map(([code, l]) => ({ value: code, label: l.name }))}
-          />
-        </Row>
-        <Row label={t('settings.currency')} hint={t('settings.currencyHint')}>
-          <Select
-            allowDeselect={false}
-            value={currency}
-            onChange={(v) => v && setCurrency(v as CurrencyCode)}
-            data={Object.keys(CURRENCIES).map((code) => ({
-              value: code,
-              label: currencyLabel(code as CurrencyCode),
-            }))}
-          />
-        </Row>
-        <Row label={t('settings.speedUnit')} hint={t('settings.speedUnitHint')}>
-          <Select
-            allowDeselect={false}
-            value={speedUnit}
-            onChange={(v) => v && setSpeedUnit(v as SpeedUnit)}
-            data={[
-              { value: 'imperial', label: t('settings.speedUnit.imperial') },
-              { value: 'metric', label: t('settings.speedUnit.metric') },
-            ]}
-          />
-        </Row>
-      </Fieldset>
-
-      <Fieldset className="settings-group" legend={t('settings.finance')}>
-        <Row label={t('settings.vehicleCosts')} hint={t('settings.vehicleCostsHint')}>
-          <Select
-            allowDeselect={false}
-            value={String(game.vehicleCosts)}
-            onChange={(v) => v && setGame('vehicleCosts', Number(v) as 0 | 1 | 2)}
-            data={difficultyData}
-          />
-        </Row>
-        <Row label={t('settings.constructionCost')} hint={t('settings.constructionCostHint')}>
-          <Select
-            allowDeselect={false}
-            value={String(game.constructionCost)}
-            onChange={(v) => v && setGame('constructionCost', Number(v) as 0 | 1 | 2)}
-            data={difficultyData}
-          />
-        </Row>
-        <Row label={t('settings.subsidyMultiplier')} hint={t('settings.subsidyMultiplierHint')}>
-          <Select
-            allowDeselect={false}
-            value={String(game.subsidyMultiplier)}
-            onChange={(v) => v && setGame('subsidyMultiplier', Number(v) as 0 | 1 | 2 | 3)}
-            data={numericData([
-              { value: 0, label: '×1.5' },
-              { value: 1, label: '×2' },
-              { value: 2, label: '×3' },
-              { value: 3, label: '×4' },
-            ])}
-          />
-        </Row>
-        <Row label={t('settings.cargoAgingRate')} hint={t('settings.cargoAgingRateHint')}>
-          <NumberInput
-            min={1}
-            max={1000}
-            value={game.cargoAgingRate}
-            onChange={(v) => setGame('cargoAgingRate', asNumber(v, 1))}
-          />
-        </Row>
-        <Row
-          label={t('settings.infrastructureMaintenance')}
-          hint={t('settings.infrastructureMaintenanceHint')}
+      {SETTINGS_GROUPS.map(({ id, titleKey }) => (
+        <Fieldset
+          key={id}
+          id={id}
+          className="settings-group"
+          legend={groups[id].legend?.(t(titleKey)) ?? t(titleKey)}
         >
-          <Switch
-            checked={game.infrastructureMaintenance}
-            onChange={(e) => setGame('infrastructureMaintenance', e.currentTarget.checked)}
-            label={game.infrastructureMaintenance ? t('settings.on') : t('settings.off')}
-          />
-        </Row>
-        {/* the linear model is the patchpack's; a game without it grows upkeep by the
-            square root, which is what the switch off means */}
-        {game.jgrpp && (
-          <Row label={t('settings.linearMaintenance')} hint={t('settings.linearMaintenanceHint')}>
-            <Switch
-              checked={game.linearMaintenance}
-              onChange={(e) => setGame('linearMaintenance', e.currentTarget.checked)}
-              label={game.linearMaintenance ? t('settings.on') : t('settings.off')}
-            />
-          </Row>
-        )}
-        <Row label={t('settings.inflation')} hint={t('settings.inflationHint')}>
-          <Switch
-            checked={game.inflation}
-            onChange={(e) => setGame('inflation', e.currentTarget.checked)}
-            label={game.inflation ? t('settings.on') : t('settings.off')}
-          />
-        </Row>
-        {/* the fatal error is Iron Horse's; without it inflation is an ordinary setting */}
-        {game.inflation && game.trainSet === 'iron_horse' && (
-          <Warning>
-            <strong>{t('settings.inflationWarnTitle')}</strong>
-            <p className="grf-error">{t('settings.inflationGrfError')}</p>
-            <p>{t('settings.inflationWarnBody')}</p>
-          </Warning>
-        )}
-        {game.inflation && (
-          <Row label={t('settings.interest')} hint={t('settings.interestHint')}>
-            <NumberInput
-              min={2}
-              max={4}
-              value={game.inflationInterest}
-              onChange={(v) => setGame('inflationInterest', asNumber(v, 2))}
-            />
-          </Row>
-        )}
-      </Fieldset>
-
-      <Fieldset className="settings-group" legend={t('settings.time')}>
-        <Row label={t('settings.timekeeping')} hint={t('settings.timekeepingHint')}>
-          <Select
-            allowDeselect={false}
-            value={game.timekeeping}
-            onChange={(v) => v && setGame('timekeeping', v as typeof game.timekeeping)}
-            data={[
-              { value: 'calendar', label: t('settings.calendar') },
-              { value: 'wallclock', label: t('settings.wallclock') },
-            ]}
-          />
-        </Row>
-        <Row label={t('settings.startingYear')} hint={t('settings.startingYearHint')}>
-          <NumberInput {...startingYear} />
-        </Row>
-      </Fieldset>
-
-      <Fieldset className="settings-group" legend={t('settings.vehicles')}>
-        <Row label={t('settings.neverExpire')} hint={t('settings.neverExpireHint')}>
-          <Switch
-            checked={game.neverExpireVehicles}
-            onChange={(e) => setGame('neverExpireVehicles', e.currentTarget.checked)}
-            label={game.neverExpireVehicles ? t('settings.on') : t('settings.off')}
-          />
-        </Row>
-        <Row label={t('settings.accelModel')} hint={t('settings.accelModelHint')}>
-          <Select
-            allowDeselect={false}
-            value={game.accelerationModel}
-            onChange={(v) => v && setGame('accelerationModel', v as typeof game.accelerationModel)}
-            data={[
-              { value: 'realistic', label: t('settings.accelRealistic') },
-              { value: 'original', label: t('settings.accelOriginal') },
-            ]}
-          />
-        </Row>
-        {/* both are the patchpack's: vanilla has no braking model at all, and a train there
-            stops dead at a signal whatever the calculator holds saved */}
-        {game.jgrpp && (
-          <Row label={t('settings.brakingModel')} hint={t('settings.brakingModelHint')}>
-            <Select
-              allowDeselect={false}
-              value={game.brakingModel}
-              onChange={(v) => v && setGame('brakingModel', v as typeof game.brakingModel)}
-              data={[
-                { value: 'realistic', label: t('settings.brakingRealistic') },
-                { value: 'original', label: t('settings.brakingOriginal') },
-              ]}
-            />
-          </Row>
-        )}
-        {game.jgrpp && (
-          <Row label={t('settings.accBrakingPercent')} hint={t('settings.accBrakingPercentHint')}>
-            <NumberInput
-              min={5}
-              max={200}
-              value={game.trainAccBrakingPercent}
-              onChange={(v) => setGame('trainAccBrakingPercent', asNumber(v, 100))}
-            />
-          </Row>
-        )}
-        <Row label={t('settings.freightTrains')} hint={t('settings.freightTrainsHint')}>
-          <NumberInput
-            min={1}
-            max={255}
-            value={game.freightTrains}
-            onChange={(v) => setGame('freightTrains', asNumber(v, 1))}
-          />
-        </Row>
-        <Row label={t('settings.slopeSteepness')} hint={t('settings.slopeSteepnessHint')}>
-          <NumberInput
-            min={0}
-            max={10}
-            value={game.slopeSteepness}
-            onChange={(v) => setGame('slopeSteepness', asNumber(v, 0))}
-          />
-        </Row>
-        <Row label={t('settings.wagonSpeedLimits')} hint={t('settings.wagonSpeedLimitsHint')}>
-          <Switch
-            checked={game.wagonSpeedLimits}
-            onChange={(e) => setGame('wagonSpeedLimits', e.currentTarget.checked)}
-            label={game.wagonSpeedLimits ? t('settings.on') : t('settings.off')}
-          />
-        </Row>
-        <Row label={t('settings.gradualLoading')} hint={t('settings.gradualLoadingHint')}>
-          <Switch
-            checked={game.gradualLoading}
-            onChange={(e) => setGame('gradualLoading', e.currentTarget.checked)}
-            label={game.gradualLoading ? t('settings.on') : t('settings.off')}
-          />
-        </Row>
-      </Fieldset>
-
-      <Fieldset className="settings-group" legend={t('settings.calc')}>
-        <Row label={t('settings.trackType')} hint={t('settings.trackTypeHint')}>
-          <TrackTypeField width="wide" withLabel={false} />
-        </Row>
-        <Row label={t('settings.hillTiles')} hint={t('settings.hillTilesHint')}>
-          <NumberInput
-            suffix={countSuffix('count.tiles', calc.hillTiles)}
-            min={1}
-            max={64}
-            value={calc.hillTiles}
-            onChange={(v) => setCalc('hillTiles', asNumber(v, 1))}
-          />
-        </Row>
-        <Row label={t('settings.priceYear')} hint={t('settings.priceYearHint')}>
-          {/* the same editing rule the tabs use: this is one setting, not two fields */}
-          <NumberInput {...priceYear} />
-        </Row>
-      </Fieldset>
-
-      <Fieldset className="settings-group" legend={t('settings.storage')}>
-        <p className="hint">{t('settings.storageHint')}</p>
-        <ResetEverythingButton />
-      </Fieldset>
+          {groups[id].body}
+        </Fieldset>
+      ))}
     </div>
   );
 }

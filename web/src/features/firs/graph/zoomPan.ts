@@ -73,6 +73,39 @@ export function panBy(view: View, dx: number, dy: number): View {
   return { ...view, x: view.x + dx, y: view.y + dy };
 }
 
+/** A viewport point: where a finger, or the middle between two, is on the canvas. */
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/**
+ * The view a two-finger gesture leads to, counted from the view it started at rather than
+ * step by step, so rounding does not add up over a long gesture: the scale follows the
+ * distance between the fingers, and the spot of the drawing that was under the middle
+ * between them stays under that middle wherever it has moved.
+ */
+export function pinchView(start: View, startMid: Point, startDistance: number, mid: Point, distance: number): View {
+  const factor = startDistance > 0 ? distance / startDistance : 1;
+  return panBy(zoomAt(start, factor, startMid.x, startMid.y), mid.x - startMid.x, mid.y - startMid.y);
+}
+
+/**
+ * The view a drawing opens at: a scale the node labels are read at, never above life size.
+ * A drawing that fits the canvas at such a scale opens whole and centred; a larger one opens
+ * at the lowest scale with labels, centred on `focus` (the picked node) or on its own middle —
+ * a graph has no entrance, and its middle is where the zoom buttons zoom around anyway.
+ */
+export function startView(content: Size, viewport: Size, focus?: Point): View {
+  // capped before centring: a fit centred for a larger scale would be off-centre at this one
+  const k = Math.min(fitView(content, viewport).k, 1);
+  if (k >= LABELS_FROM) {
+    return { k, x: (viewport.width - content.width * k) / 2, y: (viewport.height - content.height * k) / 2 };
+  }
+  const point = focus ?? { x: content.width / 2, y: content.height / 2 };
+  return centreOn({ x: 0, y: 0, k: LABELS_FROM }, point, viewport);
+}
+
 /** The view that puts a point of the drawing in the middle of the viewport, at the same scale. */
 export function centreOn(view: View, point: { x: number; y: number }, viewport: Size): View {
   return { k: view.k, x: viewport.width / 2 - point.x * view.k, y: viewport.height / 2 - point.y * view.k };

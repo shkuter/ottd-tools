@@ -957,10 +957,164 @@
     background: var(--skin-list-hover);
   }
 
+  /*
+   * Columns further right (TableFrame, useOverflowHint): a plate over the right end of the
+   * scrolling part, shown while the frame is wider than it shows and not scrolled to the end.
+   * It fades in from the list's own background and ends where the column held at the right edge
+   * begins, so that column's edge stays in sight; it stands clear of the frame's border and of
+   * its scrollbar, and takes no press or scroll. The arrow is the shared one, turned to point
+   * right. On a frame too narrow for the words the arrow stays alone.
+   */
+  .table-frame {
+    position: relative;
+    container-type: inline-size;
+  }
+
+  .table-overflow-hint {
+    display: none;
+    position: absolute;
+    top: var(--bevel);
+    bottom: calc(var(--bevel) + var(--table-scrollbar, 0px));
+    right: calc(var(--bevel) + var(--table-pinned-end, 0px));
+    z-index: 2;
+    align-items: center;
+    gap: var(--skin-hsep-normal);
+    padding-left: calc(12px * var(--skin-scale));
+    padding-right: var(--skin-hsep-normal);
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--skin-list-bg) calc(12px * var(--skin-scale))
+    );
+    color: var(--skin-field-text);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .table-frame:has(> .table-wrap[data-more-end]) > .table-overflow-hint {
+    display: flex;
+  }
+
+  .table-overflow-hint::after {
+    content: '';
+    width: var(--skin-arrow);
+    height: var(--skin-arrow);
+    flex: none;
+    background: currentcolor;
+    mask-image: var(--skin-arrow-shape);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    transform: rotate(-90deg);
+  }
+
+  @container (max-width: 20em) {
+    .table-overflow-hint__text {
+      display: none;
+    }
+  }
+
   /* Last, because a pinned header paints its own background and this has the same weight: the
      shade under the cursor is what tells a sortable header from a plain one, so it wins. */
   .table-wrap .mantine-Table-th.sortable:hover {
     background: var(--skin-list-hover);
+  }
+
+  /*
+   * The comparison tick of a list stands in a label with no text of its own (OptimizerPage),
+   * because a press on a label ticks the box inside it: that is what lets a touch screen widen
+   * the spot to press below. As a block no wider than the box it lays out as the bare box did.
+   */
+  .cell-pick__hit {
+    display: block;
+    width: fit-content;
+    position: relative;
+  }
+
+  /* ==========================================================================
+     TOUCH TARGETS
+     Under a finger the small controls are hard to hit: a tick, a stepper arrow, a switch, the
+     action button of a row. Where the main pointer is coarse each of them gets a spot to press
+     of at least 24 CSS pixels (the language switch in the footer too), drawn by nothing — a transparent pseudo-element on the element
+     that takes the press, which the browser hit-tests as that element. The box itself does not
+     change, so a row keeps the one height of the scale and a mouse sees what it always did.
+     ========================================================================== */
+
+  @media (pointer: coarse) {
+    /*
+     * An action button clips what overflows it (the library's loading overlay), and the clip
+     * would take the wider spot with it; nothing here passes it a loading state to reveal.
+     */
+    .mantine-Table-td .mantine-ActionIcon-root,
+    .consist-list .mantine-ActionIcon-root,
+    .language-switch {
+      overflow: visible;
+    }
+
+    /* the spot every control below shares: centred across the box, at least the minimum each way */
+    .mantine-Table-td .mantine-ActionIcon-root::after,
+    .consist-list .mantine-ActionIcon-root::after,
+    .cell-pick__hit::after,
+    .language-switch::after,
+    .mantine-NumberInput-control::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      width: max(100%, var(--skin-touch-min));
+      height: max(100%, var(--skin-touch-min));
+    }
+
+    /* centred down the box as well — all but a stepper arrow, placed below */
+    .mantine-Table-td .mantine-ActionIcon-root::after,
+    .consist-list .mantine-ActionIcon-root::after,
+    .cell-pick__hit::after,
+    .language-switch::after {
+      top: 50%;
+      translate: -50% -50%;
+    }
+
+    /* at the right edge of a list the spot grows leftwards only: centred, it would stick out of
+       the table, add to the width the list scrolls and be cut by the frame */
+    .mantine-Table-td:last-child .mantine-ActionIcon-root::after {
+      left: auto;
+      right: 0;
+      translate: 0 -50%;
+    }
+
+    /* each arrow of a stepper grows away from the other, so the two spots meet on the line
+       between the arrows and never overlap */
+    .mantine-NumberInput-control {
+      position: relative;
+    }
+
+    .mantine-NumberInput-control::after {
+      translate: -50% 0;
+    }
+
+    /* measured from the outer edge, past the bevel: an absolute box is placed inside the border,
+       and anchored there the two spots would leave the band of both bevels between them */
+    .mantine-NumberInput-control[data-direction='up']::after {
+      bottom: calc(-1 * var(--bevel));
+    }
+
+    .mantine-NumberInput-control[data-direction='down']::after {
+      top: calc(-1 * var(--bevel));
+    }
+
+    /* the body of a switch is its label, which toggles the switch wherever it is pressed */
+    .mantine-Switch-body {
+      position: relative;
+    }
+
+    .mantine-Switch-body::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: max(100%, var(--skin-touch-min));
+      translate: 0 -50%;
+    }
   }
 
   /* ==========================================================================

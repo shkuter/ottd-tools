@@ -97,7 +97,37 @@
 
 #### Результат спайка
 
-_Заполняется задачей 1.1._
+15.09.2026, Playwright 1.62.1 (его Chromium), прод-сборка через `preview()`. Стенд — страница
+приложения, у которой `body` заменён на площадку `touch-action: pan-x pan-y` 400×600 над
+длинным документом; слушатели pointer-событий и пассивные (а для ветки B — активные с
+`preventDefault` при `touches.length >= 2`) `touch*`. Касания — CDP `Input.dispatchTouchEvent`
+через `context.newCDPSession(page)`, контекст 400×900 `hasTouch: true, isMobile: true`.
+
+1. **Два пальца на полотне** — оба указателя приходят: `pointerdown#2`, `pointerdown#3`,
+   `pointermove` обоих, `pointerup` обоих, `pointercancel` нет; `scrollY` остаётся 0, а
+   `visualViewport.scale` — 1. Так и при разведении пальцев со сдвигом середины, и при
+   параллельном сдвиге двумя пальцами без изменения расстояния: под `pan-x pan-y` Chromium
+   жест двумя пальцами себе не берёт. **Второй палец после начала прокрутки:** первый
+   указатель получил `pointercancel` в момент, когда страница поехала, второй палец
+   `pointerdown` не получил вовсе, `touchmove` с двумя касаниями идут с `cancelable: false`
+   (и с активным слушателем тоже), страница продолжает прокручиваться (136 → 284 px).
+   Предположение D1 подтвердилось фактом.
+2. **Один палец** — страница прокручивается (`scrollY` 0 → 372), указатель получает
+   `pointerdown`, один-два `pointermove` и затем `pointercancel`. Хук обязан переживать
+   `pointercancel`. Касание без сдвига (`page.touchscreen.tap`) даёт `pointerdown`,
+   `pointerup` и `click`.
+3. **`(pointer: coarse)`** совпадает уже в контексте `hasTouch: true` (без `isMobile`), так же
+   `any-pointer: coarse` и `hover: none`; в контексте по умолчанию — нет. Одного пальца в
+   контексте только с `hasTouch` хватает и для прокрутки (368 px).
+4. **CDP с двумя `touchPoints`** проходит через `touch-action`: браузер применяет его к
+   касаниям так же, как к настоящим (прокрутка одним пальцем, отмена указателя, неотменяемый
+   `touchmove` после начала прокрутки). `touchStart` с двумя точками сразу Chromium
+   разворачивает в два `touchstart` (`n=1`, затем `n=2`).
+
+**Выбрана ветка A:** жесты на Pointer Events, нативных `touch*` слушателей не нужно.
+**Эмуляция coarse для D7:** отдельный контекст Playwright с `hasTouch: true`; переключение
+`CSSMediaRule` не нужно. Браузерная проверка жестов графа — настоящие CDP-касания в таком же
+контексте (один палец, два пальца, касание узла).
 
 ### D2. Жесты: хук держит набор указателей
 
@@ -120,6 +150,16 @@ _Заполняется задачей 1.1._
   съедает клик по узлу (Known Bug Patterns). Для мыши захват остаётся после сдвига, как сейчас.
 - `pointercancel` удаляет указатель из набора; `pointerup` — тоже, плюс прежняя логика
   `endedInDrag`.
+- **Устойчивость набора (ревью, раунд 1).** Жест пальцев вынесен в `graph/touchGesture.ts`
+  (`TouchGesture`, без DOM); хук только выбирает по `pointerType` между ним и перетаскиванием
+  мышью. Палец, чей `pointerup`/`pointercancel` до полотна не дошёл, иначе остался бы
+  «призраком», и следующий одиночный палец начал бы пинч. Поэтому: `pointerdown` с `isPrimary`
+  начинает новую последовательность касаний и забывает все прежние пальцы (браузер делает
+  палец первичным, только когда на экране никого нет); `pointerleave` и `lostpointercapture`
+  тоже снимают палец (`pointerout` — нет: он приходит при переходе между узлами внутри полотна).
+  Если поднят палец пинча, а на полотне осталось два и больше, пинч **продолжается** с двумя
+  оставшимися (первыми по времени касания) и считается заново от достигнутого вида — без
+  скачка; меньше двух — жест кончается, как раньше.
 - Арифметика — чистые функции в `zoomPan.ts`: `pinchView(start, startMid, startDist, mid, dist)`,
   тестируются без браузера.
 - CSS: `.graph-canvas { touch-action: pan-x pan-y }`, комментарий переписан.
@@ -269,6 +309,13 @@ _Заполняется задачей 1.1._
   `touch-targets.visual` (D7). `palette.visual`: цвета из токенов. Специмен в `/kit` — уже существующий
   широкий список, `kit.visual` его находит.
 
+**Отклонение при реализации (задача 5.2):** класс `table-more` в проекте уже занят — это ряд
+«показать ещё» под списками `/optimizer` и `/consist` (`skin.css`, `table.visual`), поэтому
+подсказка названа `span.table-overflow-hint` (текст — `.table-overflow-hint__text`). Хук пишет
+`--table-pinned-end` и высоту полосы прокрутки `--table-scrollbar` на обёртку `.table-frame`,
+где стоит подсказка, а `data-more-end` — на `.table-wrap`. Текст прячется контейнерным запросом
+`@container (max-width: 20em)` на `.table-frame`.
+
 *Отвергнуто:* scroll-driven animation (`animation-timeline: scroll()`) без JS — в Firefox
 не поддерживается, а при отсутствии переполнения без JS тень не спрятать; тень через
 `background-attachment: local` — перекрывается фоном sticky-ячеек, которые красятся
@@ -312,7 +359,7 @@ _Заполняется задачей 1.1._
     `bodyElement = "div"`). Псевдоэлемент на `div` нажатие не передаёт, у `input` псевдоэлементов
     нет, а у `td.cell-pick` обёртки нет. **Меняется разметка:** в `OptimizerPage.tsx` флажок в
     `td.cell-pick` оборачивается в `<label className="cell-pick__hit">`
-    (`display: inline-block; position: relative; vertical-align: middle`), без текста.
+    (`display: block; width: fit-content; position: relative`), без текста.
     Нажатие на `label` активирует вложенный `input`. Под coarse `::after` 24×24 рисуется на
     этом `label`. Доступное имя не меняется: `aria-label` у `input` (`compare.pick`,
     «Compare {engine}») главнее содержимого `label`, а у `label` текста нет. Специмен
@@ -320,6 +367,26 @@ _Заполняется задачей 1.1._
     же разметку. Селекторы `.cell-pick input[type="checkbox"]`
     (`OptimizerPage.test.tsx:84`, `comparison.visual.test.ts:15`) остаются потомковыми и не
     ломаются.
+- **Элемент касания — сверено на Mantine 9.5.1 (задача 6.1):**
+  - `ActionIcon` в строках — корень `.mantine-ActionIcon-root` (`button`); в
+    `styles/ActionIcon.css` `.m_8d3f4000 { position: relative; overflow: hidden }` —
+    подтверждено, под coarse `overflow: visible`.
+  - `.language-switch` — корень `.mantine-Button-root` (`button`); `.m_77c9d27d { position:
+    relative; overflow: hidden }` — подтверждено; у корня уже есть `::before` библиотеки
+    (`opacity: 0`), поэтому область рисуется на `::after`.
+  - Стрелки `NumberInput` — `.mantine-NumberInput-control` (`button`); в `NumberInput.css`
+    ни `overflow`, ни `position` у них нет — подтверждено, `position: relative` ставит скин.
+  - `Switch` — `.mantine-Switch-body`, в `Switch.mjs` `bodyElement: "label"` — подтверждено;
+    `overflow: hidden` у трека (`.m_9307d992`) скин уже снимает, на тело он не влияет.
+  - Флажок сравнения — `label.cell-pick__hit` вокруг `Checkbox` (у `Checkbox` тело —
+    `div`). Обёртка сделана `display: block; width: fit-content`, а не `inline-block`: блок
+    без текста раскладывается ровно как голый блок флажка, строчный бокс со своим strut
+    не добавляет высоты строке.
+  - `grep -rn "loading" web/src --include=*.tsx`: пропа `loading` у `ActionIcon`/`Button` нет.
+  - Стрелки `NumberInput` несут бевель-рамку, а абсолютный псевдоэлемент отсчитывается от
+    padding-box: при `bottom: 0` / `top: 0` между областями оставалась полоса двух бевелей,
+    куда нажатие вне бокса стрелок не доходило (поймано `touch-targets.visual`). Области
+    отсчитываются от внешнего края: `bottom/top: calc(-1 * var(--bevel))`.
 - Соседство: в строке панели состава `×` (`ActionIcon`) стоит рядом с `NumberInput`. Если
   расширенная область `×` заходит на поле, под coarse увеличивается `gap` строки
   `.consist-list` (это не бокс контрола и не ряд `controls.visual`). Нужен ли он, решает
@@ -381,9 +448,9 @@ _Заполняется задачей 1.1._
 
 - `state/settingsStore.ts`: `export const DEFAULT_CURRENCY: CurrencyCode = 'GBP'`,
   `DEFAULT_SPEED_UNIT: SpeedUnit = 'metric'`; начальное состояние и `reset()` читают их.
-- `features/settings/useSettingDefault.ts` — один хук на три случая:
-  - `useGameDefault(key)`, `useCalcDefault(key)`, `useDisplayDefault('currency'|'speedUnit')`
-    возвращают `{ changed: boolean; reset(): void }`;
+- `features/settings/useSettingDefaults.ts` — один хук на три случая:
+  - `useSettingDefaults()` отдаёт `game(key)`, `calc(key)`, `display('currency'|'speedUnit')`,
+    каждый возвращает `{ changed: boolean; reset(): void }` (тип `SettingDefault` из `SettingRow`);
   - `changed` сравнивает **показанное** значение: для `firsEconomy` —
     `activeEconomy(game).id !== activeEconomy({...game, firsEconomy: DEFAULT}).id`, для
     `trackType` — `activeRailtype(game, calc.trackType).label` против
@@ -401,7 +468,7 @@ _Заполняется задачей 1.1._
   компонент `SettingChangedMark`.
 - Язык (`localeStore`) пропа не получает. Скрытые строки не рендерятся — значит, и отметки
   нет; значения не трогаются.
-- Покрытие: `features/settings/__tests__/settingDefaults.test.tsx` перебирает **все** ключи
+- Покрытие: `features/settings/__tests__/useSettingDefaults.test.tsx` перебирает **все** ключи
   `DEFAULT_GAME_SETTINGS`, `DEFAULT_CALC_SETTINGS` и `currency`/`speedUnit`. Для каждого
   включаются родители (`jgrpp`, `inflation`, `basecostGrf`, `trainSet: 'iron_horse'`, `firs`) и
   ставится не-умолчание (для булевых — отрицание, для перечислений — первый другой вариант
@@ -436,7 +503,13 @@ _Заполняется задачей 1.1._
   `scrollWidth` списка.
 - [Эмуляция касаний в Playwright не проходит через `touch-action`] → браузерная проверка
   сужается до одного пальца, пинч — юнит-тестами хука; в design записывается, что пинч в
-  браузере не проверен, и владелец проверяет на телефоне перед релизом.
+  браузере не проверен, и владелец проверяет на телефоне перед релизом. *По итогу спайка
+  риск не сбылся:* CDP-касания проходят через `touch-action`, и `graph.visual` проверяет все
+  четыре сценария касаний в Chromium. Непроверенным автоматически остаётся другой браузерный
+  движок: Safari на iOS (WebKit) и Firefox на Android трактуют жест двумя пальцами под
+  `pan-x pan-y` по-своему. **Ручная проверка перед релизом на телефоне с iOS:** один палец
+  листает страницу над полотном; два пальца, положенные на полотно, двигают и масштабируют
+  граф, а страница не масштабируется; касание узла выбирает его.
 - [Стартовый масштаб 0.5 на телефоне показывает мало графа] → Fit остаётся на кнопке,
   легенда называет жесты; порог подписей не меняется (спека «Подписи узлов скрываются»).
 - [`overflow-y: auto` у панели обрежет рамку фокуса или тень выпадающего списка] → выпадающие
@@ -453,6 +526,10 @@ _Заполняется задачей 1.1._
   колонки подписи; `clipping.visual` на `/settings` при 400px в en/ru.
 - [`scrollIntoView` к карточке уводит полотно из-под клавиатурного курсора] → `block: 'nearest'`,
   фокус остаётся на полотне; на широком окне вызова нет.
+- [Прокрутка к карточке решается геометрией, а не шириной окна] → на широком, но низком окне
+  высокая карточка не помещается в `innerHeight` целиком, и выбор узла всё же прокручивает
+  страницу (`block: 'nearest'` — ровно на недостающее). Принято: условие спеки — «карточка не
+  видна», и на таком окне она действительно видна не вся.
 
 ## Migration Plan
 

@@ -92,6 +92,7 @@ const OPTIONS = ['kit.optionFirst', 'kit.optionSecond', 'kit.optionThird'];
 function Specimen({ showTooltip }: { showTooltip: boolean }) {
   const [checked, setChecked] = useState(true);
   const [on, setOn] = useState(true);
+  const [changedOff, setChangedOff] = useState(false);
   const [text, setText] = useState(t('kit.sampleValue'));
   const [amount, setAmount] = useState<string | number>(120);
   const [choice, setChoice] = useState<string | null>(OPTIONS[0]);
@@ -244,6 +245,14 @@ function Specimen({ showTooltip }: { showTooltip: boolean }) {
         <NestedSettingRow label={t('kit.settingNested')}>
           <NumberInput value={amount} onChange={setAmount} />
         </NestedSettingRow>
+        {/* a setting that differs from its default: the mark and the reset beside its name */}
+        <SettingRow
+          label={t('kit.settingChanged')}
+          hint={t('kit.settingHint')}
+          setting={{ changed: !changedOff, reset: () => setChangedOff(true) }}
+        >
+          <Switch checked={!changedOff} onChange={() => setChangedOff(!changedOff)} />
+        </SettingRow>
       </div>
 
       <Table className="summary-table" withRowBorders={false} data-testid="kit-summary">
@@ -421,7 +430,10 @@ function Showcase() {
               <Table.Tr key={row.id}>
                 <Table.Td className="cell-num">{index + 1}</Table.Td>
                 <Table.Td className="cell-pick">
-                  <Checkbox size="xs" aria-label={trainName(row)} />
+                  {/* the same markup as the tick of Best train, so the checks see what it has */}
+                  <label className="cell-pick__hit">
+                    <Checkbox size="xs" aria-label={trainName(row)} />
+                  </label>
                 </Table.Td>
                 <Table.Td className="cell-sprite">
                   <TrainImage trainId={row.id} />

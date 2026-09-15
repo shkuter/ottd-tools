@@ -46,7 +46,8 @@ describe('the NewGRF section', () => {
   it('holds the train-set choice and both switches, none in a section of its own', () => {
     draw();
 
-    const section = screen.getByText('NewGRF sets').closest('fieldset')!;
+    // the legend, not the link to the section in the table of contents above the groups
+    const section = screen.getByText('NewGRF sets', { selector: 'legend' }).closest('fieldset')!;
     // the roster is one per game, so it is a select; the coexisting sets are switches
     for (const set of ['Train set', 'FIRS 5', BASE_COSTS]) {
       expect(section.textContent).toContain(set);

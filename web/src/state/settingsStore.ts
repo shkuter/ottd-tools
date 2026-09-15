@@ -30,6 +30,10 @@ export const CURRENCIES = {
 
 export type CurrencyCode = keyof typeof CURRENCIES;
 
+/** The currency and the speed units a fresh calculator shows, and "Reset everything" returns to. */
+export const DEFAULT_CURRENCY: CurrencyCode = 'GBP';
+export const DEFAULT_SPEED_UNIT: SpeedUnit = 'metric';
+
 /**
  * How the numbers are shown. Not a matter of calculation — that works in pounds and the
  * game's internal speed unit — but of whether what the player reads here matches what they
@@ -95,8 +99,8 @@ function normaliseGame(game: GameSettings): GameSettings {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      currency: 'GBP',
-      speedUnit: 'metric',
+      currency: DEFAULT_CURRENCY,
+      speedUnit: DEFAULT_SPEED_UNIT,
       game: DEFAULT_GAME_SETTINGS,
       calc: DEFAULT_CALC_SETTINGS,
       setCurrency: (currency) => set({ currency }),
@@ -111,8 +115,8 @@ export const useSettingsStore = create<SettingsState>()(
         })),
       reset: () =>
         set({
-          currency: 'GBP',
-          speedUnit: 'metric',
+          currency: DEFAULT_CURRENCY,
+          speedUnit: DEFAULT_SPEED_UNIT,
           game: DEFAULT_GAME_SETTINGS,
           calc: DEFAULT_CALC_SETTINGS,
         }),

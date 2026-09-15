@@ -107,6 +107,18 @@ describe('the import button in the corner', () => {
     await waitFor(() => expect(launcher()).toBeTruthy());
   });
 
+  it('tells the stylesheet its width and height, and takes both back when it goes', async () => {
+    const root = document.documentElement.style;
+    const { unmount } = shell();
+    await waitFor(() => expect(launcher()).toBeTruthy());
+    // jsdom lays nothing out, so the numbers are zero; what matters is that both are written
+    expect(root.getPropertyValue('--savegame-launcher-width')).toMatch(/px$/);
+    expect(root.getPropertyValue('--savegame-launcher-height')).toMatch(/px$/);
+    unmount();
+    expect(root.getPropertyValue('--savegame-launcher-width')).toBe('');
+    expect(root.getPropertyValue('--savegame-launcher-height')).toBe('');
+  });
+
   it('is called the same before and after an import', async () => {
     // the file name is already on the game tab; a second wording would be a second state
     shell();

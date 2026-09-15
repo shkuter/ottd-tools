@@ -57,6 +57,9 @@ export const EXEMPT_ELEMENTS: Record<string, string> = {
   Image: 'the box a picture is drawn in; the pictures themselves are shown',
   Input: 'the wrapper Field is built from — the field is shown',
   MantineProvider: 'the shell that hands out the theme; it draws nothing',
+  SettingChangedMark:
+    'the mark of a changed setting, drawn by SettingRow from its `setting` prop — the changed ' +
+    'setting row is shown',
   StrandedVehicles: 'a warning about its own occasion — Warning is shown',
   TrackTypeField: 'a dropdown that reads a setting — the dropdown itself is shown',
   UnstyledButton:

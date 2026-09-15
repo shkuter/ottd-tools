@@ -316,3 +316,71 @@ describe('/optimizer, the held columns after the rows change', () => {
     }
   });
 });
+
+/**
+ * The hint of columns further right: shown at the start of the scroll of a list wider than its
+ * frame, clear of the edge of the column held at the right; gone at the end of the scroll, where
+ * the last value stands in the open, and gone from a list that fits its frame.
+ */
+describe.each([
+  { path: '/optimizer', ready: '.page-optimizer tbody' },
+  { path: '/consist', ready: '.page-consist tbody' },
+])('$path, the hint of columns further right', (route) => {
+  it('stands at the start of the scroll, clear of the held column, and goes at the end and when the list fits', async () => {
+    const page = await harness().goto(route.path, route.ready);
+    const shot = await page.evaluate(async (scope) => {
+      const frames = () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const wrap = document.querySelector<HTMLElement>(`${scope} .table-wrap.pin-edges`)!;
+      // the frame is sized from outside, as the column it stands in sizes it: the hint stands
+      // in the holder around the scrolling part, so that is what is narrowed and widened
+      const holder = wrap.parentElement!;
+      const hint = holder.querySelector<HTMLElement>('.table-overflow-hint')!;
+      const row = wrap.querySelector('tbody tr')!;
+      const cells = [...row.children] as HTMLElement[];
+      const pinned = cells[cells.length - 1];
+      const shown = () => getComputedStyle(hint).display !== 'none' && hint.getBoundingClientRect().width > 0;
+
+      holder.style.width = '500px';
+      wrap.scrollLeft = 0;
+      await frames();
+      const start = {
+        shown: shown(),
+        hintRight: hint.getBoundingClientRect().right,
+        hintLeft: hint.getBoundingClientRect().left,
+        frameLeft: wrap.getBoundingClientRect().left,
+        pinLeft: pinned.getBoundingClientRect().left,
+        focusable: hint.tabIndex >= 0 || !!hint.querySelector('a, button, input, [tabindex]'),
+        hidden: hint.getAttribute('aria-hidden'),
+        pointer: getComputedStyle(hint).pointerEvents,
+      };
+
+      wrap.scrollLeft = wrap.scrollWidth;
+      await frames();
+      const end = {
+        shown: shown(),
+        overlap: cells[cells.length - 2].getBoundingClientRect().right - pinned.getBoundingClientRect().left,
+      };
+
+      holder.style.width = `${wrap.scrollWidth + 2 * wrap.clientLeft + 40}px`;
+      wrap.scrollLeft = 0;
+      await frames();
+      const fits = { shown: shown(), overflows: wrap.scrollWidth > wrap.clientWidth + 1 };
+
+      holder.style.width = '';
+      wrap.scrollLeft = 0;
+      return { start, end, fits };
+    }, route.ready.split(' ')[0]);
+
+    expect(shot.start.shown, 'a list wider than its frame shows the hint at the start').toBe(true);
+    expect(shot.start.hintRight, 'the hint covers the edge of the held column').toBeLessThanOrEqual(shot.start.pinLeft + 0.5);
+    expect(shot.start.hintLeft).toBeGreaterThan(shot.start.frameLeft);
+    expect(shot.start.focusable, 'the hint is no tab stop').toBe(false);
+    expect(shot.start.hidden).toBe('true');
+    expect(shot.start.pointer, 'the hint takes presses meant for the list').toBe('none');
+    expect(shot.end.shown, 'the hint stays at the end of the scroll').toBe(false);
+    expect(shot.end.overlap, 'the last value is left under the held column').toBeLessThanOrEqual(0);
+    expect(shot.fits.overflows, 'the frame was not widened enough to hold the list').toBe(false);
+    expect(shot.fits.shown, 'a list that fits its frame shows the hint').toBe(false);
+  });
+});

@@ -1,4 +1,36 @@
 import { useId, useLayoutEffect, useRef } from 'react';
+import { Button } from '@mantine/core';
+import { t } from '../i18n';
+
+/** Whether a setting differs from its default, and how to put it back (useSettingDefaults). */
+export interface SettingDefault {
+  changed: boolean;
+  reset: () => void;
+}
+
+/**
+ * The mark of a setting that differs from the calculator's default: the word, so it is not
+ * told by colour alone and is read out, and a button that puts back this one setting. The
+ * button is named after the setting it resets rather than by the setting's name alone — that
+ * name belongs to the control of the row — and it carries the name itself, so the row's
+ * naming of nameless buttons never reaches it. A row with the default value shows neither.
+ */
+export function SettingChangedMark({ label, setting }: { label: string; setting?: SettingDefault }) {
+  if (!setting?.changed) return null;
+  return (
+    <span className="setting-changed">
+      <span className="setting-changed__word">{t('settings.changed')}</span>
+      <Button
+        variant="subtle"
+        className="btn-link setting-reset"
+        aria-label={t('settings.resetOne', { name: label })}
+        onClick={setting.reset}
+      >
+        {t('settings.resetOneShort')}
+      </Button>
+    </span>
+  );
+}
 
 /** What in a row's control area is a control to be named. */
 const CONTROLS =
@@ -34,11 +66,17 @@ export function SettingRow({
   label,
   hint,
   className = 'setting-row',
+  setting,
   children,
 }: {
   label: string;
   hint?: string;
   className?: string;
+  /**
+   * The setting's state against its default; a changed one is marked in the caption column,
+   * beside its name and away from the control, whose width and name it leaves alone.
+   */
+  setting?: SettingDefault;
   children: React.ReactNode;
 }) {
   const labelId = useId();
@@ -61,6 +99,7 @@ export function SettingRow({
     <div className={className}>
       <div className="setting-label">
         <span id={labelId}>{label}</span>
+        <SettingChangedMark label={label} setting={setting} />
         {hint && (
           <span id={hintId} className="hint setting-hint">
             {hint}

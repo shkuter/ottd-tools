@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { PlacedNode } from '../model';
 import {
-  MAX_ZOOM, ZOOM_STEP, centreOn, fitView, fullPictureNodes, labelsVisible, nextNodeInDirection,
-  panBy, visibleNodes, zoomAt, zoomFactor,
+  LABELS_FROM, MAX_ZOOM, ZOOM_STEP, centreOn, fitView, fullPictureNodes, labelsVisible, nextNodeInDirection,
+  panBy, pinchView, startView, visibleNodes, zoomAt, zoomFactor,
 } from '../zoomPan';
 
 const viewport = { width: 800, height: 600 };
@@ -72,6 +72,66 @@ describe('visibleNodes', () => {
     expect(fullPictureNodes(nodes, { x: 0, y: 0, k: 0.5 }, viewport)).toBeNull();
     // at 1.5× the node at (750, 580) lands past the 800×600 viewport
     expect(fullPictureNodes(nodes, { x: 0, y: 0, k: 1.5 }, viewport)).toEqual(new Set(['in']));
+  });
+});
+
+describe('pinchView', () => {
+  it('keeps the spot of the drawing under the middle of the fingers as they spread', () => {
+    const start = { x: 100, y: 50, k: 1 };
+    const mid = { x: 300, y: 250 };
+    const after = pinchView(start, mid, 100, mid, 200);
+    expect(after.k).toBe(2);
+    // the drawing point under (300, 250) was (200, 200)
+    expect(200 * after.k + after.x).toBe(300);
+    expect(200 * after.k + after.y).toBe(250);
+  });
+
+  it('follows the middle when the fingers move together', () => {
+    const start = { x: 100, y: 50, k: 1 };
+    const after = pinchView(start, { x: 300, y: 250 }, 100, { x: 340, y: 230 }, 100);
+    expect(after).toEqual({ x: 140, y: 30, k: 1 });
+    // spread and moved at once: the same drawing point lands under the new middle
+    const both = pinchView(start, { x: 300, y: 250 }, 100, { x: 340, y: 230 }, 200);
+    expect(200 * both.k + both.x).toBe(340);
+    expect(200 * both.k + both.y).toBe(230);
+  });
+
+  it('is counted from the start, not accumulated', () => {
+    const start = { x: 0, y: 0, k: 0.5 };
+    expect(pinchView(start, { x: 0, y: 0 }, 50, { x: 0, y: 0 }, 50)).toEqual(start);
+  });
+});
+
+describe('startView', () => {
+  it('opens a large drawing at the lowest scale with labels, on its middle', () => {
+    const content = { width: 8000, height: 4000 };
+    const view = startView(content, viewport);
+    expect(view.k).toBe(LABELS_FROM);
+    expect(labelsVisible(view.k)).toBe(true);
+    expect((content.width / 2) * view.k + view.x).toBe(viewport.width / 2);
+    expect((content.height / 2) * view.k + view.y).toBe(viewport.height / 2);
+  });
+
+  it('opens a large drawing on the picked node instead, when there is one', () => {
+    const view = startView({ width: 8000, height: 4000 }, viewport, { x: 1000, y: 3500 });
+    expect(1000 * view.k + view.x).toBe(viewport.width / 2);
+    expect(3500 * view.k + view.y).toBe(viewport.height / 2);
+  });
+
+  it('opens a drawing that fits at a labelled scale whole and centred', () => {
+    const content = { width: 1200, height: 600 };
+    const view = startView(content, viewport);
+    const fitted = fitView(content, viewport);
+    expect(view).toEqual(fitted);
+    expect(view.k).toBeGreaterThanOrEqual(LABELS_FROM);
+  });
+
+  it('does not blow a small drawing up past life size, and keeps it centred', () => {
+    const content = { width: 200, height: 100 };
+    const view = startView(content, viewport, { x: 0, y: 0 });
+    expect(view.k).toBe(1);
+    expect(view.x).toBe((viewport.width - 200) / 2);
+    expect(view.y).toBe((viewport.height - 100) / 2);
   });
 });
 

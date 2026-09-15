@@ -340,3 +340,49 @@ describe('a system asking for less motion', () => {
     expect(shot.ignored.some((part) => part.transition !== 'none')).toBe(true);
   });
 });
+
+describe('a header under the hint of columns further right', () => {
+  /*
+   * The hint stands over the right end of the scrolling part while the list is not scrolled to
+   * its end, so a header the keyboard reaches there would have its frame under the hint. The
+   * list scrolls it clear of the hint as it does of the pinned column; the check makes sure a
+   * header does run under the hint at this width, or it would be measuring nothing.
+   */
+  it('is scrolled clear of the hint when the keyboard reaches it', async () => {
+    const page = await harness().goto('/optimizer', '.page-optimizer');
+    await page.setViewportSize(CROSSING_WIDTH);
+    try {
+      const found = await page.evaluate(() => {
+        const list = document.querySelector<HTMLElement>('.page-optimizer .table-wrap')!;
+        list.scrollLeft = 0;
+        const hint = list.parentElement!.querySelector<HTMLElement>('.table-overflow-hint')!;
+        if (getComputedStyle(hint).display === 'none') return false;
+        const edge = hint.getBoundingClientRect().left;
+        const cells = [...list.querySelectorAll<HTMLElement>('thead th')];
+        const under = cells.find((cell) => {
+          const box = cell.getBoundingClientRect();
+          return getComputedStyle(cell).position !== 'sticky' && cell.querySelector('.sort-button') && box.right > edge + 1;
+        });
+        if (!under) return false;
+        under.dataset.underHint = '';
+        return true;
+      });
+      expect(found, 'no header runs under the hint at this width, so nothing is measured').toBe(true);
+
+      await page.keyboard.press('Shift');
+      await page.locator('.page-optimizer th[data-under-hint] .sort-button').focus();
+      await page.waitForTimeout(100);
+      const clear = await page.evaluate(() => {
+        const header = document.querySelector('.page-optimizer th[data-under-hint]')!.getBoundingClientRect();
+        const hint = document.querySelector<HTMLElement>('.page-optimizer .table-overflow-hint')!;
+        const shown = getComputedStyle(hint).display !== 'none';
+        return { shown, headerRight: header.right, hintLeft: hint.getBoundingClientRect().left };
+      });
+      if (clear.shown) {
+        expect(clear.headerRight, 'the frame of the header lies under the hint').toBeLessThanOrEqual(clear.hintLeft + 0.5);
+      }
+    } finally {
+      await page.setViewportSize(VIEWPORT);
+    }
+  });
+});
